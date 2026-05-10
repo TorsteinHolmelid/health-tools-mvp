@@ -1,463 +1,944 @@
-# src/app.py
-import streamlit as st
-from io import BytesIO
+from __future__ import annotations
+
 from datetime import datetime
-import calculators
-from reportlab.lib.pagesizes import A4
-from reportlab.pdfgen import canvas
+from html import escape
+from io import BytesIO
+
 import matplotlib.pyplot as plt
+import streamlit as st
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import Image as RLImage
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+
+import calculators
+
 
 st.set_page_config(page_title="Health Tools MVP", layout="centered")
+
 st.title("Health Tools — MVP")
-st.markdown("**Educational tool — not a diagnostic tool.** This app is for demonstration only. Consult a healthcare professional for clinical advice.")
+st.caption("Educational tool only — not a diagnostic tool. Data is not stored.")
 
-# --------------------
-# Helper functions
-# --------------------
 
-def plot_bmi_gauge(bmi_value):
-    """
-    Draw a horizontal colored BMI bar with a marker.
-    Transparent figure background so it looks good in dark mode.
-    """
-    max_bmi = 45
-    fig, ax = plt.subplots(figsize=(7, 1.2))
-    # Transparent backgrounds so it adapts to Streamlit theme
+# ----------------------------
+# Plot helpers
+# ----------------------------
+def fig_to_png_buffer(fig) -> BytesIO:
+    buf = BytesIO()
+    fig.savefig(buf, format="png", dpi=180, bbox_inches="tight", transparent=True)
+    plt.close(fig)
+    buf.seek(0)
+    return buf
+
+
+def plot_bmi_gauge(bmi_value: float):
+    fig, ax = plt.subplots(figsize=(8.2, 1.7))
     fig.patch.set_alpha(0)
-    ax.patch.set_alpha(0)
+    ax.set_facecolor("none")
 
-    # colored bands and labels
     bands = [
-        (0, 18.5, "#2196F3"),   # underweight (blue)
-        (18.5, 25, "#4CAF50"),  # normal (green)
-        (25, 30, "#FFB300"),    # overweight (amber)
-        (30, max_bmi, "#E91E63")# obesity (pink/red)
+        (0.0, 18.5, "#3b82f6"),
+        (18.5, 25.0, "#22c55e"),
+        (25.0, 30.0, "#f59e0b"),
+        (30.0, 45.0, "#ef4444"),
     ]
+
     for start, end, color in bands:
-        ax.barh(0.5, end - start, left=start, height=0.6, color=color, edgecolor='none')
+        ax.barh(0.5, end - start, left=start, height=0.45, color=color, edgecolor="none", alpha=0.95)
 
-    # Marker
-    marker_x = min(max(bmi_value, 0), max_bmi)
-    ax.scatter([marker_x], [0.5], marker='v', s=200, color='black', zorder=5)
+    marker_x = max(0.0, min(45.0, bmi_value))
+    ax.scatter([marker_x], [0.5], s=220, marker="v", color="#111827", zorder=5, edgecolor="white", linewidth=1.0)
+    ax.text(
+        marker_x,
+        1.00,
+        f"{bmi_value:.1f}",
+        ha="center",
+        va="bottom",
+        fontsize=10.5,
+        color="#e5e7eb",
+        fontweight="bold",
+    )
 
-    # Choose label color with a simple heuristic
-    label_color = 'white' if plt.rcParams.get('axes.facecolor', '#FFFFFF') != '#FFFFFF' else 'black'
-    ax.text(marker_x, 1.05, f"{bmi_value:.1f}", ha='center', va='bottom', fontsize=10, color=label_color)
-
-    # Cosmetic cleanup
-    ax.set_xlim(0, max_bmi)
-    ax.set_ylim(0, 1.3)
+    ax.set_xlim(0, 45)
+    ax.set_ylim(0, 1.25)
     ax.set_yticks([])
-    ax.set_xticks([0, 10, 18.5, 25, 30, 40])
-    ax.set_xlabel("BMI")
+    ax.set_xticks([0, 10, 18.5, 25, 30, 40, 45])
+    ax.tick_params(axis="x", labelsize=9, colors="#cbd5e1")
+    ax.set_xlabel("BMI", color="#cbd5e1", fontsize=10)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    ax.text(9.25, 0.08, "Underweight", ha="center", va="center", fontsize=8.5, color="white")
+    ax.text(21.75, 0.08, "Normal", ha="center", va="center", fontsize=8.5, color="white")
+    ax.text(27.5, 0.08, "Overweight", ha="center", va="center", fontsize=8.5, color="white")
+    ax.text(37.5, 0.08, "Obesity", ha="center", va="center", fontsize=8.5, color="white")
+
+    plt.tight_layout()
+    return fig
+
+
+def plot_vo2_reference_chart(vo2_value: float, sex: str, age: int):
+    table = calculators.vo2_age_reference_table(sex)
+    bands = [row["Age band"] for row in table]
+    means = [row["Approx. average"] for row in table]
+
+    fig, ax = plt.subplots(figsize=(7.4, 3.0))
+    fig.patch.set_alpha(0)
+    ax.set_facecolor("none")
+
+    bars = ax.bar(bands, means, color="#60a5fa", edgecolor="none", alpha=0.9, label=f"{sex.upper()} reference mean")
+    ax.axhline(vo2_value, color="#ef4444", linestyle="--", linewidth=2.2, label=f"Your VO2max: {vo2_value:.1f}")
+    ax.set_ylabel("VO2max (ml/kg/min)", color="#cbd5e1")
+    ax.set_title(f"VO2max reference bands by age — age {age}", color="#e5e7eb", fontsize=11, fontweight="bold")
+    ax.tick_params(axis="x", labelrotation=0, labelsize=8.5, colors="#cbd5e1")
+    ax.tick_params(axis="y", labelsize=9, colors="#cbd5e1")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.legend(frameon=False, fontsize=8.5, labelcolor="#e5e7eb")
+    plt.tight_layout()
+    return fig
+
+
+def plot_plan_chart(plan: dict):
+    milestones = plan.get("milestones", [])
+    if not milestones:
+        return None
+
+    weeks = [m["Week"] for m in milestones]
+    weights = [m["Projected weight (kg)"] for m in milestones]
+
+    fig, ax = plt.subplots(figsize=(7.2, 2.8))
+    fig.patch.set_alpha(0)
+    ax.set_facecolor("none")
+    ax.plot(weeks, weights, marker="o", color="#22c55e", linewidth=2.4)
+    ax.set_xlabel("Week", color="#cbd5e1")
+    ax.set_ylabel("Projected weight (kg)", color="#cbd5e1")
+    ax.set_title("Goal progress milestones", color="#e5e7eb", fontsize=11, fontweight="bold")
+    ax.tick_params(axis="x", colors="#cbd5e1")
+    ax.tick_params(axis="y", colors="#cbd5e1")
     for spine in ax.spines.values():
         spine.set_visible(False)
     plt.tight_layout()
     return fig
 
-# --------------------
-# Sidebar: choose which modules to run
-# --------------------
+
+# ----------------------------
+# PDF helpers
+# ----------------------------
+def para(text: str, style) -> Paragraph:
+    return Paragraph(escape(str(text)).replace("\n", "<​br/>"), style)
+
+
+def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
+    styles = getSampleStyleSheet()
+    body = styles["BodyText"]
+    body.fontName = "Helvetica"
+    body.fontSize = 9
+    body.leading = 11
+
+    data = [[para("Field", body), para("Value", body)]]
+    for k, v in rows:
+        data.append([para(k, body), para(v, body)])
+
+    t = Table(data, colWidths=col_widths, repeatRows=1)
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("LEADING", (0, 0), (-1, -1), 11),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cbd5e1")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ]
+        )
+    )
+    return t
+
+
+def make_data_table(rows, header_fill="#0f172a"):
+    styles = getSampleStyleSheet()
+    body = styles["BodyText"]
+    body.fontName = "Helvetica"
+    body.fontSize = 8.7
+    body.leading = 10.5
+
+    headers = list(rows[0].keys()) if rows else []
+    data = [[para(h, body) for h in headers]]
+    for row in rows:
+        data.append([para(row.get(h, ""), body) for h in headers])
+
+    col_count = max(1, len(headers))
+    widths = [180 * mm / col_count for _ in range(col_count)]
+
+    t = Table(data, colWidths=widths, repeatRows=1)
+    t.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(header_fill)),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8.7),
+                ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cbd5e1")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 5),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ]
+        )
+    )
+    return t
+
+
+def figure_image(fig, width_mm=170):
+    buf = fig_to_png_buffer(fig)
+    width_pt = width_mm * mm
+    return RLImage(buf, width=width_pt, height=width_pt * 0.32)
+
+
+def create_pdf_bytes(report: dict) -> bytes:
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=14 * mm,
+        rightMargin=14 * mm,
+        topMargin=18 * mm,
+        bottomMargin=14 * mm,
+    )
+
+    styles = getSampleStyleSheet()
+    title = ParagraphStyle(
+        "TitleStyle",
+        parent=styles["Title"],
+        fontName="Helvetica-Bold",
+        fontSize=20,
+        leading=24,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#0f172a"),
+    )
+    subtitle = ParagraphStyle(
+        "SubtitleStyle",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=9.5,
+        leading=12,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor("#475569"),
+    )
+    section = ParagraphStyle(
+        "SectionStyle",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=13,
+        leading=15,
+        textColor=colors.HexColor("#0f172a"),
+        spaceAfter=4,
+    )
+    body = ParagraphStyle(
+        "BodyStyle",
+        parent=styles["BodyText"],
+        fontName="Helvetica",
+        fontSize=9.2,
+        leading=12,
+        textColor=colors.HexColor("#111827"),
+    )
+    small = ParagraphStyle(
+        "SmallStyle",
+        parent=styles["BodyText"],
+        fontName="Helvetica-Oblique",
+        fontSize=7.8,
+        leading=10,
+        textColor=colors.HexColor("#475569"),
+    )
+
+    story = []
+    story.append(Paragraph("Health Tools — Report", title))
+    story.append(Spacer(1, 3 * mm))
+    story.append(
+        Paragraph(
+            "Educational report generated from the app inputs. This is not a medical diagnosis.",
+            subtitle,
+        )
+    )
+    story.append(Spacer(1, 6 * mm))
+
+    inputs = report["inputs"]
+    inputs_rows = [
+        ("Generated", report["generated"]),
+        ("Age", inputs["age"]),
+        ("Sex", inputs["sex"]),
+        ("Height", f'{inputs["height_cm"]} cm'),
+        ("Weight", f'{inputs["weight_kg"]} kg'),
+    ]
+    story.append(make_key_value_table(inputs_rows))
+    story.append(Spacer(1, 6 * mm))
+
+    # Summary box
+    summary_rows = []
+    if report.get("bmi"):
+        summary_rows.append(("BMI", f'{report["bmi"]["value"]} ({report["bmi"]["category"]})'))
+    if report.get("vo2"):
+        summary_rows.append(
+            ("VO2max",
+             f'{report["vo2"]["value"]} ml/kg/min | {report["vo2"]["rating"]} | {report["vo2"]["percentile"]}th percentile')
+        )
+    if report.get("bio_age"):
+        summary_rows.append(("Biological age", f'{report["bio_age"]["value"]} years'))
+    if report.get("triage"):
+        summary_rows.append(("Symptom triage", f'{report["triage"]["level"]}: {report["triage"]["message"]}'))
+    if summary_rows:
+        story.append(Paragraph("Summary", section))
+        story.append(make_key_value_table(summary_rows))
+        story.append(Spacer(1, 6 * mm))
+
+    if report.get("bmi"):
+        story.append(Paragraph("BMI", section))
+        story.append(
+            Paragraph(
+                "BMI is a simple screening measure. Body composition, muscle mass, bone structure, age, pregnancy and athletic status can change how BMI should be interpreted.",
+                body,
+            )
+        )
+        story.append(Spacer(1, 2 * mm))
+        story.append(make_key_value_table([("BMI", f'{report["bmi"]["value"]}'), ("Category", report["bmi"]["category"])]))
+        story.append(Spacer(1, 4 * mm))
+        story.append(figure_image(plot_bmi_gauge(report["bmi"]["value"]), width_mm=176))
+        story.append(Spacer(1, 3 * mm))
+        if report.get("bodyfat") is not None:
+            story.append(make_key_value_table([("Estimated body fat", f'{report["bodyfat"]}%')]))
+            story.append(Spacer(1, 3 * mm))
+        if report.get("whr") is not None:
+            story.append(make_key_value_table([("Waist-to-hip ratio", f'{report["whr"]["value"]} ({report["whr"]["category"]})')]))
+            story.append(Spacer(1, 3 * mm))
+        story.append(
+            Paragraph(
+                "Note: BMI interpretation is different in children/adolescents under 18 and should be used cautiously in older adults.",
+                small,
+            )
+        )
+        story.append(Spacer(1, 4 * mm))
+
+    if report.get("vo2"):
+        story.append(Paragraph("VO2max", section))
+        story.append(
+            Paragraph(
+                "VO2max is estimated from your chosen method or entered directly if you already know a measured value.",
+                body,
+            )
+        )
+        story.append(Spacer(1, 2 * mm))
+        story.append(
+            make_key_value_table(
+                [
+                    ("Method", report["vo2"]["method"]),
+                    ("VO2max", f'{report["vo2"]["value"]} ml/kg/min'),
+                    ("Age band", report["vo2"]["age_band"]),
+                    ("Percentile", f'{report["vo2"]["percentile"]}th'),
+                    ("Reference rating", report["vo2"]["rating"]),
+                ]
+            )
+        )
+        story.append(Spacer(1, 4 * mm))
+        story.append(figure_image(plot_vo2_reference_chart(report["vo2"]["value"], inputs["sex"], inputs["age"]), width_mm=176))
+        story.append(Spacer(1, 4 * mm))
+        ref_table = make_data_table(calculators.vo2_age_reference_table(inputs["sex"]))
+        story.append(ref_table)
+        story.append(Spacer(1, 4 * mm))
+        tips = report["vo2"].get("tips", [])
+        if tips:
+            story.append(Paragraph("VO2 improvement tips", section))
+            for tip in tips:
+                story.append(Paragraph(f"• {escape(str(tip))}", body))
+            story.append(Spacer(1, 4 * mm))
+
+    if report.get("bio_age"):
+        story.append(Paragraph("Biological age", section))
+        story.append(
+            Paragraph(
+                "This is an educational estimate based on the inputs you provided. Missing values do not block the result.",
+                body,
+            )
+        )
+        story.append(Spacer(1, 2 * mm))
+        bio_rows = [("Biological age", f'{report["bio_age"]["value"]} years')]
+        story.append(make_key_value_table(bio_rows))
+        story.append(Spacer(1, 3 * mm))
+        if report.get("bio_factors"):
+            factor_rows = [
+                {"Factor": f["label"], "Effect": f'{f["delta"]:+.0f} years'}
+                for f in report["bio_factors"]
+            ]
+            story.append(make_data_table(factor_rows))
+            story.append(Spacer(1, 4 * mm))
+
+    if report.get("triage"):
+        story.append(Paragraph("Symptom triage", section))
+        tri = report["triage"]
+        story.append(make_key_value_table([("Level", tri["level"]), ("Message", tri["message"])]))
+        story.append(Spacer(1, 4 * mm))
+
+    if report.get("plan"):
+        story.append(Paragraph("Goal / plan", section))
+        plan = report["plan"]
+        plan_rows = [
+            ("Current maintenance kcal", f'{plan["current_needs_kcal"]} kcal/day'),
+            ("Recommended daily kcal", f'{plan["recommended_daily_kcal"]} kcal/day'),
+            ("Expected weekly change", f'{plan["kg_per_week"]:+.2f} kg/week'),
+        ]
+        story.append(make_key_value_table(plan_rows))
+        story.append(Spacer(1, 3 * mm))
+        story.append(make_data_table(plan["milestones"]))
+        story.append(Spacer(1, 4 * mm))
+        maybe_fig = plot_plan_chart(plan)
+        if maybe_fig is not None:
+            story.append(figure_image(maybe_fig, width_mm=176))
+            story.append(Spacer(1, 3 * mm))
+
+    story.append(Spacer(1, 3 * mm))
+    story.append(
+        Paragraph(
+            "Disclaimer: educational demo only. Not clinically validated. For symptoms, worsening health, or emergency signs, seek professional help immediately.",
+            small,
+        )
+    )
+
+    def add_page_header(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(colors.HexColor("#0f172a"))
+        canvas.rect(0, A4[1] - 26, A4[0], 26, fill=1, stroke=0)
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 11)
+        canvas.drawString(doc.leftMargin, A4[1] - 18, "Health Tools — Report")
+        canvas.setFont("Helvetica", 8)
+        canvas.drawRightString(A4[0] - doc.rightMargin, A4[1] - 18, f"Page {canvas.getPageNumber()}")
+        canvas.setFillColor(colors.HexColor("#64748b"))
+        canvas.drawString(doc.leftMargin, 10, "Educational use only — not medical advice")
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=add_page_header, onLaterPages=add_page_header)
+    buffer.seek(0)
+    return buffer.read()
+
+
+# ----------------------------
+# Sidebar
+# ----------------------------
 st.sidebar.header("Modules")
 run_bmi = st.sidebar.checkbox("BMI calculator", value=True)
-run_vo2 = st.sidebar.checkbox("VO2 estimate (Cooper / heuristic)", value=False)
-run_bioage = st.sidebar.checkbox("Biological age", value=False)
+run_vo2 = st.sidebar.checkbox("VO2max estimate", value=True)
+run_bioage = st.sidebar.checkbox("Biological age", value=True)
 run_symptom = st.sidebar.checkbox("Symptom checker", value=True)
+run_plan = st.sidebar.checkbox("Weight goal / plan", value=True)
 
 st.sidebar.markdown("---")
-st.sidebar.header("Settings")
-bioage_mode = st.sidebar.selectbox("Biological age mode", ["Quick (fun)", "Detailed"], index=0)
-st.sidebar.markdown("Disclaimer: Data is NOT stored. This is not medical advice.")
+st.sidebar.info("This app does not store personal health data. It is for education and demonstration only.")
 
-# Visual cue for active modules
-active = [name for name, enabled in [
-    ("BMI", run_bmi), ("VO2", run_vo2), ("Bio-age", run_bioage), ("Symptoms", run_symptom)
-] if enabled]
-if active:
-    st.info(f"Active modules: {', '.join(active)}")
 
-# --------------------
-# Inputs
-# --------------------
-st.header("Inputs")
+# ----------------------------
+# Basic inputs
+# ----------------------------
+st.header("Basic information")
 
-with st.expander("Basic info (required for many calculations)", expanded=True):
+col1, col2 = st.columns(2)
+with col1:
     age = st.number_input("Age (years)", min_value=0, max_value=120, value=30, step=1)
-    sex = st.selectbox("Sex", options=["M", "F"])
+    sex = st.selectbox("Sex", options=["M", "F"], index=0)
+with col2:
     height_cm = st.number_input("Height (cm)", min_value=50, max_value=250, value=170)
     weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=70.0, format="%.1f")
 
-# BMI optional extras
-bmi_extras = {}
-if run_bmi:
-    with st.expander("BMI extra options (optional — checking these gives more accurate assessment)", expanded=False):
-        use_waist_hip = st.checkbox("Provide waist & hip (waist-to-hip ratio)")
-        if use_waist_hip:
-            waist_cm = st.number_input("Waist circumference (cm)", min_value=30.0, max_value=300.0, value=80.0, key="waist")
-            hip_cm = st.number_input("Hip circumference (cm)", min_value=30.0, max_value=300.0, value=95.0, key="hip")
-            bmi_extras['waist_cm'] = waist_cm
-            bmi_extras['hip_cm'] = hip_cm
-        use_neck = st.checkbox("Provide neck circumference (for body fat estimate)")
-        if use_neck:
-            neck_cm = st.number_input("Neck circumference (cm)", min_value=20.0, max_value=80.0, value=38.0, key="neck")
-            bmi_extras['neck_cm'] = neck_cm
-        use_bodyfat = st.checkbox("Request body-fat estimate (Navy method) — optional")
-        if use_bodyfat:
-            bmi_extras['request_bodyfat'] = True
+if age < 18:
+    st.warning("BMI and fitness estimates are less reliable under 18 because different reference rules are used.")
+elif age >= 70:
+    st.info("For older adults, BMI is often less informative because muscle mass, frailty and overall context matter.")
 
-# Activity & VO2
-vo2_distance_m = None
-activity_level = "medium"
-vo2_method = "Heuristic (questionnaire)"
-weekly_minutes = 0
+activity_level = "Moderate"
+weekly_minutes = 150
 session_intensity = 3
-rockport_time_min = None
-rockport_hr = None
+resting_hr = None
+max_hr = None
+measured_vo2_input = 0.0
 
-if run_vo2 or run_bioage:
-    with st.expander("Activity & cardiopulmonary inputs", expanded=False):
-        activity_level = st.selectbox("Physical activity level", options=["low", "medium", "high"], index=1)
-        if run_vo2:
-            st.markdown("VO2 options: choose a method and provide inputs for that method.")
-            vo2_method = st.selectbox("VO2 method", options=["Heuristic (questionnaire)", "Cooper (12-min)", "Rockport (1-mile)"], index=0)
-            if vo2_method == "Cooper (12-min)":
-                vo2_distance_m = st.number_input("12-min Cooper distance (meters)", min_value=0.0, value=0.0, format="%.1f")
-            elif vo2_method == "Rockport (1-mile)":
-                rockport_time_min = st.number_input("Rockport 1-mile time (minutes, e.g. 15.5)", min_value=0.1, value=15.0, format="%.2f")
-                rockport_hr = st.number_input("Heart rate at end (bpm)", min_value=30, max_value=220, value=140)
-            else:
-                weekly_minutes = st.number_input("Weekly MVPA minutes (moderate-vigorous)", min_value=0, max_value=2000, value=150)
-                session_intensity = st.slider("Typical session intensity (1=very light .. 5=very intense)", min_value=1, max_value=5, value=3)
+waist_cm = None
+hip_cm = None
+neck_cm = None
+bodyfat_requested = False
 
-# Detailed bio-age inputs
-systolic_bp = None; cholesterol = None; diabetes = False; resting_hr = None
-sleep_hours = None; alcohol_units = None; fruit_veg = None; perceived_stress = None; grip_strength = None
 smoker = False
+diabetes = False
+sleep_hours = None
+alcohol_units = None
+fruit_veg = None
+perceived_stress = 5
+grip_strength = None
+bp_systolic = None
+cholesterol = None
+family_history = False
+menopause = False
+
+
+# ----------------------------
+# BMI inputs
+# ----------------------------
+if run_bmi:
+    with st.expander("BMI inputs and body composition", expanded=True):
+        st.markdown("BMI is a simple screening tool, not a diagnosis.")
+        use_waist_hip = st.checkbox("Add waist and hip measurements", value=False)
+        if use_waist_hip:
+            c1, c2 = st.columns(2)
+            with c1:
+                waist_cm = st.number_input("Waist circumference (cm)", min_value=30.0, max_value=300.0, value=80.0, format="%.1f", key="waist_bmi")
+            with c2:
+                hip_cm = st.number_input("Hip circumference (cm)", min_value=30.0, max_value=300.0, value=95.0, format="%.1f", key="hip_bmi")
+
+        use_neck = st.checkbox("Add neck measurement for body-fat estimate", value=False)
+        if use_neck:
+            neck_cm = st.number_input("Neck circumference (cm)", min_value=20.0, max_value=80.0, value=38.0, format="%.1f", key="neck_bmi")
+
+        bodyfat_requested = st.checkbox("Estimate body fat using the Navy method", value=False)
+
+
+# ----------------------------
+# VO2 inputs
+# ----------------------------
+vo2_method = "Questionnaire"
+vo2_distance_m = 0.0
+rockport_time_min = 0.0
+rockport_hr = 0
+
+if run_vo2:
+    with st.expander("Cardio / VO2max inputs", expanded=True):
+        activity_level = st.selectbox(
+            "Physical activity level",
+            options=["Sedentary", "Light", "Moderate", "Active", "Very active", "Athlete"],
+            index=2,
+        )
+        weekly_minutes = st.number_input(
+            "Weekly minutes of moderate-to-vigorous activity",
+            min_value=0,
+            max_value=2000,
+            value=150,
+        )
+        session_intensity = st.slider(
+            "Typical session intensity (1 = very light, 5 = very intense)",
+            min_value=1,
+            max_value=5,
+            value=3,
+        )
+        resting_hr_unknown = st.checkbox("I don't know my resting heart rate", value=True)
+        if not resting_hr_unknown:
+            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220, value=70)
+        max_hr_unknown = st.checkbox("I don't know my max heart rate", value=True)
+        if not max_hr_unknown:
+            max_hr = st.number_input("Estimated max heart rate (bpm)", min_value=40, max_value=240, value=180)
+
+        measured_vo2_input = st.number_input(
+            "If you know a measured VO2max (Apple Watch, lab, etc.), enter it here",
+            min_value=0.0,
+            value=0.0,
+            format="%.1f",
+        )
+
+        vo2_method = st.selectbox(
+            "VO2 calculation method",
+            options=["Questionnaire", "Cooper (12-min)", "Rockport (1-mile)", "Measured value"],
+            index=0,
+        )
+
+        if vo2_method == "Cooper (12-min)":
+            vo2_distance_m = st.number_input("12-minute distance (meters)", min_value=0.0, value=0.0, format="%.1f")
+        elif vo2_method == "Rockport (1-mile)":
+            rockport_time_min = st.number_input("1-mile time (minutes)", min_value=0.1, value=15.0, format="%.2f")
+            rockport_hr = st.number_input("Heart rate at the end (bpm)", min_value=30, max_value=220, value=140)
+        elif vo2_method == "Measured value":
+            measured_vo2_input = st.number_input(
+                "Measured VO2max (ml/kg/min)",
+                min_value=0.0,
+                value=max(measured_vo2_input, 0.0),
+                format="%.1f",
+            )
+
+
+# ----------------------------
+# Biological age inputs
+# ----------------------------
 if run_bioage:
-    with st.expander("Biological age inputs (optional)", expanded=False):
+    with st.expander("Biological age inputs", expanded=True):
+        st.caption("You can leave any field blank or use 'I don't know' where available.")
+
         smoker = st.checkbox("Smoker?")
-        if bioage_mode == "Detailed":
-            diabetes = st.checkbox("Diabetes?")
-            systolic_bp = st.number_input("Systolic BP (mmHg) - optional", value=120.0)
-            cholesterol = st.number_input("Cholesterol (mg/dL) - optional", value=180.0)
-            resting_hr = st.number_input("Resting heart rate (bpm) - optional", min_value=30, max_value=200, value=70)
-            sleep_hours = st.number_input("Average sleep per night (hours) - optional", min_value=0.0, max_value=24.0, value=7.0, format="%.1f")
-            alcohol_units = st.number_input("Alcohol units per week - optional", min_value=0, max_value=200, value=0)
-            fruit_veg = st.number_input("Daily fruit & veg servings (approx) - optional", min_value=0, max_value=20, value=3)
-            perceived_stress = st.slider("Perceived stress (1 low - 10 high)", min_value=1, max_value=10, value=5)
-            grip_strength = st.number_input("Grip strength (kg) - optional", min_value=0.0, max_value=100.0, value=30.0, format="%.1f")
+        diabetes = st.checkbox("Diabetes?")
+        family_history = st.checkbox("Family history of premature cardiovascular disease?")
+        if sex == "F":
+            menopause = st.checkbox("Post-menopausal?")
 
-# Symptoms
+        st.markdown("#### Cardiovascular")
+        bp_unknown = st.checkbox("I don't know my systolic blood pressure", value=True)
+        if not bp_unknown:
+            bp_systolic = st.number_input("Systolic blood pressure (mmHg)", min_value=70.0, max_value=260.0, value=120.0)
+
+        chol_unknown = st.checkbox("I don't know my cholesterol", value=True)
+        if not chol_unknown:
+            cholesterol = st.number_input("Cholesterol (mg/dL)", min_value=50.0, max_value=500.0, value=180.0)
+
+        rhr_unknown = st.checkbox("I don't know my resting heart rate", value=True)
+        if not rhr_unknown:
+            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220, value=70)
+
+        st.markdown("#### Lifestyle")
+        sleep_unknown = st.checkbox("I don't know my sleep duration", value=True)
+        if not sleep_unknown:
+            sleep_hours = st.number_input("Average sleep per night (hours)", min_value=0.0, max_value=24.0, value=7.0, format="%.1f")
+
+        alcohol_unknown = st.checkbox("I don't know my alcohol intake", value=True)
+        if not alcohol_unknown:
+            alcohol_units = st.number_input("Alcohol units per week", min_value=0, max_value=300, value=0)
+
+        fruit_veg = st.number_input("Daily fruit & vegetable servings", min_value=0, max_value=20, value=3)
+
+        perceived_stress = st.slider("Perceived stress (1 low - 10 high)", min_value=1, max_value=10, value=5)
+
+        grip_unknown = st.checkbox("I don't know my grip strength", value=True)
+        if not grip_unknown:
+            grip_strength = st.number_input("Grip strength (kg)", min_value=0.0, max_value=100.0, value=30.0, format="%.1f")
+
+        st.markdown("#### Body composition")
+        bio_waist_unknown = st.checkbox("I don't know my waist-to-hip ratio", value=True)
+        if not bio_waist_unknown:
+            c1, c2 = st.columns(2)
+            with c1:
+                waist_bio = st.number_input("Waist circumference for bio-age (cm)", min_value=30.0, max_value=300.0, value=80.0, format="%.1f", key="waist_bio")
+            with c2:
+                hip_bio = st.number_input("Hip circumference for bio-age (cm)", min_value=30.0, max_value=300.0, value=95.0, format="%.1f", key="hip_bio")
+            if waist_cm is None:
+                waist_cm = waist_bio
+            if hip_cm is None:
+                hip_cm = hip_bio
+
+
+# ----------------------------
+# Symptom checker
+# ----------------------------
 selected_symptoms = []
-if run_symptom:
-    with st.expander("Symptoms (search or pick)", expanded=False):
-        st.markdown("Type to search symptoms or pick from the list. You can also add custom symptoms below.")
-        all_symptoms = getattr(calculators, "ALL_SYMPTOMS", calculators.COMMON_SYMPTOMS + list(calculators.DEFAULT_RED_FLAGS))
-        selected_symptoms = st.multiselect("Select symptoms", options=sorted(all_symptoms), default=None, key="multi_symptoms")
-        custom_symptom = st.text_input("Other symptoms (free text)", "")
-        if custom_symptom:
-            selected_symptoms = (selected_symptoms or []) + [custom_symptom]
+custom_symptom = ""
 
-# Option: create plan after BMI
+if run_symptom:
+    with st.expander("Symptoms", expanded=True):
+        st.markdown("Select symptoms below or type a custom one. Red-flag symptoms will trigger emergency advice.")
+        selected_symptoms = st.multiselect(
+            "Select symptoms",
+            options=calculators.ALL_SYMPTOMS,
+            default=[],
+        )
+        custom_symptom = st.text_input("Other symptom (free text)", "")
+        if custom_symptom.strip():
+            selected_symptoms = (selected_symptoms or []) + [custom_symptom.strip()]
+
+
+# ----------------------------
+# Weight goal / plan
+# ----------------------------
 create_plan = False
 target_weight = None
 target_bmi = None
 plan_weeks = 12
-if run_bmi:
-    with st.expander("Goal / Plan (optional)", expanded=False):
+
+if run_plan and run_bmi:
+    with st.expander("Goal / plan", expanded=False):
         create_plan = st.checkbox("Create a simple plan to reach a target weight/BMI", value=False)
         if create_plan:
             plan_type = st.radio("Plan target type", ["Target weight (kg)", "Target BMI"], index=0)
-            if plan_type.startswith("Target weight"):
-                target_weight = st.number_input("Target weight (kg)", min_value=30.0, max_value=300.0, value=65.0)
+            if plan_type == "Target weight (kg)":
+                target_weight = st.number_input("Target weight (kg)", min_value=30.0, max_value=400.0, value=65.0, format="%.1f")
             else:
-                target_bmi = st.number_input("Target BMI", min_value=12.0, max_value=40.0, value=22.0)
-            plan_weeks = st.number_input("Weeks to achieve target", min_value=4, max_value=52, value=12)
+                target_bmi = st.number_input("Target BMI", min_value=12.0, max_value=45.0, value=22.0, format="%.1f")
+            plan_weeks = st.number_input("Weeks to achieve target", min_value=4, max_value=52, value=12, step=1)
 
-# --------------------
-# Compute & Results
-# --------------------
-if st.button("Calculate / Generate results"):
+
+# ----------------------------
+# Calculate
+# ----------------------------
+if st.button("Calculate / Generate report"):
     results = {}
+
     try:
+        bmi_value = None
+        bmi_category = None
+
         # BMI
         if run_bmi:
-            bmi, bmi_cat = calculators.bmi_calc(weight_kg, height_cm)
-            results['bmi'] = {'value': bmi, 'category': bmi_cat}
-            extras_used = 0
-            if 'waist_cm' in bmi_extras and 'hip_cm' in bmi_extras:
-                ratio = calculators.waist_hip_ratio(bmi_extras['waist_cm'], bmi_extras['hip_cm'])
-                whr_cat = calculators.whr_category(sex, ratio)
-                results['whr'] = {'ratio': ratio, 'category': whr_cat}
-                extras_used += 1
-            if 'neck_cm' in bmi_extras:
-                if bmi_extras.get('request_bodyfat'):
-                    try:
-                        if sex == 'M':
-                            bf = calculators.body_fat_navy(sex, height_cm, bmi_extras['neck_cm'], bmi_extras.get('waist_cm', 0))
-                        else:
-                            bf = calculators.body_fat_navy(sex, height_cm, bmi_extras['neck_cm'], bmi_extras.get('waist_cm', 0), bmi_extras.get('hip_cm', None))
-                        results['bodyfat'] = {'value': bf}
-                        extras_used += 1
-                    except Exception as e:
-                        st.warning(f"Bodyfat estimate skipped: {e}")
-            results['bmi']['extras_used'] = extras_used
+            bmi_value, bmi_category = calculators.bmi_calc(weight_kg, height_cm)
+            results["bmi"] = {"value": bmi_value, "category": bmi_category}
+
+            if waist_cm is not None and hip_cm is not None:
+                whr_value = calculators.waist_hip_ratio(waist_cm, hip_cm)
+                whr_cat = calculators.whr_category(sex, whr_value)
+                results["whr"] = {"value": whr_value, "category": whr_cat}
+
+            if bodyfat_requested and neck_cm is not None:
+                try:
+                    if sex == "M":
+                        if waist_cm is None:
+                            raise ValueError("Waist measurement required for male body-fat estimate")
+                        bodyfat = calculators.body_fat_navy(sex, height_cm, neck_cm, waist_cm)
+                    else:
+                        if waist_cm is None or hip_cm is None:
+                            raise ValueError("Waist and hip measurements required for female body-fat estimate")
+                        bodyfat = calculators.body_fat_navy(sex, height_cm, neck_cm, waist_cm, hip_cm)
+                    results["bodyfat"] = bodyfat
+                except Exception as e:
+                    st.warning(f"Body-fat estimate skipped: {e}")
 
         # VO2
         if run_vo2:
-            if vo2_method == "Cooper (12-min)":
-                if vo2_distance_m and vo2_distance_m > 0:
-                    vo2 = calculators.vo2_cooper_from_distance(vo2_distance_m)
-                    results['vo2'] = {'method': 'Cooper 12-min', 'value': vo2}
-                else:
-                    st.warning("Cooper selected but no distance provided. Falling back to heuristic.")
-                    if 'bmi' not in results:
-                        bmi, _ = calculators.bmi_calc(weight_kg, height_cm)
-                    else:
-                        bmi = results['bmi']['value']
-                    vo2 = calculators.vo2_simple_heuristic(age, sex, bmi, activity_level)
-                    results['vo2'] = {'method': 'Heuristic', 'value': vo2}
-            elif vo2_method == "Rockport (1-mile)":
-                try:
-                    vo2 = calculators.vo2_rockport_1mile(rockport_time_min, rockport_hr, weight_kg, age, sex)
-                    results['vo2'] = {'method': 'Rockport 1-mile', 'value': vo2}
-                except Exception as e:
-                    st.warning(f"Rockport inputs invalid: {e}. Falling back to heuristic.")
-                    if 'bmi' not in results:
-                        bmi, _ = calculators.bmi_calc(weight_kg, height_cm)
-                    else:
-                        bmi = results['bmi']['value']
-                    vo2 = calculators.vo2_simple_heuristic(age, sex, bmi, activity_level)
-                    results['vo2'] = {'method': 'Heuristic', 'value': vo2}
-            else:
-                # questionnaire heuristic
-                if 'bmi' not in results:
-                    bmi, _ = calculators.bmi_calc(weight_kg, height_cm)
-                else:
-                    bmi = results['bmi']['value']
-                vo2 = calculators.vo2_questionnaire_estimate(age, sex, weekly_minutes, session_intensity, bmi)
-                results['vo2'] = {'method': 'Questionnaire', 'value': vo2}
+            measured_vo2 = measured_vo2_input if measured_vo2_input and measured_vo2_input > 0 else None
 
-        # Bio-age
-        if run_bioage:
-            if 'bmi' not in results:
-                bmi, _ = calculators.bmi_calc(weight_kg, height_cm)
+            if measured_vo2 is not None:
+                vo2_value = calculators.vo2_measured_value(measured_vo2)
+                method_used = "Measured value"
+            elif vo2_method == "Cooper (12-min)":
+                vo2_value = calculators.vo2_cooper_from_distance(vo2_distance_m)
+                method_used = "Cooper (12-min)"
+            elif vo2_method == "Rockport (1-mile)":
+                vo2_value = calculators.vo2_rockport_1mile(rockport_time_min, int(rockport_hr), weight_kg, age, sex)
+                method_used = "Rockport (1-mile)"
             else:
-                bmi = results['bmi']['value']
-            if bioage_mode == "Quick (fun)":
-                bio_age = calculators.estimate_biological_age_quick(age, smoker, bmi, activity_level)
-                results['bio_age'] = {'mode': 'quick', 'value': bio_age}
-            else:
-                bio_age = calculators.estimate_biological_age_extended(
-                    age, smoker, bmi, activity_level,
-                    sleep_hours=sleep_hours,
-                    alcohol_units_per_week=alcohol_units,
-                    fruit_veg_servings=fruit_veg,
-                    perceived_stress=perceived_stress,
-                    grip_strength_kg=grip_strength,
-                    bp_systolic=systolic_bp,
-                    cholesterol_mg_dl=cholesterol,
-                    diabetes=diabetes,
-                    resting_hr=resting_hr
+                if bmi_value is None:
+                    bmi_value, _ = calculators.bmi_calc(weight_kg, height_cm)
+                vo2_value = calculators.vo2_questionnaire_estimate(
+                    age=age,
+                    sex=sex,
+                    weekly_minutes=int(weekly_minutes),
+                    session_intensity_score=int(session_intensity),
+                    activity_level=activity_level,
+                    bmi=bmi_value,
+                    resting_hr=int(resting_hr) if resting_hr is not None else None,
+                    max_hr=int(max_hr) if max_hr is not None else None,
                 )
-                results['bio_age'] = {'mode': 'detailed', 'value': bio_age}
+                method_used = "Questionnaire"
+
+            vo2_ref = calculators.vo2_reference(age, sex, vo2_value)
+            vo2_tips = calculators.vo2_improvement_tips(
+                vo2_value=vo2_value,
+                sex=sex,
+                age=age,
+                activity_level=activity_level,
+                weekly_minutes=int(weekly_minutes),
+            )
+            results["vo2"] = {
+                "value": vo2_value,
+                "method": method_used,
+                "age_band": vo2_ref["age_band"],
+                "percentile": vo2_ref["percentile"],
+                "rating": vo2_ref["rating"],
+                "reference_mean": vo2_ref["mean"],
+                "tips": vo2_tips,
+            }
+
+        # Biological age
+        if run_bioage:
+            if bmi_value is None and run_bmi:
+                bmi_value, _ = calculators.bmi_calc(weight_kg, height_cm)
+
+            waist_to_hip = None
+            if waist_cm is not None and hip_cm is not None:
+                try:
+                    waist_to_hip = calculators.waist_hip_ratio(waist_cm, hip_cm)
+                except Exception:
+                    waist_to_hip = None
+
+            measured_vo2_for_bio = None
+            if results.get("vo2") is not None:
+                measured_vo2_for_bio = results["vo2"]["value"]
+
+            bio_age, bio_factors = calculators.estimate_biological_age_detailed(
+                age=age,
+                sex=sex,
+                smoker=smoker,
+                bmi=bmi_value,
+                activity_level=activity_level,
+                sleep_hours=sleep_hours,
+                alcohol_units_per_week=alcohol_units,
+                fruit_veg_servings=fruit_veg,
+                perceived_stress=perceived_stress,
+                grip_strength_kg=grip_strength,
+                bp_systolic=bp_systolic,
+                cholesterol_mg_dl=cholesterol,
+                diabetes=diabetes,
+                resting_hr=resting_hr,
+                waist_to_hip_ratio=waist_to_hip,
+                family_history=family_history,
+                menopause=menopause,
+                measured_vo2=measured_vo2_for_bio,
+            )
+            results["bio_age"] = {"value": bio_age}
+            results["bio_factors"] = bio_factors
 
         # Triage
         if run_symptom:
-            advice_level, advice_message = calculators.triage_decision(
-                selected_symptoms or [],
-                red_flag_symptoms=set([s.lower() for s in calculators.DEFAULT_RED_FLAGS]),
-                risk_factors={'age': age, 'diabetes': diabetes}
+            triage_level, triage_message = calculators.triage_decision(
+                selected_symptoms=selected_symptoms,
+                red_flag_symptoms=calculators.DEFAULT_RED_FLAGS,
+                risk_factors={"age": age, "diabetes": diabetes, "heart_disease": family_history},
             )
-            results['triage'] = {'level': advice_level, 'message': advice_message}
+            results["triage"] = {"level": triage_level, "message": triage_message}
+
+        # Plan
+        if run_plan and run_bmi and create_plan:
+            if target_bmi is not None:
+                target_weight = target_bmi * (height_cm / 100.0) ** 2
+            if target_weight is not None:
+                plan = calculators.generate_weight_plan(
+                    current_weight_kg=weight_kg,
+                    target_weight_kg=target_weight,
+                    weeks=int(plan_weeks),
+                    sex=sex,
+                    height_cm=height_cm,
+                    age=age,
+                    activity_level=activity_level,
+                )
+                results["plan"] = plan
 
     except Exception as e:
         st.error(f"Error during calculation: {e}")
-        results = None
+        results = {}
 
-    # --------------------
-    # Show results
-    # --------------------
+    # ----------------------------
+    # Display results
+    # ----------------------------
     if results:
         st.success("Results ready")
 
-        # BMI section: gauge + details
-# --- BMI section (REPLACE the existing BMI display block with this) ---
-if 'bmi' in results:
-    b = results['bmi']['value']
-    cat = results['bmi']['category']
-    st.subheader("BMI")
-    # Metric with color-coded badge (use markdown for better contrast)
-    st.markdown(f"<​div style='display:flex;align-items:center;gap:16px;'>"
-                f"<div style='font-weight:600;font-size:18px;'>BMI: {b}</div>"
-                f"<div style='padding:6px 10px;border-radius:6px;background:#111827;color:#fff;font-weight:600;'>{cat}</div>"
-                f"<​/div>", unsafe_allow_html=True)
+        # BMI
+        if "bmi" in results:
+            st.subheader("BMI")
+            b = results["bmi"]["value"]
+            cat = results["bmi"]["category"]
 
-    # Small explanatory disclaimer (high contrast)
-    st.markdown(
-        "<​div style='background:#0b1221;padding:10px;border-radius:6px;color:#e6eef8;'>"
-        "<strong>Merk:</strong> BMI er en enkel indikator. Muskelmasse, beinbygning og fettfordeling varierer mellom individer. "
-        "Personer under 18 år og eldre over ~70 har andre referanser. Dette er kun en estimat — ikke medisinsk diagnose."
-        "<​/div>", unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div style="padding:14px;border-radius:12px;background:#111827;color:#f9fafb;border:1px solid #334155;">
+                    <div style="font-size:18px;font-weight:700;">BMI: {b}</div>
+                    <div style="margin-top:6px;padding:6px 10px;display:inline-block;border-radius:8px;background:#1f2937;color:#fff;font-weight:700;">
+                        {cat}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.markdown(
+                """
+                <div style="margin-top:10px;padding:12px;border-radius:12px;background:#0b1221;color:#e5eef8;border:1px solid #1f2937;">
+                <strong>Merknad:</strong> BMI er ein enkel screeningindikator. Muskelmasse, beinvev, fettfordeling, alder, graviditet og idrettsnivå kan endre korleis talet bør tolkast.
+                BMI er spesielt mindre presis for barn/ungdom under 18 år og for eldre vaksne.
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            st.pyplot(plot_bmi_gauge(b), use_container_width=True)
+            plt.close("all")
 
-    # Render improved BMI gauge (matplotlib figure) with transparent background
-    try:
-        fig = plot_bmi_gauge(b)
-        st.pyplot(fig, use_container_width=True)
-    except Exception as e:
-        st.warning(f"Kunne ikke vise BMI‑graf: {e}")
-
-    # Extra interpretations (waist-hip, bodyfat)
-    if 'bodyfat' in results:
-        st.write(f"Estimated body fat (Navy method): **{results['bodyfat']['value']}%** (approx.)")
-    if 'whr' in results:
-        st.write(f"Waist-to-hip ratio: **{results['whr']['ratio']}** — {results['whr']['category']}")
-
-    # Plan option (dedupe weekly steps display)
-    if create_plan:
-        if target_bmi:
-            target_weight = target_bmi * (height_cm / 100.0) ** 2
-        plan = calculators.generate_weight_plan(weight_kg, target_weight, int(plan_weeks), sex, height_cm, age, activity_level)
-        st.subheader("Suggested plan summary")
-        st.write(f"Current daily maintenance kcal (estimate): **{plan['current_needs_kcal']} kcal/day**")
-        st.write(f"Recommended daily kcal to meet goal: **{plan['recommended_daily_kcal']} kcal/day**")
-        st.write(f"Planned weekly weight change (kg/week): **{plan['kg_per_week']:.2f}**")
-        if plan.get('warning'):
-            st.warning(plan['warning'])
-        st.markdown("Weekly steps (sample):")
-        # Show condensed sample weeks: first 3, last 2 (if many), to avoid repetition
-        steps = plan['weekly_steps']
-        n = len(steps)
-        if n <= 6:
-            show = steps
-        else:
-            show = steps[:3] + ["..."] + steps[-2:]
-        for s in show:
-            st.write(f"- {s}")
-        st.info("Dette er en enkel, utdanningsbasert plan. Kontakt fagperson ved store endringer.")
+            if "bodyfat" in results:
+                st.write(f"Estimated body fat (Navy method): **{results['bodyfat']}%**")
+            if "whr" in results:
+                st.write(f"Waist-to-hip ratio: **{results['whr']['value']}** — {results['whr']['category']}")
 
         # VO2
-        if 'vo2' in results:
-            st.subheader("VO2 estimate")
-            st.write(f"Method: {results['vo2']['method']}")
-            st.metric("VO2 (ml/kg/min)", f"{results['vo2']['value']}")
+        if "vo2" in results:
+            st.subheader("VO2max estimate")
+            vo2 = results["vo2"]
+            st.metric("VO2max", f"{vo2['value']:.1f} ml/kg/min")
+            st.write(f"Method: **{vo2['method']}**")
+            st.write(f"Age band: **{vo2['age_band']}**")
+            st.write(f"Estimated population percentile: **{vo2['percentile']}th**")
+            st.write(f"Reference rating: **{vo2['rating']}**")
 
-        # Bio-age
-        if 'bio_age' in results:
-            st.subheader("Biological age (estimate)")
-            st.write(f"Mode: {results['bio_age']['mode']}")
+            st.pyplot(plot_vo2_reference_chart(vo2["value"], sex, age), use_container_width=True)
+            plt.close("all")
+
+            st.markdown("**VO2 reference table by age**")
+            st.table(calculators.vo2_age_reference_table(sex))
+
+            st.markdown("**Tips to improve VO2max**")
+            for tip in vo2["tips"]:
+                st.write(f"- {tip}")
+
+        # Biological age
+        if "bio_age" in results:
+            st.subheader("Biological age")
             st.metric("Biological age", f"{results['bio_age']['value']} years")
-            st.caption("This is an educational estimate. For clinical assessment, consult a healthcare professional.")
+
+            if results.get("bio_factors"):
+                st.markdown("**Factor breakdown**")
+                factor_rows = [
+                    {"Factor": f["label"], "Effect": f'{f["delta"]:+.0f} years'}
+                    for f in results["bio_factors"]
+                ]
+                st.table(factor_rows)
 
         # Triage
-        if 'triage' in results:
+        if "triage" in results:
             st.subheader("Symptom triage")
-            if results['triage']['level'] == "Emergency":
-                st.error(results['triage']['message'])
+            if results["triage"]["level"] == "Emergency":
+                st.error(results["triage"]["message"])
             else:
                 st.info(f"{results['triage']['level']}: {results['triage']['message']}")
 
-        # Build PDF with only included sections
-def create_pdf_bytes(context: dict, included_sections: list):
-    # builds a nicer PDF with small charts
-    from reportlab.lib.utils import ImageReader
-    buf = BytesIO()
-    p = canvas.Canvas(buf, pagesize=A4)
-    width, height = A4
-    # Header
-    p.setFont("Helvetica-Bold", 18)
-    p.drawString(40, height - 60, "Health Tools — Report")
-    p.setFont("Helvetica", 9)
-    p.drawString(40, height - 80, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
-    y = height - 110
+        # Plan
+        if "plan" in results:
+            st.subheader("Weight goal / plan")
+            plan = results["plan"]
+            st.write(f"Current maintenance calories: **{plan['current_needs_kcal']} kcal/day**")
+            st.write(f"Recommended daily calories: **{plan['recommended_daily_kcal']} kcal/day**")
+            st.write(f"Expected weekly change: **{plan['kg_per_week']:+.2f} kg/week**")
 
-    # Helper to draw an image from matplotlib fig
-    def draw_fig(fig, x, y_top, max_w=480):
-        img_buf = BytesIO()
-        fig.savefig(img_buf, format='png', dpi=150, bbox_inches='tight', transparent=True)
-        img_buf.seek(0)
-        img = ImageReader(img_buf)
-        iw, ih = img.getSize()
-        scale = min(max_w / iw, 1.0)
-        w = iw * scale
-        h = ih * scale
-        p.drawImage(img, x, y_top - h, width=w, height=h, mask='auto')
+            if plan.get("warning"):
+                st.warning(plan["warning"])
 
-    # BMI block
-    if 'bmi' in included_sections:
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(40, y, "BMI")
-        p.setFont("Helvetica", 10)
-        y -= 18
-        p.drawString(60, y, f"BMI: {context['bmi']['value']} ({context['bmi']['category']})")
-        y -= 12
-        if 'bodyfat' in context:
-            p.drawString(60, y, f"Estimated body fat: {context['bodyfat']['value']}%")
-            y -= 14
-        # add small BMI gauge image
+            st.markdown("**Condensed milestones**")
+            st.table(plan["milestones"])
+
+        # PDF
+        report = {
+            "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            "inputs": {
+                "age": age,
+                "sex": sex,
+                "height_cm": height_cm,
+                "weight_kg": weight_kg,
+            },
+            "bmi": results.get("bmi"),
+            "bodyfat": results.get("bodyfat"),
+            "whr": results.get("whr"),
+            "vo2": results.get("vo2"),
+            "bio_age": results.get("bio_age"),
+            "bio_factors": results.get("bio_factors"),
+            "triage": results.get("triage"),
+            "plan": results.get("plan"),
+        }
+
         try:
-            fig = plot_bmi_gauge(context['bmi']['value'])
-            draw_fig(fig, 60, y, max_w=420)
-            y -= 110
-        except Exception:
-            y -= 20
+            pdf_bytes = create_pdf_bytes(report)
+            st.download_button(
+                "Download PDF report",
+                data=pdf_bytes,
+                file_name="health_tools_report.pdf",
+                mime="application/pdf",
+            )
+        except Exception as e:
+            st.warning(f"PDF generation is currently unavailable: {e}")
 
-    # VO2 block with sample percentile bar
-    if 'vo2' in included_sections:
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(40, y, "VO2 Estimate")
-        p.setFont("Helvetica", 10)
-        y -= 16
-        p.drawString(60, y, f"Method: {context['vo2']['method']}   VO2: {context['vo2']['value']} ml/kg/min")
-        y -= 12
-        # if percentile available (we will compute and include in context)
-        pct = context.get('vo2', {}).get('percentile', None)
-        if pct is not None:
-            p.drawString(60, y, f"Population percentile: {pct}th")
-            y -= 12
-            # draw simple bar image
-            try:
-                import matplotlib.pyplot as plt
-                fig, ax = plt.subplots(figsize=(4.2, 0.5))
-                ax.barh([0], [pct], color="#4CAF50")
-                ax.set_xlim(0, 100); ax.set_yticks([])
-                ax.set_xlabel("Percentile")
-                plt.tight_layout()
-                draw_fig(fig, 60, y+20, max_w=420)
-                y -= 40
-            except Exception:
-                y -= 10
-        y -= 10
-
-    # Bio-age
-    if 'bio_age' in included_sections:
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(40, y, "Biological Age")
-        p.setFont("Helvetica", 10)
-        y -= 16
-        p.drawString(60, y, f"Mode: {context['bio_age']['mode']}   Biological age: {context['bio_age']['value']} years")
-        y -= 24
-
-    # Triage
-    if 'triage' in included_sections:
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(40, y, "Symptom Triage")
-        p.setFont("Helvetica", 10)
-        y -= 16
-        p.drawString(60, y, f"Level: {context['triage']['level']}")
-        y -= 12
-        p.drawString(60, y, f"Message: {context['triage']['message']}")
-        y -= 20
-
-    # Footer disclaimer
-    p.setFont("Helvetica-Oblique", 7)
-    p.drawString(40, 40, "Disclaimer: This tool is educational only. Not clinically validated. Consult a healthcare professional.")
-    p.showPage()
-    p.save()
-    buf.seek(0)
-    return buf.read()
-
-        pdf_bytes = create_pdf_bytes(context, included)
-        st.download_button("Download PDF report", data=pdf_bytes, file_name="health_report.pdf", mime="application/pdf")
     else:
         st.warning("No results to show.")
