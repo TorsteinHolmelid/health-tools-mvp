@@ -21,68 +21,76 @@ st.set_page_config(page_title="Health Tools MVP", layout="centered")
 st.markdown(
     """
     <style>
-    /* Bakgrunn og hovedtekst - Hvit bakgrunn for best lesbarhet */
-    .stApp { 
-        background-color: #ffffff; 
-        color: #1e293b; 
-    }
+    /* Base - mørk, men høg kontrast på tekst */
+    .stApp { background-color: #0b1220; color: #e6eef8; }
 
-    /* Input-felt (bokser man skriver i) - Gjør dem hvite med tydelig ramme */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
-        background-color: #ffffff !important;
-        color: #1e293b !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 8px !important;
-    }
-
-    /* Sidebar (menyen til venstre) - Lys grå for å skille seg ut */
+    /* Sidebar */
     [data-testid="stSidebar"] {
-        background-color: #f8fafc !important;
-        border-right: 1px solid #e2e8f0;
+      background-color: #0b1220 !important;
+      color: #e6eef8 !important;
+      border-right: 1px solid rgba(255,255,255,0.03);
+      padding: 18px;
     }
 
-    /* Knapper - Profesjonell grønnfarge */
+    /* Gjør input-felt lysare enn bakgrunnen (gir kontrast mot tekst) */
+    .stTextInput>div>div>input,
+    .stNumberInput>div>div>input,
+    textarea,
+    select,
+    .stSelectbox>div>div>div,
+    .stDateInput>div>div>input {
+      background-color: rgba(255,255,255,0.04) !important;
+      color: #e6eef8 !important;
+      border: 1px solid rgba(255,255,255,0.08) !important;
+      border-radius: 8px !important;
+      padding: 8px !important;
+    }
+
+    /* Expander / accordions - mindre "tung" farge */
+    .stExpander > button {
+      background-color: rgba(255,255,255,0.03) !important;
+      color: #e6eef8 !important;
+      border: 1px solid rgba(255,255,255,0.04) !important;
+      border-radius: 8px !important;
+      padding: 8px 12px !important;
+    }
+
+    /* Resultat-boks */
+    .result-box {
+      background-color: rgba(255,255,255,0.03);
+      color: #e6eef8;
+      border: 1px solid rgba(255,255,255,0.04);
+      padding: 14px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    /* Knapper - akse ntfarge som står ut på mørk bakgrunn */
     .stButton>button {
-        background-color: #0ea5a3 !important;
-        color: white !important;
-        border-radius: 8px !important;
-        border: none !important;
-        padding: 0.5rem 1rem !important;
-        font-weight: 600 !important;
+      background-color: #0ea5a3 !important;
+      color: #022b2a !important;
+      border-radius: 8px !important;
+      padding: 8px 12px !important;
+      font-weight: 600 !important;
+    }
+    .stButton>button:hover { filter: brightness(0.95); }
+
+    /* Overskrifter/tekst */
+    h1, h2, h3, p, label {
+      color: #e6eef8 !important;
     }
 
-    /* Overskrifter og tekst-kontrast */
-    h1, h2, h3, p {
-        color: #0f172a !important;
-    }
+    /* Tabellar og plots: sørg for lys tekst */
+    .stTable td, .stTable th { color: #e6eef8 !important; }
 
-    /* Resultat-boksene - Lys blå/hvit for å stå ut */
-    .result-box { 
-        padding: 20px;
-        border-radius: 12px;
-        background-color: #f1f5f9;
-        color: #0f172a;
-        border: 1px solid #e2e8f0;
-        margin-bottom: 20px;
-    }
-
-    /* Gjør trekkspill-menyene (expanders) hvitere */
-    .stExpander {
-        background-color: #ffffff !important;
-        border: 1px solid #e2e8f0 !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Fiks for mørke ikoner i hvite felt */
-    svg {
-        fill: #475569 !important;
+    /* Mobil: knapper 100% breidde */
+    @media (max-width: 600px) {
+      .stButton>button { width: 100% !important; }
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
-
-st.title("Health Tools — MVP")
 st.title("Health Tools — MVP")
 st.caption("Educational tool only — not a diagnostic tool. Data is not stored.")
 
