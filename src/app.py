@@ -188,21 +188,46 @@ if st.button("Calculate / Generate results"):
             st.caption(extras_note)
 
             # plot gauge
-            def plot_bmi_gauge(bmi_value):
-                ranges = [(0, 18.5, '#4CAF50'), (18.5, 25, '#8BC34A'), (25, 30, '#FFC107'), (30, 40, '#F44336')]
-                fig, ax = plt.subplots(figsize=(6, 1.2))
-                ax.set_xlim(0, 40)
-                ax.set_ylim(0, 1)
-                for (start, end, color) in ranges:
-                    ax.barh(0.5, end - start, left=start, height=0.6, color=color, align='center')
-                # marker
-                ax.plot([bmi_value], [0.5], marker='v', color='black', markersize=12)
-                ax.set_yticks([])
-                ax.set_xlabel("BMI")
-                ax.set_xticks([0, 10, 20, 30, 40])
-                ax.set_title("BMI scale (underweight → obesity)")
-                plt.box(False)
-                return fig
+import matplotlib.pyplot as plt
+
+def plot_bmi_gauge(bmi_value):
+    """
+    Draw a horizontal colored BMI bar with a marker.
+    Transparent figure background so it looks good in dark mode.
+    """
+    max_bmi = 45
+    fig, ax = plt.subplots(figsize=(7, 1.2))
+    # Transparent backgrounds so it adapts to Streamlit theme
+    fig.patch.set_alpha(0)
+    ax.patch.set_alpha(0)
+
+    # colored bands and labels
+    bands = [
+        (0, 18.5, "#2196F3"),   # underweight (blue)
+        (18.5, 25, "#4CAF50"),  # normal (green)
+        (25, 30, "#FFB300"),    # overweight (amber)
+        (30, max_bmi, "#E91E63")# obesity (pink/red)
+    ]
+    for start, end, color in bands:
+        ax.barh(0.4, end - start, left=start, height=0.6, color=color, edgecolor='none')
+
+    # Marker
+    marker_x = min(max(bmi_value, 0), max_bmi)
+    ax.scatter([marker_x], [0.7], marker='v', s=200, color='black', zorder=5)
+
+    # A lightweight label above marker
+    ax.text(marker_x, 1.15, f"{bmi_value:.1f}", ha='center', va='bottom', fontsize=10, color='white' if plt.rcParams.get('axes.facecolor') != 'white' else 'black')
+
+    # Cosmetic cleanup
+    ax.set_xlim(0, max_bmi)
+    ax.set_ylim(0, 1.5)
+    ax.set_yticks([])
+    ax.set_xticks([0, 10, 18.5, 25, 30, 40])
+    ax.set_xlabel("BMI")
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    plt.tight_layout()
+    return fig
 
             fig = plot_bmi_gauge(b)
             st.pyplot(fig)
