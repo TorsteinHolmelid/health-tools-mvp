@@ -3,8 +3,8 @@ from __future__ import annotations
 import math
 from typing import Dict, List, Optional, Tuple
 
-
 COMMON_SYMPTOMS = [
+    # (kept for backward compat if needed)
     "abdominal pain",
     "back pain",
     "blurred vision",
@@ -67,7 +67,6 @@ DEFAULT_RED_FLAGS = {
 
 ALL_SYMPTOMS = sorted(list(set(COMMON_SYMPTOMS) | set(DEFAULT_RED_FLAGS)))
 
-
 # ----------------------------
 # BMI / body composition
 # ----------------------------
@@ -76,10 +75,8 @@ def bmi_calc(weight_kg: float, height_cm: float) -> Tuple[float, str]:
         raise ValueError("height_cm must be > 0")
     if weight_kg <= 0:
         raise ValueError("weight_kg must be > 0")
-
     height_m = height_cm / 100.0
     bmi = weight_kg / (height_m ** 2)
-
     if bmi < 18.5:
         category = "Underweight"
     elif bmi < 25:
@@ -88,7 +85,6 @@ def bmi_calc(weight_kg: float, height_cm: float) -> Tuple[float, str]:
         category = "Overweight"
     else:
         category = "Obesity"
-
     return round(bmi, 2), category
 
 
@@ -124,10 +120,8 @@ def body_fat_navy(
     hip_cm: Optional[float] = None,
 ) -> float:
     sex = str(sex).upper()
-
     if height_cm <= 0 or neck_cm <= 0 or waist_cm <= 0:
         raise ValueError("Body measurements must be > 0")
-
     if sex == "M":
         if waist_cm - neck_cm <= 0:
             raise ValueError("waist_cm must be larger than neck_cm for male Navy formula")
@@ -138,7 +132,6 @@ def body_fat_navy(
         if waist_cm + hip_cm - neck_cm <= 0:
             raise ValueError("Invalid body measurements for female Navy formula")
         denom = 1.29579 - 0.35004 * math.log10(waist_cm + hip_cm - neck_cm) + 0.22100 * math.log10(height_cm)
-
     bf = 495.0 / denom - 450.0
     return round(max(2.0, min(60.0, bf)), 1)
 
@@ -166,10 +159,8 @@ def vo2_rockport_1mile(
         raise ValueError("hr_at_end must be > 0")
     if weight_kg <= 0:
         raise ValueError("weight_kg must be > 0")
-
     weight_lbs = weight_kg * 2.20462
     gender = 1 if str(sex).upper() == "M" else 0
-
     vo2 = (
         132.853
         - (0.0769 * weight_lbs)
@@ -193,10 +184,8 @@ def vo2_questionnaire_estimate(
 ) -> float:
     sex = str(sex).upper()
     level = str(activity_level).strip().lower()
-
     base = 42.0 if sex == "M" else 36.0
     age_penalty = 0.22 * max(age - 25, 0)
-
     level_bonus = {
         "sedentary": -5.0,
         "light": -2.0,
@@ -205,10 +194,8 @@ def vo2_questionnaire_estimate(
         "very active": 5.0,
         "athlete": 7.0,
     }.get(level, 0.0)
-
     volume_bonus = min(12.0, max(0.0, weekly_minutes) / 180.0 * 6.0)
     intensity_bonus = (session_intensity_score - 3) * 1.6
-
     hr_bonus = 0.0
     if resting_hr is not None and resting_hr > 0:
         if resting_hr <= 55:
@@ -219,7 +206,6 @@ def vo2_questionnaire_estimate(
             hr_bonus -= 2.0
         elif resting_hr >= 75:
             hr_bonus -= 1.0
-
     reserve_bonus = 0.0
     if resting_hr is not None and max_hr is not None and max_hr > resting_hr > 0:
         reserve = max_hr - resting_hr
@@ -229,14 +215,12 @@ def vo2_questionnaire_estimate(
             reserve_bonus += 1.0
         elif reserve < 80:
             reserve_bonus -= 1.0
-
     bmi_penalty = 0.0
     if bmi is not None:
         if bmi >= 30:
             bmi_penalty = -4.0
         elif bmi >= 25:
             bmi_penalty = -2.0
-
     vo2 = base - age_penalty + level_bonus + volume_bonus + intensity_bonus + hr_bonus + reserve_bonus + bmi_penalty
     return round(max(5.0, vo2), 1)
 
@@ -271,16 +255,26 @@ def _vo2_band_for_age(age: int) -> Dict[str, float]:
     return VO2_REFERENCE_BANDS[5]
 
 
+def vo2_precise_percentile(age: int, sex: str, vo2_value: float) -> float:
+    band = _vo2_band_for_age(age)
+    s = str(sex).upper()
+    mean = band["M mean"] if s == "M" else band["F mean"]
+    sd = band["M sd"] if s == "M" else band["F sd"]
+    if sd == 0:
+        return 50.0
+    z = (vo2_value - mean) / sd
+    percentile = 50.0 * (1.0 + math.erf(z / math.sqrt(2.0)))
+    return max(0.01, min(99.99, percentile))
+
+
 def vo2_reference(age: int, sex: str, vo2_value: float) -> Dict[str, float]:
     band = _vo2_band_for_age(age)
     s = str(sex).upper()
     mean = band["M mean"] if s == "M" else band["F mean"]
     sd = band["M sd"] if s == "M" else band["F sd"]
-
     z = (vo2_value - mean) / (sd or 1.0)
     percentile = 50.0 * (1.0 + math.erf(z / math.sqrt(2.0)))
     percentile = max(1.0, min(99.0, percentile))
-
     if percentile < 10:
         rating = "Very low"
     elif percentile < 25:
@@ -291,7 +285,6 @@ def vo2_reference(age: int, sex: str, vo2_value: float) -> Dict[str, float]:
         rating = "Good"
     else:
         rating = "Excellent"
-
     return {
         "age_band": band["Age band"],
         "mean": round(mean, 1),
@@ -300,6 +293,19 @@ def vo2_reference(age: int, sex: str, vo2_value: float) -> Dict[str, float]:
         "percentile": int(round(percentile)),
         "rating": rating,
     }
+
+
+def vo2_top_descriptor(age: int, sex: str, vo2_value: float) -> str:
+    p = vo2_precise_percentile(age, sex, vo2_value)
+    tail_pct = max(0.0001, 100.0 - p)  # percent in population better than you
+    # tail_pct is % better than you: e.g. p=99.9 -> tail_pct=0.1
+    if tail_pct < 0.01:
+        return "<0.01% (world class)"
+    if tail_pct < 0.1:
+        return "<0.1% (exceptional)"
+    if tail_pct < 1.0:
+        return f"Top {tail_pct:.2f}%"
+    return f"Top {tail_pct:.1f}%"
 
 
 def vo2_age_reference_table(sex: str) -> List[Dict[str, object]]:
@@ -328,7 +334,6 @@ def vo2_improvement_tips(
     weekly_minutes: Optional[int] = None,
 ) -> List[str]:
     tips: List[str] = []
-
     level = str(activity_level).strip().lower()
     if weekly_minutes is not None and weekly_minutes < 150:
         tips.append("Build gradually toward 150–300 minutes per week of moderate-to-vigorous activity.")
@@ -340,10 +345,8 @@ def vo2_improvement_tips(
         tips.append("Add 1–2 interval sessions per week plus one longer steady cardio session.")
     else:
         tips.append("Use a mix of intervals, threshold work, and one longer aerobic session each week.")
-
     tips.append("Sleep, recovery, and progressive overload matter as much as the workouts themselves.")
     tips.append("If you have symptoms, medical issues, or chest pain, get personalized advice before increasing intensity.")
-
     return tips
 
 
@@ -372,24 +375,20 @@ def estimate_biological_age_detailed(
 ) -> Tuple[int, List[Dict[str, float]]]:
     bio = float(age)
     factors: List[Dict[str, float]] = []
-
     def add(delta: float, label: str) -> None:
         nonlocal bio
         if delta == 0:
             return
         bio += float(delta)
         factors.append({"label": label, "delta": float(delta)})
-
     s = str(sex).upper()
     level = str(activity_level).strip().lower()
-
     if smoker:
         add(7, "Smoking status")
     if diabetes:
         add(7, "Diabetes")
     if family_history:
         add(2, "Family history of premature cardiovascular disease")
-
     if bmi is not None:
         if bmi >= 35:
             add(8, "BMI 35+")
@@ -399,7 +398,6 @@ def estimate_biological_age_detailed(
             add(2, "BMI 25–29.9")
         elif bmi < 18.5:
             add(1, "BMI under 18.5")
-
     activity_map = {
         "sedentary": 4,
         "light": 2,
@@ -409,7 +407,6 @@ def estimate_biological_age_detailed(
         "athlete": -5,
     }
     add(activity_map.get(level, 0), f"Activity level ({activity_level})")
-
     if sleep_hours is not None:
         if sleep_hours < 6:
             add(2, "Short sleep")
@@ -417,7 +414,6 @@ def estimate_biological_age_detailed(
             add(-1, "Healthy sleep duration")
         elif sleep_hours > 10:
             add(1, "Very long sleep pattern")
-
     if alcohol_units_per_week is not None:
         if alcohol_units_per_week > 14:
             add(2, "High alcohol intake")
@@ -425,23 +421,19 @@ def estimate_biological_age_detailed(
             add(1, "Moderate alcohol intake")
         elif alcohol_units_per_week == 0:
             add(-1, "No alcohol")
-
     if fruit_veg_servings is not None:
         if fruit_veg_servings >= 5:
             add(-1, "Good fruit & vegetable intake")
         elif fruit_veg_servings <= 1:
             add(1, "Low fruit & vegetable intake")
-
     if perceived_stress is not None:
         stress_delta = round((perceived_stress - 5) * 0.5)
         add(stress_delta, "Perceived stress")
-
     if grip_strength_kg is not None:
         if grip_strength_kg >= 40:
             add(-2, "Strong grip strength")
         elif grip_strength_kg < 25:
             add(1, "Low grip strength")
-
     if bp_systolic is not None:
         if bp_systolic >= 160:
             add(6, "High systolic BP")
@@ -449,19 +441,16 @@ def estimate_biological_age_detailed(
             add(3, "Elevated systolic BP")
         elif bp_systolic < 100:
             add(1, "Low systolic BP")
-
     if cholesterol_mg_dl is not None:
         if cholesterol_mg_dl >= 240:
             add(3, "High cholesterol")
         elif cholesterol_mg_dl <= 160:
             add(-1, "Favourable cholesterol")
-
     if resting_hr is not None:
         if resting_hr >= 90:
             add(2, "High resting heart rate")
         elif resting_hr <= 55:
             add(-1, "Low resting heart rate")
-
     if waist_to_hip_ratio is not None:
         if s == "M":
             if waist_to_hip_ratio > 0.95:
@@ -473,10 +462,8 @@ def estimate_biological_age_detailed(
                 add(2, "High waist-to-hip ratio")
             elif waist_to_hip_ratio > 0.80:
                 add(1, "Moderately high waist-to-hip ratio")
-
     if menopause and s == "F":
         add(1, "Post-menopausal status")
-
     if measured_vo2 is not None:
         if measured_vo2 >= 50:
             add(-3, "Very strong VO2max")
@@ -488,48 +475,133 @@ def estimate_biological_age_detailed(
             add(2, "Low VO2max")
         elif measured_vo2 < 20:
             add(4, "Very low VO2max")
-
     return int(round(bio)), factors
 
 
 # ----------------------------
-# Symptom triage
+# Symptom/Conditions recommendations mapping
 # ----------------------------
-def triage_decision(
-    selected_symptoms: List[str],
-    red_flag_symptoms: Optional[set] = None,
-    risk_factors: Optional[dict] = None,
-) -> Tuple[str, str]:
-    if red_flag_symptoms is None:
-        red_flag_symptoms = DEFAULT_RED_FLAGS
-    if risk_factors is None:
-        risk_factors = {}
+DIAGNOSIS_RECOMMENDATIONS: Dict[str, Dict[str, object]] = {
+    "Diabetes": {
+        "summary": "Chronic metabolic condition—focus on aerobic activity, resistance training, and weight control.",
+        "recommendations": [
+            "Regular moderate aerobic exercise (walking, cycling) 150 min/week; aim for 2–3 resistance sessions/week.",
+            "Prefer low-impact cardio if peripheral neuropathy is present.",
+            "Monitor blood glucose before/after intense sessions; consult clinician when changing meds/exercise.",
+        ],
+    },
+    "Plantar fasciitis": {
+        "summary": "Heel pain—focus on mobility, calf/plantar stretching, graded load-bearing, cross-training.",
+        "recommendations": [
+            "Daily calf and plantar fascia stretching; eccentric calf raises when tolerated.",
+            "Prefer low-impact cardio (cycling, swimming) over running until symptoms improve.",
+            "Gradual reintroduction of load; use orthotics if recommended by clinician.",
+        ],
+    },
+    "Low back pain / lumbar strain": {
+        "summary": "Common—progressive core stability plus graduated aerobic work.",
+        "recommendations": [
+            "Avoid heavy spinal loading initially; focus on core control, walking, cycling, and progressive strengthening.",
+            "Incorporate mobility and posterior chain strengthening (glutes, hamstrings).",
+            "If radicular symptoms or red flags present, seek clinical review before exercise.",
+        ],
+    },
+    "Knee osteoarthritis": {
+        "summary": "Joint degeneration—strengthen quadriceps, hip abductors, low-impact cardio.",
+        "recommendations": [
+            "Cycling, swimming, and resistance training focused on quads and hip muscles.",
+            "Avoid repetitive high-impact running during flare-ups; prioritize range-of-motion and strengthening.",
+        ],
+    },
+    "Asthma": {
+        "summary": "Airway hyperreactivity—exercise tolerated with management.",
+        "recommendations": [
+            "Use bronchodilator as advised prior to exercise when required; prefer interval training to build tolerance.",
+            "Swimming often well-tolerated; monitor symptoms and stop if chest tightness or severe wheeze.",
+        ],
+    },
+    "Hypertension": {
+        "summary": "High blood pressure—regular aerobic and resistance training lowers BP.",
+        "recommendations": [
+            "Moderate aerobic exercise most days; resistance training 2–3x/week is beneficial.",
+            "Avoid maximal straining and Valsalva during heavy lifts until BP controlled.",
+        ],
+    },
+    "Coronary artery disease (stable)": {
+        "summary": "Cardiac disease—exercise with medical oversight.",
+        "recommendations": [
+            "Cardiac rehab programs recommended; supervised aerobic training with graded progression.",
+            "Avoid very high-intensity interval training unless cleared by cardiologist.",
+        ],
+    },
+    "Pregnancy": {
+        "summary": "Pregnancy—modify intensity and avoid supine exercises after first trimester.",
+        "recommendations": [
+            "Moderate-intensity aerobic exercise is beneficial; avoid contact sports and maximal loading.",
+            "Focus on pelvic floor, core-safe strength work, and walking/cycling/swimming.",
+        ],
+    },
+    "Depression / anxiety": {
+        "summary": "Mental health—exercise supports mood and cognition.",
+        "recommendations": [
+            "Regular aerobic exercise, resistance training, and outdoor activity can improve mood.",
+            "Start small and build consistency; group exercise may help adherence.",
+        ],
+    },
+    "COPD / chronic airway disease": {
+        "summary": "Airflow limitation—tailored pulmonary rehab often best.",
+        "recommendations": [
+            "Pulmonary rehabilitation when available; interval training and pacing strategies.",
+            "Monitor breathlessness; use prescribed inhalers and oxygen as needed.",
+        ],
+    },
+    "Osteoporosis / osteopenia": {
+        "summary": "Bone health—weight-bearing and resistance training recommended.",
+        "recommendations": [
+            "Progressive resistance training and impact-loading (as tolerated) help bone health.",
+            "Balance training reduces fall risk; avoid high-risk activities if severe vertebral fracture risk.",
+        ],
+    },
+    # add more conditions as needed...
+}
 
-    selected_set = {str(s).strip().lower() for s in (selected_symptoms or []) if str(s).strip()}
-    red_lower = {str(s).strip().lower() for s in red_flag_symptoms}
 
-    if selected_set & red_lower:
-        return "Emergency", "One or more red-flag symptoms selected. Seek emergency care immediately."
-
-    try:
-        age = int(risk_factors.get("age", 0) or 0)
-    except Exception:
-        age = 0
-
-    has_comorbidity = bool(risk_factors.get("diabetes", False)) or bool(risk_factors.get("heart_disease", False))
-    n = len(selected_set)
-
-    if n >= 3 and (has_comorbidity or age >= 65):
-        return "See GP", "Multiple symptoms plus risk factors — contact your primary care provider."
-    if n >= 2:
-        return "See GP", "Several symptoms — consider contacting a healthcare professional."
-    if n == 1:
-        return "Monitor/Self-care", "One symptom — monitor and seek care if it worsens."
-    return "Monitor/Self-care", "No symptoms selected."
+def recommendations_for_diagnoses(selected: List[str], goal_focus: Optional[str] = None) -> List[str]:
+    """
+    Return combined recommendations for selected diagnoses.
+    goal_focus optionally filters tips toward 'vo2', 'weight', 'mobility', or None (general).
+    """
+    out: List[str] = []
+    for cond in (selected or []):
+        key = str(cond).strip()
+        info = DIAGNOSIS_RECOMMENDATIONS.get(key)
+        if info:
+            out.append(f"{key}: {info.get('summary')}")
+            for r in info.get("recommendations", []):
+                out.append(f"- {r}")
+        else:
+            out.append(f"{key}: No packaged recommendations. Consider low-impact aerobic exercise, strength work, and clinician review.")
+    # Add general focus-specific suggestions
+    if goal_focus:
+        gf = goal_focus.lower()
+        if gf == "vo2":
+            out.append("Goal (VO2): Prioritize interval-based aerobic training (once cleared), aim for progressive overload and recovery.")
+        elif gf == "weight":
+            out.append("Goal (Weight): Combine moderate aerobic volume with resistance training and caloric control; avoid aggressive rapid weight loss without supervision.")
+        elif gf == "mobility":
+            out.append("Goal (Mobility): Prioritize daily mobility, joint-friendly strength, and graded load exposure.")
+    # Remove duplicates and keep order
+    seen = set()
+    unique = []
+    for s in out:
+        if s not in seen:
+            unique.append(s)
+            seen.add(s)
+    return unique
 
 
 # ----------------------------
-# Weight planning
+# Weight planning and safety checks
 # ----------------------------
 def bmr_mifflin_sea(sex: str, weight_kg: float, height_cm: float, age: int) -> float:
     if str(sex).upper() == "M":
@@ -562,6 +634,35 @@ def daily_calorie_needs(
     return int(round(bmr * af))
 
 
+def safe_weight_target_check(
+    current_weight_kg: float, target_weight_kg: float, weeks: int, height_cm: float
+) -> Tuple[bool, Optional[str]]:
+    """
+    Returns (ok, message). If not ok, message explains why plan should be blocked.
+    Blocks:
+      - If current BMI < 18.5 and target < current (can't recommend further weight loss)
+      - If target BMI < 18.5
+      - If implied weekly loss/gain is beyond allowed caps
+    """
+    height_m = height_cm / 100.0
+    current_bmi = current_weight_kg / (height_m ** 2)
+    target_bmi = target_weight_kg / (height_m ** 2)
+    if current_bmi < 18.5 and target_weight_kg < current_weight_kg:
+        return False, (
+            "User is underweight (BMI < 18.5). We cannot recommend further weight loss — seek clinical guidance."
+        )
+    if target_bmi < 18.5:
+        return False, "Requested target BMI would be underweight (BMI < 18.5). Not safe to recommend."
+    delta = target_weight_kg - current_weight_kg
+    kg_per_week = delta / max(1, weeks)
+    # safety caps (same as before)
+    if kg_per_week < -1.0:
+        return False, "Requested pace exceeds safe weight loss (>1 kg/week). Please choose a slower pace or longer timeframe."
+    if kg_per_week > 0.7:
+        return False, "Requested weight gain pace exceeds recommended maximum (0.5–0.7 kg/week). Choose slower pace or longer timeframe."
+    return True, None
+
+
 def generate_weight_plan(
     current_weight_kg: float,
     target_weight_kg: float,
@@ -573,25 +674,24 @@ def generate_weight_plan(
 ) -> Dict[str, object]:
     if weeks <= 0:
         raise ValueError("weeks must be > 0")
-
+    # Safety checks
+    ok, msg = safe_weight_target_check(current_weight_kg, target_weight_kg, weeks, height_cm)
+    if not ok:
+        return {"error": True, "message": msg}
     delta = target_weight_kg - current_weight_kg
     kg_per_week = delta / weeks
     warning = None
-
     if kg_per_week < -1.0:
         warning = "Requested pace exceeds 1 kg/week weight loss. Recommendation capped to 1 kg/week for safety."
         kg_per_week = -1.0
     elif kg_per_week > 0.5:
         warning = "Requested pace exceeds 0.5 kg/week weight gain. Recommendation capped to 0.5 kg/week for safety."
         kg_per_week = 0.5
-
     daily_delta_kcal = kg_per_week * 7700 / 7.0
     current_needs = daily_calorie_needs(sex, current_weight_kg, height_cm, age, activity_level)
     recommended_daily = int(round(current_needs + daily_delta_kcal))
-
     if recommended_daily < 1200:
         warning = (warning + " " if warning else "") + "Estimated calorie target is very low; consider professional guidance."
-
     def milestone_focus(week: int, total_weeks: int) -> str:
         if week <= 2:
             return "Build routine"
@@ -600,12 +700,10 @@ def generate_weight_plan(
         if week < total_weeks:
             return "Review progress"
         return "Re-check and set next goal"
-
     if weeks <= 6:
         points = list(range(1, weeks + 1))
     else:
         points = sorted(set([1, 2, 3, max(4, weeks // 2), weeks - 2, weeks - 1, weeks]))
-
     milestones = []
     for w in points:
         projected = current_weight_kg + kg_per_week * w
@@ -616,8 +714,8 @@ def generate_weight_plan(
                 "Focus": milestone_focus(w, weeks),
             }
         )
-
     return {
+        "error": False,
         "current_needs_kcal": current_needs,
         "recommended_daily_kcal": recommended_daily,
         "kg_per_week": round(kg_per_week, 2),
