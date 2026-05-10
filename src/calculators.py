@@ -133,6 +133,12 @@ def estimate_biological_age_detailed(age: int,
 
 # --- Symptom triage (unchanged) ---
 DEFAULT_RED_FLAGS = {
+    # --- Symptom lists (expanded) ---
+COMMON_SYMPTOMS = [
+    'fever', 'cough', 'sore throat', 'headache', 'nausea', 'vomiting',
+    'dizziness', 'joint pain', 'stomach pain', 'fatigue', 'loss of smell',
+    'loss of taste', 'diarrhea', 'runny nose', 'chills'
+]
     'chest pain', 'severe shortness of breath', 'loss of consciousness',
     'sudden weakness or numbness', 'severe bleeding', 'sudden severe headache'
 }
