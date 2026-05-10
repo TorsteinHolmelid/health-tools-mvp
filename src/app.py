@@ -513,6 +513,9 @@ if run_bmi:
 # ----------------------------
 # VO2 inputs
 # ----------------------------
+# ----------------------------
+# VO2 inputs
+# ----------------------------
 vo2_method = "Questionnaire"
 vo2_distance_m = 0.0
 rockport_time_min = 0.0
@@ -537,12 +540,13 @@ if run_vo2:
             max_value=5,
             value=3,
         )
-        resting_hr_unknown = st.checkbox("I don't know my resting heart rate", value=True)
+        # Unique keys added here
+        resting_hr_unknown = st.checkbox("I don't know my resting heart rate", value=True, key="vo2_rhr_unknown")
         if not resting_hr_unknown:
-            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220, value=70)
-        max_hr_unknown = st.checkbox("I don't know my max heart rate", value=True)
+            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220, value=70, key="vo2_rhr_value")
+        max_hr_unknown = st.checkbox("I don't know my max heart rate", value=True, key="vo2_maxhr_unknown")
         if not max_hr_unknown:
-            max_hr = st.number_input("Estimated max heart rate (bpm)", min_value=40, max_value=240, value=180)
+            max_hr = st.number_input("Estimated max heart rate (bpm)", min_value=40, max_value=240, value=180, key="vo2_maxhr_value")
 
         measured_vo2_input = st.number_input(
             "If you know a measured VO2max (Apple Watch, lab, etc.), enter it here",
@@ -558,19 +562,21 @@ if run_vo2:
         )
 
         if vo2_method == "Cooper (12-min)":
-            vo2_distance_m = st.number_input("12-minute distance (meters)", min_value=0.0, value=0.0, format="%.1f")
+            vo2_distance_m = st.number_input("12-minute distance (meters)", min_value=0.0, value=0.0, format="%.1f", key="vo2_cooper_distance")
         elif vo2_method == "Rockport (1-mile)":
-            rockport_time_min = st.number_input("1-mile time (minutes)", min_value=0.1, value=15.0, format="%.2f")
-            rockport_hr = st.number_input("Heart rate at the end (bpm)", min_value=30, max_value=220, value=140)
+            rockport_time_min = st.number_input("1-mile time (minutes)", min_value=0.1, value=15.0, format="%.2f", key="vo2_rockport_time")
+            rockport_hr = st.number_input("Heart rate at the end (bpm)", min_value=30, max_value=220, value=140, key="vo2_rockport_hr")
         elif vo2_method == "Measured value":
             measured_vo2_input = st.number_input(
                 "Measured VO2max (ml/kg/min)",
                 min_value=0.0,
                 value=max(measured_vo2_input, 0.0),
                 format="%.1f",
+                key="vo2_measured_input",
             )
-
-
+# ----------------------------
+# Biological age inputs
+# ----------------------------
 # ----------------------------
 # Biological age inputs
 # ----------------------------
@@ -578,56 +584,53 @@ if run_bioage:
     with st.expander("Biological age inputs", expanded=True):
         st.caption("You can leave any field blank or use 'I don't know' where available.")
 
-        smoker = st.checkbox("Smoker?")
-        diabetes = st.checkbox("Diabetes?")
-        family_history = st.checkbox("Family history of premature cardiovascular disease?")
+        smoker = st.checkbox("Smoker?", key="bio_smoker")
+        diabetes = st.checkbox("Diabetes?", key="bio_diabetes")
+        family_history = st.checkbox("Family history of premature cardiovascular disease?", key="bio_family_hist")
         if sex == "F":
-            menopause = st.checkbox("Post-menopausal?")
+            menopause = st.checkbox("Post-menopausal?", key="bio_menopause")
 
         st.markdown("#### Cardiovascular")
-        bp_unknown = st.checkbox("I don't know my systolic blood pressure", value=True)
+        bp_unknown = st.checkbox("I don't know my systolic blood pressure", value=True, key="bio_bp_unknown")
         if not bp_unknown:
-            bp_systolic = st.number_input("Systolic blood pressure (mmHg)", min_value=70.0, max_value=260.0, value=120.0)
+            bp_systolic = st.number_input("Systolic blood pressure (mmHg)", min_value=70.0, max_value=260.0, value=120.0, key="bio_bp_value")
 
-        chol_unknown = st.checkbox("I don't know my cholesterol", value=True)
+        chol_unknown = st.checkbox("I don't know my cholesterol", value=True, key="bio_chol_unknown")
         if not chol_unknown:
-            cholesterol = st.number_input("Cholesterol (mg/dL)", min_value=50.0, max_value=500.0, value=180.0)
+            cholesterol = st.number_input("Cholesterol (mg/dL)", min_value=50.0, max_value=500.0, value=180.0, key="bio_chol_value")
 
-        rhr_unknown = st.checkbox("I don't know my resting heart rate", value=True)
+        rhr_unknown = st.checkbox("I don't know my resting heart rate", value=True, key="bio_rhr_unknown")
         if not rhr_unknown:
-            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220, value=70)
+            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220, value=70, key="bio_rhr_value")
 
         st.markdown("#### Lifestyle")
-        sleep_unknown = st.checkbox("I don't know my sleep duration", value=True)
+        sleep_unknown = st.checkbox("I don't know my sleep duration", value=True, key="bio_sleep_unknown")
         if not sleep_unknown:
-            sleep_hours = st.number_input("Average sleep per night (hours)", min_value=0.0, max_value=24.0, value=7.0, format="%.1f")
+            sleep_hours = st.number_input("Average sleep per night (hours)", min_value=0.0, max_value=24.0, value=7.0, format="%.1f", key="bio_sleep_value")
 
-        alcohol_unknown = st.checkbox("I don't know my alcohol intake", value=True)
+        alcohol_unknown = st.checkbox("I don't know my alcohol intake", value=True, key="bio_alc_unknown")
         if not alcohol_unknown:
-            alcohol_units = st.number_input("Alcohol units per week", min_value=0, max_value=300, value=0)
+            alcohol_units = st.number_input("Alcohol units per week", min_value=0, max_value=300, value=0, key="bio_alc_value")
 
-        fruit_veg = st.number_input("Daily fruit & vegetable servings", min_value=0, max_value=20, value=3)
+        fruit_veg = st.number_input("Daily fruit & vegetable servings", min_value=0, max_value=20, value=3, key="bio_fv")
+        perceived_stress = st.slider("Perceived stress (1 low - 10 high)", min_value=1, max_value=10, value=5, key="bio_stress")
 
-        perceived_stress = st.slider("Perceived stress (1 low - 10 high)", min_value=1, max_value=10, value=5)
-
-        grip_unknown = st.checkbox("I don't know my grip strength", value=True)
+        grip_unknown = st.checkbox("I don't know my grip strength", value=True, key="bio_grip_unknown")
         if not grip_unknown:
-            grip_strength = st.number_input("Grip strength (kg)", min_value=0.0, max_value=100.0, value=30.0, format="%.1f")
+            grip_strength = st.number_input("Grip strength (kg)", min_value=0.0, max_value=100.0, value=30.0, format="%.1f", key="bio_grip_value")
 
         st.markdown("#### Body composition")
-        bio_waist_unknown = st.checkbox("I don't know my waist-to-hip ratio", value=True)
+        bio_waist_unknown = st.checkbox("I don't know my waist-to-hip ratio", value=True, key="bio_waist_unknown")
         if not bio_waist_unknown:
             c1, c2 = st.columns(2)
             with c1:
-                waist_bio = st.number_input("Waist circumference for bio-age (cm)", min_value=30.0, max_value=300.0, value=80.0, format="%.1f", key="waist_bio")
+                waist_bio = st.number_input("Waist circumference for bio-age (cm)", min_value=30.0, max_value=300.0, value=80.0, format="%.1f", key="bio_waist_value")
             with c2:
-                hip_bio = st.number_input("Hip circumference for bio-age (cm)", min_value=30.0, max_value=300.0, value=95.0, format="%.1f", key="hip_bio")
+                hip_bio = st.number_input("Hip circumference for bio-age (cm)", min_value=30.0, max_value=300.0, value=95.0, format="%.1f", key="bio_hip_value")
             if waist_cm is None:
                 waist_cm = waist_bio
             if hip_cm is None:
                 hip_cm = hip_bio
-
-
 # ----------------------------
 # Symptom checker
 # ----------------------------
