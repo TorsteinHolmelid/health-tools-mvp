@@ -110,11 +110,20 @@ if not st.session_state.consent_given:
             """
         )
         cols = st.columns([1, 1])
-        if cols[0].button("I agree", key="consent_agree"):
-            st.session_state.consent_given = True
+if cols[0].button("I agree", key="consent_agree"):
+    st.session_state.consent_given = True
+    # Trygg rerun: kjør kun én gang og håndter miljøer uten experimental_rerun
+    try:
+        if not st.session_state.get("_consent_rerun_done"):
+            st.session_state["_consent_rerun_done"] = True
+            # experimental_rerun kan kaste AttributeError i noen miljøer,
+            # derfor ligger den i try/except
             st.experimental_rerun()
-        if cols[1].button("Exit", key="consent_exit"):
-            st.stop()
+    except Exception:
+        # Hvis rerun ikke er tilgjengelig eller feiler, fortsett uten å krasje
+        st.warning("App reload (experimental_rerun) er ikke tilgjengelig her — fortsetter uten reload.")
+if cols[1].button("Exit", key="consent_exit"):
+    st.stop()
 
 
 # ----------------------------
