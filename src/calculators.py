@@ -81,7 +81,36 @@ def vo2_simple_heuristic(age: int, sex: str, bmi: float, activity_level: str):
     act_adj = act_map.get(activity_level, 0.0)
     vo2 = base + sex_adj + bmi_adj + act_adj
     return max(5.0, round(vo2, 2))
+# VO2: existing functions kept; add Rockport + questionnaire
 
+def vo2_rockport_1mile(time_min: float, hr_at_end: int, weight_kg: float, age: int, sex: str):
+    """
+    Rockport 1-mile walk test approximate formula:
+    VO2max = 132.853 - (0.0769 * weight_lbs) - (0.3877 * age) + (6.315 * gender) - (3.2649 * time_min) - (0.1565 * hr)
+    gender: 1 for male, 0 for female
+    weight input is in kg -> convert to lbs
+    """
+    if time_min <= 0 or hr_at_end <= 0:
+        raise ValueError("time_min and hr_at_end must be > 0")
+    weight_lbs = weight_kg * 2.20462
+    gender = 1 if sex.upper() == 'M' else 0
+    vo2 = 132.853 - (0.0769 * weight_lbs) - (0.3877 * age) + (6.315 * gender) - (3.2649 * time_min) - (0.1565 * hr_at_end)
+    return round(max(5.0, vo2), 2)
+
+def vo2_questionnaire_estimate(age: int, sex: str, weekly_minutes: int, session_intensity_score: int, bmi: float):
+    """
+    Simple questionnaire heuristic:
+    - weekly_minutes: total moderate-to-vigorous minutes per week
+    - session_intensity_score: 1 (very light) .. 5 (very intense)
+    Returns rough VO2 in ml/kg/min
+    """
+    base = 45.0 - 0.2 * (age - 30)  # baseline decreases with age
+    sex_adj = 0 if sex.upper() == 'M' else -4.0
+    vol_adj = (weekly_minutes / 150.0) * 6.0  # meeting 150 min gives ~+6 ml/kg/min
+    intensity_adj = (session_intensity_score - 3) * 1.5
+    bmi_penalty = -2.0 if bmi >= 30 else (0 if bmi < 25 else -1.0)
+    vo2 = base + sex_adj + vol_adj + intensity_adj + bmi_penalty
+    return round(max(5.0, vo2), 1)
 # --- Biological age: quick vs detailed ---
 def estimate_biological_age_quick(age: int, smoker: bool, bmi: float, activity_level: str):
     bio = age
@@ -92,7 +121,73 @@ def estimate_biological_age_quick(age: int, smoker: bool, bmi: float, activity_l
     pa_map = {'low': 4, 'medium': 0, 'high': -3}
     bio += pa_map.get(activity_level, 0)
     return int(round(bio))
-
+def estimate_biological_age_extended(age: int,
+                                     smoker: bool,
+                                     bmi: float,
+                                     activity_level: str,
+                                     sleep_hours: float=None,
+                                     alcohol_units_per_week: int=None,
+                                     fruit_veg_servings: int=None,
+                                     perceived_stress: int=None,
+                                     grip_strength_kg: float=None,
+                                     bp_systolic: float=None,
+                                     cholesterol_mg_dl: float=None,
+                                     diabetes: bool=False,
+                                     resting_hr: int=None):
+    """
+    Extended heuristic combining many lifestyle and clinical inputs. NOT clinical.
+    Lower score = 'younger' biological age; higher score = 'older'.
+    """
+    bio = age
+    # Smoking
+    if smoker:
+        bio += 8
+    # BMI
+    if bmi >= 30:
+        bio += 6
+    elif bmi >= 25:
+        bio += 2
+    elif bmi < 18.5:
+        bio += 1
+    # Activity
+    act_map = {'low': 4, 'medium': 0, 'high': -4}
+    bio += act_map.get(activity_level, 0)
+    # Sleep (optimal 7-9)
+    if sleep_hours is not None:
+        if sleep_hours < 6:
+            bio += 2
+        elif sleep_hours >= 8 and sleep_hours <= 9:
+            bio -= 1
+    # Alcohol
+    if alcohol_units_per_week is not None:
+        if alcohol_units_per_week > 14:
+            bio += 2
+        elif alcohol_units_per_week == 0:
+            bio -= 1
+    # Diet proxies
+    if fruit_veg_servings is not None:
+        if fruit_veg_servings >= 5:
+            bio -= 1
+    # Stress (1-10)
+    if perceived_stress is not None:
+        bio += (perceived_stress - 5) * 0.5
+    # Grip strength proxy (higher -> younger)
+    if grip_strength_kg is not None:
+        if grip_strength_kg > 40:
+            bio -= 2
+    # Clinical
+    if diabetes:
+        bio += 7
+    if bp_systolic is not None:
+        if bp_systolic >= 160:
+            bio += 6
+        elif bp_systolic >= 140:
+            bio += 3
+    if cholesterol_mg_dl is not None and cholesterol_mg_dl >= 240:
+        bio += 3
+    if resting_hr is not None and resting_hr >= 90:
+        bio += 2
+    return int(round(bio))
 def estimate_biological_age_detailed(age: int,
                                     smoker: bool,
                                     bmi: float,
