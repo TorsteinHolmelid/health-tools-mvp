@@ -282,42 +282,59 @@ if st.button("Calculate / Generate results"):
         st.success("Results ready")
 
         # BMI section: gauge + details
-        if 'bmi' in results:
-            b = results['bmi']['value']
-            cat = results['bmi']['category']
-            st.subheader("BMI")
-            st.metric("BMI", f"{b}", cat)
-            extras_note = f"Extras used for assessment: {results['bmi'].get('extras_used', 0)}"
-            st.caption(extras_note)
+# --- BMI section (REPLACE the existing BMI display block with this) ---
+if 'bmi' in results:
+    b = results['bmi']['value']
+    cat = results['bmi']['category']
+    st.subheader("BMI")
+    # Metric with color-coded badge (use markdown for better contrast)
+    st.markdown(f"<​div style='display:flex;align-items:center;gap:16px;'>"
+                f"<div style='font-weight:600;font-size:18px;'>BMI: {b}</div>"
+                f"<div style='padding:6px 10px;border-radius:6px;background:#111827;color:#fff;font-weight:600;'>{cat}</div>"
+                f"<​/div>", unsafe_allow_html=True)
 
-            # Render improved BMI gauge
-            try:
-                fig = plot_bmi_gauge(b)
-                st.pyplot(fig, use_container_width=True)
-            except Exception as e:
-                st.warning(f"Could not render BMI gauge: {e}")
+    # Small explanatory disclaimer (high contrast)
+    st.markdown(
+        "<​div style='background:#0b1221;padding:10px;border-radius:6px;color:#e6eef8;'>"
+        "<strong>Merk:</strong> BMI er en enkel indikator. Muskelmasse, beinbygning og fettfordeling varierer mellom individer. "
+        "Personer under 18 år og eldre over ~70 har andre referanser. Dette er kun en estimat — ikke medisinsk diagnose."
+        "<​/div>", unsafe_allow_html=True)
 
-            # Extra interpretations
-            if 'bodyfat' in results:
-                st.write(f"Estimated body fat (Navy method): **{results['bodyfat']['value']}%** (approx.)")
-            if 'whr' in results:
-                st.write(f"Waist-to-hip ratio: **{results['whr']['ratio']}** — {results['whr']['category']}")
+    # Render improved BMI gauge (matplotlib figure) with transparent background
+    try:
+        fig = plot_bmi_gauge(b)
+        st.pyplot(fig, use_container_width=True)
+    except Exception as e:
+        st.warning(f"Kunne ikke vise BMI‑graf: {e}")
 
-            # Plan option (generate)
-            if create_plan:
-                if target_bmi:
-                    target_weight = target_bmi * (height_cm / 100.0) ** 2
-                plan = calculators.generate_weight_plan(weight_kg, target_weight, int(plan_weeks), sex, height_cm, age, activity_level)
-                st.subheader("Suggested plan summary")
-                st.write(f"Current daily maintenance kcal (estimate): **{plan['current_needs_kcal']} kcal/day**")
-                st.write(f"Recommended daily kcal to meet goal: **{plan['recommended_daily_kcal']} kcal/day**")
-                st.write(f"Planned weekly weight change (kg/week): **{plan['kg_per_week']:.2f}**")
-                if plan['warning']:
-                    st.warning(plan['warning'])
-                st.markdown("Weekly steps (sample):")
-                for s in plan['weekly_steps']:
-                    st.write(f"- {s}")
-                st.info("This is a simple, educational plan. Consult a dietitian or doctor before making large changes to diet/exercise.")
+    # Extra interpretations (waist-hip, bodyfat)
+    if 'bodyfat' in results:
+        st.write(f"Estimated body fat (Navy method): **{results['bodyfat']['value']}%** (approx.)")
+    if 'whr' in results:
+        st.write(f"Waist-to-hip ratio: **{results['whr']['ratio']}** — {results['whr']['category']}")
+
+    # Plan option (dedupe weekly steps display)
+    if create_plan:
+        if target_bmi:
+            target_weight = target_bmi * (height_cm / 100.0) ** 2
+        plan = calculators.generate_weight_plan(weight_kg, target_weight, int(plan_weeks), sex, height_cm, age, activity_level)
+        st.subheader("Suggested plan summary")
+        st.write(f"Current daily maintenance kcal (estimate): **{plan['current_needs_kcal']} kcal/day**")
+        st.write(f"Recommended daily kcal to meet goal: **{plan['recommended_daily_kcal']} kcal/day**")
+        st.write(f"Planned weekly weight change (kg/week): **{plan['kg_per_week']:.2f}**")
+        if plan.get('warning'):
+            st.warning(plan['warning'])
+        st.markdown("Weekly steps (sample):")
+        # Show condensed sample weeks: first 3, last 2 (if many), to avoid repetition
+        steps = plan['weekly_steps']
+        n = len(steps)
+        if n <= 6:
+            show = steps
+        else:
+            show = steps[:3] + ["..."] + steps[-2:]
+        for s in show:
+            st.write(f"- {s}")
+        st.info("Dette er en enkel, utdanningsbasert plan. Kontakt fagperson ved store endringer.")
 
         # VO2
         if 'vo2' in results:
