@@ -21,7 +21,7 @@ DEFAULT_RED_FLAGS = {
 }
 
 # Combine into a master list for UI (deduplicated)
-ALL_SYMPTOMS = sorted(list(set(COMMON_SYMPTOMS) | set(DEFAULT_RED_FLAGS))
+ALL_SYMPTOMS = sorted(list(set(COMMON_SYMPTOMS) | set(DEFAULT_RED_FLAGS)))
 
 # --- BMI ---
 def bmi_calc(weight_kg: float, height_cm: float):
