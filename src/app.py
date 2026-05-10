@@ -844,7 +844,7 @@ if st.button("Calculate / Generate report"):
             st.markdown(
                 """
                 <div style="margin-top:10px;padding:12px;border-radius:12px;background:#0b1221;color:#e5eef8;border:1px solid #1f2937;">
-                <strong>Merknad:</strong> BMI is a simple screening indicator. Muscle mass, bone density, fat distribution, age, pregnancy, and athletic status can affect how the number should be interpreted. 
+                <strong>Note:</strong> BMI is a simple screening indicator. Muscle mass, bone density, fat distribution, age, pregnancy, and athletic status can affect how the number should be interpreted. 
                 BMI is specifically less accurate for children/adolescents under 18 and for older adults.
                 </div>
                 """,
