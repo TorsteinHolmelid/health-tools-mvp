@@ -345,7 +345,7 @@ st.caption("Estimater — veiledende. For medisinsk rådgivning, kontakt helsepe
 st.markdown("---")
 st.subheader("Export / Download")
 
-def PDF Generator_bytes(name="HealthReport", fields=None):
+def pdf_generator_bytes(name="HealthReport", fields=None):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
@@ -368,7 +368,6 @@ def PDF Generator_bytes(name="HealthReport", fields=None):
     c.save()
     buffer.seek(0)
     return buffer.getvalue()
-
 report_fields = {
     "Age": age,
     "Sex": sex,
