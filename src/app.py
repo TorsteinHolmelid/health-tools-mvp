@@ -21,16 +21,68 @@ st.set_page_config(page_title="Health Tools MVP", layout="centered")
 st.markdown(
     """
     <style>
-    /* Light branding */
-    .stApp { background-color: #fbfbfd; color: #0f172a; }
-    .stButton>button { background-color:#0ea5a3; color:white; border-radius:8px; padding:6px 10px; }
-    .result-box { padding:14px;border-radius:12px;background:#111827;color:#f9fafb;border:1px solid #334155; }
-    @media (max-width: 600px) { .main > div { padding: 8px; } }
+    /* Bakgrunn og hovedtekst - Hvit bakgrunn for best lesbarhet */
+    .stApp { 
+        background-color: #ffffff; 
+        color: #1e293b; 
+    }
+
+    /* Input-felt (bokser man skriver i) - Gjør dem hvite med tydelig ramme */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+    }
+
+    /* Sidebar (menyen til venstre) - Lys grå for å skille seg ut */
+    [data-testid="stSidebar"] {
+        background-color: #f8fafc !important;
+        border-right: 1px solid #e2e8f0;
+    }
+
+    /* Knapper - Profesjonell grønnfarge */
+    .stButton>button {
+        background-color: #0ea5a3 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        border: none !important;
+        padding: 0.5rem 1rem !important;
+        font-weight: 600 !important;
+    }
+
+    /* Overskrifter og tekst-kontrast */
+    h1, h2, h3, p {
+        color: #0f172a !important;
+    }
+
+    /* Resultat-boksene - Lys blå/hvit for å stå ut */
+    .result-box { 
+        padding: 20px;
+        border-radius: 12px;
+        background-color: #f1f5f9;
+        color: #0f172a;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+
+    /* Gjør trekkspill-menyene (expanders) hvitere */
+    .stExpander {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Fiks for mørke ikoner i hvite felt */
+    svg {
+        fill: #475569 !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
+st.title("Health Tools — MVP")
 st.title("Health Tools — MVP")
 st.caption("Educational tool only — not a diagnostic tool. Data is not stored.")
 
