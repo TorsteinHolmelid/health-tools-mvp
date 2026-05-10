@@ -98,6 +98,8 @@ st.caption("Educational tool only — not a diagnostic tool. Data is not stored.
 # ----------------------------
 # Consent modal (simple)
 # ----------------------------
+# --- Consent / privacy notice (safe version) ---
+# Sørg for at flagget finnes
 if "consent_given" not in st.session_state:
     st.session_state.consent_given = False
 
@@ -109,21 +111,20 @@ if not st.session_state.consent_given:
             By continuing you confirm you understand it's not clinical advice.
             """
         )
-        cols = st.columns([1, 1])
-if cols[0].button("I agree", key="consent_agree"):
-    st.session_state.consent_given = True
-    # Trygg rerun: kjør kun én gang og håndter miljøer uten experimental_rerun
-    try:
-        if not st.session_state.get("_consent_rerun_done"):
-            st.session_state["_consent_rerun_done"] = True
-            # experimental_rerun kan kaste AttributeError i noen miljøer,
-            # derfor ligger den i try/except
-            st.experimental_rerun()
-    except Exception:
-        # Hvis rerun ikke er tilgjengelig eller feiler, fortsett uten å krasje
-        st.warning("App reload (experimental_rerun) er ikke tilgjengelig her — fortsetter uten reload.")
-if cols[1].button("Exit", key="consent_exit"):
-    st.stop()
+
+    # Opprett cols her slik at de alltid er definert før bruk
+    cols = st.columns([1, 1])
+    if cols[0].button("I agree", key="consent_agree"):
+        st.session_state.consent_given = True
+        # Trygg rerun: kjør bare én gang og håndter miljøer uten experimental_rerun
+        try:
+            if not st.session_state.get("_consent_rerun_done"):
+                st.session_state["_consent_rerun_done"] = True
+                st.experimental_rerun()
+        except Exception:
+            st.warning("App reload (experimental_rerun) er ikke tilgjengelig her — fortsetter uten reload.")
+    if cols[1].button("Exit", key="consent_exit"):
+        st.stop()
 
 
 # ----------------------------
