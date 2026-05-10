@@ -112,7 +112,7 @@ if not st.session_state.consent_given:
         cols = st.columns([1, 1])
         if cols[0].button("I agree", key="consent_agree"):
             st.session_state.consent_given = True
-            st.experimental_rerun()
+            # st.experimental_rerun()
         if cols[1].button("Exit", key="consent_exit"):
             st.stop()
 
