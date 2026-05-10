@@ -7,3 +7,4 @@ seaborn
 reportlab
 python-decouple
 pytest
+plotly>=5.0.0
