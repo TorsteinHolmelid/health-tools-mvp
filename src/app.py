@@ -22,19 +22,6 @@ st.set_page_config(page_title="Health Tools MVP", layout="centered")
 st.title("Health Tools — MVP")
 st.caption("Educational tool only — not a diagnostic tool. Data is not stored.")
 
-# Consent modal (simple)
-if "consent_given" not in st.session_state:
-    st.session_state.consent_given = False
-
-if not st.session_state.consent_given:
-    with st.modal("Consent"):
-        st.markdown("By using this demo you accept that data is not stored and this tool is educational only.")
-        cols = st.columns([1,1])
-        if cols[0].button("I agree"):
-            st.session_state.consent_given = True
-            st.experimental_rerun()
-        if cols[1].button("Cancel"):
-            st.stop()
 # ----------------------------
 # Plot helpers
 # ----------------------------
