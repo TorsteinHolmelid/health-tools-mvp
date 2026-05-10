@@ -724,3 +724,17 @@ def generate_weight_plan(
         "milestones": milestones,
         "warning": warning,
     }
+# ---------- Backwards-compatibility aliases ----------
+# Hvis eldre kode forventer bmr_mifflin men filen har bmr_mifflin_sea,
+# definerer vi et enkelt wrapper-alias slik at begge navn virker.
+
+# Alias for bmr_mifflin
+if 'bmr_mifflin' not in globals() and 'bmr_mifflin_sea' in globals():
+    def bmr_mifflin(age, sex, weight_kg, height_cm):
+        return bmr_mifflin_sea(age, sex, weight_kg, height_cm)
+
+# (Eksempel: hvis det finnes andre navnevarianter kan vi legge tilsvarende alias her)
+# e.g.:
+# if 'tdee_from_activity_factor' not in globals() and 'tdee_from_activity_factor_sea' in globals():
+#     def tdee_from_activity_factor(bmr, activity_level):
+#         return tdee_from_activity_factor_sea(bmr, activity_level)
