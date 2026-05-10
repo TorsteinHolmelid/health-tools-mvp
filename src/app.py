@@ -180,4 +180,4 @@ if st.button("Calculate / Generate results"):
         # BMI
         if run_bmi:
             bmi, bmi_cat = calculators.bmi_calc(weight_kg, height_cm)
-            results['bmi'] = {'
+            results['bmi'] = {'value': bmi, 'category': bmi_cat}
