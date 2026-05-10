@@ -358,81 +358,104 @@ if 'bmi' in results:
                 st.info(f"{results['triage']['level']}: {results['triage']['message']}")
 
         # Build PDF with only included sections
-        def create_pdf_bytes(context: dict, included_sections: list):
-            buf = BytesIO()
-            p = canvas.Canvas(buf, pagesize=A4)
-            y = 800
-            p.setFont("Helvetica-Bold", 14)
-            p.drawString(40, y, "Health Tools — Report")
-            p.setFont("Helvetica", 9)
-            y -= 20
-            p.drawString(40, y, f"Date: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
-            y -= 20
-            p.drawString(40, y, f"Age: {age}  Sex: {sex}  Height(cm): {height_cm}  Weight(kg): {weight_kg}")
-            y -= 30
-            if 'bmi' in included_sections:
-                p.setFont("Helvetica-Bold", 11)
-                p.drawString(40, y, "BMI")
-                p.setFont("Helvetica", 10)
-                y -= 16
-                p.drawString(60, y, f"BMI: {context['bmi']['value']} ({context['bmi']['category']})")
-                y -= 20
-                if 'bodyfat' in context:
-                    p.drawString(60, y, f"Estimated body fat: {context['bodyfat']['value']}%")
-                    y -= 16
-                if 'whr' in context:
-                    p.drawString(60, y, f"Waist-to-hip ratio: {context['whr']['ratio']} ({context['whr']['category']})")
-                    y -= 20
-            if 'vo2' in included_sections:
-                p.setFont("Helvetica-Bold", 11)
-                p.drawString(40, y, "VO2 Estimate")
-                p.setFont("Helvetica", 10)
-                y -= 16
-                p.drawString(60, y, f"Method: {context['vo2']['method']}   VO2: {context['vo2']['value']} ml/kg/min")
-                y -= 20
-            if 'bio_age' in included_sections:
-                p.setFont("Helvetica-Bold", 11)
-                p.drawString(40, y, "Biological Age")
-                p.setFont("Helvetica", 10)
-                y -= 16
-                p.drawString(60, y, f"Mode: {context['bio_age']['mode']}   Biological age: {context['bio_age']['value']} years")
-                y -= 20
-            if 'triage' in included_sections:
-                p.setFont("Helvetica-Bold", 11)
-                p.drawString(40, y, "Symptom Triage")
-                p.setFont("Helvetica", 10)
-                y -= 16
-                p.drawString(60, y, f"Level: {context['triage']['level']}")
-                y -= 14
-                message = context['triage']['message']
-                p.drawString(60, y, f"Message: {message}")
-                y -= 24
-            p.setFont("Helvetica-Oblique", 7)
-            p.drawString(40, 40, "Disclaimer: This tool is for educational/demo purposes only. Not clinically validated. Consult a healthcare professional.")
-            p.showPage()
-            p.save()
-            buf.seek(0)
-            return buf.read()
+def create_pdf_bytes(context: dict, included_sections: list):
+    # builds a nicer PDF with small charts
+    from reportlab.lib.utils import ImageReader
+    buf = BytesIO()
+    p = canvas.Canvas(buf, pagesize=A4)
+    width, height = A4
+    # Header
+    p.setFont("Helvetica-Bold", 18)
+    p.drawString(40, height - 60, "Health Tools — Report")
+    p.setFont("Helvetica", 9)
+    p.drawString(40, height - 80, f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}")
+    y = height - 110
 
-        # prepare PDF context
-        included = []
-        context = {}
-        if 'bmi' in results:
-            included.append('bmi')
-            context['bmi'] = {'value': results['bmi']['value'], 'category': results['bmi']['category']}
-            if 'bodyfat' in results:
-                context['bodyfat'] = {'value': results['bodyfat']['value']}
-            if 'whr' in results:
-                context['whr'] = {'ratio': results['whr']['ratio'], 'category': results['whr']['category']}
-        if 'vo2' in results:
-            included.append('vo2')
-            context['vo2'] = {'method': results['vo2']['method'], 'value': results['vo2']['value']}
-        if 'bio_age' in results:
-            included.append('bio_age')
-            context['bio_age'] = {'mode': results['bio_age']['mode'], 'value': results['bio_age']['value']}
-        if 'triage' in results:
-            included.append('triage')
-            context['triage'] = {'level': results['triage']['level'], 'message': results['triage']['message']}
+    # Helper to draw an image from matplotlib fig
+    def draw_fig(fig, x, y_top, max_w=480):
+        img_buf = BytesIO()
+        fig.savefig(img_buf, format='png', dpi=150, bbox_inches='tight', transparent=True)
+        img_buf.seek(0)
+        img = ImageReader(img_buf)
+        iw, ih = img.getSize()
+        scale = min(max_w / iw, 1.0)
+        w = iw * scale
+        h = ih * scale
+        p.drawImage(img, x, y_top - h, width=w, height=h, mask='auto')
+
+    # BMI block
+    if 'bmi' in included_sections:
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(40, y, "BMI")
+        p.setFont("Helvetica", 10)
+        y -= 18
+        p.drawString(60, y, f"BMI: {context['bmi']['value']} ({context['bmi']['category']})")
+        y -= 12
+        if 'bodyfat' in context:
+            p.drawString(60, y, f"Estimated body fat: {context['bodyfat']['value']}%")
+            y -= 14
+        # add small BMI gauge image
+        try:
+            fig = plot_bmi_gauge(context['bmi']['value'])
+            draw_fig(fig, 60, y, max_w=420)
+            y -= 110
+        except Exception:
+            y -= 20
+
+    # VO2 block with sample percentile bar
+    if 'vo2' in included_sections:
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(40, y, "VO2 Estimate")
+        p.setFont("Helvetica", 10)
+        y -= 16
+        p.drawString(60, y, f"Method: {context['vo2']['method']}   VO2: {context['vo2']['value']} ml/kg/min")
+        y -= 12
+        # if percentile available (we will compute and include in context)
+        pct = context.get('vo2', {}).get('percentile', None)
+        if pct is not None:
+            p.drawString(60, y, f"Population percentile: {pct}th")
+            y -= 12
+            # draw simple bar image
+            try:
+                import matplotlib.pyplot as plt
+                fig, ax = plt.subplots(figsize=(4.2, 0.5))
+                ax.barh([0], [pct], color="#4CAF50")
+                ax.set_xlim(0, 100); ax.set_yticks([])
+                ax.set_xlabel("Percentile")
+                plt.tight_layout()
+                draw_fig(fig, 60, y+20, max_w=420)
+                y -= 40
+            except Exception:
+                y -= 10
+        y -= 10
+
+    # Bio-age
+    if 'bio_age' in included_sections:
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(40, y, "Biological Age")
+        p.setFont("Helvetica", 10)
+        y -= 16
+        p.drawString(60, y, f"Mode: {context['bio_age']['mode']}   Biological age: {context['bio_age']['value']} years")
+        y -= 24
+
+    # Triage
+    if 'triage' in included_sections:
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(40, y, "Symptom Triage")
+        p.setFont("Helvetica", 10)
+        y -= 16
+        p.drawString(60, y, f"Level: {context['triage']['level']}")
+        y -= 12
+        p.drawString(60, y, f"Message: {context['triage']['message']}")
+        y -= 20
+
+    # Footer disclaimer
+    p.setFont("Helvetica-Oblique", 7)
+    p.drawString(40, 40, "Disclaimer: This tool is educational only. Not clinically validated. Consult a healthcare professional.")
+    p.showPage()
+    p.save()
+    buf.seek(0)
+    return buf.read()
 
         pdf_bytes = create_pdf_bytes(context, included)
         st.download_button("Download PDF report", data=pdf_bytes, file_name="health_report.pdf", mime="application/pdf")
