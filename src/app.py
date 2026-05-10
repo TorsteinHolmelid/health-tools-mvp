@@ -3,24 +3,28 @@ import io
 import math
 from math import erf, sqrt
 import streamlit as st
-import pandas as pd
-import plotly.graph_objects as go
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.units import mm
-
-# ---- nye imports for plotting og kalkulasjoner ----
 import plotly.graph_objects as go
 import pandas as pd
+import traceback
+import streamlit as st
 
-# calculators.py ligger i samme mappe som app.py (src/)
-from calculators import (
-    bmr_mifflin,
-    tdee_from_activity_factor,
-    calories_burned_from_mets,
-    weekly_exercise_calories,
-    tdee_including_weekly_exercise,
-)
+# Temporær diagnostikk for å fange ImportError og vise full traceback i appen/loggene
+try:
+    from calculators import (
+        bmr_mifflin,
+        tdee_from_activity_factor,
+        calories_burned_from_mets,
+        weekly_exercise_calories,
+        tdee_including_weekly_exercise,
+    )
+except Exception as e:
+    # Vis enkel beskjed i UI så du slipper å gå rett til logs
+    st.error("Import-feil ved lasting av calculators.py — se under for full traceback.")
+    st.text(str(e))
+    st.text("Full traceback:")
+    st.text(traceback.format_exc())
+    # Re-raise så Streamlit logger feilen også til sine logs
+    raise
 
 
 # --- Page config and dark-theme CSS (legg dette rett etter set_page_config) ---
