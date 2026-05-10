@@ -368,6 +368,7 @@ def pdf_generator_bytes(name="HealthReport", fields=None):
     c.save()
     buffer.seek(0)
     return buffer.getvalue()
+
 report_fields = {
     "Age": age,
     "Sex": sex,
@@ -383,7 +384,7 @@ report_fields = {
     "Weekly exercise kcal (est)": f"{weekly_kcal:.0f}",
 }
 
-pdf_bytes = PDF Generator_bytes(fields=report_fields)
+pdf_bytes = pdf_generator_bytes(fields=report_fields)
 st.download_button("Download PDF report", data=pdf_bytes, file_name="health_report.pdf", mime="application/pdf")
 
 # End of app
