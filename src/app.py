@@ -9,8 +9,12 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import mm
 
-# Import metabolism helpers (legg desse i src/calculators.py)
-from src.calculators import (
+# ---- nye imports for plotting og kalkulasjoner ----
+import plotly.graph_objects as go
+import pandas as pd
+
+# calculators.py ligger i samme mappe som app.py (src/)
+from calculators import (
     bmr_mifflin,
     tdee_from_activity_factor,
     calories_burned_from_mets,
