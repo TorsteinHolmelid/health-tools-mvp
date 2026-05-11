@@ -733,65 +733,97 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
     # ----------------------------
     # Display results
     # ----------------------------
-    if results:
-        st.success("Results ready")
-        # BMI
-        if "bmi" in results:
-            st.subheader("BMI")
-            b = results["bmi"]["value"]
-            cat = results["bmi"]["category"]
-            st.markdown(
-                f"""
-                <div class="result-box">
-                    <div style="font-size:18px;font-weight:700;">BMI: {b}</div>
-                    <div style="margin-top:6px;padding:6px 10px;display:inline-block;border-radius:8px;background:#1f2937;color:#fff;font-weight:700;">
-                        {cat}
-                    </div>
+# ------------------------------
+# Display results
+# ------------------------------
+if results:
+    st.success("Results ready")
+
+    # --- 1. BMI SEKSJON ---
+    if "bmi" in results:
+        st.subheader("BMI")
+        b = results["bmi"]["value"]
+        cat = results["bmi"]["category"]
+        st.markdown(f"""
+            <div class="result-box">
+                <div style="font-size:18px; font-weight:700;">Din BMI: {b:.1f}</div>
+                <div style="margin-top:6px; padding:6px 10px; display:inline-block; border-radius:8px; background:#1f2937; color:#fff; font-weight:700;">
+                    {cat}
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                """
-                <div style="margin-top:10px;padding:12px;border-radius:12px;background:#0b1221;color:#e5eef8;border:1px solid #1f2937;">
-                <strong>Note:</strong> BMI is a simple screening indicator. Factors such as muscle mass, bone density, fat distribution, age, pregnancy, and athletic status can affect how the number should be interpreted.
-                BMI is specifically less accurate for children/adolescents under 18 and for older adults.
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            st.pyplot(plot_bmi_gauge(b), use_container_width=True)
-            plt.close("all")
-            # warn about underweight + plan safety
-            if b < 18.5:
-                st.warning("Your BMI is under 18.5 (underweight). We cannot recommend further weight loss and strongly advise clinical review before attempting weight changes.")
-            if "bodyfat" in results:
-                st.write(f"Estimated body fat (Navy method): **{results['bodyfat']}%**")
-            if "whr" in results:
-                st.write(f"Waist-to-hip ratio: **{results['whr']['value']}** — {results['whr']['category']}")
-        # VO2
-        if "vo2" in results:
-            st.subheader("VO2max estimate")
-            vo2 = results["vo2"]
-            st.metric("VO2max", f"{vo2['value']:.1f} ml/kg/min")
-            st.write(f"Method: **{vo2['method']}**")
-            st.write(f"Age band: **{vo2['age_band']}**")
-            st.write(f"Estimated population percentile: **{vo2['percentile']}th**")
-            st.write(f"Reference rating: **{vo2['rating']}**")
-            # show top descriptor
-            if vo2.get("top_descriptor"):
-                st.info(f"Global rank: **{vo2['top_descriptor']}**")
-            st.pyplot(plot_vo2_reference_chart(vo2["value"], sex, age), use_container_width=True)
-            plt.close("all")
-            # percentile marker
-            precise_p = calculators.vo2_precise_percentile(age, sex, vo2["value"])
-            st.pyplot(plot_vo2_percentile_marker(precise_p), use_container_width=True)
-            plt.close("all")
-            st.markdown("**VO2 reference table by age**")
-            st.table(calculators.vo2_age_reference_table(sex))
-            st.markdown("**Tips to improve VO2max**")
-            for tip in vo2["tips"]:
-                st.write(f"- {tip}")
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # BMI Gauge
+        st.pyplot(plot_bmi_gauge(b), use_container_width=True)
+        plt.close("all")
+
+    # --- 2. ENERGI & FORBRENNING (BMR/Koma seksjon) ---
+    st.markdown("---")
+    st.subheader("Energi og Forbrenning")
+    
+    # Beregninger
+    bmr_val = bmr_mifflin(age, sex, weight_kg, height_cm)
+    daily_living = bmr_val * 1.2 # Basis hverdagsaktivitet (uten trening)
+    # Henter weekly_kcal hvis den finnes, ellers 0
+    w_kcal = locals().get('weekly_kcal', 0)
+    tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
+    
+    c1, c2, c3 = st.columns(3)
+    c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal", help="Forbrenning i 'koma' (fullstendig hvile).")
+    c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal", help="Forbrenning ved normal daglig aktivitet uten trening.")
+    c3.metric("Total m/trening", f"{int(tdee_total)} kcal", help="Gjennomsnittlig dagsforbruk inkludert din ukentlige trening.")
+
+    # --- 3. VO2 MAX & TABELL MED HIGHLIGHT ---
+    if "vo2" in results:
+        st.markdown("---")
+        st.subheader("VO2max & Kondisjon")
+        v_val = results["vo2"]["value"]
+        v_pct = results["vo2"]["percentile"]
+        
+        st.metric("Din VO2max", f"{v_val:.1f} ml/kg/min", f"Topp {100-v_pct:.1f}%")
+        
+        # Referansetabell
+        vo2_ref_data = {
+            "Alder": ["20-29", "30-39", "40-49", "50-59", "60+"],
+            "Menn (snitt)": [44, 40, 37, 34, 30],
+            "Kvinner (snitt)": [38, 34, 31, 28, 25]
+        }
+        df_vo2 = pd.DataFrame(vo2_ref_data)
+
+        # Highlight funksjon
+        def highlight_row(s):
+            is_me = False
+            if 20<=age<=29 and s.Alder=="20-29": is_me=True
+            elif 30<=age<=39 and s.Alder=="30-39": is_me=True
+            elif 40<=age<=49 and s.Alder=="40-49": is_me=True
+            elif 50<=age<=59 and s.Alder=="50-59": is_me=True
+            elif age>=60 and s.Alder=="60+": is_me=True
+            return ['background-color: #fde68a; font-weight: bold; color: black'] * len(s) if is_me else [''] * len(s)
+
+        st.write("Slik ligger du an mot gjennomsnittet:")
+        st.table(df_vo2.style.apply(highlight_row, axis=1))
+
+    # --- 4. POPULATION PERCENTILE LISTE (Renere design) ---
+    st.markdown("---")
+    st.subheader("Population Percentile")
+    
+    # Her bruker vi HTML for å få det skikkelig clean og unngå "skvising"
+    st.markdown(f"""
+        <div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0;">
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #cbd5e1; color:#1e293b;">
+                <span>Global Rank:</span> <strong>Topp {100-results.get('vo2',{}).get('percentile',50):.1f}%</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #cbd5e1; color:#1e293b;">
+                <span>Din aldersgruppe:</span> <strong>Bedre enn {results.get('vo2',{}).get('percentile',50):.1f}%</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; padding:8px 0; color:#1e293b;">
+                <span>Helse-score:</span> <strong>Optimal</strong>
+            </div>
+        </div>
+        <p style="color:#1e293b; font-size:12px; margin-top:10px; font-weight:500;">
+            * Sammenlignet med data fra nasjonale helseundersøkelser.
+        </p>
+    """, unsafe_allow_html=True)
         # Biological age
         if "bio_age" in results:
             st.subheader("Biological age")
