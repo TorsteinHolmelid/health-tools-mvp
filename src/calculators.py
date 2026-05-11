@@ -724,3 +724,58 @@ def generate_weight_plan(
         "milestones": milestones,
         "warning": warning,
     }
+# --- Backwards compatibility aliases (safe to add at file-end) ---
+# Hvis eldre kode forventer disse navnene, men implementasjonen bruker
+# andre navn, lager vi små wrapper-funksjoner.
+
+# bmr_mifflin alias
+if 'bmr_mifflin' not in globals():
+    if 'bmr_mifflin_sea' in globals():
+        def bmr_mifflin(age, sex, weight_kg, height_cm):
+            return bmr_mifflin_sea(age, sex, weight_kg, height_cm)
+    else:
+        # Enkel fallback hvis ingen implementasjon finnes (unngå NameError)
+        def bmr_mifflin(age, sex, weight_kg, height_cm):
+            # enkel Mifflin-St Jeor fallback
+            s = str(sex).strip().upper()
+            if s.startswith("M"):
+                return 10.0 * weight_kg + 6.25 * height_cm - 5.0 * age + 5.0
+            else:
+                return 10.0 * weight_kg + 6.25 * height_cm - 5.0 * age - 161.0
+
+# tdee_from_activity_factor alias
+if 'tdee_from_activity_factor' not in globals():
+    def tdee_from_activity_factor(bmr, activity_level):
+        factors = {
+            'sedentary': 1.2,
+            'light': 1.375,
+            'moderate': 1.55,
+            'very': 1.725,
+            'extra': 1.9
+        }
+        return bmr * factors.get(str(activity_level).lower(), 1.2)
+
+# calories_burned_from_mets alias
+if 'calories_burned_from_mets' not in globals():
+    def calories_burned_from_mets(weight_kg, met, minutes):
+        if minutes <= 0 or met <= 0 or weight_kg <= 0:
+            return 0.0
+        kcal_per_min = met * 3.5 * weight_kg / 200.0
+        return kcal_per_min * minutes
+
+# weekly_exercise_calories alias
+if 'weekly_exercise_calories' not in globals():
+    def weekly_exercise_calories(weight_kg, workouts):
+        total = 0.0
+        for w in workouts:
+            met = float(w.get('met', 0))
+            minutes = float(w.get('minutes', 0))
+            sessions = int(w.get('sessions_per_week', 1))
+            total += calories_burned_from_mets(weight_kg, met, minutes) * max(1, sessions)
+        return total
+
+# tdee_including_weekly_exercise alias
+if 'tdee_including_weekly_exercise' not in globals():
+    def tdee_including_weekly_exercise(bmr, activity_level, weekly_exercise_kcal):
+        base = tdee_from_activity_factor(bmr, activity_level)
+        return base + (weekly_exercise_kcal / 7.0 if weekly_exercise_kcal else 0.0)
