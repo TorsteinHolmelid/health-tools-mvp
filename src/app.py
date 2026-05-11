@@ -824,33 +824,39 @@ if results:
             * Sammenlignet med data fra nasjonale helseundersøkelser.
         </p>
     """, unsafe_allow_html=True)
-        # Biological age
-        if "bio_age" in results:
-            st.subheader("Biological age")
-            st.metric("Biological age", f"{results['bio_age']['value']} years")
-            if results.get("bio_factors"):
-                st.markdown("**Factor breakdown**")
-                factor_rows = [{"Factor": f["label"], "Effect": f'{f["delta"]:+.0f} years'} for f in results["bio_factors"]]
-                st.table(factor_rows)
-        # Conditions
-        if "triage" in results:
-            st.subheader("Conditions & recommendations")
-            if results.get("triage_recommendations"):
-                for r in results["triage_recommendations"]:
-                    st.write(r)
-            else:
-                st.info(results["triage"]["message"])
-        # Plan
-        if "plan" in results:
-            st.subheader("Weight goal / plan")
-            plan = results["plan"]
-            st.write(f"Current maintenance calories: **{plan['current_needs_kcal']} kcal/day**")
-            st.write(f"Recommended daily calories: **{plan['recommended_daily_kcal']} kcal/day**")
-            st.write(f"Expected weekly change: **{plan['kg_per_week']:+.2f} kg/week**")
-            if plan.get("warning"):
-                st.warning(plan["warning"])
-            st.markdown("**Condensed milestones**")
-            st.table(plan["milestones"])
+# Biological age
+    if "bio_age" in results:
+        st.subheader("Biological age")
+        st.metric("Biological age", f"{results['bio_age']['value']:.1f} years")
+        if results.get("bio_factors"):
+            st.markdown("**Factor breakdown**")
+            factor_rows = [
+                {"Factor": f["label"], "Effect": f"{f.get('delta', 0):+.0f} years"}
+                for f in results["bio_factors"]
+            ]
+            st.table(factor_rows)
+
+    # Conditions
+    if "triage" in results:
+        st.subheader("Conditions & recommendations")
+        if results.get("triage_recommendations"):
+            for r in results["triage_recommendations"]:
+                st.write(r)
+        else:
+            # Fallback: vis generell triage-melding hvis ingen liste
+            st.info(results.get("triage", {}).get("message", "No triage details."))
+
+    # Plan
+    if "plan" in results:
+        st.subheader("Weight goal / plan")
+        plan = results["plan"]
+        st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
+        st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
+        st.write(f"Expected weekly change: **{plan.get('kg_per_week', 0):+.2f} kg/week**")
+        if plan.get("warning"):
+            st.warning(plan["warning"])
+        st.markdown("**Condensed milestones**")
+        st.table(plan.get("milestones", []))
         # PDF
         report = {
             "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
