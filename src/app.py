@@ -14,7 +14,13 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Image as RLImage
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-import calculators
+from calculators import (
+    bmr_mifflin,
+    tdee_from_activity_factor,
+    calories_burned_from_mets,
+    weekly_exercise_calories,
+    tdee_including_weekly_exercise
+)
 
 # --- Page config and basic styling ---
 st.set_page_config(page_title="Health Tools MVP", layout="centered")
