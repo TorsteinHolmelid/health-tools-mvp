@@ -764,7 +764,6 @@ if results:
     # Beregninger
     import streamlit as st
 st.write("Debug: available names in calculators module:", dir())
-
     bmr_val = bmr_mifflin(age, sex, weight_kg, height_cm)
     daily_living = bmr_val * 1.2 # Basis hverdagsaktivitet (uten trening)
     # Henter weekly_kcal hvis den finnes, ellers 0
