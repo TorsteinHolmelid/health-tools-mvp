@@ -791,7 +791,9 @@ if results:
     if calc_age is None or calc_weight is None or calc_height is None:
         st.info("Fyll inn alder, vekt og høyde for å beregne kalorier.")
     else:
+        # Konverter alder til int først (helt år)
         calc_age = int(calc_age)
+        # Beregninger
         bmr_val = bmr_mifflin(calc_age, sex, calc_weight, calc_height)
         daily_living = bmr_val * 1.2
         w_kcal = _to_float(locals().get("weekly_kcal", 0)) or 0.0
@@ -801,8 +803,6 @@ if results:
         c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal", help="Forbrenning i 'koma' (fullstendig hvile).")
         c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal", help="Forbrenning ved normal daglig aktivitet uten trening.")
         c3.metric("Total m/trening", f"{int(tdee_total)} kcal", help="Gjennomsnittlig dagsforbruk inkludert din ukentlige trening.")
-    except Exception as e:
-        st.error(f"Kunne ikke beregne kalorier: Sjekk at alder/vekt/høyde er fylt ut riktig.")
 
     # --- VO2 & REFERANSETABELL ---
     if "vo2" in results:
