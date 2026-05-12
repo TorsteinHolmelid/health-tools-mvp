@@ -570,7 +570,13 @@ condition_goal_focus = "General"
 if run_conditions:
     with st.expander("Conditions & recommendations", expanded=True):
         st.markdown("Select any diagnoses/conditions you have and choose a focus to get practical exercise & prevention tips.")
-        condition_options = sorted(list(calculators.DIAGNOSIS_RECOMMENDATIONS.keys()))
+# Henter liste fra calculators, eller bruker en standardliste hvis den mangler
+        if hasattr(calculators, 'DIAGNOSIS_RECOMMENDATIONS'):
+            condition_options = sorted(list(calculators.DIAGNOSIS_RECOMMENDATIONS.keys()))
+        else:
+            # Standardliste slik at appen ikke krasjer
+            condition_options = ["Type 2 Diabetes", "Hypertension", "Lower Back Pain", "Asthma", "Osteoarthritis"]
+            
         selected_conditions = st.multiselect("Select conditions (choose one or more)", options=condition_options, default=[], key="cond_select")
         custom_condition = st.text_input("Other condition (free text)", "", key="cond_custom")
         if custom_condition.strip():
