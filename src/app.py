@@ -823,16 +823,16 @@ if results:
 # --- VO2 & REFERANSETABELL ---
     if "vo2" in results:
         st.markdown("---")
-        st.subheader("VO2max & kondisjon")
+        st.subheader("VO2 max & fitness")
 
         v_val = float(results["vo2"]["value"])
         v_pct = max(0.0, min(100.0, float(results["vo2"]["percentile"])))
         top_text = f"Top {100 - v_pct:.1f}%"
 
         c1, c2, c3 = st.columns(3)
-        c1.metric("Din VO2max", f"{v_val:.1f} ml/kg/min")
+        c1.metric("Your VO2 max", f"{v_val:.1f} ml/kg/min")
         c2.metric("Percentile", f"{v_pct:.0f}%")
-        c3.metric("Plassering", top_text)
+        c3.metric("Ranking", top_text)
 
         if v_pct >= 90:
             pct_color = "#22C55E"
@@ -1119,7 +1119,7 @@ if results:
           <div class="band-fill" style="width:{min(100, max(0, int(current_avg[band] / 50.0 * 100)))}%; background:{color};"></div>
           <div class="band-badge">{current_avg[band]} avg</div>
         </div>
-        <div class="band-val">{'Din gruppe' if band == active_band else 'Snitt'}</div>
+        <div class="band-val">{'Your group' if band == active_band else 'Average'}</div>
       </div>
         '''
         for band, _, _, color in vo2_rows
