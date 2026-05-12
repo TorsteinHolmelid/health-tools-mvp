@@ -604,7 +604,7 @@ def recommendations_for_diagnoses(selected: List[str], goal_focus: Optional[str]
 # Weight planning and safety checks
 # ----------------------------
 def bmr_mifflin_sea(age, sex, weight_kg, height_cm) -> float:
-    """Robust BMR (Mifflin-St Jeor) — forventer (age, sex, weight_kg, height_cm)."""
+    """Robust BMR (Mifflin-St Jeor). Forventer (age, sex, weight_kg, height_cm)."""
     import re
 
     def _parse_num(x):
@@ -616,6 +616,7 @@ def bmr_mifflin_sea(age, sex, weight_kg, height_cm) -> float:
             raise ValueError(f"Could not parse number from {x!r}")
         return float(m.group(0))
 
+    # Tving typer
     age_n = int(float(age))
     w = _parse_num(weight_kg)
     h = _parse_num(height_cm)
