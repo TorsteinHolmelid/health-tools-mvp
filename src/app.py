@@ -808,6 +808,7 @@ if results:
         c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal")
         c3.metric("Total m/trening", f"{int(tdee_total)} kcal")
 # --- VO2 & REFERANSETABELL ---
+# --- VO2 & REFERANSETABELL ---
     if "vo2" in results:
         st.markdown("---")
         st.subheader("VO2max & kondisjon")
@@ -836,7 +837,7 @@ if results:
             pct_color = "#D85A30"
             pct_label = "Needs work"
 
-components.html(
+        components.html(
             f"""
 <div style="
     background: var(--color-background-primary);
@@ -988,6 +989,7 @@ components.html(
             unsafe_allow_html=True,
         )
 
+    # Biological age
     # Biological age
     # --- Biologisk alder ---
 # Biological age
