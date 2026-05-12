@@ -700,13 +700,16 @@ def generate_weight_plan(
         warning = "Requested pace exceeds 0.5 kg/week weight gain. Recommendation capped to 0.5 kg/week for safety."
         kg_per_week = 0.5
     daily_delta_kcal = kg_per_week * 7700 / 7.0
-   current_needs = daily_calorie_needs(
-    age=age,
-    sex=sex,
-    weight_kg=current_weight_kg,
-    height_cm=height_cm,
-    activity_level=activity_level,
-)
+
+    # === CORRECTED CALL: use keyword args to avoid posisjonelle-feil ===
+    current_needs = daily_calorie_needs(
+        age=age,
+        sex=sex,
+        weight_kg=current_weight_kg,
+        height_cm=height_cm,
+        activity_level=activity_level,
+    )
+
     recommended_daily = int(round(current_needs + daily_delta_kcal))
     if recommended_daily < 1200:
         warning = (warning + " " if warning else "") + "Estimated calorie target is very low; consider professional guidance."
