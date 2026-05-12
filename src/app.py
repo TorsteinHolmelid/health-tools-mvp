@@ -811,16 +811,14 @@ if results:
         st.markdown("---")
         st.subheader("VO2max & kondisjon")
 
-        vo2_val = results["vo2"]["value"]
+        v_val = results["vo2"]["value"]
         v_pct = results["vo2"]["percentile"]
 
-        # Topp metrics
         c1, c2, c3 = st.columns(3)
-        c1.metric("Din VO2max", f"{vo2_val:.1f} ml/kg/min")
+        c1.metric("Din VO2max", f"{v_val:.1f} ml/kg/min")
         c2.metric("Percentile", f"{v_pct:.0f}%")
-        c3.metric("Plassering", f"Top {max(0.1, 100 - v_pct):.1f}%")
+        c3.metric("Plassering", f"Top {100 - v_pct:.1f}%")
 
-        # Farger og label for percentile
         if v_pct >= 90:
             pct_color = "#1D9E75"
             pct_label = "Exceptional"
@@ -837,8 +835,7 @@ if results:
             pct_color = "#D85A30"
             pct_label = "Needs work"
 
-        # Penere visuell percentile-meter
-st.markdown(
+        st.markdown(
             f"""
 <div style="
     background: var(--color-background-primary);
@@ -892,7 +889,6 @@ st.markdown(
 
         st.markdown("**VO2 snitt per aldersgruppe**")
 
-        # Enklare og meir lesbar “tabell” i kort-format
         vo2_rows = [
             ("20–29", 44, 40, 36),
             ("30–39", 40, 36, 33),
@@ -901,7 +897,6 @@ st.markdown(
             ("60+", 30, 27, 24),
         ]
 
-        # Marker brukarens aldersgruppe
         def band_match(band: str) -> bool:
             if band == "20–29":
                 return 20 <= age <= 29
@@ -915,83 +910,81 @@ st.markdown(
 
         for band, men_avg, women_avg, alt_avg in vo2_rows:
             is_active = band_match(band)
-
-            # vel relevant snitt
             avg = men_avg if str(sex).upper().startswith("M") else women_avg
-
             bar_value = min(100, max(0, int((avg / 50.0) * 100)))
             bar_color = "#1D9E75" if is_active else "#378ADD"
 
             st.markdown(
                 f"""
-                <div style="
-                    display:grid;
-                    grid-template-columns: 72px 1fr 70px;
-                    gap: 10px;
-                    align-items:center;
-                    margin: 8px 0;
-                    padding: 8px 10px;
-                    border-radius: 10px;
-                    background: {'#f8fafc' if is_active else 'transparent'};
-                    border: {'1px solid #e2e8f0' if is_active else '0.5px solid transparent'};
-                ">
-                    <div style="font-size:12px; color: var(--color-text-secondary); font-weight: {'500' if is_active else '400'};">{band}</div>
-                    <div style="
-                        height: 18px;
-                        background: var(--color-background-secondary);
-                        border: 0.5px solid var(--color-border-tertiary);
-                        border-radius: 999px;
-                        overflow:hidden;
-                        position:relative;
-                    ">
-                        <div style="
-                            width: {bar_value}%;
-                            height:100%;
-                            background:{bar_color};
-                            border-radius:999px;
-                        "></div>
-                        <div style="
-                            position:absolute;
-                            right:8px;
-                            top:50%;
-                            transform:translateY(-50%);
-                            font-size:11px;
-                            font-weight:500;
-                            color:#111827;
-                            background: rgba(255,255,255,0.82);
-                            padding: 1px 6px;
-                            border-radius: 999px;
-                        ">{avg} avg</div>
-                    </div>
-                    <div style="
-                        text-align:right;
-                        font-size:12px;
-                        font-weight:500;
-                        color: {'#1D9E75' if is_active else 'var(--color-text-secondary)'};
-                    ">{'Din gruppe' if is_active else 'Snitt'}</div>
-                </div>
+<div style="
+    display:grid;
+    grid-template-columns: 72px 1fr 70px;
+    gap: 10px;
+    align-items:center;
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: {'#f8fafc' if is_active else 'transparent'};
+    border: {'1px solid #e2e8f0' if is_active else '0.5px solid transparent'};
+">
+    <div style="font-size:12px; color: var(--color-text-secondary); font-weight: {'500' if is_active else '400'};">{band}</div>
+    <div style="
+        height: 18px;
+        background: var(--color-background-secondary);
+        border: 0.5px solid var(--color-border-tertiary);
+        border-radius: 999px;
+        overflow:hidden;
+        position:relative;
+    ">
+        <div style="
+            width: {bar_value}%;
+            height:100%;
+            background:{bar_color};
+            border-radius:999px;
+        "></div>
+        <div style="
+            position:absolute;
+            right:8px;
+            top:50%;
+            transform:translateY(-50%);
+            font-size:11px;
+            font-weight:500;
+            color:#111827;
+            background: rgba(255,255,255,0.82);
+            padding: 1px 6px;
+            border-radius: 999px;
+        ">{avg} avg</div>
+    </div>
+    <div style="
+        text-align:right;
+        font-size:12px;
+        font-weight:500;
+        color: {'#1D9E75' if is_active else 'var(--color-text-secondary)'};
+    ">{'Din gruppe' if is_active else 'Snitt'}</div>
+</div>
                 """,
                 unsafe_allow_html=True,
             )
 
         st.markdown(
             """
-            <div style="
-                margin-top: 10px;
-                display:flex;
-                flex-wrap:wrap;
-                gap:8px;
-            ">
-                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#e8f7f1; color:#116b4f;">Very strong</span>
-                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#e8f0fe; color:#2457a6;">Good</span>
-                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#f3efff; color:#5b4bb7;">Average</span>
-                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#fff1e8; color:#9b4b1f;">Below avg</span>
-                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#ffe9e4; color:#a9432b;">Needs work</span>
-            </div>
+<div style="
+    margin-top: 10px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+">
+    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#e8f7f1; color:#116b4f;">Very strong</span>
+    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#e8f0fe; color:#2457a6;">Good</span>
+    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#f3efff; color:#5b4bb7;">Average</span>
+    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#fff1e8; color:#9b4b1f;">Below avg</span>
+    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#ffe9e4; color:#a9432b;">Needs work</span>
+</div>
             """,
             unsafe_allow_html=True,
         )
 
+    # Biological age
     # --- Biologisk alder ---
 # Biological age
     if "bio_age" in results:
