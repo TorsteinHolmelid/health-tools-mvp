@@ -767,19 +767,18 @@ if results:
     st.markdown("---")
     st.subheader("Energi og Forbrenning")
     
-    # Beregninger
-    import streamlit as st
-st.write("Has bmr_mifflin in globals?", 'bmr_mifflin' in globals())
-    bmr_val = bmr_mifflin(age, sex, weight_kg, height_cm)
-    daily_living = bmr_val * 1.2 # Basis hverdagsaktivitet (uten trening)
-    # Henter weekly_kcal hvis den finnes, ellers 0
-    w_kcal = locals().get('weekly_kcal', 0)
-    tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
-    
-    c1, c2, c3 = st.columns(3)
-    c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal", help="Forbrenning i 'koma' (fullstendig hvile).")
-    c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal", help="Forbrenning ved normal daglig aktivitet uten trening.")
-    c3.metric("Total m/trening", f"{int(tdee_total)} kcal", help="Gjennomsnittlig dagsforbruk inkludert din ukentlige trening.")
+        # Beregninger
+
+        bmr_val = bmr_mifflin(age, sex, weight_kg, height_cm)
+        daily_living = bmr_val * 1.2 # Basis hverdagsaktivitet (uten trening)
+        # Henter weekly_kcal hvis den finnes, ellers 0
+        w_kcal = locals().get('weekly_kcal', 0)
+        tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
+        
+        c1, c2, c3 = st.columns(3)
+        c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal", help="Forbrenning i 'koma' (fullstendig hvile).")
+        c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal", help="Forbrenning ved normal daglig aktivitet uten trening.")
+        c3.metric("Total m/trening", f"{int(tdee_total)} kcal", help="Gjennomsnittlig dagsforbruk inkludert din ukentlige trening.")
 
     # --- 3. VO2 MAX & TABELL MED HIGHLIGHT ---
     if "vo2" in results:
