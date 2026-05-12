@@ -813,93 +813,37 @@ if results:
         st.markdown("---")
         st.subheader("VO2max & kondisjon")
 
-        v_val = results["vo2"]["value"]
-        v_pct = results["vo2"]["percentile"]
+        v_val = float(results["vo2"]["value"])
+        v_pct = max(0.0, min(100.0, float(results["vo2"]["percentile"])))
+        top_text = f"Top {100 - v_pct:.1f}%"
 
         c1, c2, c3 = st.columns(3)
         c1.metric("Din VO2max", f"{v_val:.1f} ml/kg/min")
         c2.metric("Percentile", f"{v_pct:.0f}%")
-        c3.metric("Plassering", f"Top {100 - v_pct:.1f}%")
+        c3.metric("Plassering", top_text)
 
         if v_pct >= 90:
-            pct_color = "#1D9E75"
+            pct_color = "#22C55E"
             pct_label = "Exceptional"
         elif v_pct >= 75:
-            pct_color = "#378ADD"
+            pct_color = "#3B82F6"
             pct_label = "Very strong"
         elif v_pct >= 50:
-            pct_color = "#7F77DD"
+            pct_color = "#7C7CF5"
             pct_label = "Good"
         elif v_pct >= 25:
-            pct_color = "#BA7517"
-            pct_label = "Below average"
+            pct_color = "#F59E0B"
+            pct_label = "Below avg"
         else:
-            pct_color = "#D85A30"
+            pct_color = "#EF6A3B"
             pct_label = "Needs work"
 
-        components.html(
-            f"""
-<div style="
-    background: var(--color-background-primary);
-    border: 0.5px solid var(--color-border-tertiary);
-    border-radius: 12px;
-    padding: 14px 14px 12px 14px;
-    margin-top: 8px;
-    font-family: var(--font-sans);
-    color: var(--color-text-primary);
-">
-    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:10px;">
-        <div>
-            <div style="font-size:14px; font-weight:500; color: var(--color-text-primary);">Population percentile</div>
-            <div style="font-size:12px; color: var(--color-text-secondary);">Kor du ligg samanlikna med andre i same aldersgruppe</div>
-        </div>
-        <div style="text-align:right;">
-            <div style="font-size:28px; font-weight:500; line-height:1; color:{pct_color};">{v_pct:.0f}%</div>
-            <div style="font-size:12px; color: var(--color-text-secondary);">{pct_label}</div>
-        </div>
-    </div>
-
-    <div style="
-        height: 18px;
-        background: var(--color-background-secondary);
-        border: 0.5px solid var(--color-border-tertiary);
-        border-radius: 999px;
-        overflow: hidden;
-        position: relative;
-    ">
-        <div style="
-            width: {max(2, min(100, v_pct))}%;
-            height: 100%;
-            background: {pct_color};
-            border-radius: 999px;
-        "></div>
-    </div>
-
-    <div style="
-        display:flex;
-        justify-content:space-between;
-        font-size:12px;
-        color: var(--color-text-secondary);
-        margin-top:6px;
-    ">
-        <span>0</span>
-        <span>50</span>
-        <span>100</span>
-    </div>
-</div>
-            """,
-            height=180,
-            scrolling=False,
-        )
-
-        st.markdown("**VO2 snitt per aldersgruppe**")
-
         vo2_rows = [
-            ("20–29", 44, 40, 36),
-            ("30–39", 40, 36, 33),
-            ("40–49", 37, 33, 30),
-            ("50–59", 34, 30, 27),
-            ("60+", 30, 27, 24),
+            ("20–29", 44, 40, "#26A690"),
+            ("30–39", 40, 36, "#3B82F6"),
+            ("40–49", 37, 33, "#7C7CF5"),
+            ("50–59", 34, 30, "#EF6A3B"),
+            ("60+", 30, 27, "#D18A1A"),
         ]
 
         def band_match(band: str) -> bool:
@@ -913,83 +857,313 @@ if results:
                 return 50 <= age <= 59
             return age >= 60
 
-        for band, men_avg, women_avg, alt_avg in vo2_rows:
-            is_active = band_match(band)
-            avg = men_avg if str(sex).upper().startswith("M") else women_avg
-            bar_value = min(100, max(0, int((avg / 50.0) * 100)))
-            bar_color = "#1D9E75" if is_active else "#378ADD"
+        active_band = None
+        for band, _, _, _ in vo2_rows:
+            if band_match(band):
+                active_band = band
+                break
 
-            st.markdown(
-                f"""
-<div style="
-    display:grid;
-    grid-template-columns: 72px 1fr 70px;
+        if str(sex).upper().startswith("M"):
+            current_avg = dict((b, m) for b, m, _, _ in vo2_rows)
+        else:
+            current_avg = dict((b, w) for b, _, w, _ in vo2_rows)
+
+        components.html(
+            f"""
+<style>
+  .vo2-wrap {{
+    font-family: Arial, sans-serif;
+    color: #E5E7EB;
+    padding: 2px;
+  }}
+  .vo2-grid {{
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 14px;
+    align-items: stretch;
+  }}
+  .vo2-card {{
+    background: #1F2937;
+    border: 1px solid #374151;
+    border-radius: 16px;
+    padding: 18px;
+  }}
+  .vo2-title {{
+    margin: 0 0 6px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #F9FAFB;
+  }}
+  .vo2-sub {{
+    margin: 0 0 16px 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #9CA3AF;
+  }}
+  .metric-row {{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }}
+  .metric {{
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 10px 12px;
+    min-width: 0;
+  }}
+  .metric-k {{
+    margin: 0 0 4px 0;
+    font-size: 12px;
+    color: #9CA3AF;
+  }}
+  .metric-v {{
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #F9FAFB;
+    line-height: 1.1;
+  }}
+  .band {{
+    display: grid;
+    grid-template-columns: 56px 1fr 70px;
     gap: 10px;
-    align-items:center;
-    margin: 8px 0;
+    align-items: center;
+    margin: 10px 0;
+  }}
+  .band-lbl {{
+    font-size: 12px;
+    color: #D1D5DB;
+    white-space: nowrap;
+  }}
+  .band-bar {{
+    height: 16px;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }}
+  .band-fill {{
+    height: 100%;
+    border-radius: 999px;
+  }}
+  .band-badge {{
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    font-weight: 700;
+    color: #111827;
+    background: rgba(255,255,255,0.88);
+    padding: 1px 6px;
+    border-radius: 999px;
+  }}
+  .band-val {{
+    text-align: right;
+    font-size: 12px;
+    font-weight: 700;
+    color: #E5E7EB;
+  }}
+  .band-active {{
+    background: #F8FAFC;
+    border-radius: 12px;
     padding: 8px 10px;
-    border-radius: 10px;
-    background: {'#f8fafc' if is_active else 'transparent'};
-    border: {'1px solid #e2e8f0' if is_active else '0.5px solid transparent'};
-">
-    <div style="font-size:12px; color: var(--color-text-secondary); font-weight: {'500' if is_active else '400'};">{band}</div>
-    <div style="
-        height: 18px;
-        background: var(--color-background-secondary);
-        border: 0.5px solid var(--color-border-tertiary);
-        border-radius: 999px;
-        overflow:hidden;
-        position:relative;
-    ">
-        <div style="
-            width: {bar_value}%;
-            height:100%;
-            background:{bar_color};
-            border-radius:999px;
-        "></div>
-        <div style="
-            position:absolute;
-            right:8px;
-            top:50%;
-            transform:translateY(-50%);
-            font-size:11px;
-            font-weight:500;
-            color:#111827;
-            background: rgba(255,255,255,0.82);
-            padding: 1px 6px;
-            border-radius: 999px;
-        ">{avg} avg</div>
-    </div>
-    <div style="
-        text-align:right;
-        font-size:12px;
-        font-weight:500;
-        color: {'#1D9E75' if is_active else 'var(--color-text-secondary)'};
-    ">{'Din gruppe' if is_active else 'Snitt'}</div>
-</div>
-                """,
-                unsafe_allow_html=True,
-            )
+  }}
+  .band-active .band-lbl {{
+    color: #0F172A;
+    font-weight: 700;
+  }}
+  .band-active .band-val {{
+    color: #26A690;
+  }}
+  .pill-row {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }}
+  .pill {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #CBD5E1;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 999px;
+    padding: 6px 10px;
+  }}
+  .dot {{
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: 0 0 10px;
+  }}
+  .gauge-wrap {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }}
+  .gauge-head {{
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+  }}
+  .gauge-k {{
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #F9FAFB;
+  }}
+  .gauge-sub {{
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: #9CA3AF;
+    line-height: 1.4;
+  }}
+  .pct-num {{
+    margin: 0;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+    color: {pct_color};
+    text-align: right;
+  }}
+  .pct-lbl {{
+    margin: 3px 0 0 0;
+    font-size: 12px;
+    color: #D1D5DB;
+    text-align: right;
+  }}
+  .callout {{
+    width: 100%;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 12px;
+    color: #D1D5DB;
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 12px;
+  }}
+  .legend-col {{
+    width: 100%;
+    margin-top: 14px;
+    display: grid;
+    gap: 8px;
+  }}
+  .legend-item {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 999px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #CBD5E1;
+  }}
+  .mini-note {{
+    width: 100%;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #9CA3AF;
+    text-align: center;
+  }}
+</style>
 
-        st.markdown(
-            """
-<div style="
-    margin-top: 10px;
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px;
-">
-    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#e8f7f1; color:#116b4f;">Very strong</span>
-    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#e8f0fe; color:#2457a6;">Good</span>
-    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#f3efff; color:#5b4bb7;">Average</span>
-    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#fff1e8; color:#9b4b1f;">Below avg</span>
-    <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#ffe9e4; color:#a9432b;">Needs work</span>
+<div class="vo2-wrap">
+  <div class="vo2-grid">
+    <div class="vo2-card">
+      <div class="vo2-title">VO2 max across age bands</div>
+      <div class="vo2-sub">Ein meir “live” og leseleg visning enn ei vanleg tabell.</div>
+
+      <div class="metric-row">
+        <div class="metric">
+          <div class="metric-k">Your VO2 max</div>
+          <div class="metric-v">{v_val:.1f}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-k">Age band</div>
+          <div class="metric-v">{active_band or "—"}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-k">Rating</div>
+          <div class="metric-v">{pct_label}</div>
+        </div>
+      </div>
+
+      {"".join([
+        f'''
+      <div class="band{' band-active' if band == active_band else ''}">
+        <div class="band-lbl">{band}</div>
+        <div class="band-bar">
+          <div class="band-fill" style="width:{min(100, max(0, int(current_avg[band] / 50.0 * 100)))}%; background:{color};"></div>
+          <div class="band-badge">{current_avg[band]} avg</div>
+        </div>
+        <div class="band-val">{'Din gruppe' if band == active_band else 'Snitt'}</div>
+      </div>
+        '''
+        for band, _, _, color in vo2_rows
+      ])}
+
+      <div class="pill-row">
+        <div class="pill"><span class="dot" style="background:#26A690"></span>Very strong</div>
+        <div class="pill"><span class="dot" style="background:#3B82F6"></span>Strong</div>
+        <div class="pill"><span class="dot" style="background:#7C7CF5"></span>Mid range</div>
+        <div class="pill"><span class="dot" style="background:#EF6A3B"></span>Needs work</div>
+      </div>
+    </div>
+
+    <div class="vo2-card">
+      <div class="gauge-wrap">
+        <div class="gauge-head">
+          <div>
+            <div class="gauge-k">Population percentile</div>
+            <div class="gauge-sub">Viser kor du ligg samanlikna med resten av populasjonen.</div>
+          </div>
+          <div>
+            <div class="pct-num">{v_pct:.0f}%</div>
+            <div class="pct-lbl">{pct_label}</div>
+          </div>
+        </div>
+
+        <svg width="100%" viewBox="0 0 260 170" aria-label="Population percentile gauge">
+          <path d="M40 122 A90 90 0 0 1 220 122" fill="none" stroke="#4B5563" stroke-width="18" stroke-linecap="round" pathLength="100"/>
+          <path d="M40 122 A90 90 0 0 1 220 122" fill="none" stroke="{pct_color}" stroke-width="18" stroke-linecap="round" pathLength="100" stroke-dasharray="{v_pct} 100"/>
+          <circle cx="130" cy="122" r="50" fill="#1F2937" stroke="#374151" stroke-width="1"/>
+          <text x="130" y="116" text-anchor="middle" font-size="36" font-weight="700" fill="#F9FAFB">{int(round(v_pct))}</text>
+          <text x="130" y="136" text-anchor="middle" font-size="12" fill="#CBD5E1">percentile</text>
+          <text x="40" y="158" text-anchor="start" font-size="12" fill="#9CA3AF">0</text>
+          <text x="130" y="158" text-anchor="middle" font-size="12" fill="#9CA3AF">50</text>
+          <text x="220" y="158" text-anchor="end" font-size="12" fill="#9CA3AF">100</text>
+        </svg>
+
+        <div class="callout">
+          <b>Interpretasjon:</b> du ligg svært høgt i forhold til snittet for alderen din.
+        </div>
+
+        <div class="legend-col">
+          <div class="legend-item"><span class="dot" style="background:#3B82F6"></span>Population average</div>
+          <div class="legend-item"><span class="dot" style="background:#26A690"></span>Better than average</div>
+        </div>
+
+        <div class="mini-note">Klar, fargekodet og mykje lettare å lese.</div>
+      </div>
+    </div>
+  </div>
 </div>
             """,
-            unsafe_allow_html=True,
+            height=620,
+            scrolling=False,
         )
 
-    # Biological age
     # Biological age
     # --- Biologisk alder ---
 # Biological age
