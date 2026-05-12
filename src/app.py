@@ -777,6 +777,25 @@ if results:
     st.subheader("Energi og Forbrenning")
 
     # Beregninger
+    # --- Sanitise inputs (må være i app.py, rett før kall til calculators) ---
+try:
+    age = int(float(age))
+except Exception:
+    age = 30  # fallback hvis input mangler eller er ugyldig
+
+try:
+    weight_kg = float(weight_kg)
+except Exception:
+    weight_kg = 70.0
+
+try:
+    height_cm = float(height_cm)
+except Exception:
+    height_cm = 170.0
+
+sex = str(sex).strip() if sex is not None else "M"
+activity_level = str(activity_level).strip().lower() if activity_level is not None else "sedentary"
+weekly_kcal = float(locals().get("weekly_kcal", 0) or 0.0)
     bmr_val = bmr_mifflin(age, sex, weight_kg, height_cm)
     daily_living = bmr_val * 1.2  # Basis hverdagsaktivitet (uten trening)
     w_kcal = locals().get('weekly_kcal', 0)
