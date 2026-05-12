@@ -603,7 +603,7 @@ def recommendations_for_diagnoses(selected: List[str], goal_focus: Optional[str]
 # ----------------------------
 # Weight planning and safety checks
 # ----------------------------
-def bmr_mifflin_sea(sex: str, weight_kg, height_cm, age) -> float:
+def bmr_mifflin_sea(age: int, sex: str, weight_kg: float, height_cm: float) -> float:
     # Tving alle til riktig type rett før regnestykket
     w = float(weight_kg)
     h = float(height_cm)
