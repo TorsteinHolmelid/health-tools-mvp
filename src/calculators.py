@@ -603,18 +603,30 @@ def recommendations_for_diagnoses(selected: List[str], goal_focus: Optional[str]
 # ----------------------------
 # Weight planning and safety checks
 # ----------------------------
-def bmr_mifflin_sea(age: int, sex: str, weight_kg: float, height_cm: float) -> float:
-    # Tving alle til riktig type rett før regnestykket
-    w = float(weight_kg)
-    h = float(height_cm)
-    a = int(float(age))
-    
-    if str(sex).upper() == "M":
-        bmr = 10 * w + 6.25 * h - 5 * a + 5
-    else:
-        bmr = 10 * w + 6.25 * h - 5 * a - 161
-    return round(bmr, 0)
+def bmr_mifflin_sea(age, sex, weight_kg, height_cm) -> float:
+    """Robust BMR (Mifflin-St Jeor) — forventer (age, sex, weight_kg, height_cm)."""
+    import re
 
+    def _parse_num(x):
+        if x is None:
+            raise ValueError("missing numeric argument")
+        s = str(x).strip().replace(",", ".")
+        m = re.search(r"[-+]?\d+(\.\d+)?", s)
+        if not m:
+            raise ValueError(f"Could not parse number from {x!r}")
+        return float(m.group(0))
+
+    age_n = int(float(age))
+    w = _parse_num(weight_kg)
+    h = _parse_num(height_cm)
+    s = str(sex or "").strip().upper()
+
+    if s.startswith("M"):
+        bmr = 10.0 * w + 6.25 * h - 5.0 * age_n + 5.0
+    else:
+        bmr = 10.0 * w + 6.25 * h - 5.0 * age_n - 161.0
+
+    return round(bmr, 0)
 def activity_factor_map(level: str) -> float:
     return {
         "sedentary": 1.2,
