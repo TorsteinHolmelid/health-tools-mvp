@@ -616,7 +616,7 @@ def bmr_mifflin_sea(age, sex, weight_kg, height_cm) -> float:
             raise ValueError(f"Could not parse number from {x!r}")
         return float(m.group(0))
 
-    # Tving typer
+    # Tving typer trygt
     age_n = int(float(age))
     w = _parse_num(weight_kg)
     h = _parse_num(height_cm)
@@ -639,14 +639,9 @@ def activity_factor_map(level: str) -> float:
     }.get(str(level).strip().lower(), 1.4)
 
 
-def daily_calorie_needs(
-    age: int,
-    sex: str,
-    weight_kg: float,
-    height_cm: float,
-    activity_level: str,
-) -> int:
-    bmr = bmr_mifflin_sea(age, sex, weight_kg, height_cm)
+def daily_calorie_needs(age: int, sex: str, weight_kg: float, height_cm: float, activity_level: str) -> int:
+    # Bruk navngitte argumenter for å være sikker på rekkefølge
+    bmr = bmr_mifflin_sea(age=age, sex=sex, weight_kg=weight_kg, height_cm=height_cm)
     af = activity_factor_map(activity_level)
     return int(round(bmr * af))
 
