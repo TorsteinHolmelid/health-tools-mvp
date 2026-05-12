@@ -779,3 +779,21 @@ if 'tdee_including_weekly_exercise' not in globals():
     def tdee_including_weekly_exercise(bmr, activity_level, weekly_exercise_kcal):
         base = tdee_from_activity_factor(bmr, activity_level)
         return base + (weekly_exercise_kcal / 7.0 if weekly_exercise_kcal else 0.0)
+# Backwards-compatible: definér eller oppdater DIAGNOSIS_RECOMMENDATIONS
+_new_diag_recs = {
+    "Type 2 Diabetes": "Focus on low glycemic index foods and consistent daily walking.",
+    "Hypertension": "Monitor salt intake and prioritize aerobic zone 2 training.",
+    "Lower Back Pain": "Focus on core stability and mobility exercises.",
+    "Asthma": "Ensure proper warm-up; keep quick-relief medication available.",
+    "Osteoarthritis": "Prioritize low-impact activities like swimming or cycling."
+}
+
+if "DIAGNOSIS_RECOMMENDATIONS" in globals() and isinstance(DIAGNOSIS_RECOMMENDATIONS, dict):
+    # Slå sammen nye standarder med eventuelle eksisterende (ikke overskriv eksisterende nøkler)
+    for k, v in _new_diag_recs.items():
+        DIAGNOSIS_RECOMMENDATIONS.setdefault(k, v)
+else:
+    DIAGNOSIS_RECOMMENDATIONS = _new_diag_recs.copy()
+
+# Fjern midlertidig hjelpedatastruktur
+del _new_diag_recs
