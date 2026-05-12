@@ -836,7 +836,7 @@ if results:
             pct_color = "#D85A30"
             pct_label = "Needs work"
 
-        st.markdown(
+components.html(
             f"""
 <div style="
     background: var(--color-background-primary);
@@ -844,6 +844,8 @@ if results:
     border-radius: 12px;
     padding: 14px 14px 12px 14px;
     margin-top: 8px;
+    font-family: var(--font-sans);
+    color: var(--color-text-primary);
 ">
     <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:10px;">
         <div>
@@ -885,7 +887,8 @@ if results:
     </div>
 </div>
             """,
-            unsafe_allow_html=True,
+            height=180,
+            scrolling=False,
         )
 
         st.markdown("**VO2 snitt per aldersgruppe**")
