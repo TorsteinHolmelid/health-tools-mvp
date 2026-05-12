@@ -774,13 +774,13 @@ if results:
         except Exception:
             pass
 
-# --- 2. ENERGI & FORBRENNING (BMR/Koma seksjon) ---
+# --- Energi & Forbrenning (BMR) ---
     st.markdown("---")
     st.subheader("Energi og Forbrenning")
 
-    def _to_float(value):
+    def _to_float(val):
         try:
-            return float(str(value).replace(",", ".").strip())
+            return float(str(val).replace(",", ".").strip())
         except Exception:
             return None
 
@@ -791,7 +791,8 @@ if results:
     if calc_age is None or calc_weight is None or calc_height is None:
         st.info("Fyll inn alder, vekt og høyde for å beregne kalorier.")
     else:
-        bmr_val = bmr_mifflin(int(calc_age), sex, calc_weight, calc_height)
+        calc_age = int(calc_age)
+        bmr_val = bmr_mifflin(calc_age, sex, calc_weight, calc_height)
         daily_living = bmr_val * 1.2
         w_kcal = _to_float(locals().get("weekly_kcal", 0)) or 0.0
         tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
