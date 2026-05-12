@@ -774,7 +774,7 @@ if results:
         except Exception:
             pass
 
-# --- Energi & Forbrenning (BMR) ---
+# Energi & Forbrenning
     st.markdown("---")
     st.subheader("Energi og Forbrenning")
 
@@ -784,7 +784,6 @@ if results:
         except Exception:
             return None
 
-    # Konverter og valider input
     calc_age_f = _to_float(age)
     calc_weight = _to_float(weight_kg)
     calc_height = _to_float(height_cm)
@@ -792,28 +791,21 @@ if results:
     if calc_age_f is None or calc_weight is None or calc_height is None:
         st.info("Fyll inn alder, vekt og høyde (som tall) for å beregne kalorier.")
     else:
-        calc_age = int(calc_age_f)  # heltall for alder
-        # Debug: vis typer og verdier slik at vi ser hva som feiler hvis det gjør det
-        st.write("DEBUG (pre-BMR):", {
-            "age": (calc_age, type(calc_age)),
-            "sex": (sex, type(sex)),
-            "weight_kg": (calc_weight, type(calc_weight)),
-            "height_cm": (calc_height, type(calc_height)),
-            "activity_level": (activity_level, type(activity_level)),
-            "weekly_kcal": (locals().get("weekly_kcal", None), type(locals().get("weekly_kcal", None)))
-        })
+        calc_age = int(calc_age_f)          # alder som heltall
+        calc_weight = float(calc_weight)
+        calc_height = float(calc_height)
 
-        # Kjør BMR trygt og fang opp feil for logging
-        try:
-            bmr_val = bmr_mifflin(calc_age, sex, calc_weight, calc_height)
-            daily_living = bmr_val * 1.2
-            w_kcal = _to_float(locals().get("weekly_kcal", 0)) or 0.0
-            tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
+        # VIKTIG: rekkefølge = (age, sex, weight, height)
+        bmr_val = bmr_mifflin(calc_age, sex, calc_weight, calc_height)
 
-            c1, c2, c3 = st.columns(3)
-            c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal", help="Forbrenning i 'koma' (fullstendig hvile).")
-            c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal", help="Forbrenning ved normal daglig aktivitet uten trening.")
-            c3.metric("Total m/trening", f"{int(tdee_total)} kcal", help="Gjennomsnittlig dagsforbruk inkludert din ukentlige trening.")
+        daily_living = bmr_val * 1.2
+        w_kcal = _to_float(locals().get("weekly_kcal", 0)) or 0.0
+        tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal")
+        c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal")
+        c3.metric("Total m/trening", f"{int(tdee_total)} kcal")
         except Exception as e:
             # Vis nyttig debug i UI slik du raskt kan se hva som gikk galt
             st.error("Kunne ikke beregne BMR — sjekk inputverdier.")
