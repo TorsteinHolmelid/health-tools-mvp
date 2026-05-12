@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 import calculators
 import pandas as pd
+import streamlit.components.v1 as components
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
