@@ -806,54 +806,193 @@ if results:
         c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal")
         c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal")
         c3.metric("Total m/trening", f"{int(tdee_total)} kcal")
-    # --- VO2 & REFERANSETABELL ---
+# --- VO2 & REFERANSETABELL ---
     if "vo2" in results:
         st.markdown("---")
-        st.subheader("VO2max & Kondisjon")
-        v_val = results["vo2"]["value"]
+        st.subheader("VO2max & kondisjon")
+
+        vo2_val = results["vo2"]["value"]
         v_pct = results["vo2"]["percentile"]
 
-        st.metric("Din VO2max", f"{v_val:.1f} ml/kg/min", f"Topp {100 - v_pct:.1f}%")
+        # Topp metrics
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Din VO2max", f"{vo2_val:.1f} ml/kg/min")
+        c2.metric("Percentile", f"{v_pct:.0f}%")
+        c3.metric("Plassering", f"Top {max(0.1, 100 - v_pct):.1f}%")
 
-        # Enkel referansetabell (tilpass gjerne kolonner/verdier)
-        vo2_ref_data = {
-            "Alder": ["20-29", "30-39", "40-49", "50-59", "60+"],
-            "Menn (snitt)": [44, 40, 37, 34, 30],
-            "Kvinner (snitt)": [38, 34, 31, 28, 25]
-        }
-        df_vo2 = pd.DataFrame(vo2_ref_data)
+        # Farger og label for percentile
+        if v_pct >= 90:
+            pct_color = "#1D9E75"
+            pct_label = "Exceptional"
+        elif v_pct >= 75:
+            pct_color = "#378ADD"
+            pct_label = "Very strong"
+        elif v_pct >= 50:
+            pct_color = "#7F77DD"
+            pct_label = "Good"
+        elif v_pct >= 25:
+            pct_color = "#BA7517"
+            pct_label = "Below average"
+        else:
+            pct_color = "#D85A30"
+            pct_label = "Needs work"
 
-        def highlight_row(s):
-            is_me = False
-            if 20 <= age <= 29 and s.Alder == "20-29":
-                is_me = True
-            elif 30 <= age <= 39 and s.Alder == "30-39":
-                is_me = True
-            elif 40 <= age <= 49 and s.Alder == "40-49":
-                is_me = True
-            elif 50 <= age <= 59 and s.Alder == "50-59":
-                is_me = True
-            elif age >= 60 and s.Alder == "60+":
-                is_me = True
-            return ['background-color: #fde68a; font-weight: bold; color: black'] * len(s) if is_me else [''] * len(s)
+        # Penere visuell percentile-meter
+        st.markdown(
+            f"""
+            <div style="
+                background: var(--color-background-primary);
+                border: 0.5px solid var(--color-border-tertiary);
+                border-radius: 12px;
+                padding: 14px 14px 12px 14px;
+                margin-top: 8px;
+            ">
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:10px;">
+                    <div>
+                        <div style="font-size:14px; font-weight:500; color: var(--color-text-primary);">Population percentile</div>
+                        <div style="font-size:12px; color: var(--color-text-secondary);">Kor du ligg samanlikna med andre i same aldersgruppe</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:28px; font-weight:500; line-height:1; color:{pct_color};">{v_pct:.0f}%</div>
+                        <div style="font-size:12px; color: var(--color-text-secondary);">{pct_label}</div>
+                    </div>
+                </div>
 
-        st.write("Slik ligger du an mot gjennomsnittet:")
-        st.table(df_vo2.style.apply(highlight_row, axis=1))
+                <div style="
+                    height: 18px;
+                    background: var(--color-background-secondary);
+                    border: 0.5px solid var(--color-border-tertiary);
+                    border-radius: 999px;
+                    overflow: hidden;
+                    position: relative;
+                ">
+                    <div style="
+                        width: {max(2, min(100, v_pct))}%;
+                        height: 100%;
+                        background: {pct_color};
+                        border-radius: 999px;
+                    "></div>
+                </div>
 
-    # --- POPULATION PERCENTILE (simpel visning) ---
-    st.markdown("---")
-    st.subheader("Population Percentile")
-
-    st.markdown(f"""
-        <div style="background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0;">
-            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #cbd5e1; color:#1e293b;">
-                <span>Global Rank:</span> <strong>Topp {100-results.get('vo2',{}).get('percentile',50):.1f}%</strong>
+                <div style="
+                    display:flex;
+                    justify-content:space-between;
+                    font-size:12px;
+                    color: var(--color-text-secondary);
+                    margin-top:6px;
+                ">
+                    <span>0</span>
+                    <span>50</span>
+                    <span>100</span>
+                </div>
             </div>
-            <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #cbd5e1; color:#1e293b;">
-                <span>Din aldersgruppe:</span> <strong>Bedre enn {results.get('vo2',{}).get('percentile',50):.1f}%</strong>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown("**VO2 snitt per aldersgruppe**")
+
+        # Enklare og meir lesbar “tabell” i kort-format
+        vo2_rows = [
+            ("20–29", 44, 40, 36),
+            ("30–39", 40, 36, 33),
+            ("40–49", 37, 33, 30),
+            ("50–59", 34, 30, 27),
+            ("60+", 30, 27, 24),
+        ]
+
+        # Marker brukarens aldersgruppe
+        def band_match(band: str) -> bool:
+            if band == "20–29":
+                return 20 <= age <= 29
+            if band == "30–39":
+                return 30 <= age <= 39
+            if band == "40–49":
+                return 40 <= age <= 49
+            if band == "50–59":
+                return 50 <= age <= 59
+            return age >= 60
+
+        for band, men_avg, women_avg, alt_avg in vo2_rows:
+            is_active = band_match(band)
+
+            # vel relevant snitt
+            avg = men_avg if str(sex).upper().startswith("M") else women_avg
+
+            bar_value = min(100, max(0, int((avg / 50.0) * 100)))
+            bar_color = "#1D9E75" if is_active else "#378ADD"
+
+            st.markdown(
+                f"""
+                <div style="
+                    display:grid;
+                    grid-template-columns: 72px 1fr 70px;
+                    gap: 10px;
+                    align-items:center;
+                    margin: 8px 0;
+                    padding: 8px 10px;
+                    border-radius: 10px;
+                    background: {'#f8fafc' if is_active else 'transparent'};
+                    border: {'1px solid #e2e8f0' if is_active else '0.5px solid transparent'};
+                ">
+                    <div style="font-size:12px; color: var(--color-text-secondary); font-weight: {'500' if is_active else '400'};">{band}</div>
+                    <div style="
+                        height: 18px;
+                        background: var(--color-background-secondary);
+                        border: 0.5px solid var(--color-border-tertiary);
+                        border-radius: 999px;
+                        overflow:hidden;
+                        position:relative;
+                    ">
+                        <div style="
+                            width: {bar_value}%;
+                            height:100%;
+                            background:{bar_color};
+                            border-radius:999px;
+                        "></div>
+                        <div style="
+                            position:absolute;
+                            right:8px;
+                            top:50%;
+                            transform:translateY(-50%);
+                            font-size:11px;
+                            font-weight:500;
+                            color:#111827;
+                            background: rgba(255,255,255,0.82);
+                            padding: 1px 6px;
+                            border-radius: 999px;
+                        ">{avg} avg</div>
+                    </div>
+                    <div style="
+                        text-align:right;
+                        font-size:12px;
+                        font-weight:500;
+                        color: {'#1D9E75' if is_active else 'var(--color-text-secondary)'};
+                    ">{'Din gruppe' if is_active else 'Snitt'}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+        st.markdown(
+            """
+            <div style="
+                margin-top: 10px;
+                display:flex;
+                flex-wrap:wrap;
+                gap:8px;
+            ">
+                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#e8f7f1; color:#116b4f;">Very strong</span>
+                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#e8f0fe; color:#2457a6;">Good</span>
+                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#f3efff; color:#5b4bb7;">Average</span>
+                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#fff1e8; color:#9b4b1f;">Below avg</span>
+                <span style="font-size:12px; padding:6px 10px; border-radius:999px; background:#ffe9e4; color:#a9432b;">Needs work</span>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # --- Biologisk alder ---
 # Biological age
     if "bio_age" in results:
         st.subheader("Biological age")
