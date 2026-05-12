@@ -1138,7 +1138,7 @@ if results:
         <div class="gauge-head">
           <div>
             <div class="gauge-k">Population percentile</div>
-            <div class="gauge-sub">Viser kor du ligg samanlikna med resten av populasjonen.</div>
+            <div class="gauge-sub">How you compare with others in your age group.</div>
           </div>
           <div>
             <div class="pct-num">{v_pct:.0f}%</div>
