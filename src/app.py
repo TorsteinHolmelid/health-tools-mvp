@@ -876,7 +876,7 @@ if results:
             # Fallback: vis generell triage-melding hvis ingen liste
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
-    # Plan
+# Plan
     if "plan" in results:
         st.subheader("Weight goal / plan")
         plan = results["plan"]
@@ -887,24 +887,27 @@ if results:
             st.warning(plan["warning"])
         st.markdown("**Condensed milestones**")
         st.table(plan.get("milestones", []))
-        # PDF
-        report = {
-            "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
-            "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
-            "bmi": results.get("bmi"),
-            "bodyfat": results.get("bodyfat"),
-            "whr": results.get("whr"),
-            "vo2": results.get("vo2"),
-            "bio_age": results.get("bio_age"),
-            "bio_factors": results.get("bio_factors"),
-            "triage": results.get("triage"),
-            "triage_recommendations": results.get("triage_recommendations"),
-            "plan": results.get("plan"),
-        }
-        try:
-            pdf_bytes = create_pdf_bytes(report)
-            st.download_button("Download PDF report", data=pdf_bytes, file_name="health_tools_report.pdf", mime="application/pdf", key="pdf_btn")
-        except Exception as e:
-            st.warning(f"PDF generation is currently unavailable: {e}")
-    else:
-        st.warning("No results to show.")
+
+    # PDF - Denne skal stå på samme nivå som if "plan" (viktig!)
+    report = {
+        "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
+        "bmi": results.get("bmi"),
+        "bodyfat": results.get("bodyfat"),
+        "whr": results.get("whr"),
+        "vo2": results.get("vo2"),
+        "bio_age": results.get("bio_age"),
+        "bio_factors": results.get("bio_factors"),
+        "triage": results.get("triage"),
+        "triage_recommendations": results.get("triage_recommendations"),
+        "plan": results.get("plan"),
+    }
+    try:
+        pdf_bytes = create_pdf_bytes(report)
+        st.download_button("Download PDF report", data=pdf_bytes, file_name="health_tools_report.pdf", mime="application/pdf", key="pdf_btn")
+    except Exception as e:
+        st.warning(f"PDF generation is currently unavailable: {e}")
+
+else:
+    # Denne "else" hører til "if results:" helt øverst (linje 754 i forrige bilde)
+    st.warning("Trykk på knappen for å beregne resultater.")
