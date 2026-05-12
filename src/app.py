@@ -774,7 +774,7 @@ if results:
         except Exception:
             pass
 
-# Energi & Forbrenning
+# --- Energi & Forbrenning (BMR) ---
     st.markdown("---")
     st.subheader("Energi og Forbrenning")
 
@@ -806,15 +806,6 @@ if results:
         c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal")
         c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal")
         c3.metric("Total m/trening", f"{int(tdee_total)} kcal")
-        except Exception as e:
-            # Vis nyttig debug i UI slik du raskt kan se hva som gikk galt
-            st.error("Kunne ikke beregne BMR — sjekk inputverdier.")
-            st.write("DEBUG error context:", {
-                "age": calc_age, "sex": sex, "weight_kg": calc_weight, "height_cm": calc_height
-            })
-            st.write("Exception repr:", repr(e))
-            # Skriv også til stdout for Streamlit Cloud logs
-            print("BMR calculation error:", repr(e), "context:", calc_age, sex, calc_weight, calc_height)
     # --- VO2 & REFERANSETABELL ---
     if "vo2" in results:
         st.markdown("---")
