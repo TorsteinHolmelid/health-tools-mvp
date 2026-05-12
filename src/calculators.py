@@ -603,13 +603,17 @@ def recommendations_for_diagnoses(selected: List[str], goal_focus: Optional[str]
 # ----------------------------
 # Weight planning and safety checks
 # ----------------------------
-def bmr_mifflin_sea(sex: str, weight_kg: float, height_cm: float, age: int) -> float:
+def bmr_mifflin_sea(sex: str, weight_kg, height_cm, age) -> float:
+    # Tving alle til riktig type rett før regnestykket
+    w = float(weight_kg)
+    h = float(height_cm)
+    a = int(float(age))
+    
     if str(sex).upper() == "M":
-        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + 5
+        bmr = 10 * w + 6.25 * h - 5 * a + 5
     else:
-        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age - 161
+        bmr = 10 * w + 6.25 * h - 5 * a - 161
     return round(bmr, 0)
-
 
 def activity_factor_map(level: str) -> float:
     return {
