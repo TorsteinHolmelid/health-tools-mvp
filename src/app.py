@@ -795,8 +795,8 @@ if results:
         calc_weight = float(calc_weight)
         calc_height = float(calc_height)
 
-        # VIKTIG: rekkefølge = (age, sex, weight, height)
-bmr_val = bmr_mifflin_sea(age=calc_age, sex=sex, weight_kg=calc_weight, height_cm=calc_height)
+        # Bruk keyword-args for å unngå rekkefølgebugs
+        bmr_val = bmr_mifflin(age=calc_age, sex=sex, weight_kg=calc_weight, height_cm=calc_height)
 
         daily_living = bmr_val * 1.2
         w_kcal = _to_float(locals().get("weekly_kcal", 0)) or 0.0
