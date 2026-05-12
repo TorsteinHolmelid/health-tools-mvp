@@ -838,54 +838,54 @@ if results:
             pct_label = "Needs work"
 
         # Penere visuell percentile-meter
-        st.markdown(
+st.markdown(
             f"""
-            <div style="
-                background: var(--color-background-primary);
-                border: 0.5px solid var(--color-border-tertiary);
-                border-radius: 12px;
-                padding: 14px 14px 12px 14px;
-                margin-top: 8px;
-            ">
-                <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:10px;">
-                    <div>
-                        <div style="font-size:14px; font-weight:500; color: var(--color-text-primary);">Population percentile</div>
-                        <div style="font-size:12px; color: var(--color-text-secondary);">Kor du ligg samanlikna med andre i same aldersgruppe</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:28px; font-weight:500; line-height:1; color:{pct_color};">{v_pct:.0f}%</div>
-                        <div style="font-size:12px; color: var(--color-text-secondary);">{pct_label}</div>
-                    </div>
-                </div>
+<div style="
+    background: var(--color-background-primary);
+    border: 0.5px solid var(--color-border-tertiary);
+    border-radius: 12px;
+    padding: 14px 14px 12px 14px;
+    margin-top: 8px;
+">
+    <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:12px; margin-bottom:10px;">
+        <div>
+            <div style="font-size:14px; font-weight:500; color: var(--color-text-primary);">Population percentile</div>
+            <div style="font-size:12px; color: var(--color-text-secondary);">Kor du ligg samanlikna med andre i same aldersgruppe</div>
+        </div>
+        <div style="text-align:right;">
+            <div style="font-size:28px; font-weight:500; line-height:1; color:{pct_color};">{v_pct:.0f}%</div>
+            <div style="font-size:12px; color: var(--color-text-secondary);">{pct_label}</div>
+        </div>
+    </div>
 
-                <div style="
-                    height: 18px;
-                    background: var(--color-background-secondary);
-                    border: 0.5px solid var(--color-border-tertiary);
-                    border-radius: 999px;
-                    overflow: hidden;
-                    position: relative;
-                ">
-                    <div style="
-                        width: {max(2, min(100, v_pct))}%;
-                        height: 100%;
-                        background: {pct_color};
-                        border-radius: 999px;
-                    "></div>
-                </div>
+    <div style="
+        height: 18px;
+        background: var(--color-background-secondary);
+        border: 0.5px solid var(--color-border-tertiary);
+        border-radius: 999px;
+        overflow: hidden;
+        position: relative;
+    ">
+        <div style="
+            width: {max(2, min(100, v_pct))}%;
+            height: 100%;
+            background: {pct_color};
+            border-radius: 999px;
+        "></div>
+    </div>
 
-                <div style="
-                    display:flex;
-                    justify-content:space-between;
-                    font-size:12px;
-                    color: var(--color-text-secondary);
-                    margin-top:6px;
-                ">
-                    <span>0</span>
-                    <span>50</span>
-                    <span>100</span>
-                </div>
-            </div>
+    <div style="
+        display:flex;
+        justify-content:space-between;
+        font-size:12px;
+        color: var(--color-text-secondary);
+        margin-top:6px;
+    ">
+        <span>0</span>
+        <span>50</span>
+        <span>100</span>
+    </div>
+</div>
             """,
             unsafe_allow_html=True,
         )
