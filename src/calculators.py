@@ -701,7 +701,7 @@ def generate_weight_plan(
         kg_per_week = 0.5
     daily_delta_kcal = kg_per_week * 7700 / 7.0
 
-    # === CORRECTED CALL: use keyword args to avoid posisjonelle-feil ===
+    # === SIKKER KALL: keyword-args for daily needs ===
     current_needs = daily_calorie_needs(
         age=age,
         sex=sex,
@@ -713,6 +713,7 @@ def generate_weight_plan(
     recommended_daily = int(round(current_needs + daily_delta_kcal))
     if recommended_daily < 1200:
         warning = (warning + " " if warning else "") + "Estimated calorie target is very low; consider professional guidance."
+
     def milestone_focus(week: int, total_weeks: int) -> str:
         if week <= 2:
             return "Build routine"
@@ -721,6 +722,7 @@ def generate_weight_plan(
         if week < total_weeks:
             return "Review progress"
         return "Re-check and set next goal"
+
     if weeks <= 6:
         points = list(range(1, weeks + 1))
     else:
