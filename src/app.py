@@ -7,6 +7,7 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import streamlit as st
 import calculators
+import pandas as pd
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
