@@ -627,13 +627,13 @@ def activity_factor_map(level: str) -> float:
 
 
 def daily_calorie_needs(
+    age: int,
     sex: str,
     weight_kg: float,
     height_cm: float,
-    age: int,
     activity_level: str,
 ) -> int:
-    bmr = bmr_mifflin_sea(sex, weight_kg, height_cm, age)
+    bmr = bmr_mifflin_sea(age, sex, weight_kg, height_cm)
     af = activity_factor_map(activity_level)
     return int(round(bmr * af))
 
