@@ -777,16 +777,28 @@ if results:
     st.markdown("---")
     st.subheader("Energi og Forbrenning")
 
-# Beregninger
-    bmr_val = bmr_mifflin(age, sex, weight_kg, height_cm)
-    daily_living = bmr_val * 1.2  # Basis hverdagsaktivitet (uten trening)
-    w_kcal = locals().get('weekly_kcal', 0)
-    tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
+# --- 2. ENERGI & FORBRENNING (BMR/Koma seksjon) ---
+    try:
+        # Sikre at variablene er tall før vi regner
+        calc_age = int(float(age))
+        calc_weight = float(weight_kg)
+        calc_height = float(height_cm)
+        
+        bmr_val = bmr_mifflin(calc_age, sex, calc_weight, calc_height)
+        daily_living = bmr_val * 1.2  # Basis hverdagsaktivitet
+        
+        # Henter trening hvis den finnes
+        w_kcal = float(locals().get('weekly_kcal', 0) or 0)
+        tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal", help="Forbrenning i 'koma' (fullstendig hvile).")
-    c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal", help="Forbrenning ved normal daglig aktivitet uten trening.")
-    c3.metric("Total m/trening", f"{int(tdee_total)} kcal", help="Gjennomsnittlig dagsforbruk inkludert din ukentlige trening.")
+        st.markdown("---")
+        st.subheader("Energi og Forbrenning")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal", help="Forbrenning i 'koma'.")
+        c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal", help="Aktivitet uten trening.")
+        c3.metric("Total m/trening", f"{int(tdee_total)} kcal", help="Inkludert din trening.")
+    except Exception as e:
+        st.error(f"Kunne ikke beregne kalorier: Sjekk at alder/vekt/høyde er fylt ut riktig.")
 
     # --- VO2 & REFERANSETABELL ---
     if "vo2" in results:
