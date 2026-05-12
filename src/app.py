@@ -749,6 +749,7 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
 # ------------------------------
 # Display results
 # ------------------------------
+results = globals().get("results", {})
 if results:
     st.success("Results ready")
 
