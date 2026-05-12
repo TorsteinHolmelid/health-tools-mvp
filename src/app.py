@@ -1158,7 +1158,7 @@ if results:
         </svg>
 
         <div class="callout">
-          <b>Interpretasjon:</b> du ligg svært høgt i forhold til snittet for alderen din.
+          <b>Interpretasjon:</b> You are performing very well compared to the average for your age.
         </div>
 
         <div class="legend-col">
