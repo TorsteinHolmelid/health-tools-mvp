@@ -756,6 +756,7 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
                     height_cm=height_cm,
                     age=age,
                     activity_level=activity_level,
+                    exercise_kcal_per_week=exercise_kcal_per_week,
                 )
                 # If plan returns error, show and don't add plan
                 if plan.get("error"):
