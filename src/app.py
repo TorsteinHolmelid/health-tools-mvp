@@ -1212,6 +1212,8 @@ if results:
 # Plan
 if "plan" in results:
     plan = results["plan"]
+    # Ensure exercise_kcal_per_week is always defined (default 0)
+exercise_kcal_per_week = 0.0
 
     st.markdown("**Condensed milestones**")
     st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
