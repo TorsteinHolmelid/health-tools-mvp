@@ -683,6 +683,7 @@ def generate_weight_plan(
     height_cm: float,
     age: int,
     activity_level: str,
+    exercise_kcal_per_week: float = 0.0,
 ) -> Dict[str, object]:
     if weeks <= 0:
         raise ValueError("weeks must be > 0")
