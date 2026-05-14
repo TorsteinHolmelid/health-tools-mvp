@@ -824,7 +824,7 @@ if results:
         tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
 
         c1, c2, c3 = st.columns(3)
-        c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal")
+        c1.metric("BMR", f"{int(bmr_val)} kcal")
         c2.metric("Daily Calorie Burn", f"{int(daily_living)} kcal")
         c3.metric("Total Daily Calorie Burn w/exercise", f"{int(tdee_total)} kcal")
 # --- VO2 & REFERANSETABELL ---
