@@ -465,6 +465,10 @@ perceived_stress = 5
 grip_strength = None
 bp_systolic = None
 cholesterol = None
+# Sikrar at trenings-kaloriar alltid startar på 0 og ikkje er tom
+if "exercise_kcal_per_week" not in st.session_state:
+    st.session_state["exercise_kcal_per_week"] = 0.0
+exercise_kcal_per_week = float(st.session_state["exercise_kcal_per_week"])
 # default for exercise calories (persisted in session_state)
 exercise_kcal_per_week = 0.0
 family_history = False
@@ -851,14 +855,15 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
             results["triage"] = {"level": "Info", "message": cond_message}
             results["triage_recommendations"] = recs
 
-        # Plan
+# Plan - Trygg beregning utan krasj
         if run_plan and run_bmi and create_plan:
-            if target_bmi_f is not None:
-                target_w = target_bmi_f * (height_f / 100.0) ** 2
-            else:
-                target_w = target_weight_f
-            if target_w is not None:
+            # Finn målvekt om brukaren har oppgitt BMI-mål
+            target_w = target_bmi_f * (height_f / 100.0) ** 2 if target_bmi_f else target_weight_f
+            
+            if target_w:
+                # Vi hentar verdien me nettopp sikra i toppen
                 ekpw = float(st.session_state.get("exercise_kcal_per_week", 0.0))
+                
                 plan = calculators.generate_weight_plan(
                     current_weight_kg=weight_f,
                     target_weight_kg=target_w,
@@ -867,8 +872,9 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
                     height_cm=height_f,
                     age=age_i,
                     activity_level=activity_level,
-                    exercise_kcal_per_week=ekpw,
+                    exercise_kcal_per_week=ekpw
                 )
+                
                 if plan.get("error"):
                     st.error(plan.get("message"))
                 else:
