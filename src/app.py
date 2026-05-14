@@ -638,36 +638,6 @@ if run_plan and run_bmi:
 if st.button("Calculate / Generate report", key="btn_calculate"):
     import traceback, logging
 
-    logging.warning("Calculate button pressed")
-    st.write("DEBUG: Calculate pressed — viser input-verdier og typer før beregning:")
-    raw_inputs = {
-        "age": age,
-        "sex": sex,
-        "height_cm": height_cm,
-        "weight_kg": weight_kg,
-        "waist_cm": waist_cm,
-        "hip_cm": hip_cm,
-        "neck_cm": neck_cm,
-        "bodyfat_requested": bodyfat_requested,
-        "measured_vo2_input": measured_vo2_input,
-        "vo2_method": vo2_method,
-        "vo2_distance_m": vo2_distance_m,
-        "rockport_time_min": rockport_time_min,
-        "rockport_hr": rockport_hr,
-        "weekly_minutes": weekly_minutes,
-        "session_intensity": session_intensity,
-        "resting_hr": resting_hr,
-        "max_hr": max_hr,
-        "create_plan": create_plan,
-        "plan_weeks": plan_weeks,
-        "target_weight": target_weight,
-        "target_bmi": target_bmi,
-        "exercise_kcal_per_week(session)": st.session_state.get("exercise_kcal_per_week", None),
-    }
-    # show repr + type for each
-    for k, v in raw_inputs.items():
-        st.write(f"- {k}: repr={repr(v)}  type={type(v)}")
-
     # helpers
     def _to_optional_float(val, name):
         try:
