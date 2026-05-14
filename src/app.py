@@ -457,6 +457,8 @@ perceived_stress = 5
 grip_strength = None
 bp_systolic = None
 cholesterol = None
+# default for exercise calories (persisted in session_state)
+exercise_kcal_per_week = 0.0
 family_history = False
 menopause = False
 
@@ -743,11 +745,13 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
             cond_message = "Recommendations generated for selected conditions."
             results["triage"] = {"level": "Info", "message": cond_message}
             results["triage_recommendations"] = recs
-        # Plan
+# Plan
         if run_plan and run_bmi and create_plan:
             if target_bmi is not None:
                 target_weight = target_bmi * (height_cm / 100.0) ** 2
             if target_weight is not None:
+                # Hent exercise_kcal_per_week fra session_state — sikrer at variabelen alltid finnes
+                ekpw = float(st.session_state.get("exercise_kcal_per_week", 0.0))
                 plan = calculators.generate_weight_plan(
                     current_weight_kg=weight_kg,
                     target_weight_kg=target_weight,
@@ -756,9 +760,9 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
                     height_cm=height_cm,
                     age=age,
                     activity_level=activity_level,
-                    exercise_kcal_per_week=exercise_kcal_per_week,
+                    exercise_kcal_per_week=ekpw,
                 )
-                # If plan returns error, show and don't add plan
+                # Hvis plan returnerer feil, vis melding og legg den ikkje i results
                 if plan.get("error"):
                     st.error(plan.get("message"))
                 else:
