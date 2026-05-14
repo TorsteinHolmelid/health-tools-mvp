@@ -539,7 +539,70 @@ if run_vo2:
             rockport_time_min = st.number_input("1-mile time (minutes)", min_value=0.1, value=15.0, format="%.2f", key="vo2_rockport_time")
             rockport_hr = st.number_input("Heart rate at the end (bpm)", min_value=30, max_value=220, value=140, key="vo2_rockport_hr")
 
+# --- Exercise calories input (legg før Calculate-knappen) ---
+# Sørg for at nøkkelen finnes
+if "exercise_kcal_per_week" not in st.session_state:
+    st.session_state["exercise_kcal_per_week"] = 0.0
 
+with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=False):
+    st.markdown("Angi treningsvaner for å få mer presis plan og TDEE-estimat.")
+    sessions_per_week = st.number_input(
+        "Sessions per week",
+        min_value=0,
+        max_value=14,
+        value=3,
+        step=1,
+        key="ui_sessions_per_week",
+    )
+
+    exercise_mode = st.radio(
+        "How do you want to estimate training burn?",
+        ["Choose workout type", "Enter calories manually"],
+        horizontal=True,
+        key="ui_ex_mode",
+    )
+
+    if exercise_mode == "Choose workout type":
+        workout_type = st.selectbox(
+            "Workout type",
+            ["Walking", "Running", "Cycling", "Strength training", "HIIT", "Swimming"],
+            key="ui_workout_type",
+        )
+        intensity = st.selectbox("Intensity", ["Light", "Moderate", "Hard"], key="ui_intensity")
+        minutes_per_session = st.number_input(
+            "Minutes per session",
+            min_value=5,
+            max_value=180,
+            value=45,
+            step=5,
+            key="ui_minutes",
+        )
+
+        met_map = {
+            "Walking": {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
+            "Running": {"Light": 7.0, "Moderate": 9.8, "Hard": 11.5},
+            "Cycling": {"Light": 4.0, "Moderate": 6.8, "Hard": 8.5},
+            "Strength training": {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
+            "HIIT": {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
+            "Swimming": {"Light": 5.0, "Moderate": 7.0, "Hard": 9.5},
+        }
+
+        met = met_map[workout_type][intensity]
+        # Kalkuler kcal per session (MET-formel)
+        kcal_per_session = (met * 3.5 * float(weight_kg) / 200.0) * minutes_per_session
+    else:
+        kcal_per_session = st.number_input(
+            "Estimated kcal burned per session",
+            min_value=0.0,
+            max_value=3000.0,
+            value=300.0,
+            step=25.0,
+            key="ui_kcal_per_session",
+        )
+
+    # Lagre i session_state slik at Calculate-knappen bruker verdien senere
+    st.session_state["exercise_kcal_per_week"] = sessions_per_week * float(kcal_per_session)
+    st.write(f"Estimated exercise burn: **{st.session_state['exercise_kcal_per_week']:.0f} kcal/week**")
 # ----------------------------
 # Biological age inputs
 # ----------------------------
@@ -1300,66 +1363,6 @@ if "plan" in results:
 
     if plan.get("warning"):
         st.warning(plan["warning"])
-
-    # Exercise input expander (keeps everything tidy; sets session_state value)
-    with st.expander("Exercise calories (does not recompute plan automatically)", expanded=False):
-        sessions_per_week = st.number_input(
-            "Sessions per week",
-            min_value=0,
-            max_value=14,
-            value=3,
-            step=1,
-            key="ui_sessions_per_week",
-        )
-
-        exercise_mode = st.radio(
-            "How do you want to estimate training burn?",
-            ["Choose workout type", "Enter calories manually"],
-            horizontal=True,
-            key="ui_ex_mode",
-        )
-
-        if exercise_mode == "Choose workout type":
-            workout_type = st.selectbox(
-                "Workout type",
-                ["Walking", "Running", "Cycling", "Strength training", "HIIT", "Swimming"],
-                key="ui_workout_type",
-            )
-            intensity = st.selectbox("Intensity", ["Light", "Moderate", "Hard"], key="ui_intensity")
-            minutes_per_session = st.number_input(
-                "Minutes per session",
-                min_value=5,
-                max_value=180,
-                value=45,
-                step=5,
-                key="ui_minutes",
-            )
-
-            met_map = {
-                "Walking": {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
-                "Running": {"Light": 7.0, "Moderate": 9.8, "Hard": 11.5},
-                "Cycling": {"Light": 4.0, "Moderate": 6.8, "Hard": 8.5},
-                "Strength training": {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
-                "HIIT": {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
-                "Swimming": {"Light": 5.0, "Moderate": 7.0, "Hard": 9.5},
-            }
-
-            met = met_map[workout_type][intensity]
-            kcal_per_session = (met * 3.5 * weight_kg / 200.0) * minutes_per_session
-        else:
-            kcal_per_session = st.number_input(
-                "Estimated kcal burned per session",
-                min_value=0.0,
-                max_value=3000.0,
-                value=300.0,
-                step=25.0,
-                key="ui_kcal_per_session",
-            )
-
-        # Save into session_state so it's available next time the user recalculates the plan
-        st.session_state["exercise_kcal_per_week"] = sessions_per_week * kcal_per_session
-
-        st.write(f"Estimated exercise burn: **{st.session_state['exercise_kcal_per_week']:.0f} kcal/week**")
 
     # Show milestones table (plan was computed when user trykket Calculate)
     st.table(plan.get("milestones", []))
