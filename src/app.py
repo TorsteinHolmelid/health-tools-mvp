@@ -455,12 +455,11 @@ perceived_stress = 5
 grip_strength = None
 bp_systolic = None
 cholesterol = None
-# Sikrar at trenings-kaloriar alltid startar på 0 og ikkje er tom
+# Ensure exercise_kcal_per_week exists in session_state and read persisted value
 if "exercise_kcal_per_week" not in st.session_state:
     st.session_state["exercise_kcal_per_week"] = 0.0
-exercise_kcal_per_week = float(st.session_state["exercise_kcal_per_week"])
-# default for exercise calories (persisted in session_state)
-exercise_kcal_per_week = 0.0
+# Read persisted value (do NOT overwrite it with 0)
+exercise_kcal_per_week = float(st.session_state.get("exercise_kcal_per_week", 0.0))
 family_history = False
 menopause = False
 
@@ -1012,7 +1011,8 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         bmr_val = bmr_mifflin(age=calc_age, sex=sex, weight_kg=calc_weight, height_cm=calc_height)
 
         daily_living = bmr_val * 1.2
-        w_kcal = _to_float(locals().get("weekly_kcal", 0)) or 0.0
+# Use persisted exercise kcal/week from session state (if any)
+        w_kcal = float(st.session_state.get("exercise_kcal_per_week", 0.0))
         tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
 
         c1, c2, c3 = st.columns(3)
@@ -1024,7 +1024,18 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
     if "vo2" in results:
         st.markdown("---")
         st.subheader("VO2 max & fitness")
-
+# Human-readable interpretation text based on percentile
+if v_pct >= 90:
+    interpretation_text = "You are performing excellent compared to the average for your age."
+elif v_pct >= 80:
+    interpretation_text = "You are performing very well compared to the average for your age."
+elif v_pct >= 60:
+    interpretation_text = "You are around the average to good range for your age."
+elif v_pct >= 40:
+    interpretation_text = "You are slightly below average for your age."
+else:
+    interpretation_text = "You are below the average for your age, but this is still very trainable."
+    
         v_val = float(results["vo2"]["value"])
         v_pct = max(0.0, min(100.0, float(results["vo2"]["percentile"])))
         top_text = f"Top {100 - v_pct:.1f}%"
@@ -1358,10 +1369,11 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         </svg>
 
         <div class="callout">
-          <b>Interpretation:</b> You are performing very well compared to the average for your age.
+          <b>Interpretation:</b> {interpretation_text}
         </div>
 
         <div class="legend-col">
+          <div class="legend-item"><span class="dot" style="background:{pct_color}"></span>Your result: {pct_label}</div>
           <div class="legend-item"><span class="dot" style="background:#3B82F6"></span>Population average</div>
           <div class="legend-item"><span class="dot" style="background:#26A690"></span>Better than average</div>
         </div>
