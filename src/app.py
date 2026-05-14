@@ -1212,16 +1212,8 @@ if results:
 # Plan
 if "plan" in results:
     plan = results["plan"]
-    # Ensure exercise_kcal_per_week is always defined (default 0)
-exercise_kcal_per_week = 0.0
-
-    st.markdown("**Condensed milestones**")
-    st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
-    st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
-    st.write(f"Expected weekly change: **{plan.get('kg_per_week', 0):+.2f} kg/week**")
-
-    if plan.get("warning"):
-        st.warning(plan["warning"])
+# Ensure exercise_kcal_per_week is defined (default 0)
+    exercise_kcal_per_week = 0.0
 
     # Exercise input expander (keep indented under the plan block)
     with st.expander("Exercise calories", expanded=False):
@@ -1263,7 +1255,7 @@ exercise_kcal_per_week = 0.0
             }
 
             met = met_map[workout_type][intensity]
-            # Make sure weight_kg exists in scope (user input earlier)
+            # Make sure you have a weight variable available (weight_kg)
             kcal_per_session = (met * 3.5 * weight_kg / 200.0) * minutes_per_session
         else:
             kcal_per_session = st.number_input(
