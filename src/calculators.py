@@ -701,6 +701,7 @@ def generate_weight_plan(
         warning = "Requested pace exceeds 0.5 kg/week weight gain. Recommendation capped to 0.5 kg/week for safety."
         kg_per_week = 0.5
     daily_delta_kcal = kg_per_week * 7700 / 7.0
+    daily_exercise_kcal = max(0.0, float(exercise_kcal_per_week)) / 7.0
 
     # === SIKKER KALL: keyword-args for daily needs ===
     current_needs = daily_calorie_needs(
@@ -711,7 +712,7 @@ def generate_weight_plan(
         activity_level=activity_level,
     )
 
-    recommended_daily = int(round(current_needs + daily_delta_kcal))
+    recommended_daily = int(round(current_needs + daily_delta_kcal + daily_exercise_kcal))
     if recommended_daily < 1200:
         warning = (warning + " " if warning else "") + "Estimated calorie target is very low; consider professional guidance."
 
@@ -747,6 +748,8 @@ def generate_weight_plan(
         "weeks": weeks,
         "milestones": milestones,
         "warning": warning,
+        "exercise_kcal_per_week": round(exercise_kcal_per_week, 0),
+        "exercise_kcal_per_day": round(daily_exercise_kcal, 0),
     }
 # --- Backwards compatibility aliases (safe to add at file-end) ---
 # Hvis eldre kode forventer disse navnene, men implementasjonen bruker
