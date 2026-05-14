@@ -1021,45 +1021,23 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         c3.metric("Total Daily Calorie Burn w/exercise", f"{int(tdee_total)} kcal")
 # --- VO2 & REFERANSETABELL ---
 # --- VO2 & REFERANSETABELL ---
-    if "vo2" in results:
-        st.markdown("---")
-        st.subheader("VO2 max & fitness")
-# Human-readable interpretation text based on percentile
-if v_pct >= 90:
-    interpretation_text = "You are performing excellent compared to the average for your age."
-elif v_pct >= 80:
-    interpretation_text = "You are performing very well compared to the average for your age."
-elif v_pct >= 60:
-    interpretation_text = "You are around the average to good range for your age."
 elif v_pct >= 40:
-    interpretation_text = "You are slightly below average for your age."
-else:
-    interpretation_text = "You are below the average for your age, but this is still very trainable."
-    
-        v_val = float(results["vo2"]["value"])
-        v_pct = max(0.0, min(100.0, float(results["vo2"]["percentile"])))
-        top_text = f"Top {100 - v_pct:.1f}%"
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("Your VO2 max", f"{v_val:.1f} ml/kg/min")
-        c2.metric("Percentile", f"{v_pct:.0f}%")
-        c3.metric("Ranking", top_text)
-
-        if v_pct >= 90:
-            pct_color = "#22C55E"
-            pct_label = "Excellent"
-        elif v_pct >= 80:
-            pct_color = "#3B82F6"
-            pct_label = "Very good"
-        elif v_pct >= 60:
-            pct_color = "#7C7CF5"
-            pct_label = "Good"
-        elif v_pct >= 40:
             pct_color = "#F59E0B"
             pct_label = "Below average"
         else:
             pct_color = "#EF6A3B"
             pct_label = "Low"
+
+        if v_pct >= 90:
+            interpretation_text = "You are performing excellent compared to the average for your age."
+        elif v_pct >= 80:
+            interpretation_text = "You are performing very well compared to the average for your age."
+        elif v_pct >= 60:
+            interpretation_text = "You are around the average to good range for your age."
+        elif v_pct >= 40:
+            interpretation_text = "You are slightly below average for your age."
+        else:
+            interpretation_text = "You are below the average for your age, but this is still very trainable."
 
         vo2_rows = [
             ("20–29", 44, 40, "#26A690"),
@@ -1324,13 +1302,13 @@ else:
 
       {"".join([
         f'''
-      <div class="band{' band-active' if band == active_band else ''}">
+      <div class="band{" band-active" if band == active_band else ""}">
         <div class="band-lbl">{band}</div>
         <div class="band-bar">
           <div class="band-fill" style="width:{min(100, max(0, int(current_avg[band] / 50.0 * 100)))}%; background:{color};"></div>
           <div class="band-badge">{current_avg[band]} avg</div>
         </div>
-        <div class="band-val">{'Your group' if band == active_band else 'Average'}</div>
+        <div class="band-val">{"Your group" if band == active_band else "Average"}</div>
       </div>
         '''
         for band, _, _, color in vo2_rows
