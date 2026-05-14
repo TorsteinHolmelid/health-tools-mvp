@@ -1325,7 +1325,7 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
 # Plan
-if "plan" in results:
+    if "plan" in results:
 # Hent resultata fra session_state — trygt for alle reruns
 results = st.session_state.get("results", {})
     plan = results.get("plan", {})
