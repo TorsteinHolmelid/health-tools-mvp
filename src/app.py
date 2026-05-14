@@ -1210,69 +1210,74 @@ if results:
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
 # Plan
-    if "plan" in results:
-        st.subheader("Weight goal / plan")
-        plan = results["plan"]
-        st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
-        st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
-        st.write(f"Expected weekly change: **{plan.get('kg_per_week', 0):+.2f} kg/week**")
-        if plan.get("warning"):
-            st.warning(plan["warning"])
-        st.markdown("**Condensed milestones**")
-with st.expander("Exercise calories", expanded=False):
-exercise_mode = st.radio(
-                "How do you want to estimate training burn?",
-                ["Choose workout type", "Enter calories manually"],
-                horizontal=True,
+if "plan" in results:
+    plan = results["plan"]
+
+    st.markdown("**Condensed milestones**")
+    st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
+    st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
+    st.write(f"Expected weekly change: **{plan.get('kg_per_week', 0):+.2f} kg/week**")
+
+    if plan.get("warning"):
+        st.warning(plan["warning"])
+
+    # Exercise input expander (keep indented under the plan block)
+    with st.expander("Exercise calories", expanded=False):
+        exercise_mode = st.radio(
+            "How do you want to estimate training burn?",
+            ["Choose workout type", "Enter calories manually"],
+            horizontal=True,
+        )
+
+        sessions_per_week = st.number_input(
+            "Sessions per week",
+            min_value=0,
+            max_value=14,
+            value=3,
+            step=1,
+        )
+
+        if exercise_mode == "Choose workout type":
+            workout_type = st.selectbox(
+                "Workout type",
+                ["Walking", "Running", "Cycling", "Strength training", "HIIT", "Swimming"],
+            )
+            intensity = st.selectbox("Intensity", ["Light", "Moderate", "Hard"])
+            minutes_per_session = st.number_input(
+                "Minutes per session",
+                min_value=5,
+                max_value=180,
+                value=45,
+                step=5,
             )
 
-            sessions_per_week = st.number_input(
-                "Sessions per week",
-                min_value=0,
-                max_value=14,
-                value=3,
-                step=1,
+            met_map = {
+                "Walking": {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
+                "Running": {"Light": 7.0, "Moderate": 9.8, "Hard": 11.5},
+                "Cycling": {"Light": 4.0, "Moderate": 6.8, "Hard": 8.5},
+                "Strength training": {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
+                "HIIT": {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
+                "Swimming": {"Light": 5.0, "Moderate": 7.0, "Hard": 9.5},
+            }
+
+            met = met_map[workout_type][intensity]
+            # Make sure weight_kg exists in scope (user input earlier)
+            kcal_per_session = (met * 3.5 * weight_kg / 200.0) * minutes_per_session
+        else:
+            kcal_per_session = st.number_input(
+                "Estimated kcal burned per session",
+                min_value=0.0,
+                max_value=3000.0,
+                value=300.0,
+                step=25.0,
             )
 
-            if exercise_mode == "Choose workout type":
-                workout_type = st.selectbox(
-                    "Workout type",
-                    ["Walking", "Running", "Cycling", "Strength training", "HIIT", "Swimming"],
-                )
-                intensity = st.selectbox("Intensity", ["Light", "Moderate", "Hard"])
-                minutes_per_session = st.number_input(
-                    "Minutes per session",
-                    min_value=5,
-                    max_value=180,
-                    value=45,
-                    step=5,
-                )
+        exercise_kcal_per_week = sessions_per_week * kcal_per_session
 
-                met_map = {
-                    "Walking": {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
-                    "Running": {"Light": 7.0, "Moderate": 9.8, "Hard": 11.5},
-                    "Cycling": {"Light": 4.0, "Moderate": 6.8, "Hard": 8.5},
-                    "Strength training": {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
-                    "HIIT": {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
-                    "Swimming": {"Light": 5.0, "Moderate": 7.0, "Hard": 9.5},
-                }
+        st.write(f"Estimated exercise burn: **{exercise_kcal_per_week:.0f} kcal/week**")
 
-                met = met_map[workout_type][intensity]
-                kcal_per_session = (met * 3.5 * weight_kg / 200.0) * minutes_per_session
-            else:
-                kcal_per_session = st.number_input(
-                    "Estimated kcal burned per session",
-                    min_value=0.0,
-                    max_value=3000.0,
-                    value=300.0,
-                    step=25.0,
-                )
-
-            exercise_kcal_per_week = sessions_per_week * kcal_per_session
-
-            st.write(f"Estimated exercise burn: **{exercise_kcal_per_week:.0f} kcal/week**")
-
-        st.table(plan.get("milestones", []))
+    # Show milestones table (this line is OUTSIDE the expander, but still inside the plan block)
+    st.table(plan.get("milestones", []))
     # PDF - Denne skal stå på samme nivå som if "plan" (viktig!)
     report = {
         "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
