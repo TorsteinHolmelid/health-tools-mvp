@@ -797,7 +797,7 @@ if results:
 
 # --- Energi & Forbrenning (BMR) ---
     st.markdown("---")
-    st.subheader("Energi og Forbrenning")
+    st.subheader("Energy og Metabolism")
 
     def _to_float(val):
         try:
@@ -825,8 +825,8 @@ if results:
 
         c1, c2, c3 = st.columns(3)
         c1.metric("BMR (Hvile)", f"{int(bmr_val)} kcal")
-        c2.metric("Hverdagsforbruk", f"{int(daily_living)} kcal")
-        c3.metric("Total m/trening", f"{int(tdee_total)} kcal")
+        c2.metric("Daily Calorie Burn", f"{int(daily_living)} kcal")
+        c3.metric("Total Daily Calorie Burn w/exercise", f"{int(tdee_total)} kcal")
 # --- VO2 & REFERANSETABELL ---
 # --- VO2 & REFERANSETABELL ---
     if "vo2" in results:
