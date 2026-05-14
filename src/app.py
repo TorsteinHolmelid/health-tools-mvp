@@ -849,7 +849,7 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         st.session_state["results"] = {}
     else:
         st.session_state["results"] = results
-        st.success("Beregning ferdig — resultata er lagra.")
+        st.success("Calculation finished — results have been made")
 
     # --- BMI SEKSJON ---
     if "bmi" in results:
