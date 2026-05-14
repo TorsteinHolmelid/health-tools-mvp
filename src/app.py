@@ -544,7 +544,7 @@ if run_vo2:
 if "exercise_kcal_per_week" not in st.session_state:
     st.session_state["exercise_kcal_per_week"] = 0.0
 
-with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=False):
+with st.expander("Exercise calories (Enter before clicking Calculate)", expanded=False):
     st.markdown("Angi treningsvaner for å få mer presis plan og TDEE-estimat.")
     sessions_per_week = st.number_input(
         "Sessions per week",
