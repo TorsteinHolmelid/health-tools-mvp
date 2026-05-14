@@ -640,105 +640,202 @@ if run_plan and run_bmi:
 # ----------------------------
 # Calculate / Generate report
 # ----------------------------
+# --- Replace existing Calculate / Generate report block with this debug-safe version ---
 if st.button("Calculate / Generate report", key="btn_calculate"):
-    results = {}
+    import traceback, logging
+
+    logging.warning("Calculate button pressed")
+    st.write("DEBUG: Calculate pressed — viser input-verdier og typer før beregning:")
+    raw_inputs = {
+        "age": age,
+        "sex": sex,
+        "height_cm": height_cm,
+        "weight_kg": weight_kg,
+        "waist_cm": waist_cm,
+        "hip_cm": hip_cm,
+        "neck_cm": neck_cm,
+        "bodyfat_requested": bodyfat_requested,
+        "measured_vo2_input": measured_vo2_input,
+        "vo2_method": vo2_method,
+        "vo2_distance_m": vo2_distance_m,
+        "rockport_time_min": rockport_time_min,
+        "rockport_hr": rockport_hr,
+        "weekly_minutes": weekly_minutes,
+        "session_intensity": session_intensity,
+        "resting_hr": resting_hr,
+        "max_hr": max_hr,
+        "create_plan": create_plan,
+        "plan_weeks": plan_weeks,
+        "target_weight": target_weight,
+        "target_bmi": target_bmi,
+        "exercise_kcal_per_week(session)": st.session_state.get("exercise_kcal_per_week", None),
+    }
+    # show repr + type for each
+    for k, v in raw_inputs.items():
+        st.write(f"- {k}: repr={repr(v)}  type={type(v)}")
+
+    # helpers
+    def _to_optional_float(val, name):
+        try:
+            if val is None:
+                return None
+            # allow numeric types already
+            if isinstance(val, (int, float)):
+                return float(val)
+            s = str(val).strip()
+            if s == "":
+                return None
+            return float(s.replace(",", "."))
+        except Exception as e:
+            raise ValueError(f"Kunne ikke konvertere '{name}' til float: {val!r} ({e})")
+
+    def _to_int_or_none(val, name):
+        try:
+            if val is None:
+                return None
+            if isinstance(val, int):
+                return val
+            s = str(val).strip()
+            if s == "":
+                return None
+            return int(float(s))
+        except Exception as e:
+            raise ValueError(f"Kunne ikke konvertere '{name}' til int: {val!r} ({e})")
+
     try:
-        bmi_value = None
-        bmi_category = None
+        # Safely parse required numeric inputs
+        age_i = _to_int_or_none(age, "age")
+        if age_i is None:
+            raise ValueError("Alder (age) må fylles inn og være et tall.")
+
+        height_f = _to_optional_float(height_cm, "height_cm")
+        weight_f = _to_optional_float(weight_kg, "weight_kg")
+
+        if height_f is None or weight_f is None:
+            raise ValueError("Høyde og vekt må være tall (height_cm, weight_kg).")
+
+        waist_f = _to_optional_float(waist_cm, "waist_cm")
+        hip_f = _to_optional_float(hip_cm, "hip_cm")
+        neck_f = _to_optional_float(neck_cm, "neck_cm")
+
+        measured_vo2_f = _to_optional_float(measured_vo2_input, "measured_vo2_input")
+        vo2_dist_f = _to_optional_float(vo2_distance_m, "vo2_distance_m")
+        rockport_time_f = _to_optional_float(rockport_time_min, "rockport_time_min")
+        rockport_hr_i = _to_int_or_none(rockport_hr, "rockport_hr")
+
+        weekly_min_i = _to_int_or_none(weekly_minutes, "weekly_minutes")
+        session_int_i = _to_int_or_none(session_intensity, "session_intensity")
+        resting_hr_i = _to_int_or_none(resting_hr, "resting_hr")
+        max_hr_i = _to_int_or_none(max_hr, "max_hr")
+
+        plan_weeks_i = _to_int_or_none(plan_weeks, "plan_weeks")
+        target_weight_f = _to_optional_float(target_weight, "target_weight")
+        target_bmi_f = _to_optional_float(target_bmi, "target_bmi")
+
+        # Start real calculations
+        results = {}
         # BMI
         if run_bmi:
-            bmi_value, bmi_category = calculators.bmi_calc(weight_kg, height_cm)
+            bmi_value, bmi_category = calculators.bmi_calc(weight_f, height_f)
             results["bmi"] = {"value": bmi_value, "category": bmi_category}
-            if waist_cm is not None and hip_cm is not None:
-                whr_value = calculators.waist_hip_ratio(waist_cm, hip_cm)
+            if waist_f is not None and hip_f is not None:
+                whr_value = calculators.waist_hip_ratio(waist_f, hip_f)
                 whr_cat = calculators.whr_category(sex, whr_value)
                 results["whr"] = {"value": whr_value, "category": whr_cat}
-            if bodyfat_requested and neck_cm is not None:
+            if bodyfat_requested and neck_f is not None:
                 try:
                     if sex == "M":
-                        if waist_cm is None:
+                        if waist_f is None:
                             raise ValueError("Waist measurement required for male body-fat estimate")
-                        bodyfat = calculators.body_fat_navy(sex, height_cm, neck_cm, waist_cm)
+                        bodyfat = calculators.body_fat_navy(sex, height_f, neck_f, waist_f)
                     else:
-                        if waist_cm is None or hip_cm is None:
+                        if waist_f is None or hip_f is None:
                             raise ValueError("Waist and hip measurements required for female body-fat estimate")
-                        bodyfat = calculators.body_fat_navy(sex, height_cm, neck_cm, waist_cm, hip_cm)
+                        bodyfat = calculators.body_fat_navy(sex, height_f, neck_f, waist_f, hip_f)
                     results["bodyfat"] = bodyfat
                 except Exception as e:
                     st.warning(f"Body-fat estimate skipped: {e}")
+
         # VO2
         if run_vo2:
-            measured_vo2 = measured_vo2_input if measured_vo2_input and measured_vo2_input > 0 else None
-            if measured_vo2 is not None:
-                vo2_value = calculators.vo2_measured_value(measured_vo2)
+            if measured_vo2_f is not None and measured_vo2_f > 0:
+                vo2_value = calculators.vo2_measured_value(measured_vo2_f)
                 method_used = "Measured value"
             elif vo2_method == "Cooper (12-min)":
-                vo2_value = calculators.vo2_cooper_from_distance(vo2_distance_m)
+                vo2_value = calculators.vo2_cooper_from_distance(vo2_dist_f or 0.0)
                 method_used = "Cooper (12-min)"
             elif vo2_method == "Rockport (1-mile)":
-                vo2_value = calculators.vo2_rockport_1mile(rockport_time_min, int(rockport_hr), weight_kg, age, sex)
+                if rockport_time_f is None:
+                    raise ValueError("Rockport time må være et tall for Rockport-metoden.")
+                vo2_value = calculators.vo2_rockport_1mile(rockport_time_f, int(rockport_hr_i or 0), weight_f, age_i, sex)
                 method_used = "Rockport (1-mile)"
             else:
-                if bmi_value is None and run_bmi:
-                    bmi_value, _ = calculators.bmi_calc(weight_kg, height_cm)
+                # Questionnaire
+                # Ensure bmi_value present
+                if "bmi" in results:
+                    bmi_v = results["bmi"]["value"]
+                else:
+                    bmi_v = calculators.bmi_calc(weight_f, height_f)[0]
                 vo2_value = calculators.vo2_questionnaire_estimate(
-                    age=age,
+                    age=age_i,
                     sex=sex,
-                    weekly_minutes=int(weekly_minutes),
-                    session_intensity_score=int(session_intensity),
+                    weekly_minutes=int(weekly_min_i or 0),
+                    session_intensity_score=int(session_int_i or 1),
                     activity_level=activity_level,
-                    bmi=bmi_value,
-                    resting_hr=int(resting_hr) if resting_hr is not None else None,
-                    max_hr=int(max_hr) if max_hr is not None else None,
+                    bmi=bmi_v,
+                    resting_hr=int(resting_hr_i) if resting_hr_i is not None else None,
+                    max_hr=int(max_hr_i) if max_hr_i is not None else None,
                 )
                 method_used = "Questionnaire"
-            vo2_ref = calculators.vo2_reference(age, sex, vo2_value)
+
+            vo2_ref = calculators.vo2_reference(age_i, sex, vo2_value)
             vo2_tips = calculators.vo2_improvement_tips(
                 vo2_value=vo2_value,
                 sex=sex,
-                age=age,
+                age=age_i,
                 activity_level=activity_level,
-                weekly_minutes=int(weekly_minutes),
+                weekly_minutes=int(weekly_min_i or 0),
             )
-            top_descriptor = calculators.vo2_top_descriptor(age, sex, vo2_value)
+            top_descriptor = calculators.vo2_top_descriptor(age_i, sex, vo2_value)
             results["vo2"] = {
                 "value": vo2_value,
                 "method": method_used,
-                "age_band": vo2_ref["age_band"],
-                "percentile": vo2_ref["percentile"],
-                "rating": vo2_ref["rating"],
-                "reference_mean": vo2_ref["mean"],
+                "age_band": vo2_ref.get("age_band"),
+                "percentile": vo2_ref.get("percentile"),
+                "rating": vo2_ref.get("rating"),
+                "reference_mean": vo2_ref.get("mean"),
                 "tips": vo2_tips,
                 "top_descriptor": top_descriptor,
             }
+
         # Biological age
         if run_bioage:
-            if bmi_value is None and run_bmi:
-                bmi_value, _ = calculators.bmi_calc(weight_kg, height_cm)
+            if "bmi" in results:
+                bmi_v = results["bmi"]["value"]
+            else:
+                bmi_v = calculators.bmi_calc(weight_f, height_f)[0]
             waist_to_hip = None
-            if waist_cm is not None and hip_cm is not None:
+            if waist_f is not None and hip_f is not None:
                 try:
-                    waist_to_hip = calculators.waist_hip_ratio(waist_cm, hip_cm)
+                    waist_to_hip = calculators.waist_hip_ratio(waist_f, hip_f)
                 except Exception:
                     waist_to_hip = None
-            measured_vo2_for_bio = None
-            if results.get("vo2") is not None:
-                measured_vo2_for_bio = results["vo2"]["value"]
+            measured_vo2_for_bio = results.get("vo2", {}).get("value") if results.get("vo2") else None
             bio_age, bio_factors = calculators.estimate_biological_age_detailed(
-                age=age,
+                age=age_i,
                 sex=sex,
                 smoker=smoker,
-                bmi=bmi_value,
+                bmi=bmi_v,
                 activity_level=activity_level,
-                sleep_hours=sleep_hours,
-                alcohol_units_per_week=alcohol_units,
-                fruit_veg_servings=fruit_veg,
+                sleep_hours=_to_optional_float(sleep_hours, "sleep_hours"),
+                alcohol_units_per_week=_to_optional_float(alcohol_units, "alcohol_units"),
+                fruit_veg_servings=_to_optional_float(fruit_veg, "fruit_veg"),
                 perceived_stress=perceived_stress,
-                grip_strength_kg=grip_strength,
-                bp_systolic=bp_systolic,
-                cholesterol_mg_dl=cholesterol,
+                grip_strength_kg=_to_optional_float(grip_strength, "grip_strength"),
+                bp_systolic=_to_optional_float(bp_systolic, "bp_systolic"),
+                cholesterol_mg_dl=_to_optional_float(cholesterol, "cholesterol"),
                 diabetes=diabetes,
-                resting_hr=resting_hr,
+                resting_hr=resting_hr_i,
                 waist_to_hip_ratio=waist_to_hip,
                 family_history=family_history,
                 menopause=menopause,
@@ -746,49 +843,47 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
             )
             results["bio_age"] = {"value": bio_age}
             results["bio_factors"] = bio_factors
+
         # Conditions & recommendations
         if run_conditions:
             recs = calculators.recommendations_for_diagnoses(selected_conditions, condition_goal_focus)
-            # build a short message for display & PDF
             cond_message = "Recommendations generated for selected conditions."
             results["triage"] = {"level": "Info", "message": cond_message}
             results["triage_recommendations"] = recs
-# Plan
+
+        # Plan
         if run_plan and run_bmi and create_plan:
-            if target_bmi is not None:
-                target_weight = target_bmi * (height_cm / 100.0) ** 2
-            if target_weight is not None:
-                # Hent exercise_kcal_per_week fra session_state — sikrer at variabelen alltid finnes
+            if target_bmi_f is not None:
+                target_w = target_bmi_f * (height_f / 100.0) ** 2
+            else:
+                target_w = target_weight_f
+            if target_w is not None:
                 ekpw = float(st.session_state.get("exercise_kcal_per_week", 0.0))
                 plan = calculators.generate_weight_plan(
-                    current_weight_kg=weight_kg,
-                    target_weight_kg=target_weight,
-                    weeks=int(plan_weeks),
+                    current_weight_kg=weight_f,
+                    target_weight_kg=target_w,
+                    weeks=int(plan_weeks_i or 12),
                     sex=sex,
-                    height_cm=height_cm,
-                    age=age,
+                    height_cm=height_f,
+                    age=age_i,
                     activity_level=activity_level,
                     exercise_kcal_per_week=ekpw,
                 )
-                # Hvis plan returnerer feil, vis melding og legg den ikkje i results
                 if plan.get("error"):
                     st.error(plan.get("message"))
                 else:
                     results["plan"] = plan
+
     except Exception as e:
         st.error(f"Error during calculation: {e}")
-        # Persist results så dei er synlege på tvers av reruns
+        st.text("Full traceback (copypaste this if you need help):")
+        st.text(traceback.format_exc())
+        logging.exception("Calculation failed")
+        # ensure no stale results kept
+        st.session_state["results"] = {}
+    else:
         st.session_state["results"] = results
-        results = {}
-    # ----------------------------
-    # Display results
-    # ----------------------------
-# ------------------------------
-# Display results
-# ------------------------------
-results = st.session_state.get("results", {})
-if results:
-    st.success("Results ready")
+        st.success("Beregning ferdig — resultata er lagra.")
 
     # --- BMI SEKSJON ---
     if "bmi" in results:
