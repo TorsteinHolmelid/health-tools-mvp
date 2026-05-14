@@ -1102,7 +1102,7 @@ if results:
   <div class="vo2-grid">
     <div class="vo2-card">
       <div class="vo2-title">VO2 max across age bands</div>
-      <div class="vo2-sub">Ein meir “live” og leseleg visning enn ei vanleg tabell.</div>
+      <div class="vo2-sub">A more live and readable view than a standard table.</div>
 
       <div class="metric-row">
         <div class="metric">
