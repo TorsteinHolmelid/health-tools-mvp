@@ -1211,11 +1211,21 @@ if results:
 
 # Plan
 if "plan" in results:
-    plan = results["plan"]
-# Ensure exercise_kcal_per_week is defined (default 0)
+    # Try to use any precomputed plan, otherwise we'll compute one below
+    plan = results.get("plan", {})
+
+    # Ensure exercise_kcal_per_week is defined (default 0) so calls below never fail
     exercise_kcal_per_week = 0.0
 
-    # Exercise input expander (keep indented under the plan block)
+    st.markdown("**Condensed milestones**")
+    st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
+    st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
+    st.write(f"Expected weekly change: **{plan.get('kg_per_week', 0):+.2f} kg/week**")
+
+    if plan.get("warning"):
+        st.warning(plan["warning"])
+
+    # Exercise input expander (keeps everything tidy; sets exercise_kcal_per_week)
     with st.expander("Exercise calories", expanded=False):
         exercise_mode = st.radio(
             "How do you want to estimate training burn?",
@@ -1255,7 +1265,7 @@ if "plan" in results:
             }
 
             met = met_map[workout_type][intensity]
-            # Make sure you have a weight variable available (weight_kg)
+            # Make sure you have weight_kg defined earlier from user input
             kcal_per_session = (met * 3.5 * weight_kg / 200.0) * minutes_per_session
         else:
             kcal_per_session = st.number_input(
@@ -1270,8 +1280,27 @@ if "plan" in results:
 
         st.write(f"Estimated exercise burn: **{exercise_kcal_per_week:.0f} kcal/week**")
 
+    # Now (re)compute the plan using the exercise estimate so generate_weight_plan always gets the value
+    # Only attempt to compute if required input variables exist
+    try:
+        plan = generate_weight_plan(
+            current_weight_kg=weight_kg,
+            target_weight_kg=target_weight,
+            weeks=weeks,
+            sex=sex,
+            height_cm=height_cm,
+            age=age,
+            activity_level=activity_level,
+            exercise_kcal_per_week=exercise_kcal_per_week,
+        )
+    except Exception as e:
+        # If compute fails (missing inputs), keep existing plan and show debug
+        st.error("Could not compute weight plan automatically. Please check inputs.")
+        st.write("Debug info:", str(e))
+
     # Show milestones table (this line is OUTSIDE the expander, but still inside the plan block)
     st.table(plan.get("milestones", []))
+    
     # PDF - Denne skal stå på samme nivå som if "plan" (viktig!)
     report = {
         "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
