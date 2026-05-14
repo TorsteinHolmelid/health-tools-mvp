@@ -1220,7 +1220,7 @@ if results:
             st.warning(plan["warning"])
         st.markdown("**Condensed milestones**")
 with st.expander("Exercise calories", expanded=False):
-            exercise_mode = st.radio(
+exercise_mode = st.radio(
                 "How do you want to estimate training burn?",
                 ["Choose workout type", "Enter calories manually"],
                 horizontal=True,
@@ -1258,7 +1258,6 @@ with st.expander("Exercise calories", expanded=False):
                 }
 
                 met = met_map[workout_type][intensity]
-                # weight_kg must be defined earlier in the code (user's input weight)
                 kcal_per_session = (met * 3.5 * weight_kg / 200.0) * minutes_per_session
             else:
                 kcal_per_session = st.number_input(
@@ -1272,8 +1271,8 @@ with st.expander("Exercise calories", expanded=False):
             exercise_kcal_per_week = sessions_per_week * kcal_per_session
 
             st.write(f"Estimated exercise burn: **{exercise_kcal_per_week:.0f} kcal/week**")
-        st.table(plan.get("milestones", []))
 
+        st.table(plan.get("milestones", []))
     # PDF - Denne skal stå på samme nivå som if "plan" (viktig!)
     report = {
         "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
