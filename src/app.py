@@ -1211,11 +1211,11 @@ if results:
 
 # Plan
 if "plan" in results:
-    # Try to use any precomputed plan, otherwise we'll compute one below
     plan = results.get("plan", {})
 
-    # Ensure exercise_kcal_per_week is defined (default 0) so calls below never fail
-    exercise_kcal_per_week = 0.0
+    # Use session_state so exercise_kcal_per_week persists across reruns
+    if "exercise_kcal_per_week" not in st.session_state:
+        st.session_state["exercise_kcal_per_week"] = 0.0
 
     st.markdown("**Condensed milestones**")
     st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
@@ -1225,7 +1225,7 @@ if "plan" in results:
     if plan.get("warning"):
         st.warning(plan["warning"])
 
-    # Exercise input expander (keeps everything tidy; sets exercise_kcal_per_week)
+    # Exercise input expander (keeps everything tidy; sets session_state value)
     with st.expander("Exercise calories", expanded=False):
         exercise_mode = st.radio(
             "How do you want to estimate training burn?",
@@ -1265,7 +1265,8 @@ if "plan" in results:
             }
 
             met = met_map[workout_type][intensity]
-            # Make sure you have weight_kg defined earlier from user input
+            # Ensure the variable name matches your earlier weight input variable
+            # Replace `weight_kg` with the actual name if different
             kcal_per_session = (met * 3.5 * weight_kg / 200.0) * minutes_per_session
         else:
             kcal_per_session = st.number_input(
@@ -1276,12 +1277,18 @@ if "plan" in results:
                 step=25.0,
             )
 
-        exercise_kcal_per_week = sessions_per_week * kcal_per_session
+        # Save into session_state so it's available when we compute the plan
+        st.session_state["exercise_kcal_per_week"] = sessions_per_week * kcal_per_session
 
-        st.write(f"Estimated exercise burn: **{exercise_kcal_per_week:.0f} kcal/week**")
+        st.write(f"Estimated exercise burn: **{st.session_state['exercise_kcal_per_week']:.0f} kcal/week**")
 
-    # Now (re)compute the plan using the exercise estimate so generate_weight_plan always gets the value
-    # Only attempt to compute if required input variables exist
+    # Use the stored value when computing the plan
+    exercise_kcal_per_week = float(st.session_state.get("exercise_kcal_per_week", 0.0))
+
+    # Optional debug line — remove when working:
+    # st.write(f"DEBUG: exercise_kcal_per_week = {exercise_kcal_per_week}")
+
+    # Now compute the plan (only if required inputs exist)
     try:
         plan = generate_weight_plan(
             current_weight_kg=weight_kg,
@@ -1294,11 +1301,10 @@ if "plan" in results:
             exercise_kcal_per_week=exercise_kcal_per_week,
         )
     except Exception as e:
-        # If compute fails (missing inputs), keep existing plan and show debug
         st.error("Could not compute weight plan automatically. Please check inputs.")
         st.write("Debug info:", str(e))
 
-    # Show milestones table (this line is OUTSIDE the expander, but still inside the plan block)
+    # Show milestones table (outside the expander, same plan-block level)
     st.table(plan.get("milestones", []))
     
     # PDF - Denne skal stå på samme nivå som if "plan" (viktig!)
