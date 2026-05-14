@@ -890,6 +890,35 @@ if results:
 
         components.html(
             f"""
+@media (max-width: 820px) {
+  .vo2-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-row {
+    grid-template-columns: 1fr;
+  }
+
+  .vo2-card {
+    padding: 14px;
+  }
+
+  .vo2-title {
+    font-size: 18px;
+  }
+
+  .gauge-k {
+    font-size: 18px;
+  }
+
+  .band {
+    grid-template-columns: 52px 1fr 56px;
+  }
+
+  .legend-col {
+    gap: 6px;
+  }
+}
 <style>
   .vo2-wrap {{
     font-family: Arial, sans-serif;
