@@ -124,9 +124,6 @@ st.title("Health Tools — MVP")
 st.caption("Educational tool only — not a diagnostic tool. Data is not stored.")
 
 # Consent modal (simple)
-# ----------------------------
-# --- Consent / privacy notice (safe version) ---
-# Sørg for at flagget finnes
 if "consent_given" not in st.session_state:
     st.session_state.consent_given = False
 
@@ -139,11 +136,9 @@ if not st.session_state.consent_given:
             """
         )
 
-    # Opprett cols her slik at de alltid er definert før bruk
     cols = st.columns([1, 1])
     if cols[0].button("I agree", key="consent_agree"):
         st.session_state.consent_given = True
-        # Trygg rerun: kjør bare én gang og håndter miljøer uten experimental_rerun
         try:
             if not st.session_state.get("_consent_rerun_done"):
                 st.session_state["_consent_rerun_done"] = True
@@ -154,9 +149,9 @@ if not st.session_state.consent_given:
         st.stop()
 
 
-# ----------------------------
+# ----
 # Plot helpers
-# ----------------------------
+# ----
 def fig_to_png_buffer(fig) -> BytesIO:
     buf = BytesIO()
     fig.savefig(buf, format="png", dpi=180, bbox_inches="tight", transparent=True)
@@ -217,7 +212,6 @@ def plot_vo2_reference_chart(vo2_value: float, sex: str, age: int):
 
 
 def plot_vo2_percentile_marker(percentile: float):
-    # Visualize percentile on a horizontal axis (0-100)
     fig, ax = plt.subplots(figsize=(7.4, 1.2))
     ax.barh(0, 100, color="#e6eef8")
     ax.barh(0, percentile, color="#60a5fa")
@@ -233,11 +227,11 @@ def plot_vo2_percentile_marker(percentile: float):
     return fig
 
 
-# ----------------------------
-# PDF helpers (kept and slightly improved)
-# ----------------------------
+# ----
+# PDF helpers
+# ----
 def para(text: str, style) -> Paragraph:
-    return Paragraph(escape(str(text)).replace("\n", "<​br/>"), style)
+    return Paragraph(escape(str(text)).replace("\n", "<​​br/>"), style)
 
 
 def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
@@ -404,9 +398,9 @@ def create_pdf_bytes(report: dict) -> bytes:
     return buffer.read()
 
 
-# ----------------------------
+# ----
 # Sidebar selection
-# ----------------------------
+# ----
 st.sidebar.header("Modules")
 run_bmi = st.sidebar.checkbox("BMI calculator", value=True, key="s_bmi")
 run_vo2 = st.sidebar.checkbox("VO2max estimate", value=True, key="s_vo2")
@@ -417,9 +411,9 @@ st.sidebar.markdown("---")
 st.sidebar.info("This app does not store personal health data. It is for education and demonstration only.")
 
 
-# ----------------------------
+# ----
 # Basic inputs (unique keys)
-# ----------------------------
+# ----
 st.header("Basic information")
 col1, col2 = st.columns(2)
 with col1:
@@ -455,18 +449,20 @@ perceived_stress = 5
 grip_strength = None
 bp_systolic = None
 cholesterol = None
+
 # Ensure exercise_kcal_per_week exists in session_state and read persisted value
 if "exercise_kcal_per_week" not in st.session_state:
     st.session_state["exercise_kcal_per_week"] = 0.0
 # Read persisted value (do NOT overwrite it with 0)
 exercise_kcal_per_week = float(st.session_state.get("exercise_kcal_per_week", 0.0))
+
 family_history = False
 menopause = False
 
 
-# ----------------------------
+# ----
 # BMI inputs
-# ----------------------------
+# ----
 if run_bmi:
     with st.expander("BMI inputs and body composition", expanded=True):
         st.markdown("BMI is a simple screening tool, not a diagnosis.")
@@ -483,9 +479,9 @@ if run_bmi:
         bodyfat_requested = st.checkbox("Estimate body fat using the Navy method", value=False, key="b_bodyfat")
 
 
-# ----------------------------
+# ----
 # VO2 inputs
-# ----------------------------
+# ----
 vo2_method = "Questionnaire"
 vo2_distance_m = 0.0
 rockport_time_min = 0.0
@@ -539,9 +535,6 @@ if run_vo2:
             rockport_hr = st.number_input("Heart rate at the end (bpm)", min_value=30, max_value=220, value=140, key="vo2_rockport_hr")
 
 # --- Exercise calories input (legg før Calculate-knappen) ---
-if "exercise_kcal_per_week" not in st.session_state:
-    st.session_state["exercise_kcal_per_week"] = 0.0
-
 with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=False):
     st.markdown("Angi treningsvaner for mer presis TDEE / plan. MET-verdier er omtrentlige.")
     sessions_per_week = st.number_input(
@@ -553,7 +546,6 @@ with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=
         key="ui_sessions_per_week",
     )
 
-    # Aktivitetstyper med MET-verdier i ulike intensitetsnivå
     activities = {
         "Walking (casual)": {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
         "Brisk walking": {"Light": 3.5, "Moderate": 4.3, "Hard": 5.0},
@@ -599,12 +591,9 @@ with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=
         key="ui_minutes",
     )
 
-    # Perceived exertion (RPE) justerare: gir enkel korreksjon av MET om ønskelig
     rpe = st.slider("Perceived exertion (RPE) 1-10 (valgfritt)", 1, 10, 5, key="ui_rpe")
-    # Map RPE (1-10) to a small multiplier (0.85 - 1.25)
     rpe_multiplier = 0.85 + (rpe - 1) * (0.4 / 9)
 
-    # Valgfri HR-basert justering (brukes for finjustering dersom bruker vet gjennomsnittspuls)
     use_hr = st.checkbox("Use average session heart rate to refine estimate (optional)", key="ui_use_hr")
     avg_hr = None
     if use_hr:
@@ -613,15 +602,13 @@ with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=
     else:
         resting_hr_for_calc = None
 
-    # Calculate MET and kcal per session
     try:
         base_met = activities.get(activity, {}).get(intensity_label, None)
         if base_met is None:
-            base_met = 4.0  # fallback conservative default
+            base_met = 4.0
     except Exception:
         base_met = 4.0
 
-    # MET -> kcal per minute: (MET * 3.5 * weight_kg) / 200
     try:
         w = float(weight_kg)
     except Exception:
@@ -629,18 +616,13 @@ with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=
 
     kcal_per_min = (base_met * 3.5 * w) / 200.0
     kcal_per_session = kcal_per_min * float(minutes_per_session)
-
-    # apply RPE multiplier
     kcal_per_session *= rpe_multiplier
 
-    # HR-based refinement: if avg_hr and resting_hr given, adjust modestly
     if avg_hr is not None and resting_hr_for_calc:
-        # Simple heuristic: higher avg HR relative to resting increases burn estimate.
         hr_delta = max(0, float(avg_hr) - float(resting_hr_for_calc))
-        hr_multiplier = 1.0 + min(0.5, hr_delta / 100.0)  # cap adjustment to +50%
+        hr_multiplier = 1.0 + min(0.5, hr_delta / 100.0)
         kcal_per_session *= hr_multiplier
 
-    # Store useful metadata for later (PDF/report + reproducibility)
     st.session_state["exercise_kcal_per_week"] = sessions_per_week * kcal_per_session
     st.session_state["exercise_last"] = {
         "activity": activity,
@@ -655,9 +637,11 @@ with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=
 
     st.write(f"Estimated exercise burn: **{st.session_state['exercise_kcal_per_week']:.0f} kcal/week**")
     st.caption("MET-verdier er omtrentlige. Bruk HR-alternativet eller juster RPE for mer nøyaktig estimat.")
-# ----------------------------
+
+
+# ----
 # Biological age inputs
-# ----------------------------
+# ----
 if run_bioage:
     with st.expander("Biological age inputs", expanded=True):
         st.caption("You can leave any field blank or use 'I don't know' where available.")
@@ -702,9 +686,9 @@ if run_bioage:
                 hip_cm = hip_bio
 
 
-# ----------------------------
+# ----
 # Conditions / recommendations (replaces symptom triage)
-# ----------------------------
+# ----
 selected_conditions = []
 custom_condition = ""
 condition_goal_focus = "General"
@@ -712,13 +696,11 @@ condition_goal_focus = "General"
 if run_conditions:
     with st.expander("Conditions & recommendations", expanded=True):
         st.markdown("Select any diagnoses/conditions you have and choose a focus to get practical exercise & prevention tips.")
-# Henter liste fra calculators, eller bruker en standardliste hvis den mangler
         if hasattr(calculators, 'DIAGNOSIS_RECOMMENDATIONS'):
             condition_options = sorted(list(calculators.DIAGNOSIS_RECOMMENDATIONS.keys()))
         else:
-            # Standardliste slik at appen ikke krasjer
             condition_options = ["Type 2 Diabetes", "Hypertension", "Lower Back Pain", "Asthma", "Osteoarthritis"]
-            
+
         selected_conditions = st.multiselect("Select conditions (choose one or more)", options=condition_options, default=[], key="cond_select")
         custom_condition = st.text_input("Other condition (free text)", "", key="cond_custom")
         if custom_condition.strip():
@@ -726,9 +708,9 @@ if run_conditions:
         condition_goal_focus = st.selectbox("Recommendations focus", options=["General", "VO2", "Weight", "Mobility"], index=0, key="cond_goal")
 
 
-# ----------------------------
+# ----
 # Weight goal / plan
-# ----------------------------
+# ----
 create_plan = False
 target_weight = None
 target_bmi = None
@@ -746,19 +728,16 @@ if run_plan and run_bmi:
             plan_weeks = st.number_input("Weeks to achieve target", min_value=4, max_value=52, value=12, step=1, key="plan_weeks")
 
 
-# ----------------------------
+# ----
 # Calculate / Generate report
-# ----------------------------
-# --- Replace existing Calculate / Generate report block with this debug-safe version ---
+# ----
 if st.button("Calculate / Generate report", key="btn_calculate"):
     import traceback, logging
 
-    # helpers
     def _to_optional_float(val, name):
         try:
             if val is None:
                 return None
-            # allow numeric types already
             if isinstance(val, (int, float)):
                 return float(val)
             s = str(val).strip()
@@ -826,11 +805,11 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
                     if sex == "M":
                         if waist_f is None:
                             raise ValueError("Waist measurement required for male body-fat estimate")
-                        bodyfat = calculators.body_fat_navy(sex, height_f, neck_f, waist_f)
+                        bodyfat = calculators.body_fat_navy(sex=sex, height_cm=height_f, neck_cm=neck_f, waist_cm=waist_f)
                     else:
                         if waist_f is None or hip_f is None:
                             raise ValueError("Waist and hip measurements required for female body-fat estimate")
-                        bodyfat = calculators.body_fat_navy(sex, height_f, neck_f, waist_f, hip_f)
+                        bodyfat = calculators.body_fat_navy(sex=sex, height_cm=height_f, neck_cm=neck_f, waist_cm=waist_f, hip_cm=hip_f)
                     results["bodyfat"] = bodyfat
                 except Exception as e:
                     st.warning(f"Body-fat estimate skipped: {e}")
@@ -849,8 +828,6 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
                 vo2_value = calculators.vo2_rockport_1mile(rockport_time_f, int(rockport_hr_i or 0), weight_f, age_i, sex)
                 method_used = "Rockport (1-mile)"
             else:
-                # Questionnaire
-                # Ensure bmi_value present
                 if "bmi" in results:
                     bmi_v = results["bmi"]["value"]
                 else:
@@ -930,15 +907,13 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
             results["triage"] = {"level": "Info", "message": cond_message}
             results["triage_recommendations"] = recs
 
-# Plan - Trygg beregning utan krasj
+        # Plan - Trygg beregning utan krasj
         if run_plan and run_bmi and create_plan:
-            # Finn målvekt om brukaren har oppgitt BMI-mål
             target_w = target_bmi_f * (height_f / 100.0) ** 2 if target_bmi_f else target_weight_f
-            
+
             if target_w:
-                # Vi hentar verdien me nettopp sikra i toppen
                 ekpw = float(st.session_state.get("exercise_kcal_per_week", 0.0))
-                
+
                 plan = calculators.generate_weight_plan(
                     current_weight_kg=weight_f,
                     target_weight_kg=target_w,
@@ -949,7 +924,7 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
                     activity_level=activity_level,
                     exercise_kcal_per_week=ekpw
                 )
-                
+
                 if plan.get("error"):
                     st.error(plan.get("message"))
                 else:
@@ -960,7 +935,6 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         st.text("Full traceback (copypaste this if you need help):")
         st.text(traceback.format_exc())
         logging.exception("Calculation failed")
-        # ensure no stale results kept
         st.session_state["results"] = {}
     else:
         st.session_state["results"] = results
@@ -980,13 +954,12 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
             </div>
         """, unsafe_allow_html=True)
 
-        # BMI Gauge (hvis funksjon finnes)
         try:
             st.pyplot(plot_bmi_gauge(b), use_container_width=True)
         except Exception:
             pass
 
-# --- Energi & Forbrenning (BMR) ---
+    # --- Energi & Forbrenning (BMR) ---
     st.markdown("---")
     st.subheader("Energy og Metabolism")
 
@@ -1003,15 +976,14 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
     if calc_age_f is None or calc_weight is None or calc_height is None:
         st.info("Fyll inn alder, vekt og høyde (som tall) for å beregne kalorier.")
     else:
-        calc_age = int(calc_age_f)          # alder som heltall
+        calc_age = int(calc_age_f)
         calc_weight = float(calc_weight)
         calc_height = float(calc_height)
 
-        # Bruk keyword-args for å unngå rekkefølgebugs
         bmr_val = bmr_mifflin(age=calc_age, sex=sex, weight_kg=calc_weight, height_cm=calc_height)
 
         daily_living = bmr_val * 1.2
-# Use persisted exercise kcal/week from session state (if any)
+        # Use persisted exercise kcal/week from session state (if any)
         w_kcal = float(st.session_state.get("exercise_kcal_per_week", 0.0))
         tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
 
@@ -1019,9 +991,9 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         c1.metric("BMR", f"{int(bmr_val)} kcal")
         c2.metric("Daily Calorie Burn", f"{int(daily_living)} kcal")
         c3.metric("Total Daily Calorie Burn w/exercise", f"{int(tdee_total)} kcal")
-# --- VO2 & REFERANSETABELL ---
-# --- VO2 & REFERANSETABELL ---
-if "vo2" in results:
+
+    # --- VO2 & REFERANSETABELL ---
+    if "vo2" in results:
         st.markdown("---")
         st.subheader("VO2 max & fitness")
 
@@ -1096,7 +1068,36 @@ if "vo2" in results:
             f"""
 <style>
   .vo2-wrap {{ font-family: Arial, sans-serif; color: #E5E7EB; padding: 2px; }}
-  /* (CSS kortet forkortet for plass; original CSS beholdes) */
+  .vo2-grid {{ display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 14px; align-items: stretch; }}
+  .vo2-card {{ background: #1F2937; border: 1px solid #374151; border-radius: 16px; padding: 18px; }}
+  .vo2-title {{ margin: 0 0 6px 0; font-size: 20px; font-weight: 700; color: #F9FAFB; }}
+  .vo2-sub {{ margin: 0 0 16px 0; font-size: 12px; line-height: 1.4; color: #9CA3AF; }}
+  .metric-row {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }}
+  .metric {{ background: #111827; border: 1px solid #374151; border-radius: 12px; padding: 10px 12px; min-width: 0; }}
+  .metric-k {{ margin: 0 0 4px 0; font-size: 12px; color: #9CA3AF; }}
+  .metric-v {{ margin: 0; font-size: 20px; font-weight: 700; color: #F9FAFB; line-height: 1.1; }}
+  .band {{ display: grid; grid-template-columns: 56px 1fr 70px; gap: 10px; align-items: center; margin: 10px 0; }}
+  .band-lbl {{ font-size: 12px; color: #D1D5DB; white-space: nowrap; }}
+  .band-bar {{ height: 16px; background: #111827; border: 1px solid #374151; border-radius: 999px; overflow: hidden; position: relative; }}
+  .band-fill {{ height: 100%; border-radius: 999px; }}
+  .band-badge {{ position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; font-weight: 700; color: #111827; background: rgba(255,255,255,0.88); padding: 1px 6px; border-radius: 999px; }}
+  .band-val {{ text-align: right; font-size: 12px; font-weight: 700; color: #E5E7EB; }}
+  .band-active {{ background: #F8FAFC; border-radius: 12px; padding: 8px 10px; }}
+  .band-active .band-lbl {{ color: #0F172A; font-weight: 700; }}
+  .band-active .band-val {{ color: #26A690; }}
+  .pill-row {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }}
+  .pill {{ display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: #CBD5E1; background: #111827; border: 1px solid #374151; border-radius: 999px; padding: 6px 10px; }}
+  .dot {{ width: 10px; height: 10px; border-radius: 50%; flex: 0 0 10px; }}
+  .gauge-wrap {{ display: flex; flex-direction: column; align-items: center; }}
+  .gauge-head {{ width: 100%; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 8px; }}
+  .gauge-k {{ margin: 0; font-size: 20px; font-weight: 700; color: #F9FAFB; }}
+  .gauge-sub {{ margin: 4px 0 0 0; font-size: 12px; color: #9CA3AF; line-height: 1.4; }}
+  .pct-num {{ margin: 0; font-size: 34px; font-weight: 700; line-height: 1; color: {pct_color}; text-align: right; }}
+  .pct-lbl {{ margin: 3px 0 0 0; font-size: 12px; color: #D1D5DB; text-align: right; }}
+  .callout {{ width: 100%; background: #111827; border: 1px solid #374151; border-radius: 12px; padding: 12px; color: #D1D5DB; font-size: 12px; line-height: 1.45; margin-top: 12px; }}
+  .legend-col {{ width: 100%; margin-top: 14px; display: grid; gap: 8px; }}
+  .legend-item {{ display: flex; align-items: center; gap: 8px; background: #111827; border: 1px solid #374151; border-radius: 999px; padding: 8px 10px; font-size: 12px; color: #CBD5E1; }}
+  .mini-note {{ width: 100%; margin-top: 8px; font-size: 12px; color: #9CA3AF; text-align: center; }}
 </style>
 
 <div class="vo2-wrap">
@@ -1161,6 +1162,9 @@ if "vo2" in results:
           <circle cx="130" cy="122" r="50" fill="#1F2937" stroke="#374151" stroke-width="1"/>
           <text x="130" y="116" text-anchor="middle" font-size="36" font-weight="700" fill="#F9FAFB">{int(round(v_pct))}</text>
           <text x="130" y="136" text-anchor="middle" font-size="12" fill="#CBD5E1">percentile</text>
+          <text x="40" y="158" text-anchor="start" font-size="12" fill="#9CA3AF">0</text>
+          <text x="130" y="158" text-anchor="middle" font-size="12" fill="#9CA3AF">50</text>
+          <text x="220" y="158" text-anchor="end" font-size="12" fill="#9CA3AF">100</text>
         </svg>
 
         <div class="callout">
@@ -1182,9 +1186,8 @@ if "vo2" in results:
             height=760,
             scrolling=False,
         )
+
     # Biological age
-    # --- Biologisk alder ---
-# Biological age
     if "bio_age" in results:
         st.subheader("Biological age")
         st.metric("Biological age", f"{results['bio_age']['value']:.1f} years")
@@ -1203,7 +1206,6 @@ if "vo2" in results:
             for r in results["triage_recommendations"]:
                 st.write(r)
         else:
-            # Fallback: vis generell triage-melding hvis ingen liste
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
 # --- Visning av Plan ---
@@ -1211,10 +1213,10 @@ results = st.session_state.get("results", {})
 
 if "plan" in results:
     plan = results["plan"]
-    
+
     st.markdown("---")
     st.subheader("Weight goal / plan")
-    
+
     st.markdown("**Condensed milestones**")
     st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
     st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
@@ -1223,9 +1225,8 @@ if "plan" in results:
     if plan.get("warning"):
         st.warning(plan["warning"])
 
-    # Show milestones table (plan was computed when user trykket Calculate)
     st.table(plan.get("milestones", []))
-    
+
     # PDF - Denne skal stå på samme nivå som if "plan" (viktig!)
     report = {
         "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
@@ -1247,5 +1248,4 @@ if "plan" in results:
         st.warning(f"PDF generation is currently unavailable: {e}")
 
 else:
-    # Denne "else" hører til "if results:" helt øverst (linje 754 i forrige bilde)
     st.warning("Trykk på knappen for å beregne resultater.")
