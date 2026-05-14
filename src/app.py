@@ -1326,6 +1326,8 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
 
 # Plan
 if "plan" in results:
+# Hent resultata fra session_state — trygt for alle reruns
+results = st.session_state.get("results", {})
     plan = results.get("plan", {})
 
     # Use session_state so exercise_kcal_per_week persists across reruns
