@@ -122,17 +122,7 @@ st.markdown(
 )
 st.title("Health Tools — MVP")
 st.caption("Educational tool only — not a diagnostic tool. Data is not stored.")
-# --- DEBUG TEST: midlertidig knapp for å sjekke at serveren mottar klik --
-if st.button("DEBUG: Test button (trykk her)"):
-    st.write("DEBUG: Test-knapp trykka — server tok imot event.")
-    # Vis aktuelle session_state-nøklar for feilsøking:
-    st.write("session_state keys:", list(st.session_state.keys()))
-    # Skriv ei kort melding til loggen (vises i Streamlit Cloud logs)
-    import logging
-    logging.warning("DEBUG: Test-knapp ble trykket")
 
-
-# ----------------------------
 # Consent modal (simple)
 # ----------------------------
 # --- Consent / privacy notice (safe version) ---
