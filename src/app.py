@@ -769,6 +769,8 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
                     results["plan"] = plan
     except Exception as e:
         st.error(f"Error during calculation: {e}")
+        # Persist results så dei er synlege på tvers av reruns
+        st.session_state["results"] = results
         results = {}
     # ----------------------------
     # Display results
@@ -776,7 +778,7 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
 # ------------------------------
 # Display results
 # ------------------------------
-results = globals().get("results", {})
+results = st.session_state.get("results", {})
 if results:
     st.success("Results ready")
 
@@ -1230,33 +1232,37 @@ if "plan" in results:
         st.warning(plan["warning"])
 
     # Exercise input expander (keeps everything tidy; sets session_state value)
-    with st.expander("Exercise calories", expanded=False):
-        exercise_mode = st.radio(
-            "How do you want to estimate training burn?",
-            ["Choose workout type", "Enter calories manually"],
-            horizontal=True,
-        )
-
+    with st.expander("Exercise calories (does not recompute plan automatically)", expanded=False):
         sessions_per_week = st.number_input(
             "Sessions per week",
             min_value=0,
             max_value=14,
             value=3,
             step=1,
+            key="ui_sessions_per_week",
+        )
+
+        exercise_mode = st.radio(
+            "How do you want to estimate training burn?",
+            ["Choose workout type", "Enter calories manually"],
+            horizontal=True,
+            key="ui_ex_mode",
         )
 
         if exercise_mode == "Choose workout type":
             workout_type = st.selectbox(
                 "Workout type",
                 ["Walking", "Running", "Cycling", "Strength training", "HIIT", "Swimming"],
+                key="ui_workout_type",
             )
-            intensity = st.selectbox("Intensity", ["Light", "Moderate", "Hard"])
+            intensity = st.selectbox("Intensity", ["Light", "Moderate", "Hard"], key="ui_intensity")
             minutes_per_session = st.number_input(
                 "Minutes per session",
                 min_value=5,
                 max_value=180,
                 value=45,
                 step=5,
+                key="ui_minutes",
             )
 
             met_map = {
@@ -1269,8 +1275,6 @@ if "plan" in results:
             }
 
             met = met_map[workout_type][intensity]
-            # Ensure the variable name matches your earlier weight input variable
-            # Replace `weight_kg` with the actual name if different
             kcal_per_session = (met * 3.5 * weight_kg / 200.0) * minutes_per_session
         else:
             kcal_per_session = st.number_input(
@@ -1279,36 +1283,15 @@ if "plan" in results:
                 max_value=3000.0,
                 value=300.0,
                 step=25.0,
+                key="ui_kcal_per_session",
             )
 
-        # Save into session_state so it's available when we compute the plan
+        # Save into session_state so it's available next time the user recalculates the plan
         st.session_state["exercise_kcal_per_week"] = sessions_per_week * kcal_per_session
 
         st.write(f"Estimated exercise burn: **{st.session_state['exercise_kcal_per_week']:.0f} kcal/week**")
 
-    # Use the stored value when computing the plan
-    exercise_kcal_per_week = float(st.session_state.get("exercise_kcal_per_week", 0.0))
-
-    # Optional debug line — remove when working:
-    # st.write(f"DEBUG: exercise_kcal_per_week = {exercise_kcal_per_week}")
-
-    # Now compute the plan (only if required inputs exist)
-    try:
-        plan = generate_weight_plan(
-            current_weight_kg=weight_kg,
-            target_weight_kg=target_weight,
-            weeks=weeks,
-            sex=sex,
-            height_cm=height_cm,
-            age=age,
-            activity_level=activity_level,
-            exercise_kcal_per_week=exercise_kcal_per_week,
-        )
-    except Exception as e:
-        st.error("Could not compute weight plan automatically. Please check inputs.")
-        st.write("Debug info:", str(e))
-
-    # Show milestones table (outside the expander, same plan-block level)
+    # Show milestones table (plan was computed when user trykket Calculate)
     st.table(plan.get("milestones", []))
     
     # PDF - Denne skal stå på samme nivå som if "plan" (viktig!)
