@@ -842,21 +842,21 @@ if results:
         c2.metric("Percentile", f"{v_pct:.0f}%")
         c3.metric("Ranking", top_text)
 
-        if v_pct >= 90:
-            pct_color = "#22C55E"
-            pct_label = "Exceptional"
-        elif v_pct >= 75:
-            pct_color = "#3B82F6"
-            pct_label = "Very strong"
-        elif v_pct >= 50:
-            pct_color = "#7C7CF5"
-            pct_label = "Good"
-        elif v_pct >= 25:
-            pct_color = "#F59E0B"
-            pct_label = "Below avg"
-        else:
-            pct_color = "#EF6A3B"
-            pct_label = "Needs work"
+if v_pct >= 90:
+    pct_color = "#22C55E"
+    pct_label = "Excellent"
+elif v_pct >= 80:
+    pct_color = "#3B82F6"
+    pct_label = "Very good"
+elif v_pct >= 60:
+    pct_color = "#7C7CF5"
+    pct_label = "Good"
+elif v_pct >= 40:
+    pct_color = "#F59E0B"
+    pct_label = "Below average"
+else:
+    pct_color = "#EF6A3B"
+    pct_label = "Low"
 
         vo2_rows = [
             ("20–29", 44, 40, "#26A690"),
@@ -1180,7 +1180,7 @@ if results:
   </div>
 </div>
             """,
-            height=620,
+            height=760,
             scrolling=False,
         )
 
