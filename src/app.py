@@ -35,6 +35,14 @@ st.markdown(
         padding-left: 2rem;
         padding-right: 2rem;
     }
+
+    @media (max-width: 820px) {
+        .block-container {
+            max-width: 100%;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+    }
     </style>
     """,
     unsafe_allow_html=True,
