@@ -1324,16 +1324,15 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
             # Fallback: vis generell triage-melding hvis ingen liste
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
-# Plan
-    if "plan" in results:
-# Hent resultata fra session_state — trygt for alle reruns
+# --- Visning av Plan ---
 results = st.session_state.get("results", {})
-    plan = results.get("plan", {})
 
-    # Use session_state so exercise_kcal_per_week persists across reruns
-    if "exercise_kcal_per_week" not in st.session_state:
-        st.session_state["exercise_kcal_per_week"] = 0.0
-
+if "plan" in results:
+    plan = results["plan"]
+    
+    st.markdown("---")
+    st.subheader("Weight goal / plan")
+    
     st.markdown("**Condensed milestones**")
     st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
     st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
