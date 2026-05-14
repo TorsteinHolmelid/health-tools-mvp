@@ -540,69 +540,122 @@ if run_vo2:
             rockport_hr = st.number_input("Heart rate at the end (bpm)", min_value=30, max_value=220, value=140, key="vo2_rockport_hr")
 
 # --- Exercise calories input (legg før Calculate-knappen) ---
-# Sørg for at nøkkelen finnes
 if "exercise_kcal_per_week" not in st.session_state:
     st.session_state["exercise_kcal_per_week"] = 0.0
 
-with st.expander("Exercise calories (Enter before clicking Calculate)", expanded=False):
-    st.markdown("Angi treningsvaner for å få mer presis plan og TDEE-estimat.")
+with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=False):
+    st.markdown("Angi treningsvaner for mer presis TDEE / plan. MET-verdier er omtrentlige.")
     sessions_per_week = st.number_input(
         "Sessions per week",
         min_value=0,
-        max_value=14,
+        max_value=21,
         value=3,
         step=1,
         key="ui_sessions_per_week",
     )
 
-    exercise_mode = st.radio(
-        "How do you want to estimate training burn?",
-        ["Choose workout type", "Enter calories manually"],
-        horizontal=True,
-        key="ui_ex_mode",
+    # Aktivitetstyper med MET-verdier i ulike intensitetsnivå
+    activities = {
+        "Walking (casual)": {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
+        "Brisk walking": {"Light": 3.5, "Moderate": 4.3, "Hard": 5.0},
+        "Running/jogging": {"Light": 7.0, "Moderate": 9.8, "Hard": 11.5},
+        "Cycling (leisure)": {"Light": 4.0, "Moderate": 6.8, "Hard": 8.5},
+        "Cycling (vigorous)": {"Light": 6.8, "Moderate": 8.5, "Hard": 10.0},
+        "Strength training (weights)": {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
+        "HIIT": {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
+        "Swimming": {"Light": 5.0, "Moderate": 7.0, "Hard": 9.5},
+        "Rowing (moderate/vigorous)": {"Light": 5.0, "Moderate": 7.0, "Hard": 8.5},
+        "Elliptical": {"Light": 4.5, "Moderate": 6.0, "Hard": 8.0},
+        "Stair climbing / Stairmaster": {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
+        "Yoga / Pilates": {"Light": 2.5, "Moderate": 3.0, "Hard": 4.0},
+        "Dancing": {"Light": 3.0, "Moderate": 5.0, "Hard": 7.0},
+        "Hiking (incline)": {"Light": 3.5, "Moderate": 6.0, "Hard": 7.0},
+        "Rock climbing / Bouldering": {"Light": 4.0, "Moderate": 7.0, "Hard": 8.0},
+        "Boxing / Martial arts": {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
+        "Basketball / Team sports": {"Light": 5.0, "Moderate": 7.0, "Hard": 10.0},
+        "Soccer (football)": {"Light": 6.0, "Moderate": 7.5, "Hard": 10.0},
+        "Tennis (casual)": {"Light": 4.0, "Moderate": 7.0, "Hard": 9.0},
+        "Squash": {"Light": 7.0, "Moderate": 9.0, "Hard": 11.0},
+        "Badminton": {"Light": 4.0, "Moderate": 6.0, "Hard": 8.0},
+        "Table tennis (bordtennis)": {"Light": 2.5, "Moderate": 4.0, "Hard": 5.5},
+        "Gardening / Heavy yard work": {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
+        "Housework / Light chores": {"Light": 2.0, "Moderate": 3.0, "Hard": 3.5},
+    }
+
+    activity = st.selectbox("Activity type", list(activities.keys()), key="ui_activity_type")
+
+    intensity_label = st.selectbox(
+        "Intensity",
+        ["Light", "Moderate", "Hard"],
+        index=1,
+        key="ui_intensity",
     )
 
-    if exercise_mode == "Choose workout type":
-        workout_type = st.selectbox(
-            "Workout type",
-            ["Walking", "Running", "Cycling", "Strength training", "HIIT", "Swimming"],
-            key="ui_workout_type",
-        )
-        intensity = st.selectbox("Intensity", ["Light", "Moderate", "Hard"], key="ui_intensity")
-        minutes_per_session = st.number_input(
-            "Minutes per session",
-            min_value=5,
-            max_value=180,
-            value=45,
-            step=5,
-            key="ui_minutes",
-        )
+    minutes_per_session = st.number_input(
+        "Minutes per session",
+        min_value=1,
+        max_value=300,
+        value=45,
+        step=5,
+        key="ui_minutes",
+    )
 
-        met_map = {
-            "Walking": {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
-            "Running": {"Light": 7.0, "Moderate": 9.8, "Hard": 11.5},
-            "Cycling": {"Light": 4.0, "Moderate": 6.8, "Hard": 8.5},
-            "Strength training": {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
-            "HIIT": {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
-            "Swimming": {"Light": 5.0, "Moderate": 7.0, "Hard": 9.5},
-        }
+    # Perceived exertion (RPE) justerare: gir enkel korreksjon av MET om ønskelig
+    rpe = st.slider("Perceived exertion (RPE) 1-10 (valgfritt)", 1, 10, 5, key="ui_rpe")
+    # Map RPE (1-10) to a small multiplier (0.85 - 1.25)
+    rpe_multiplier = 0.85 + (rpe - 1) * (0.4 / 9)
 
-        met = met_map[workout_type][intensity]
-        # Kalkuler kcal per session (MET-formel)
-        kcal_per_session = (met * 3.5 * float(weight_kg) / 200.0) * minutes_per_session
+    # Valgfri HR-basert justering (brukes for finjustering dersom bruker vet gjennomsnittspuls)
+    use_hr = st.checkbox("Use average session heart rate to refine estimate (optional)", key="ui_use_hr")
+    avg_hr = None
+    if use_hr:
+        avg_hr = st.number_input("Average HR during session (bpm)", min_value=30, max_value=220, value=130, key="ui_avg_hr")
+        resting_hr_for_calc = st.number_input("Resting HR (optional, bpm)", min_value=30, max_value=120, value=60, key="ui_resting_hr")
     else:
-        kcal_per_session = st.number_input(
-            "Estimated kcal burned per session",
-            min_value=0.0,
-            max_value=3000.0,
-            value=300.0,
-            step=25.0,
-            key="ui_kcal_per_session",
-        )
+        resting_hr_for_calc = None
 
-    # Lagre i session_state slik at Calculate-knappen bruker verdien senere
-    st.session_state["exercise_kcal_per_week"] = sessions_per_week * float(kcal_per_session)
+    # Calculate MET and kcal per session
+    try:
+        base_met = activities.get(activity, {}).get(intensity_label, None)
+        if base_met is None:
+            base_met = 4.0  # fallback conservative default
+    except Exception:
+        base_met = 4.0
+
+    # MET -> kcal per minute: (MET * 3.5 * weight_kg) / 200
+    try:
+        w = float(weight_kg)
+    except Exception:
+        w = 70.0
+
+    kcal_per_min = (base_met * 3.5 * w) / 200.0
+    kcal_per_session = kcal_per_min * float(minutes_per_session)
+
+    # apply RPE multiplier
+    kcal_per_session *= rpe_multiplier
+
+    # HR-based refinement: if avg_hr and resting_hr given, adjust modestly
+    if avg_hr is not None and resting_hr_for_calc:
+        # Simple heuristic: higher avg HR relative to resting increases burn estimate.
+        hr_delta = max(0, float(avg_hr) - float(resting_hr_for_calc))
+        hr_multiplier = 1.0 + min(0.5, hr_delta / 100.0)  # cap adjustment to +50%
+        kcal_per_session *= hr_multiplier
+
+    # Store useful metadata for later (PDF/report + reproducibility)
+    st.session_state["exercise_kcal_per_week"] = sessions_per_week * kcal_per_session
+    st.session_state["exercise_last"] = {
+        "activity": activity,
+        "intensity": intensity_label,
+        "minutes": int(minutes_per_session),
+        "sessions_per_week": int(sessions_per_week),
+        "kcal_per_session": round(kcal_per_session, 1),
+        "kcal_per_week": round(st.session_state["exercise_kcal_per_week"], 1),
+        "rpe": int(rpe),
+        "avg_hr": int(avg_hr) if avg_hr is not None else None,
+    }
+
     st.write(f"Estimated exercise burn: **{st.session_state['exercise_kcal_per_week']:.0f} kcal/week**")
+    st.caption("MET-verdier er omtrentlige. Bruk HR-alternativet eller juster RPE for mer nøyaktig estimat.")
 # ----------------------------
 # Biological age inputs
 # ----------------------------
