@@ -11,23 +11,31 @@ import pandas as pd
 import streamlit.components.v1 as components
 # --- Resting HR sync helpers ---
 def sync_from_basic():
-    """Kallar når Basic Info resting HR endrar seg."""
+    """Kalles når Basic Info resting HR endres."""
     val = st.session_state.get("basic_resting_hr")
     if val is None:
         return
-    v = int(val)
+    try:
+        v = int(val)
+    except Exception:
+        return
     st.session_state["resting_hr"] = v
-    # oppdater også andre input-keys slik at dei viser same verdi
+    # oppdater andre keys som viser samme verdi
     st.session_state["ui_resting_hr"] = v
+    st.session_state["global_resting_hr"] = v
 
 def sync_from_calc():
-    """Kallar når eit kalkulasjons-resting HR-felt endrar seg."""
+    """Kalles når et kalkulasjons‑felt (ui_resting_hr) endres."""
     val = st.session_state.get("ui_resting_hr")
     if val is None:
         return
-    v = int(val)
+    try:
+        v = int(val)
+    except Exception:
+        return
     st.session_state["resting_hr"] = v
     st.session_state["basic_resting_hr"] = v
+    st.session_state["global_resting_hr"] = v
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
@@ -441,19 +449,23 @@ with col1:
 with col2:
     height_cm = st.number_input("Height (cm)", min_value=50, max_value=250, value=170, key="inp_height")
     weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=70.0, format="%.1f", key="inp_weight")
-# --- Global resting heart rate (optional) ---
-if "global_resting_hr" not in st.session_state:
-    st.session_state["global_resting_hr"] = None
+# Global resting heart rate (optional) -- canonical resting HR stored under "resting_hr"
+if "resting_hr" not in st.session_state:
+    st.session_state["resting_hr"] = None
 
-global_rhr_input = st.number_input(
-    "Resting heart rate (bpm) — optional (prefills the VO2 section)",
+resting_hr_basic = st.number_input(
+    "Resting HR (bpm)",
     min_value=30,
-    max_value=220,
-    value=st.session_state.get("global_resting_hr") or 70,
-    key="global_resting_hr_input",
+    max_value=120,
+    value=st.session_state.get("resting_hr", 60),
+    key="basic_resting_hr",
+    on_change=sync_from_basic,
 )
-# Lagre i session_state (bruker kan overstyre i seksjonene)
-st.session_state["global_resting_hr"] = int(global_rhr_input) if global_rhr_input is not None else None
+
+# hold canonical value initialisert
+if st.session_state.get("resting_hr") is None and resting_hr_basic is not None:
+    st.session_state["resting_hr"] = int(resting_hr_basic)
+    st.session_state["global_resting_hr"] = int(resting_hr_basic)
 
 if age < 18:
     st.warning("BMI and fitness estimates are less reliable under 18 because different reference rules are used.")
