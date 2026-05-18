@@ -61,22 +61,19 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .block-container {
-        max-width: 1400px;
-        padding-left: 2rem;
-        padding-right: 2rem;
-    }
+    /* Gjør bilder, svg og iframe responsive */
+    img, svg, iframe { max-width: 100% !important; height: auto !important; }
 
-    @media (max-width: 820px) {
-        .block-container {
-            max-width: 100%;
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
+    /* Fjern store paddings på smale skjermer */
+    @media (max-width: 600px) {
+        .main > div { padding-left: 8px !important; padding-right: 8px !important; }
+        /* gjør ekspandere-headers tydeligere på mobil */
+        .streamlit-expanderHeader { font-size: 16px !important; }
     }
     </style>
     """,
     unsafe_allow_html=True,
+)
 )
 st.markdown(
     """
