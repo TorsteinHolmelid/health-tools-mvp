@@ -1126,7 +1126,7 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
       <div class="band{' band-active' if band == active_band else ''}">
         <div class="band-lbl">{band}</div>
         <div class="band-bar">
-          <div class="band-fill" style="width:{min(100, max(0, int(current_avg[band] / 50.0 * 100)))}%; background:{color};"></div>
+          <div class="band-fill" style="width:{min(100, max(0, int(current_avg[band] / 50.0 * 100)))}%; background:{pct_color if band == active_band else color};"></div>
           <div class="band-badge">{current_avg[band]} avg</div>
         </div>
         <div class="band-val">{'Your group' if band == active_band else 'Average'}</div>
