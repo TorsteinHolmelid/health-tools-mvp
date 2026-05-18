@@ -1220,7 +1220,8 @@ if "plan" in results:
     st.subheader("Weight goal / plan")
 
     st.markdown("**Condensed milestones**")
-    st.write(f"Current maintenance calories: **{plan.get('current_needs_kcal', 'N/A')} kcal/day**")
+    current_maint = int(round(st.session_state.get("latest_tdee_total", plan.get("current_needs_kcal", 0))))
+    st.write(f"Current maintenance calories: **{current_maint} kcal/day**")
     st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
     st.write(f"Expected weekly change: **{plan.get('kg_per_week', 0):+.2f} kg/week**")
 
