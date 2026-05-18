@@ -9,6 +9,25 @@ import streamlit as st
 import calculators
 import pandas as pd
 import streamlit.components.v1 as components
+# --- Resting HR sync helpers ---
+def sync_from_basic():
+    """Kallar når Basic Info resting HR endrar seg."""
+    val = st.session_state.get("basic_resting_hr")
+    if val is None:
+        return
+    v = int(val)
+    st.session_state["resting_hr"] = v
+    # oppdater også andre input-keys slik at dei viser same verdi
+    st.session_state["ui_resting_hr"] = v
+
+def sync_from_calc():
+    """Kallar når eit kalkulasjons-resting HR-felt endrar seg."""
+    val = st.session_state.get("ui_resting_hr")
+    if val is None:
+        return
+    v = int(val)
+    st.session_state["resting_hr"] = v
+    st.session_state["basic_resting_hr"] = v
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
