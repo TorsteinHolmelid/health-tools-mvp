@@ -53,7 +53,11 @@ from calculators import (
 )
 
 # --- Page config and basic styling ---
-st.set_page_config(page_title="Health Tools MVP", layout="wide")
+st.set_page_config(
+    page_title="Health Tools MVP",
+    layout="centered",            # "centered" gir bedre mobilvisning enn "wide"
+    initial_sidebar_state="collapsed",
+)
 st.markdown(
     """
     <style>
