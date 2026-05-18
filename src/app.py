@@ -427,7 +427,7 @@ if "global_resting_hr" not in st.session_state:
     st.session_state["global_resting_hr"] = None
 
 global_rhr_input = st.number_input(
-    "Resting heart rate (bpm) — valgfritt (prefyller VO2-delen)",
+    "Resting heart rate (bpm) — optional (prefills the VO2 section)",
     min_value=30,
     max_value=220,
     value=st.session_state.get("global_resting_hr") or 70,
