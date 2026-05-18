@@ -478,8 +478,11 @@ st.sidebar.info("This app does not store personal health data. It is for educati
 # Basic inputs (unique keys)
 # ----
 st.header("Basic information")
-st.plotly_chart(fig1, use_container_width=True)
-st.plotly_chart(fig2, use_container_width=True)
+# Trygg plotting: vis figuren bare om den finnes
+if 'fig1' in globals() and fig1 is not None:
+    st.plotly_chart(fig1, use_container_width=True)
+else:
+    st.info("Diagram 1: ingen data tilgjengelig.")
 # Global resting heart rate (optional) -- canonical resting HR stored under "resting_hr"
 if "resting_hr" not in st.session_state:
     st.session_state["resting_hr"] = None
