@@ -986,6 +986,8 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         # Use persisted exercise kcal/week from session state (if any)
         w_kcal = float(st.session_state.get("exercise_kcal_per_week", 0.0))
         tdee_total = tdee_including_weekly_exercise(bmr_val, activity_level, w_kcal)
+        # Lagre siste berekna TDEE i session_state slik at planvisninga bruker samme verdi
+        st.session_state["latest_tdee_total"] = float(tdee_total)
 
         c1, c2, c3 = st.columns(3)
         c1.metric("BMR", f"{int(bmr_val)} kcal")
