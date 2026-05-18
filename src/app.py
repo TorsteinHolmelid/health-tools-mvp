@@ -522,24 +522,33 @@ if run_vo2:
             value=3,
             key="v_session_intensity"
         )
-        # VO2 - resting HR: bruk global prefyll om mulig
-# Dersom brukeren velger "I don't know" vil vi la feltet være skjult
-resting_hr_unknown = st.checkbox("I don't know my resting heart rate", value=(st.session_state.get("global_resting_hr") is None), key="vo2_rhr_unknown")
-if not resting_hr_unknown:
-    default_rhr = st.session_state.get("global_resting_hr") or 70
-    resting_hr = st.number_input(
-        "Resting heart rate (bpm)",
-        min_value=30,
-        max_value=220,
-        value=default_rhr,
-        key="vo2_rhr_value"
-    )
-    st.caption("Prefylt fra 'Resting heart rate' over hvis du la inn det der. Du kan overstyre her.")
-else:
-    resting_hr = None
+
+        # Resting HR: bruk global prefyll om tilgjengelig, ellers la brukeren angi eller velge "I don't know"
+        resting_hr_unknown = st.checkbox(
+            "I don't know my resting heart rate",
+            value=(st.session_state.get("global_resting_hr") is None),
+            key="vo2_rhr_unknown"
+        )
+        if not resting_hr_unknown:
+            default_rhr = st.session_state.get("global_resting_hr") or 70
+            resting_hr = st.number_input(
+                "Resting heart rate (bpm)",
+                min_value=30,
+                max_value=220,
+                value=default_rhr,
+                key="vo2_rhr_value"
+            )
+            st.caption("Prefylt fra 'Resting heart rate' over hvis du la inn det der. Du kan overstyre her.")
+        else:
+            resting_hr = None
+
+        # Max HR
         max_hr_unknown = st.checkbox("I don't know my max heart rate", value=True, key="vo2_maxhr_unknown")
         if not max_hr_unknown:
             max_hr = st.number_input("Estimated max heart rate (bpm)", min_value=40, max_value=240, value=180, key="vo2_maxhr_val")
+        else:
+            max_hr = None
+
         measured_vo2_input = st.number_input(
             "If you know a measured VO2max (Apple Watch, lab, etc.), enter it here",
             min_value=0.0,
@@ -547,12 +556,14 @@ else:
             format="%.1f",
             key="vo2_measured_input"
         )
+
         vo2_method = st.selectbox(
             "VO2 calculation method",
             options=["Questionnaire", "Cooper (12-min)", "Rockport (1-mile)", "Measured value"],
             index=0,
             key="vo2_method_select"
         )
+
         if vo2_method == "Cooper (12-min)":
             vo2_distance_m = st.number_input("12-minute distance (meters)", min_value=0.0, value=0.0, format="%.1f", key="vo2_cooper_distance")
         elif vo2_method == "Rockport (1-mile)":
