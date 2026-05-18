@@ -576,18 +576,8 @@ if run_vo2:
 # --- Exercise calories input (legg før Calculate-knappen) ---
 with st.expander("Exercise calories (enter before clicking Calculate)", expanded=False):
     st.markdown("Specify your exercise habits for a more precise TDEE / plan. MET values are approximate.")
+
     sessions_per_week = st.number_input(
-        # --- Average HR for sessions (prefill & store globally) ---
-default_avg = st.session_state.get("global_avg_hr")
-avg_hr = st.number_input(
-    "Average HR during sessions (bpm) — valgfritt (lagres lokalt)",
-    min_value=30,
-    max_value=220,
-    value=default_avg if default_avg is not None else 130,
-    key="ui_avg_hr"
-)
-# Save back to session_state så andre seksjoner kan bruke den
-st.session_state["global_avg_hr"] = int(avg_hr) if avg_hr is not None else None
         "Sessions per week",
         min_value=0,
         max_value=21,
@@ -595,6 +585,17 @@ st.session_state["global_avg_hr"] = int(avg_hr) if avg_hr is not None else None
         step=1,
         key="ui_sessions_per_week",
     )
+
+    # --- Average HR for sessions (prefill & store globally) ---
+    default_avg = st.session_state.get("global_avg_hr")
+    avg_hr = st.number_input(
+        "Average HR during sessions (bpm) — valgfritt (lagres lokalt)",
+        min_value=30,
+        max_value=220,
+        value=default_avg if default_avg is not None else 130,
+        key="ui_avg_hr",
+    )
+    st.session_state["global_avg_hr"] = int(avg_hr) if avg_hr is not None else None
 
     activities = {
         "Walking (casual)": {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
@@ -645,10 +646,22 @@ st.session_state["global_avg_hr"] = int(avg_hr) if avg_hr is not None else None
     rpe_multiplier = 0.85 + (rpe - 1) * (0.4 / 9)
 
     use_hr = st.checkbox("Use average session heart rate to refine estimate (optional)", key="ui_use_hr")
-    avg_hr = None
+    avg_hr_for_calc = None
     if use_hr:
-        avg_hr = st.number_input("Average HR during session (bpm)", min_value=30, max_value=220, value=130, key="ui_avg_hr")
-        resting_hr_for_calc = st.number_input("Resting HR (optional, bpm)", min_value=30, max_value=120, value=60, key="ui_resting_hr")
+        avg_hr_for_calc = st.number_input(
+            "Average HR during session (bpm)",
+            min_value=30,
+            max_value=220,
+            value=avg_hr if avg_hr is not None else 130,
+            key="ui_avg_hr_calc",
+        )
+        resting_hr_for_calc = st.number_input(
+            "Resting HR (optional, bpm)",
+            min_value=30,
+            max_value=120,
+            value=60,
+            key="ui_resting_hr",
+        )
     else:
         resting_hr_for_calc = None
 
@@ -668,8 +681,8 @@ st.session_state["global_avg_hr"] = int(avg_hr) if avg_hr is not None else None
     kcal_per_session = kcal_per_min * float(minutes_per_session)
     kcal_per_session *= rpe_multiplier
 
-    if avg_hr is not None and resting_hr_for_calc:
-        hr_delta = max(0, float(avg_hr) - float(resting_hr_for_calc))
+    if avg_hr_for_calc is not None and resting_hr_for_calc:
+        hr_delta = max(0, float(avg_hr_for_calc) - float(resting_hr_for_calc))
         hr_multiplier = 1.0 + min(0.5, hr_delta / 100.0)
         kcal_per_session *= hr_multiplier
 
@@ -682,7 +695,7 @@ st.session_state["global_avg_hr"] = int(avg_hr) if avg_hr is not None else None
         "kcal_per_session": round(kcal_per_session, 1),
         "kcal_per_week": round(st.session_state["exercise_kcal_per_week"], 1),
         "rpe": int(rpe),
-        "avg_hr": int(avg_hr) if avg_hr is not None else None,
+        "avg_hr": int(avg_hr_for_calc) if avg_hr_for_calc is not None else None,
     }
 
     st.write(f"Estimated exercise burn: **{st.session_state['exercise_kcal_per_week']:.0f} kcal/week**")
