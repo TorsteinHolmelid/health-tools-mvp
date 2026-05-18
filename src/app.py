@@ -1221,9 +1221,24 @@ if "plan" in results:
 
     st.markdown("**Condensed milestones**")
     current_maint = int(round(st.session_state.get("latest_tdee_total", plan.get("current_needs_kcal", 0))))
-    st.write(f"Current maintenance calories: **{current_maint} kcal/day**")
-    st.write(f"Recommended daily calories: **{plan.get('recommended_daily_kcal', 'N/A')} kcal/day**")
-    st.write(f"Expected weekly change: **{plan.get('kg_per_week', 0):+.2f} kg/week**")
+    # Bruk siste berekna TDEE fra session_state hvis tilgjengelig, ellers bruk plan-verdien
+current_maint = float(st.session_state.get("latest_tdee_total", plan.get("current_needs_kcal", 0) or 0.0))
+# Sikre at vi har kg_per_week (kan vere negativ for vekttap)
+kg_per_week = float(plan.get("kg_per_week", 0.0) or 0.0)
+
+# 7700 kcal per kg (omtrentlig). dagleg endring:
+daily_change_kcal = kg_per_week * 7700.0 / 7.0
+
+# Recommended daily = maintenance + daily_change (vil bli mindre ved negativ kg_per_week)
+recommended_daily = int(round(current_maint + daily_change_kcal))
+
+# Oppdater plan-dic slik at downstream bruk får same verdier
+plan["current_needs_kcal"] = int(round(current_maint))
+plan["recommended_daily_kcal"] = recommended_daily
+
+st.write(f"Current maintenance calories: **{plan['current_needs_kcal']} kcal/day**")
+st.write(f"Recommended daily calories: **{plan['recommended_daily_kcal']} kcal/day**")
+st.write(f"Expected weekly change: **{kg_per_week:+.2f} kg/week**")
 
     if plan.get("warning"):
         st.warning(plan["warning"])
