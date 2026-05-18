@@ -478,11 +478,6 @@ st.sidebar.info("This app does not store personal health data. It is for educati
 # Basic inputs (unique keys)
 # ----
 st.header("Basic information")
-# Trygg plotting: vis figuren bare om den finnes
-if 'fig1' in globals() and fig1 is not None:
-    st.plotly_chart(fig1, use_container_width=True)
-else:
-    st.info("Diagram 1: ingen data tilgjengelig.")
 # Global resting heart rate (optional) -- canonical resting HR stored under "resting_hr"
 if "resting_hr" not in st.session_state:
     st.session_state["resting_hr"] = None
@@ -500,6 +495,21 @@ resting_hr_basic = st.number_input(
 if st.session_state.get("resting_hr") is None and resting_hr_basic is not None:
     st.session_state["resting_hr"] = int(resting_hr_basic)
     st.session_state["global_resting_hr"] = int(resting_hr_basic)
+
+# --- Age input (Basic Info canonical) ---
+age_input = st.number_input(
+    "Age (years)",
+    min_value=5,
+    max_value=120,
+    value=st.session_state.get("age", 30),
+    key="age",
+)
+
+# canonicaliser og lagre som int
+try:
+    st.session_state["age"] = int(age_input)
+except Exception:
+    st.session_state["age"] = None
 
 # Safeguard: sørg for at 'age' er definert og kan konverteres til int
 _age_val = st.session_state.get("age", None)
