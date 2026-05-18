@@ -5,6 +5,14 @@ from html import escape
 from io import BytesIO
 
 import matplotlib.pyplot as plt
+
+plt.plot(x, y)
+st.pyplot(plt)
+import plotly.express as px
+
+fig = px.line(x=x, y=y, title="My chart")
+fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), height=320)
+st.plotly_chart(fig, use_container_width=True, config={'responsive': True})
 import streamlit as st
 import calculators
 import pandas as pd
@@ -443,13 +451,8 @@ st.sidebar.info("This app does not store personal health data. It is for educati
 # Basic inputs (unique keys)
 # ----
 st.header("Basic information")
-col1, col2 = st.columns(2)
-with col1:
-    age = st.number_input("Age (years)", min_value=0, max_value=120, value=30, step=1, key="inp_age")
-    sex = st.selectbox("Sex", options=["M", "F"], index=0, key="inp_sex")
-with col2:
-    height_cm = st.number_input("Height (cm)", min_value=50, max_value=250, value=170, key="inp_height")
-    weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=70.0, format="%.1f", key="inp_weight")
+st.plotly_chart(fig1, use_container_width=True)
+st.plotly_chart(fig2, use_container_width=True)
 # Global resting heart rate (optional) -- canonical resting HR stored under "resting_hr"
 if "resting_hr" not in st.session_state:
     st.session_state["resting_hr"] = None
