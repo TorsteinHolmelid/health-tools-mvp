@@ -4,15 +4,42 @@ from datetime import datetime
 from html import escape
 from io import BytesIO
 
-import matplotlib.pyplot as plt
-
-plt.plot(x, y)
-st.pyplot(plt)
+# --- Imports (trygt å ha tidlig) ---
+import streamlit as st
 import plotly.express as px
+import calculators
+import pandas as pd
+import streamlit.components.v1 as components
 
-fig = px.line(x=x, y=y, title="My chart")
-fig.update_layout(margin=dict(l=0, r=0, t=30, b=0), height=320)
-st.plotly_chart(fig, use_container_width=True, config={'responsive': True})
+# Hvis du trenger matplotlib senere kan du importere det lokalt der du bruker det:
+# import matplotlib.pyplot as plt
+
+# --- Resting HR sync helpers ---
+def sync_from_basic():
+    """Kalles når Basic Info resting HR endres."""
+    val = st.session_state.get("basic_resting_hr")
+    if val is None:
+        return
+    try:
+        v = int(val)
+    except Exception:
+        return
+    st.session_state["resting_hr"] = v
+    st.session_state["ui_resting_hr"] = v
+    st.session_state["global_resting_hr"] = v
+
+def sync_from_calc():
+    """Kalles når et kalkulasjons‑felt (ui_resting_hr) endres."""
+    val = st.session_state.get("ui_resting_hr")
+    if val is None:
+        return
+    try:
+        v = int(val)
+    except Exception:
+        return
+    st.session_state["resting_hr"] = v
+    st.session_state["basic_resting_hr"] = v
+    st.session_state["global_resting_hr"] = v
 import streamlit as st
 import calculators
 import pandas as pd
