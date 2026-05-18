@@ -497,7 +497,11 @@ if st.session_state.get("resting_hr") is None and resting_hr_basic is not None:
     st.session_state["global_resting_hr"] = int(resting_hr_basic)
 
 # --- Age input (Basic Info canonical) ---
-# La Streamlit håndtere widget-state via key="age".
+# Ensure an initial safe value exists (set once).
+if "age" not in st.session_state:
+    st.session_state["age"] = 30
+
+# Render the number input and let Streamlit manage the widget state via key="age".
 age_input = st.number_input(
     "Age (years)",
     min_value=5,
@@ -506,18 +510,15 @@ age_input = st.number_input(
     key="age",
 )
 
-# Bruk lokal variabel for videre beregninger. Ikke skriv eksplisitt None tilbake i st.session_state.
-age = st.session_state.get("age")
+# Use a local validated variable for calculations; do NOT write back None or raw text.
 try:
-    age = int(age)
+    age = int(st.session_state.get("age"))
 except Exception:
     age = None
 
-# Hvis du vil ha en sikker initialisering (valgfritt), sett default før widgeten:
-# if "age" not in st.session_state:
-#     st.session_state["age"] = 30
-#
-# (Unngå å sette st.session_state["age"] = None eller å skrive tilbake hver run.)
+# For downstream code use `age` (local variable). Only write back cleaned integer if needed:
+if isinstance(age, int):
+    st.session_state["age"] = age
 
 # Hvis du ønsker å normalisere og skrive tilbake, gjør det kun for gyldige heltall:
 if age is not None:
