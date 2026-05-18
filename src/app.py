@@ -422,6 +422,19 @@ with col1:
 with col2:
     height_cm = st.number_input("Height (cm)", min_value=50, max_value=250, value=170, key="inp_height")
     weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=70.0, format="%.1f", key="inp_weight")
+# --- Global resting heart rate (optional) ---
+if "global_resting_hr" not in st.session_state:
+    st.session_state["global_resting_hr"] = None
+
+global_rhr_input = st.number_input(
+    "Resting heart rate (bpm) — valgfritt (prefyller VO2-delen)",
+    min_value=30,
+    max_value=220,
+    value=st.session_state.get("global_resting_hr") or 70,
+    key="global_resting_hr_input",
+)
+# Lagre i session_state (bruker kan overstyre i seksjonene)
+st.session_state["global_resting_hr"] = int(global_rhr_input) if global_rhr_input is not None else None
 
 if age < 18:
     st.warning("BMI and fitness estimates are less reliable under 18 because different reference rules are used.")
@@ -509,9 +522,21 @@ if run_vo2:
             value=3,
             key="v_session_intensity"
         )
-        resting_hr_unknown = st.checkbox("I don't know my resting heart rate", value=True, key="vo2_rhr_unknown")
-        if not resting_hr_unknown:
-            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220, value=70, key="vo2_rhr_value")
+        # VO2 - resting HR: bruk global prefyll om mulig
+# Dersom brukeren velger "I don't know" vil vi la feltet være skjult
+resting_hr_unknown = st.checkbox("I don't know my resting heart rate", value=(st.session_state.get("global_resting_hr") is None), key="vo2_rhr_unknown")
+if not resting_hr_unknown:
+    default_rhr = st.session_state.get("global_resting_hr") or 70
+    resting_hr = st.number_input(
+        "Resting heart rate (bpm)",
+        min_value=30,
+        max_value=220,
+        value=default_rhr,
+        key="vo2_rhr_value"
+    )
+    st.caption("Prefylt fra 'Resting heart rate' over hvis du la inn det der. Du kan overstyre her.")
+else:
+    resting_hr = None
         max_hr_unknown = st.checkbox("I don't know my max heart rate", value=True, key="vo2_maxhr_unknown")
         if not max_hr_unknown:
             max_hr = st.number_input("Estimated max heart rate (bpm)", min_value=40, max_value=240, value=180, key="vo2_maxhr_val")
