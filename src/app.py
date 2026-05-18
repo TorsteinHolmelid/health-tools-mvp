@@ -571,7 +571,7 @@ if run_vo2:
             rockport_hr = st.number_input("Heart rate at the end (bpm)", min_value=30, max_value=220, value=140, key="vo2_rockport_hr")
 
 # --- Exercise calories input (legg før Calculate-knappen) ---
-with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=False):
+with st.expander("Exercise calories (enter before clicking Calculate)", expanded=False):
     st.markdown("Specify your exercise habits for a more precise TDEE / plan. MET values are approximate.")
     sessions_per_week = st.number_input(
         "Sessions per week",
