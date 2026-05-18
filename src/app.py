@@ -501,11 +501,20 @@ if st.session_state.get("resting_hr") is None and resting_hr_basic is not None:
     st.session_state["resting_hr"] = int(resting_hr_basic)
     st.session_state["global_resting_hr"] = int(resting_hr_basic)
 
-if age < 18:
-    st.warning("BMI and fitness estimates are less reliable under 18 because different reference rules are used.")
-elif age >= 70:
-    st.info("For older adults, BMI is often less informative because muscle mass, frailty and overall context matter.")
+# Safeguard: sørg for at 'age' er definert og kan konverteres til int
+_age_val = st.session_state.get("age", None)
+try:
+    age = int(_age_val) if _age_val is not None else None
+except Exception:
+    age = None
 
+if age is None:
+    st.info("Oppgi alder i Basic Info for alders‑spesifikk veiledning.")
+else:
+    if age < 18:
+        st.warning("BMI and fitness estimates are less reliable under 18 because different reference rules are used.")
+    elif age >= 70:
+        st.info("For older adults, BMI is often less informative because muscle mass, frailty and overall context matter.")
 
 # defaults for subsequent inputs (safe initialization)
 activity_level = "Moderate"
