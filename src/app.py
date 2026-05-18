@@ -572,7 +572,7 @@ if run_vo2:
 
 # --- Exercise calories input (legg før Calculate-knappen) ---
 with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=False):
-    st.markdown("Angi treningsvaner for mer presis TDEE / plan. MET-verdier er omtrentlige.")
+    st.markdown("Specify your exercise habits for a more precise TDEE / plan. MET values are approximate.")
     sessions_per_week = st.number_input(
         "Sessions per week",
         min_value=0,
