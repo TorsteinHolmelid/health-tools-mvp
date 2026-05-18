@@ -497,6 +497,8 @@ if st.session_state.get("resting_hr") is None and resting_hr_basic is not None:
     st.session_state["global_resting_hr"] = int(resting_hr_basic)
 
 # --- Age input (Basic Info canonical) ---
+# Streamlit lagrer widget-verdien automatisk i st.session_state når key="age" brukes,
+# så vi trenger ikke å overskrive st.session_state direkte med None.
 age_input = st.number_input(
     "Age (years)",
     min_value=5,
@@ -505,12 +507,16 @@ age_input = st.number_input(
     key="age",
 )
 
-# canonicaliser og lagre som int
+# Bruk en lokal, validerte variabel for videre kalkulasjoner:
+age = st.session_state.get("age")
 try:
-    st.session_state["age"] = int(age_input)
+    age = int(age)
 except Exception:
-    st.session_state["age"] = None
+    age = None
 
+# Hvis du ønsker å normalisere og skrive tilbake, gjør det kun for gyldige heltall:
+if age is not None:
+    st.session_state["age"] = age
 # Safeguard: sørg for at 'age' er definert og kan konverteres til int
 _age_val = st.session_state.get("age", None)
 try:
