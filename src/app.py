@@ -471,6 +471,9 @@ exercise_kcal_per_week = float(st.session_state.get("exercise_kcal_per_week", 0.
 
 family_history = False
 menopause = False
+# Ensure global avg HR key exists (prefill & cross-section usage)
+if "global_avg_hr" not in st.session_state:
+    st.session_state["global_avg_hr"] = None
 
 
 # ----
@@ -574,6 +577,17 @@ if run_vo2:
 with st.expander("Exercise calories (enter before clicking Calculate)", expanded=False):
     st.markdown("Specify your exercise habits for a more precise TDEE / plan. MET values are approximate.")
     sessions_per_week = st.number_input(
+        # --- Average HR for sessions (prefill & store globally) ---
+default_avg = st.session_state.get("global_avg_hr")
+avg_hr = st.number_input(
+    "Average HR during sessions (bpm) — valgfritt (lagres lokalt)",
+    min_value=30,
+    max_value=220,
+    value=default_avg if default_avg is not None else 130,
+    key="ui_avg_hr"
+)
+# Save back to session_state så andre seksjoner kan bruke den
+st.session_state["global_avg_hr"] = int(avg_hr) if avg_hr is not None else None
         "Sessions per week",
         min_value=0,
         max_value=21,
