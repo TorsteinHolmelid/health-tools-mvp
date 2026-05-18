@@ -636,7 +636,7 @@ with st.expander("Exercise calories (angi før du trykker Calculate)", expanded=
     }
 
     st.write(f"Estimated exercise burn: **{st.session_state['exercise_kcal_per_week']:.0f} kcal/week**")
-    st.caption("MET-verdier er omtrentlige. Bruk HR-alternativet eller juster RPE for mer nøyaktig estimat.")
+    st.caption("MET values are approximate. Use the HR option or adjust RPE for a more accurate estimate.")
 
 
 # ----
