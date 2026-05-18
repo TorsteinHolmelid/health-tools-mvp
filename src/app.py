@@ -1177,7 +1177,7 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
           <div class="legend-item"><span class="dot" style="background:#26A690"></span>Better than average</div>
         </div>
 
-        <div class="mini-note">Klar, fargekodet og mykje lettare å lese.</div>
+        <div class="mini-note">.</div>
       </div>
     </div>
   </div>
