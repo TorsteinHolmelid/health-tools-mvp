@@ -497,7 +497,7 @@ if st.session_state.get("resting_hr") is None and resting_hr_basic is not None:
     st.session_state["global_resting_hr"] = int(resting_hr_basic)
 
 # --- Age input (Basic Info canonical) ---
-# Ensure an initial safe value exists (set once).
+# Ensure a safe initial value exists (do this once).
 if "age" not in st.session_state:
     st.session_state["age"] = 30
 
@@ -510,34 +510,15 @@ age_input = st.number_input(
     key="age",
 )
 
-# Use a local validated variable for calculations; do NOT write back None or raw text.
+# Validate into a local variable for downstream calculations; DO NOT write unvalidated values
+# (or None) back into st.session_state during normal runs.
 try:
     age = int(st.session_state.get("age"))
 except Exception:
     age = None
 
-# For downstream code use `age` (local variable). Only write back cleaned integer if needed:
-if isinstance(age, int):
-    st.session_state["age"] = age
-
-# Hvis du ønsker å normalisere og skrive tilbake, gjør det kun for gyldige heltall:
-if age is not None:
-    st.session_state["age"] = age
-# Safeguard: sørg for at 'age' er definert og kan konverteres til int
-_age_val = st.session_state.get("age", None)
-try:
-    age = int(_age_val) if _age_val is not None else None
-except Exception:
-    age = None
-
-if age is None:
-    st.info("Oppgi alder i Basic Info for alders‑spesifikk veiledning.")
-else:
-    if age < 18:
-        st.warning("BMI and fitness estimates are less reliable under 18 because different reference rules are used.")
-    elif age >= 70:
-        st.info("For older adults, BMI is often less informative because muscle mass, frailty and overall context matter.")
-
+# Use `age` (local variable) for all calculations below.
+# Do NOT set st.session_state["age"] = age here (we avoid mutating session_state during runs).
 # defaults for subsequent inputs (safe initialization)
 activity_level = "Moderate"
 weekly_minutes = 150
