@@ -538,7 +538,7 @@ if run_vo2:
                 value=default_rhr,
                 key="vo2_rhr_value"
             )
-            st.caption("Prefylt fra 'Resting heart rate' over hvis du la inn det der. Du kan overstyre her.")
+            st.caption("Prefilled from 'Resting heart rate' above if entered there. You can override it here.")
         else:
             resting_hr = None
 
