@@ -863,30 +863,30 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
                 whr_value = calculators.waist_hip_ratio(waist_f, hip_f)
                 whr_cat = calculators.whr_category(sex, whr_value)
                 results["whr"] = {"value": whr_value, "category": whr_cat}
-if bodyfat_requested and neck_f is not None:
-    try:
-        if sex == "M":
-            if waist_f is None:
-                raise ValueError("Waist measurement required for male body-fat estimate")
-            bodyfat = calculators.body_fat_navy(
-                sex=sex,
-                height_cm=height_f,
-                neck_cm=neck_f,
-                waist_cm=waist_f,
-            )
-        else:
-            if waist_f is None or hip_f is None:
-                raise ValueError("Waist and hip measurements required for female body-fat estimate")
-            bodyfat = calculators.body_fat_navy(
-                sex=sex,
-                height_cm=height_f,
-                neck_cm=neck_f,
-                waist_cm=waist_f,
-                hip_cm=hip_f,
-            )
-        results["bodyfat"] = bodyfat
-    except Exception as e:
-        st.warning(f"Body-fat estimate skipped: {e}")
+        if bodyfat_requested and neck_f is not None:
+            try:
+                if sex == "M":
+                    if waist_f is None:
+                        raise ValueError("Waist measurement required for male body-fat estimate")
+                    bodyfat = calculators.body_fat_navy(
+                        sex=sex,
+                        height_cm=height_f,
+                        neck_cm=neck_f,
+                        waist_cm=waist_f,
+                    )
+                else:
+                    if waist_f is None or hip_f is None:
+                        raise ValueError("Waist and hip measurements required for female body-fat estimate")
+                    bodyfat = calculators.body_fat_navy(
+                        sex=sex,
+                        height_cm=height_f,
+                        neck_cm=neck_f,
+                        waist_cm=waist_f,
+                        hip_cm=hip_f,
+                    )
+                results["bodyfat"] = bodyfat
+            except Exception as e:
+                st.warning(f"Body-fat estimate skipped: {e}")
 
         # VO2
         if run_vo2:
