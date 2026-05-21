@@ -529,54 +529,127 @@ if run_bmi:
 
 # ── VO2 inputs ────────────────────────────────────────────────────────────────
 if run_vo2:
-    with st.expander("Cardio / VO2max inputs", expanded=True):
-        activity_level = st.selectbox(
-            "Physical activity level",
-            ["Sedentary", "Light", "Moderate", "Active", "Very active", "Athlete"],
-            index=2, key="v_activity"
-        )
-        weekly_minutes = st.number_input("Weekly minutes of moderate-to-vigorous activity",
-                                          min_value=0, max_value=2000, value=150, key="v_weekly_minutes")
-        session_intensity = st.slider("Typical session intensity (1=very light, 5=very intense)",
-                                       min_value=1, max_value=5, value=3, key="v_session_intensity")
+    with st.expander("❤️ Cardio / VO2max", expanded=True):
 
-        resting_hr_unknown = st.checkbox(
+        # ── Activity level — visual card selector ──
+        _act_options = ["Sedentary", "Light", "Moderate", "Active", "Very active", "Athlete"]
+        _act_icons   = ["🛋️", "🚶", "🚴", "🏃", "⚡", "🏅"]
+        _act_descs   = ["Desk job, no exercise", "1–2x/week light", "3–4x/week moderate",
+                        "5x/week vigorous", "2x/day training", "Elite / competitive"]
+
+        _prev_act = st.session_state.get("v_activity", "Moderate")
+        _prev_idx = _act_options.index(_prev_act) if _prev_act in _act_options else 2
+
+        st.markdown("**Activity level**")
+        _act_cols = st.columns(6)
+        for _ci, (_ao, _ai, _ad) in enumerate(zip(_act_options, _act_icons, _act_descs)):
+            with _act_cols[_ci]:
+                _selected = (_ao == st.session_state.get("v_activity", "Moderate"))
+                _bg = "rgba(14,165,163,0.18)" if _selected else "rgba(255,255,255,0.03)"
+                _border = "#0ea5a3" if _selected else "rgba(255,255,255,0.08)"
+                st.markdown(
+                    f'<div style="background:{_bg};border:1.5px solid {_border};border-radius:12px;'
+                    f'padding:8px 4px;text-align:center;cursor:pointer;">'
+                    f'<div style="font-size:22px;">{_ai}</div>'
+                    f'<div style="font-size:10px;font-weight:700;color:#E5E7EB;margin-top:2px;">{_ao}</div>'
+                    f'<div style="font-size:9px;color:#94A3B8;margin-top:1px;">{_ad}</div>'
+                    f'</div>', unsafe_allow_html=True
+                )
+
+        activity_level = st.selectbox(
+            "Select activity level",
+            _act_options, index=_prev_idx, key="v_activity",
+            label_visibility="collapsed"
+        )
+
+        st.markdown("---")
+
+        # ── Weekly minutes slider ──
+        weekly_minutes = st.slider(
+            "⏱️ Weekly minutes of moderate-to-vigorous activity",
+            min_value=0, max_value=600, value=150, step=10,
+            key="v_weekly_minutes", format="%d min"
+        )
+        _who = "✅ Meets WHO guidelines (150+ min/week)" if weekly_minutes >= 150 else "⚠️ Below WHO guidelines (aim for 150+ min/week)"
+        _who_color = "#22C55E" if weekly_minutes >= 150 else "#F59E0B"
+        st.markdown(f'<div style="color:{_who_color};font-size:12px;margin-top:-8px;margin-bottom:8px;">{_who}</div>',
+                    unsafe_allow_html=True)
+
+        # ── Session intensity ──
+        session_intensity = st.slider(
+            "💪 Typical session intensity",
+            min_value=1, max_value=5, value=3, key="v_session_intensity"
+        )
+        _int_labels = {1: "😴 Very light", 2: "🚶 Light", 3: "🚴 Moderate", 4: "🏃 Hard", 5: "🔥 Max effort"}
+        st.markdown(f'<div style="color:#94A3B8;font-size:12px;margin-top:-8px;margin-bottom:8px;">{_int_labels[session_intensity]}</div>',
+                    unsafe_allow_html=True)
+
+        st.markdown("---")
+
+        # ── Heart rate ──
+        st.markdown("**❤️ Heart rate**")
+        resting_hr_unknown = st.toggle(
             "I don't know my resting heart rate",
             value=(st.session_state.get("global_resting_hr") is None),
             key="vo2_rhr_unknown"
         )
         if not resting_hr_unknown:
             default_rhr = st.session_state.get("global_resting_hr") or 70
-            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220,
-                                          value=default_rhr, key="vo2_rhr_value")
-            st.caption("Prefilled from Resting HR above.")
+            resting_hr = st.slider("Resting HR (bpm)", min_value=30, max_value=120,
+                    value=int(default_rhr), key="vo2_rhr_value")
+            _hr_zone = "🟢 Athletic" if resting_hr < 55 else "🟡 Normal" if resting_hr < 75 else "🔴 Elevated"
+            st.caption(f"{_hr_zone} — prefilled from basic inputs above.")
         else:
             resting_hr = None
 
-        max_hr_unknown = st.checkbox("I don't know my max heart rate", value=True, key="vo2_maxhr_unknown")
+        max_hr_unknown = st.toggle("I don't know my max heart rate", value=True, key="vo2_maxhr_unknown")
         if not max_hr_unknown:
-            max_hr = st.number_input("Estimated max heart rate (bpm)", min_value=40, max_value=240,
-                                      value=180, key="vo2_maxhr_val")
+            max_hr = st.slider("Max HR (bpm)", min_value=100, max_value=240,
+                    value=180, key="vo2_maxhr_val")
+            _age_pred = 220 - int(age) if age else 190
+            st.caption(f"Age-predicted max: ~{_age_pred} bpm")
         else:
             max_hr = None
 
-        measured_vo2_input = st.number_input(
-            "If you know a measured VO2max (Apple Watch, lab, etc.), enter it here",
-            min_value=0.0, value=0.0, format="%.1f", key="vo2_measured_input"
-        )
-        vo2_method = st.selectbox(
-            "VO2 calculation method",
+        st.markdown("---")
+
+        # ── VO2 method ──
+        st.markdown("**🧪 VO2max calculation method**")
+        vo2_method = st.radio(
+            "Method",
             ["Questionnaire", "Cooper (12-min)", "Rockport (1-mile)", "Measured value"],
-            index=0, key="vo2_method_select"
+            index=0, key="vo2_method_select", horizontal=True,
+            label_visibility="collapsed"
         )
+
+        _method_info = {
+            "Questionnaire": "📋 Estimated from activity level, HR and BMI. Good for general use.",
+            "Cooper (12-min)": "🏃 Run as far as possible in 12 min. Very accurate.",
+            "Rockport (1-mile)": "🚶 Walk 1 mile, record time and HR at finish.",
+            "Measured value": "⌚ Enter a value from Apple Watch, Garmin, or lab test.",
+        }
+        st.caption(_method_info.get(vo2_method, ""))
+
         if vo2_method == "Cooper (12-min)":
-            vo2_distance_m = st.number_input("12-minute distance (meters)", min_value=0.0,
-                                              value=0.0, format="%.1f", key="vo2_cooper_distance")
+            vo2_distance_m = st.slider("Distance covered in 12 min (meters)",
+                    min_value=0, max_value=4000, value=2400, step=50,
+                    key="vo2_cooper_distance", format="%d m")
+            st.caption(f"Estimated VO2max: ~{(vo2_distance_m - 504.9) / 44.73:.1f} ml/kg/min" if vo2_distance_m > 504 else "Enter distance above")
         elif vo2_method == "Rockport (1-mile)":
-            rockport_time_min = st.number_input("1-mile time (minutes)", min_value=0.1,
-                                                 value=15.0, format="%.2f", key="vo2_rockport_time")
-            rockport_hr = st.number_input("Heart rate at the end (bpm)", min_value=30, max_value=220,
-                                           value=140, key="vo2_rockport_hr")
+            rockport_time_min = st.slider("1-mile walk time (minutes)",
+                    min_value=8.0, max_value=30.0, value=15.0, step=0.5,
+                    key="vo2_rockport_time", format="%.1f min")
+            rockport_hr = st.slider("Heart rate at finish (bpm)",
+                    min_value=60, max_value=200, value=140,
+                    key="vo2_rockport_hr")
+        elif vo2_method == "Measured value":
+            measured_vo2_input = st.slider(
+                "Your measured VO2max (ml/kg/min)",
+                min_value=10.0, max_value=90.0, value=40.0, step=0.5,
+                key="vo2_measured_input", format="%.1f ml/kg/min"
+            )
+        else:
+            measured_vo2_input = 0.0
 
 # ── Exercise calories ─────────────────────────────────────────────────────────
 ACTIVITIES = {
