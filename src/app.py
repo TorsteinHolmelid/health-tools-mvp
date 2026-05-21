@@ -693,7 +693,7 @@ with st.expander("🏃 Exercise log — enter before clicking Calculate", expand
 # ── Biological age inputs ─────────────────────────────────────────────────────
 if run_bioage:
     with st.expander("Biological age inputs", expanded=True):
-                st.caption("Leave any field blank or use 'I don't know' where available.")
+         st.caption("Leave any field blank or use 'I don't know' where available.")
 
         t_core, t_cardio, t_life, t_body = st.tabs(["Core", "Cardio", "Lifestyle", "Body comp"])
 
