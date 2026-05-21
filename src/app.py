@@ -1263,11 +1263,10 @@ if results:
 
         st.plotly_chart(fig_gauge, use_container_width=True)
 
-        col_l, col_r = st.columns(3)
-        col_l.metric("Your percentile", f"{v_pct:.0f}th", f"{v_pct - 50:.1f} vs avg")
-        st.columns(3)[1].metric("Rating", pct_label)
-        st.columns(3)[2].metric("Top", f"{100 - v_pct:.0f}%")
-
+        col_l, col_m, col_r = st.columns(3)
+col_l.metric("Your percentile", f"{v_pct:.0f}th", f"{v_pct - 50:.1f} vs avg")
+col_m.metric("Rating", pct_label)
+col_r.metric("Top", f"{100 - v_pct:.0f}%")
         # VO2 tips
         tips = results["vo2"].get("tips", [])
         if tips:
