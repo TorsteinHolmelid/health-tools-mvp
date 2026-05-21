@@ -512,7 +512,7 @@ rockport_hr = 0
 if run_bmi:
     with st.expander("BMI inputs and body composition", expanded=True):
         st.markdown("BMI is a simple screening tool, not a diagnosis.")
-        use_waist_hip = st.checkbox("Add waist and hip measurements", value=False, key="b_use_whr")
+        use_waist_hip = st.toggle("Add waist and hip measurements", value=False, key="b_use_whr")
         if use_waist_hip:
             c1, c2 = st.columns(2)
             with c1:
@@ -521,7 +521,7 @@ if run_bmi:
             with c2:
                 hip_cm = st.number_input("Hip (cm)", min_value=30.0, max_value=300.0,
                                           value=95.0, format="%.1f", key="b_hip")
-        use_neck = st.checkbox("Add neck measurement for body-fat estimate", value=False, key="b_use_neck")
+        use_neck = st.toggle("Add neck measurement for body-fat estimate", value=False, key="b_use_neck")
         if use_neck:
             neck_cm = st.number_input("Neck (cm)", min_value=20.0, max_value=80.0,
                                        value=38.0, format="%.1f", key="b_neck")
@@ -628,7 +628,7 @@ with st.expander("🏃 Exercise log — enter before clicking Calculate", expand
     rpe = st.slider("Perceived exertion (RPE) 1–10", 1, 10, 5, key="ui_rpe")
     rpe_multiplier = 0.85 + (rpe - 1) * (0.4 / 9)
 
-    use_hr = st.checkbox("Use average session HR to refine estimate", key="ui_use_hr")
+    use_hr = st.toggle("Use average session HR to refine estimate", key="ui_use_hr")
     avg_hr_for_calc = None
     resting_hr_for_calc = None
     if use_hr:
@@ -646,8 +646,7 @@ with st.expander("🏃 Exercise log — enter before clicking Calculate", expand
         )
 
     # Also allow manual kcal override
-    manual_kcal = st.checkbox("I know my exact kcal burn per session — enter manually", key="ui_manual_kcal")
-    manual_kcal_val = 0.0
+    manual_kcal = st.toggle("I know my exact kcal burn per session — enter manually", key="ui_manual_kcal")
     if manual_kcal:
         manual_kcal_val = st.number_input("kcal burned per session", min_value=0.0, max_value=5000.0,
                                            value=300.0, format="%.0f", key="ui_manual_kcal_val")
@@ -813,21 +812,103 @@ target_bmi = None
 plan_weeks = 12
 
 if run_plan and run_bmi:
-    with st.expander("Goal / plan", expanded=False):
-        create_plan = st.checkbox("Create a simple plan to reach a target weight/BMI",
-                                   value=False, key="plan_create")
+    with st.expander("🎯 Goal / plan", expanded=False):
+        # Visual toggle
+        create_plan = st.toggle("Activate weight goal plan", value=False, key="plan_create")
+
         if create_plan:
-            plan_type = st.radio("Plan target type",
-                                  ["Target weight (kg)", "Target BMI"], index=0, key="plan_type")
-            if plan_type == "Target weight (kg)":
-                target_weight = st.number_input("Target weight (kg)", min_value=30.0,
-                                                 max_value=400.0, value=65.0, format="%.1f",
-                                                 key="plan_target_weight")
+            # Current weight for reference
+            _cw = float(weight_kg) if weight_kg else 70.0
+            _min_w = max(30.0, _cw - 40.0)
+            _max_w = min(250.0, _cw + 40.0)
+
+            st.markdown("#### 🎯 Set your target")
+
+            plan_mode = st.radio(
+                "What do you want to target?",
+                ["⚖️ Target weight (kg)", "📊 Target BMI"],
+                index=0, key="plan_type", horizontal=True
+            )
+
+            if "⚖️" in plan_mode:
+                target_weight = st.slider(
+                    "Target weight (kg)",
+                    min_value=float(_min_w),
+                    max_value=float(_max_w),
+                    value=max(float(_min_w), min(float(_max_w), _cw - 5.0)),
+                    step=0.5,
+                    key="plan_target_weight",
+                    format="%.1f kg"
+                )
+                _diff = target_weight - _cw
+                _dir = "lose" if _diff < 0 else "gain"
+                _col = "#22C55E" if _diff < 0 else "#3B82F6"
+                st.markdown(
+                    f'<div style="background:rgba(34,197,94,0.08);border:1px solid {_col}44;'
+                    f'border-radius:12px;padding:10px 14px;margin:6px 0;">'
+                    f'<span style="color:{_col};font-weight:700;font-size:18px;">'
+                    f'{abs(_diff):.1f} kg to {_dir}</span>'
+                    f'<span style="color:#94A3B8;font-size:13px;margin-left:10px;">'
+                    f'({_cw:.1f} kg → {target_weight:.1f} kg)</span></div>',
+                    unsafe_allow_html=True
+                )
+                target_bmi = None
             else:
-                target_bmi = st.number_input("Target BMI", min_value=12.0, max_value=45.0,
-                                              value=22.0, format="%.1f", key="plan_target_bmi")
-            plan_weeks = st.number_input("Weeks to achieve target", min_value=4, max_value=52,
-                                          value=12, step=1, key="plan_weeks")
+                target_bmi = st.slider(
+                    "Target BMI",
+                    min_value=16.0, max_value=35.0,
+                    value=22.0, step=0.1,
+                    key="plan_target_bmi",
+                    format="%.1f"
+                )
+                _h = float(height_cm) / 100.0 if height_cm else 1.70
+                _implied_w = target_bmi * _h * _h
+                st.markdown(
+                    f'<div style="background:rgba(59,130,246,0.08);border:1px solid #3B82F644;'
+                    f'border-radius:12px;padding:10px 14px;margin:6px 0;">'
+                    f'<span style="color:#3B82F6;font-weight:700;font-size:18px;">BMI {target_bmi:.1f}</span>'
+                    f'<span style="color:#94A3B8;font-size:13px;margin-left:10px;">'
+                    f'= {_implied_w:.1f} kg at your height</span></div>',
+                    unsafe_allow_html=True
+                )
+                target_weight = None
+
+            st.markdown("#### ⏱️ Timeline")
+            plan_weeks = st.slider(
+                "Weeks to reach target",
+                min_value=4, max_value=52, value=12, step=1,
+                key="plan_weeks",
+                format="%d weeks"
+            )
+
+            # Visual timeline preview
+            _wks = int(plan_weeks)
+            _tw = target_weight if target_weight else (target_bmi * (float(height_cm)/100)**2 if target_bmi and height_cm else _cw)
+            _rate = (_tw - _cw) / _wks if _wks > 0 else 0
+            _safe = abs(_rate) <= 1.0
+            _rate_color = "#22C55E" if _safe else "#F59E0B"
+
+            st.markdown(
+                f'<div style="background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.15);'
+                f'border-radius:14px;padding:14px 16px;margin-top:8px;">'
+                f'<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
+                f'<div style="text-align:center;">'
+                f'<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">RATE</div>'
+                f'<div style="color:{_rate_color};font-weight:800;font-size:20px;">{_rate:+.2f} kg/wk</div>'
+                f'</div>'
+                f'<div style="text-align:center;">'
+                f'<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">DURATION</div>'
+                f'<div style="color:#E5E7EB;font-weight:800;font-size:20px;">{_wks} wks</div>'
+                f'</div>'
+                f'<div style="text-align:center;">'
+                f'<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">TARGET</div>'
+                f'<div style="color:#E5E7EB;font-weight:800;font-size:20px;">{_tw:.1f} kg</div>'
+                f'</div>'
+                f'</div>'
+                f'{"" if _safe else "<div style=\\"color:#F59E0B;font-size:12px;margin-top:10px;\\">⚠️ Rate above 1 kg/week — consider a longer timeline for safety.</div>"}'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 
 # ── Calculate ─────────────────────────────────────────────────────────────────
 if st.button("Calculate / Generate report", key="btn_calculate"):
@@ -1452,26 +1533,99 @@ if results:
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
     # ── Plan ──────────────────────────────────────────────────────────────────
+        # ── Plan ────
     if "plan" in results:
         plan = results["plan"]
         st.markdown("---")
-        st.subheader("Weight goal / plan")
+        st.subheader("🎯 Weight goal / plan")
 
         current_maint = float(st.session_state.get("latest_tdee_total",
-                                                     plan.get("current_needs_kcal", 0) or 0.0))
+                    plan.get("current_needs_kcal", 0) or 0.0))
         kg_per_week = float(plan.get("kg_per_week", 0.0) or 0.0)
         daily_change_kcal = kg_per_week * 7700.0 / 7.0
         recommended_daily = int(round(current_maint + daily_change_kcal))
         plan["current_needs_kcal"] = int(round(current_maint))
         plan["recommended_daily_kcal"] = recommended_daily
 
-        st.write(f"Current maintenance calories: **{plan['current_needs_kcal']} kcal/day**")
-        st.write(f"Recommended daily calories: **{plan['recommended_daily_kcal']} kcal/day**")
-        st.write(f"Expected weekly change: **{kg_per_week:+.2f} kg/week**")
         if plan.get("warning"):
             st.warning(plan["warning"])
-        st.table(plan.get("milestones", []))
 
+        # ── Top 3 metrics ──
+        _pc1, _pc2, _pc3 = st.columns(3)
+        _pc1.metric("Maintenance", f"{plan['current_needs_kcal']} kcal/day")
+        _pc2.metric("Recommended", f"{plan['recommended_daily_kcal']} kcal/day",
+                    delta=f"{plan['recommended_daily_kcal'] - plan['current_needs_kcal']:+d} kcal")
+        _pc3.metric("Weekly change", f"{kg_per_week:+.2f} kg/wk")
+
+        # ── Calorie deficit/surplus bar ──
+        _deficit = plan['recommended_daily_kcal'] - plan['current_needs_kcal']
+        _bar_color = "#22C55E" if _deficit < 0 else "#3B82F6"
+        _bar_label = f"{'Deficit' if _deficit < 0 else 'Surplus'}: {abs(_deficit)} kcal/day"
+        _bar_pct = min(100, int(abs(_deficit) / max(1, plan['current_needs_kcal']) * 100 * 5))
+        st.markdown(
+            f'<div style="margin:10px 0 4px 0;color:#94A3B8;font-size:12px;">{_bar_label}</div>'
+            f'<div style="background:rgba(255,255,255,0.06);border-radius:999px;height:10px;overflow:hidden;">'
+            f'<div style="width:{_bar_pct}%;background:{_bar_color};height:100%;border-radius:999px;'
+            f'transition:width 0.4s;"></div></div>',
+            unsafe_allow_html=True
+        )
+
+        # ── Milestone roadmap ──
+        milestones = plan.get("milestones", [])
+        if milestones:
+            st.markdown("#### 🗺️ Milestone roadmap")
+            _start_w = float(weight_kg)
+            _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
+            _total_change = _end_w - _start_w
+            _losing = _total_change < 0
+
+            for i, m in enumerate(milestones):
+                _wk = m.get("Week", i + 1)
+                _pw = float(m.get("Projected weight (kg)", _start_w))
+                _focus = m.get("Focus", "")
+                _done = i == len(milestones) - 1
+
+                # Progress toward goal
+                if abs(_total_change) > 0.01:
+                    _prog = min(100, max(0, int(abs(_pw - _start_w) / abs(_total_change) * 100)))
+                else:
+                    _prog = 100
+
+                _is_last = i == len(milestones) - 1
+                _dot_color = "#22C55E" if _is_last else "#3B82F6"
+                _focus_icons = {
+                    "Build routine": "🏗️",
+                    "Maintain consistency": "🔄",
+                    "Review progress": "📊",
+                    "Re-check and set next goal": "🏁",
+                }
+                _icon = next((v for k, v in _focus_icons.items() if k.lower() in str(_focus).lower()), "📍")
+
+                st.markdown(
+                    f'<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">'
+                    f'<div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">'
+                    f'<div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};'
+                    f'display:flex;align-items:center;justify-content:center;'
+                    f'font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>'
+                    f'{"" if _is_last else "<div style=\\"width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;\\"></div>"}'
+                    f'</div>'
+                    f'<div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);'
+                    f'border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">'
+                    f'<div>'
+                    f'<span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_pw:.1f} kg</span>'
+                    f'<span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_icon} {_focus}</span>'
+                    f'</div>'
+                    f'<div style="background:rgba(255,255,255,0.06);border-radius:999px;'
+                    f'padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>'
+                    f'</div>'
+                    f'<div style="margin-top:7px;background:rgba(255,255,255,0.05);'
+                    f'border-radius:999px;height:5px;overflow:hidden;">'
+                    f'<div style="width:{_prog}%;background:{_dot_color};height:100%;'
+                    f'border-radius:999px;"></div></div>'
+                    f'</div></div>',
+                    unsafe_allow_html=True
+                )
     # ── PDF ───────────────────────────────────────────────────────────────────
     st.markdown("---")
     report = {
