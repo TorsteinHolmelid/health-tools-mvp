@@ -1614,7 +1614,7 @@ if results:
                 }
                 _icon = next((v for k, v in _focus_icons.items() if k.lower() in str(_focus).lower()), "📍")
 
-                                _connector = ""
+                _connector = ""
                 if not _is_last:
                     _connector = '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
 
