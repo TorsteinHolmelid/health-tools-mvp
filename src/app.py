@@ -871,20 +871,190 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
 results = st.session_state.get("results", {})
 
 if results:
-    # ── BMI ──────────────────────────────────────────────────────────────────
+        # --- BMI SEKSJON ---
     if "bmi" in results:
-        st.markdown("---")
         st.subheader("BMI")
         b = results["bmi"]["value"]
         cat = results["bmi"]["category"]
-        st.markdown(f"""
-        <div class="result-box">
-            <div style="font-size:18px;font-weight:700;">Din BMI: {b:.1f}</div>
-            <div style="margin-top:6px;padding:6px 10px;display:inline-block;
-                        border-radius:8px;background:#1f2937;color:#fff;font-weight:700;">
-                {cat}
-            </div>
-        </div>""", unsafe_allow_html=True)
+
+        # Fargekode basert på kategori
+        if b < 18.5:
+            bmi_color = "#3B82F6"
+            bmi_emoji = "⬇️"
+        elif b < 25.0:
+            bmi_color = "#22C55E"
+            bmi_emoji = "✅"
+        elif b < 30.0:
+            bmi_color = "#F59E0B"
+            bmi_emoji = "⚠️"
+        else:
+            bmi_color = "#EF4444"
+            bmi_emoji = "🔴"
+
+        # Marker-posisjon på linja (0–45 skala → 0–100%)
+        marker_pct = min(100, max(0, (b / 45.0) * 100))
+
+        components.html(f"""
+<style>
+  .bmi-wrap {{
+    font-family: Arial, sans-serif;
+    background: #1F2937;
+    border: 1px solid #374151;
+    border-radius: 16px;
+    padding: 20px 22px 18px 22px;
+    color: #E5E7EB;
+    max-width: 100%;
+  }}
+  .bmi-top {{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+  }}
+  .bmi-val {{
+    font-size: 48px;
+    font-weight: 800;
+    color: {bmi_color};
+    line-height: 1;
+  }}
+  .bmi-cat {{
+    font-size: 14px;
+    color: #9CA3AF;
+    margin-top: 4px;
+  }}
+  .bmi-badge {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: {bmi_color}22;
+    border: 1px solid {bmi_color};
+    color: {bmi_color};
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 6px 14px;
+  }}
+  .bmi-track-wrap {{
+    position: relative;
+    margin-bottom: 8px;
+  }}
+  .bmi-track {{
+    display: flex;
+    height: 20px;
+    border-radius: 999px;
+    overflow: hidden;
+    width: 100%;
+  }}
+  .bmi-seg {{
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(0,0,0,0.7);
+  }}
+  .bmi-marker-row {{
+    position: relative;
+    height: 28px;
+    margin-top: 2px;
+  }}
+  .bmi-marker {{
+    position: absolute;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }}
+  .bmi-arrow {{
+    width: 0; height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 12px solid {bmi_color};
+  }}
+  .bmi-marker-val {{
+    font-size: 12px;
+    font-weight: 800;
+    color: {bmi_color};
+    margin-top: 2px;
+    white-space: nowrap;
+  }}
+  .bmi-labels {{
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: #6B7280;
+    margin-top: 4px;
+  }}
+  .bmi-legend {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }}
+  .bmi-leg-item {{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: #CBD5E1;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 999px;
+    padding: 4px 10px;
+  }}
+  .bmi-dot {{
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    flex: 0 0 9px;
+  }}
+</style>
+
+<div class="bmi-wrap">
+  <div class="bmi-top">
+    <div>
+      <div class="bmi-val">{b:.1f}</div>
+      <div class="bmi-cat">Body Mass Index</div>
+    </div>
+    <div class="bmi-badge">{bmi_emoji} {cat}</div>
+  </div>
+
+  <div class="bmi-track-wrap">
+    <div class="bmi-track">
+      <!-- Underweight: 0–18.5 = 41.1% of 45 -->
+      <div class="bmi-seg" style="width:41.1%; background:#3B82F6;">Under</div>
+      <!-- Normal: 18.5–25 = 14.4% -->
+      <div class="bmi-seg" style="width:14.4%; background:#22C55E;">Normal</div>
+      <!-- Overweight: 25–30 = 11.1% -->
+      <div class="bmi-seg" style="width:11.1%; background:#F59E0B;">Over</div>
+      <!-- Obese: 30–45 = 33.3% -->
+      <div class="bmi-seg" style="width:33.3%; background:#EF4444;">Obese</div>
+    </div>
+
+    <div class="bmi-marker-row">
+      <div class="bmi-marker" style="left:{marker_pct:.1f}%;">
+        <div class="bmi-arrow"></div>
+        <div class="bmi-marker-val">{b:.1f}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bmi-labels">
+    <span>0</span>
+    <span>18.5</span>
+    <span>25</span>
+    <span>30</span>
+    <span>45+</span>
+  </div>
+
+  <div class="bmi-legend">
+    <div class="bmi-leg-item"><span class="bmi-dot" style="background:#3B82F6"></span>Underweight (&lt;18.5)</div>
+    <div class="bmi-leg-item"><span class="bmi-dot" style="background:#22C55E"></span>Normal (18.5–24.9)</div>
+    <div class="bmi-leg-item"><span class="bmi-dot" style="background:#F59E0B"></span>Overweight (25–29.9)</div>
+    <div class="bmi-leg-item"><span class="bmi-dot" style="background:#EF4444"></span>Obese (30+)</div>
+  </div>
+</div>
+        """, height=260)
 
     # ── Energy & Metabolism ───────────────────────────────────────────────────
     st.markdown("---")
