@@ -806,51 +806,304 @@ if results:
         else:
             current_avg = dict((b, w) for b, _, w, _ in vo2_rows)
 
-        # Render the rich VO2 HTML/CSS component (the chart you liked)
-        try:
-            components.html(
-                _generate_vo2_html := f\"\"\"<style> /* styles omitted for brevity in this string - same as original */ </style>
-<div style="font-family:Arial, sans-serif; color:#E5E7EB;">
-  <!-- Reuse the same structure as before (keeps the visual you liked). -->
-  <!-- We inject computed values below. -->
-  <div style="padding:8px; display:grid; grid-template-columns: 1fr 1fr; gap:14px;">
-    <div style="background:#1F2937; border-radius:12px; padding:16px;">
-      <div style="font-size:18px; font-weight:700;">VO2 max across age bands</div>
-      <div style="color:#9CA3AF; margin-bottom:12px;">A live and readable view</div>
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:12px;">
-        <div style="background:#111827; border-radius:10px; padding:8px;"><div style="color:#9CA3AF; font-size:12px">Your VO2 max</div><div style="font-weight:700; font-size:20px">{v_val:.1f}</div></div>
-        <div style="background:#111827; border-radius:10px; padding:8px;"><div style="color:#9CA3AF; font-size:12px">Age band</div><div style="font-weight:700; font-size:20px">{active_band or '—'}</div></div>
-        <div style="background:#111827; border-radius:10px; padding:8px;"><div style="color:#9CA3AF; font-size:12px">Rating</div><div style="font-weight:700; font-size:20px">{pct_label}</div></div>
+# Render the rich VO2 HTML/CSS component (the chart you liked)
+try:
+    vo2_html = f"""
+<style>
+  .vo2-wrap {{
+    font-family: Arial, sans-serif;
+    color: #E5E7EB;
+    padding: 2px;
+  }}
+  .vo2-grid {{
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 14px;
+    align-items: stretch;
+  }}
+  .vo2-card {{
+    background: #1F2937;
+    border: 1px solid #374151;
+    border-radius: 16px;
+    padding: 18px;
+  }}
+  .vo2-title {{
+    margin: 0 0 6px 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #F9FAFB;
+  }}
+  .vo2-sub {{
+    margin: 0 0 16px 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #9CA3AF;
+  }}
+  .metric-row {{
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }}
+  .metric {{
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 10px 12px;
+    min-width: 0;
+  }}
+  .metric-k {{
+    margin: 0 0 4px 0;
+    font-size: 12px;
+    color: #9CA3AF;
+  }}
+  .metric-v {{
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #F9FAFB;
+    line-height: 1.1;
+  }}
+  .band {{
+    display: grid;
+    grid-template-columns: 56px 1fr 70px;
+    gap: 10px;
+    align-items: center;
+    margin: 10px 0;
+  }}
+  .band-lbl {{
+    font-size: 12px;
+    color: #D1D5DB;
+    white-space: nowrap;
+  }}
+  .band-bar {{
+    height: 16px;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }}
+  .band-fill {{
+    height: 100%;
+    border-radius: 999px;
+  }}
+  .band-badge {{
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    font-weight: 700;
+    color: #111827;
+    background: rgba(255,255,255,0.88);
+    padding: 1px 6px;
+    border-radius: 999px;
+  }}
+  .band-val {{
+    text-align: right;
+    font-size: 12px;
+    font-weight: 700;
+    color: #E5E7EB;
+  }}
+  .band-active {{
+    background: #F8FAFC;
+    border-radius: 12px;
+    padding: 8px 10px;
+  }}
+  .band-active .band-lbl {{
+    color: #0F172A;
+    font-weight: 700;
+  }}
+  .band-active .band-val {{
+    color: #26A690;
+  }}
+  .pill-row {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }}
+  .pill {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #CBD5E1;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 999px;
+    padding: 6px 10px;
+  }}
+  .dot {{
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex: 0 0 10px;
+  }}
+  .gauge-wrap {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }}
+  .gauge-head {{
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+  }}
+  .gauge-k {{
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #F9FAFB;
+  }}
+  .gauge-sub {{
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    color: #9CA3AF;
+    line-height: 1.4;
+  }}
+  .pct-num {{
+    margin: 0;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+    color: {pct_color};
+    text-align: right;
+  }}
+  .pct-lbl {{
+    margin: 3px 0 0 0;
+    font-size: 12px;
+    color: #D1D5DB;
+    text-align: right;
+  }}
+  .callout {{
+    width: 100%;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 12px;
+    padding: 12px;
+    color: #D1D5DB;
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 12px;
+  }}
+  .legend-col {{
+    width: 100%;
+    margin-top: 14px;
+    display: grid;
+    gap: 8px;
+  }}
+  .legend-item {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 999px;
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #CBD5E1;
+  }}
+  .mini-note {{
+    width: 100%;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #9CA3AF;
+    text-align: center;
+  }}
+</style>
+
+<div class="vo2-wrap">
+  <div class="vo2-grid">
+    <div class="vo2-card">
+      <div class="vo2-title">VO2 max across age bands</div>
+      <div class="vo2-sub">A more live and readable view than a standard table.</div>
+
+      <div class="metric-row">
+        <div class="metric">
+          <div class="metric-k">Your VO2 max</div>
+          <div class="metric-v">{v_val:.1f}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-k">Age band</div>
+          <div class="metric-v">{active_band or "—"}</div>
+        </div>
+        <div class="metric">
+          <div class="metric-k">Rating</div>
+          <div class="metric-v">{pct_label}</div>
+        </div>
       </div>
-      {"".join([f'<div style="display:flex; align-items:center; gap:10px; margin:6px 0;"><div style="width:56px;color:#D1D5DB">{band}</div><div style="flex:1;background:#111827;border-radius:999px;padding:6px;position:relative;"><div style="width:{min(100,max(0,int(current_avg[band]/50.0*100)))}%;height:16px;border-radius:999px;background:{color}"></div></div><div style="width:70px;text-align:right;color:#E5E7EB;font-weight:700">{current_avg[band]} avg</div></div>' for band,_,_,color in vo2_rows])}
-      <div style="display:flex; gap:8px; margin-top:12px;"><div style="background:#111827;border-radius:999px;padding:6px 10px;color:#CBD5E1">Very strong</div><div style="background:#111827;border-radius:999px;padding:6px 10px;color:#CBD5E1">Strong</div></div>
+
+      {"".join([
+        f'''
+      <div class="band{' band-active' if band == active_band else ''}">
+        <div class="band-lbl">{band}</div>
+        <div class="band-bar">
+          <div class="band-fill" style="width:{min(100, max(0, int(current_avg[band] / 50.0 * 100)))}%; background:{color};"></div>
+          <div class="band-badge">{current_avg[band]} avg</div>
+        </div>
+        <div class="band-val">{'Your group' if band == active_band else 'Average'}</div>
+      </div>
+        '''
+        for band, _, _, color in vo2_rows
+      ])}
+
+      <div class="pill-row">
+        <div class="pill"><span class="dot" style="background:#26A690"></span>Very strong</div>
+        <div class="pill"><span class="dot" style="background:#3B82F6"></span>Strong</div>
+        <div class="pill"><span class="dot" style="background:#7C7CF5"></span>Mid range</div>
+        <div class="pill"><span class="dot" style="background:#EF6A3B"></span>Needs work</div>
+      </div>
     </div>
-    <div style="background:#1F2937; border-radius:12px; padding:16px; display:flex; flex-direction:column; align-items:center;">
-      <div style="width:100%; display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-        <div><div style="font-size:20px; font-weight:700">Population percentile</div><div style="color:#9CA3AF">How you compare with others in your age group.</div></div>
-        <div style="text-align:right;"><div style="font-size:34px; font-weight:700; color:{pct_color}">{v_pct:.0f}%</div><div style="color:#D1D5DB">{pct_label}</div></div>
+
+    <div class="vo2-card">
+      <div class="gauge-wrap">
+        <div class="gauge-head">
+          <div>
+            <div class="gauge-k">Population percentile</div>
+            <div class="gauge-sub">How you compare with others in your age group.</div>
+          </div>
+          <div>
+            <div class="pct-num">{v_pct:.0f}%</div>
+            <div class="pct-lbl">{pct_label}</div>
+          </div>
+        </div>
+
+        <svg width="100%" viewBox="0 0 260 170" aria-label="Population percentile gauge">
+          <path d="M40 122 A90 90 0 0 1 220 122" fill="none" stroke="#4B5563" stroke-width="18" stroke-linecap="round" pathLength="100"/>
+          <path d="M40 122 A90 90 0 0 1 220 122" fill="none" stroke="{pct_color}" stroke-width="18" stroke-linecap="round" pathLength="100" stroke-dasharray="{v_pct} 100"/>
+          <circle cx="130" cy="122" r="50" fill="#1F2937" stroke="#374151" stroke-width="1"/>
+          <text x="130" y="116" text-anchor="middle" font-size="36" font-weight="700" fill="#F9FAFB">{int(round(v_pct))}</text>
+          <text x="130" y="136" text-anchor="middle" font-size="12" fill="#CBD5E1">percentile</text>
+          <text x="40" y="158" text-anchor="start" font-size="12" fill="#9CA3AF">0</text>
+          <text x="130" y="158" text-anchor="middle" font-size="12" fill="#9CA3AF">50</text>
+          <text x="220" y="158" text-anchor="end" font-size="12" fill="#9CA3AF">100</text>
+        </svg>
+
+        <div class="callout">
+          <b>Interpretation:</b> You are performing very well compared to the average for your age.
+        </div>
+
+        <div class="legend-col">
+          <div class="legend-item"><span class="dot" style="background:#3B82F6"></span>Population average</div>
+          <div class="legend-item"><span class="dot" style="background:#26A690"></span>Better than average</div>
+        </div>
+
+        <div class="mini-note">Klar, fargekodet og mykje lettare å lese.</div>
       </div>
-      <svg width="100%" viewBox="0 0 260 170" aria-label="Population percentile gauge">
-        <path d="M40 122 A90 90 0 0 1 220 122" fill="none" stroke="#4B5563" stroke-width="18" stroke-linecap="round" pathLength="100"/>
-        <path d="M40 122 A90 90 0 0 1 220 122" fill="none" stroke="{pct_color}" stroke-width="18" stroke-linecap="round" pathLength="100" stroke-dasharray="{v_pct} 100"/>
-        <circle cx="130" cy="122" r="50" fill="#1F2937" stroke="#374151" stroke-width="1"/>
-        <text x="130" y="116" text-anchor="middle" font-size="36" font-weight="700" fill="#F9FAFB">{int(round(v_pct))}</text>
-        <text x="130" y="136" text-anchor="middle" font-size="12" fill="#CBD5E1">percentile</text>
-      </svg>
-      <div style="margin-top:12px; background:#111827; border-radius:10px; padding:10px; color:#D1D5DB">Interpretation: compare with age reference and aim to improve with interval and strength training.</div>
     </div>
   </div>
-</div>\"\"\" ,
-                height=760,
-                scrolling=False,
-            )
-        except Exception:
-            # If HTML fails, fallback to matplotlib charts
-            try:
-                st.pyplot(plot_vo2_reference_chart(v_val, sex, int(age)), use_container_width=True)
-                st.pyplot(plot_vo2_percentile_marker(v_pct), use_container_width=True)
-            except Exception:
-                pass
+</div>
+"""
+    components.html(vo2_html, height=760, scrolling=False)
+
+except Exception:
+    # fallback
+    st.pyplot(plot_vo2_reference_chart(v_val, sex, int(age)), use_container_width=True)
 
     # Biological age
     if "bio_age" in results:
