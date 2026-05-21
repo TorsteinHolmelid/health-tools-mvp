@@ -1153,57 +1153,120 @@ if results:
         else:
             current_avg = {b: w for b, _, w, _ in vo2_rows}
 
-        # ── Age band bars (matplotlib) ──
+        # ── Age band bars (Plotly) ──
+        import plotly.graph_objects as go
+
         st.markdown("#### VO2 max across age bands")
-        fig_bands, ax_bands = plt.subplots(figsize=(7, 3))
-        fig_bands.patch.set_facecolor("#111827")
-        ax_bands.set_facecolor("#111827")
 
         bands = [r[0] for r in vo2_rows]
         avgs  = [current_avg[r[0]] for r in vo2_rows]
         colors_list = [pct_color if r[0] == active_band else r[3] for r in vo2_rows]
+        labels = ["← Your group" if r[0] == active_band else "Average" for r in vo2_rows]
 
-        bars = ax_bands.barh(bands, avgs, color=colors_list, edgecolor="none", height=0.55)
-        ax_bands.axvline(v_val, color="white", linewidth=2, linestyle="--", label=f"You: {v_val:.1f}")
+        fig_bands = go.Figure()
 
-        for bar, val in zip(bars, avgs):
-            ax_bands.text(val + 0.5, bar.get_y() + bar.get_height()/2,
-                         f"{val} avg", va="center", fontsize=9, color="#9CA3AF")
+        fig_bands.add_trace(go.Bar(
+            x=avgs,
+            y=bands,
+            orientation="h",
+            marker=dict(
+                color=colors_list,
+                line=dict(width=0),
+            ),
+            text=[f"{a} ml/kg/min" for a in avgs],
+            textposition="outside",
+            textfont=dict(color="#9CA3AF", size=11),
+            hovertemplate="<b>%{y}</b><br>Average: %{x} ml/kg/min<extra></extra>",
+            name="Age band avg",
+        ))
 
-        ax_bands.set_xlabel("VO2 max (ml/kg/min)", color="#9CA3AF", fontsize=9)
-        ax_bands.tick_params(colors="#D1D5DB", labelsize=9)
-        ax_bands.spines[:].set_visible(False)
-        ax_bands.legend(fontsize=9, frameon=False, labelcolor="white")
-        for spine in ax_bands.spines.values():
-            spine.set_visible(False)
-        plt.tight_layout()
-        st.pyplot(fig_bands, use_container_width=True)
-        plt.close(fig_bands)
+        fig_bands.add_vline(
+            x=v_val,
+            line=dict(color="white", width=2, dash="dash"),
+            annotation_text=f"You: {v_val:.1f}",
+            annotation_font=dict(color="white", size=12),
+            annotation_position="top right",
+        )
 
-        # ── Percentile gauge (matplotlib) ──
-        st.markdown(f"#### Population percentile — **{pct_label}**")
-        fig_gauge, ax_gauge = plt.subplots(figsize=(5, 2.2))
-        fig_gauge.patch.set_facecolor("#111827")
-        ax_gauge.set_facecolor("#111827")
+        fig_bands.update_layout(
+            paper_bgcolor="#111827",
+            plot_bgcolor="#1F2937",
+            font=dict(color="#E5E7EB", family="Arial"),
+            height=320,
+            margin=dict(l=10, r=80, t=20, b=40),
+            xaxis=dict(
+                title="VO2 max (ml/kg/min)",
+                color="#9CA3AF",
+                gridcolor="#374151",
+                range=[0, max(avgs + [v_val]) + 8],
+            ),
+            yaxis=dict(
+                color="#D1D5DB",
+                gridcolor="#374151",
+            ),
+            showlegend=False,
+        )
 
-        ax_gauge.barh(0, 100, color="#374151", height=0.4, edgecolor="none")
-        ax_gauge.barh(0, v_pct, color=pct_color, height=0.4, edgecolor="none")
-        ax_gauge.scatter([v_pct], [0], s=180, color="white", zorder=5, edgecolor=pct_color, linewidth=2)
-        ax_gauge.text(v_pct, 0.28, f"{v_pct:.0f}th percentile",
-                     ha="center", fontsize=10, fontweight="bold", color="white")
-        ax_gauge.text(v_pct, -0.32, interpretation_text,
-                     ha="center", fontsize=8, color="#9CA3AF", wrap=True)
+        st.plotly_chart(fig_bands, use_container_width=True)
 
-        ax_gauge.set_xlim(0, 100)
-        ax_gauge.set_ylim(-0.6, 0.6)
-        ax_gauge.set_xticks([0, 25, 50, 75, 100])
-        ax_gauge.tick_params(colors="#9CA3AF", labelsize=8)
-        ax_gauge.set_yticks([])
-        for spine in ax_gauge.spines.values():
-            spine.set_visible(False)
-        plt.tight_layout()
-        st.pyplot(fig_gauge, use_container_width=True)
-        plt.close(fig_gauge)
+        # ── Percentile gauge (Plotly) ──
+        st.markdown(f"#### Population percentile")
+
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number+delta",
+            value=v_pct,
+            number=dict(
+                suffix="th",
+                font=dict(size=48, color=pct_color),
+            ),
+            delta=dict(
+                reference=50,
+                increasing=dict(color="#22C55E"),
+                decreasing=dict(color="#EF4444"),
+                valueformat=".1f",
+            ),
+            title=dict(
+                text=f"<b>{pct_label}</b><br><span style='font-size:13px;color:#9CA3AF'>{interpretation_text}</span>",
+                font=dict(size=16, color="#F9FAFB"),
+            ),
+            gauge=dict(
+                axis=dict(
+                    range=[0, 100],
+                    tickwidth=1,
+                    tickcolor="#374151",
+                    tickfont=dict(color="#9CA3AF", size=11),
+                    nticks=6,
+                ),
+                bar=dict(color=pct_color, thickness=0.25),
+                bgcolor="#1F2937",
+                borderwidth=0,
+                steps=[
+                    dict(range=[0, 40],  color="#1a1a2e"),
+                    dict(range=[40, 60], color="#1e2a3a"),
+                    dict(range=[60, 80], color="#1a2e2a"),
+                    dict(range=[80, 100],color="#1a2e1a"),
+                ],
+                threshold=dict(
+                    line=dict(color="white", width=3),
+                    thickness=0.8,
+                    value=v_pct,
+                ),
+            ),
+        ))
+
+        fig_gauge.update_layout(
+            paper_bgcolor="#111827",
+            font=dict(color="#E5E7EB", family="Arial"),
+            height=340,
+            margin=dict(l=20, r=20, t=60, b=20),
+        )
+
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+        col_l, col_r = st.columns(3)
+        col_l.metric("Your percentile", f"{v_pct:.0f}th", f"{v_pct - 50:.1f} vs avg")
+        st.columns(3)[1].metric("Rating", pct_label)
+        st.columns(3)[2].metric("Top", f"{100 - v_pct:.0f}%")
 
         # VO2 tips
         tips = results["vo2"].get("tips", [])
