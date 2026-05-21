@@ -1172,17 +1172,17 @@ if results:
         vo2_html = f"""
 <style>
   .vo2-wrap{{font-family:Arial,sans-serif;color:#E5E7EB;padding:2px}}
-  .vo2-card {
+  .vo2-card {{
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
 }
 
-@media (max-width: 1100px) {
-  .vo2-grid {
-    grid-template-columns: 1fr;
-  }
-}
+@media (max-width: 1100px) {{
+    .vo2-grid {{
+        grid-template-columns: 1fr;
+    }}
+}}
   .vo2-card{{background:#1F2937;border:1px solid #374151;border-radius:16px;padding:18px}}
   .vo2-title{{margin:0 0 6px 0;font-size:20px;font-weight:700;color:#F9FAFB}}
   .vo2-sub{{margin:0 0 16px 0;font-size:12px;line-height:1.4;color:#9CA3AF}}
