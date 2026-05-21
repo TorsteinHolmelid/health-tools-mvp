@@ -680,56 +680,149 @@ ACTIVITIES = {
 }
 
 with st.expander("🏃 Exercise log — enter before clicking Calculate", expanded=False):
-    st.markdown("Specify your exercise habits for a more precise TDEE and plan. MET values are approximate.")
 
-    sessions_per_week = st.number_input("Sessions per week", min_value=0, max_value=21,
-                                         value=3, step=1, key="ui_sessions_per_week")
+    # ── Activity picker — grouped visual cards ──
+    _act_groups = {
+        "🚶 Low impact":   ["Walking (casual)", "Brisk walking", "Yoga / Pilates", "Housework / Light chores", "Gardening / Heavy yard work"],
+        "🚴 Cardio":       ["Cycling (leisure)", "Cycling (vigorous)", "Elliptical", "Rowing (moderate/vigorous)", "Swimming"],
+        "🏃 High impact":  ["Running/jogging", "HIIT", "Stair climbing / Stairmaster"],
+        "⚽ Sports":       ["Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"],
+        "💪 Strength":     ["Strength training (weights)", "Boxing / Martial arts", "Rock climbing / Bouldering", "Hiking (incline)"],
+    }
+    _act_icons_map = {
+        "Walking (casual)": "🚶", "Brisk walking": "🚶‍♂️", "Running/jogging": "🏃",
+        "Cycling (leisure)": "🚲", "Cycling (vigorous)": "🚴", "Strength training (weights)": "🏋️",
+        "HIIT": "⚡", "Swimming": "🏊", "Rowing (moderate/vigorous)": "🚣",
+        "Elliptical": "🔄", "Stair climbing / Stairmaster": "🪜", "Yoga / Pilates": "🧘",
+        "Dancing": "💃", "Hiking (incline)": "🥾", "Rock climbing / Bouldering": "🧗",
+        "Boxing / Martial arts": "🥊", "Basketball / Team sports": "🏀", "Soccer (football)": "⚽",
+        "Tennis (casual)": "🎾", "Squash": "🏸", "Badminton": "🏸",
+        "Table tennis (bordtennis)": "🏓", "Gardening / Heavy yard work": "🌱",
+        "Housework / Light chores": "🧹",
+    }
 
-    default_avg = st.session_state.get("global_avg_hr")
-    avg_hr = st.number_input(
-        "Average HR during sessions (bpm) — optional",
-        min_value=30, max_value=220,
-        value=default_avg if default_avg is not None else 130,
-        key="ui_avg_hr",
+    st.markdown("**🎯 Activity type**")
+    _current_act = st.session_state.get("ui_activity_type", "Walking (casual)")
+    _group_names = list(_act_groups.keys())
+    _current_group = next((g for g, acts in _act_groups.items() if _current_act in acts), _group_names[0])
+    _sel_group = st.radio("Category", _group_names, index=_group_names.index(_current_group),
+                          horizontal=True, key="ui_act_group", label_visibility="collapsed")
+
+    _group_acts = _act_groups[_sel_group]
+    _n = len(_group_acts)
+    _gcols = st.columns(_n)
+    for _gi, _ga in enumerate(_group_acts):
+        with _gcols[_gi]:
+            _is_sel = (_ga == st.session_state.get("ui_activity_type", "Walking (casual)"))
+            _bg = "rgba(14,165,163,0.18)" if _is_sel else "rgba(255,255,255,0.03)"
+            _border = "#0ea5a3" if _is_sel else "rgba(255,255,255,0.08)"
+            _ico = _act_icons_map.get(_ga, "🏅")
+            _short = _ga.split("(")[0].split("/")[0].strip()
+            st.markdown(
+                f'<div style="background:{_bg};border:1.5px solid {_border};border-radius:12px;'
+                f'padding:8px 4px;text-align:center;">'
+                f'<div style="font-size:22px;">{_ico}</div>'
+                f'<div style="font-size:10px;font-weight:700;color:#E5E7EB;margin-top:2px;">{_short}</div>'
+                f'</div>', unsafe_allow_html=True
+            )
+
+    activity_ex = st.selectbox("Activity", _group_acts,
+                                index=_group_acts.index(_current_act) if _current_act in _group_acts else 0,
+                                key="ui_activity_type", label_visibility="collapsed")
+
+    st.markdown("---")
+
+    # ── Intensity — visual 3-button style ──
+    st.markdown("**💪 Intensity**")
+    _int_opts = ["Light", "Moderate", "Hard"]
+    _int_icons = ["🟢", "🟡", "🔴"]
+    _int_descs = ["Easy, can hold conversation", "Slightly breathless", "Hard, can barely talk"]
+    _int_cols = st.columns(3)
+    _cur_int = st.session_state.get("ui_intensity", "Moderate")
+    for _ii, (_io, _iico, _id) in enumerate(zip(_int_opts, _int_icons, _int_descs)):
+        with _int_cols[_ii]:
+            _is_int = (_io == _cur_int)
+            _ibg = "rgba(14,165,163,0.18)" if _is_int else "rgba(255,255,255,0.03)"
+            _iborder = "#0ea5a3" if _is_int else "rgba(255,255,255,0.08)"
+            st.markdown(
+                f'<div style="background:{_ibg};border:1.5px solid {_iborder};border-radius:12px;'
+                f'padding:10px 6px;text-align:center;">'
+                f'<div style="font-size:20px;">{_iico}</div>'
+                f'<div style="font-size:12px;font-weight:700;color:#E5E7EB;">{_io}</div>'
+                f'<div style="font-size:10px;color:#94A3B8;margin-top:2px;">{_id}</div>'
+                f'</div>', unsafe_allow_html=True
+            )
+    intensity_label = st.radio("Intensity", _int_opts,
+                                index=_int_opts.index(_cur_int),
+                                horizontal=True, key="ui_intensity",
+                                label_visibility="collapsed")
+
+    st.markdown("---")
+
+    # ── Sessions + Duration ──
+    st.markdown("**📅 Volume**")
+    _vc1, _vc2 = st.columns(2)
+    with _vc1:
+        sessions_per_week = st.slider("Sessions per week", min_value=0, max_value=14,
+                                       value=3, step=1, key="ui_sessions_per_week")
+    with _vc2:
+        minutes_per_session = st.slider("Minutes per session", min_value=5, max_value=180,
+                                         value=45, step=5, key="ui_minutes", format="%d min")
+
+    _total_min = sessions_per_week * minutes_per_session
+    _who_ex = "✅ Meets WHO guidelines" if _total_min >= 150 else f"⚠️ {150 - _total_min} min/week below WHO target"
+    _who_ex_color = "#22C55E" if _total_min >= 150 else "#F59E0B"
+    st.markdown(
+        f'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 12px;'
+        f'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+        f'<span style="color:#94A3B8;font-size:12px;">Total: <b style="color:#E5E7EB;">{_total_min} min/week</b></span>'
+        f'<span style="color:{_who_ex_color};font-size:12px;">{_who_ex}</span>'
+        f'</div>', unsafe_allow_html=True
     )
-    st.session_state["global_avg_hr"] = int(avg_hr) if avg_hr is not None else None
 
-    activity_ex = st.selectbox("Activity type", list(ACTIVITIES.keys()), key="ui_activity_type")
-    intensity_label = st.selectbox("Intensity", ["Light", "Moderate", "Hard"], index=1, key="ui_intensity")
-    minutes_per_session = st.number_input("Minutes per session", min_value=1, max_value=300,
-                                           value=45, step=5, key="ui_minutes")
-    rpe = st.slider("Perceived exertion (RPE) 1–10", 1, 10, 5, key="ui_rpe")
+    # ── RPE ──
+    st.markdown("**😤 Perceived exertion (RPE)**")
+    rpe = st.slider("RPE", 1, 10, 5, key="ui_rpe", label_visibility="collapsed")
+    _rpe_labels = {1:"😴 Rest",2:"🧘 Very easy",3:"🚶 Easy",4:"🚶‍♂️ Moderate",5:"🚴 Somewhat hard",
+                   6:"🏃 Hard",7:"🏃‍♂️ Very hard",8:"⚡ Very very hard",9:"🔥 Near max",10:"💀 Max effort"}
+    st.markdown(f'<div style="color:#94A3B8;font-size:12px;margin-top:-8px;">{_rpe_labels[rpe]}</div>',
+                unsafe_allow_html=True)
     rpe_multiplier = 0.85 + (rpe - 1) * (0.4 / 9)
 
-    use_hr = st.toggle("Use average session HR to refine estimate", key="ui_use_hr")
+    st.markdown("---")
+
+    # ── HR refinement ──
+    default_avg = st.session_state.get("global_avg_hr")
+    avg_hr = default_avg if default_avg is not None else 130
+    st.session_state["global_avg_hr"] = int(avg_hr)
+
+    use_hr = st.toggle("❤️ Use average session HR to refine estimate", key="ui_use_hr")
     avg_hr_for_calc = None
     resting_hr_for_calc = None
     if use_hr:
-        avg_hr_for_calc = st.number_input(
-            "Average HR during session (bpm)",
-            min_value=30, max_value=220,
-            value=avg_hr if avg_hr is not None else 130,
-            key="ui_avg_hr_calc",
-        )
-        resting_hr_for_calc = st.number_input(
-            "Resting HR (bpm)",
-            min_value=30, max_value=120, value=60,
-            key="ui_resting_hr",
-            on_change=sync_from_calc,
-        )
+        _hc1, _hc2 = st.columns(2)
+        with _hc1:
+            avg_hr_for_calc = st.slider("Avg session HR (bpm)", min_value=60, max_value=200,
+                                         value=int(avg_hr), key="ui_avg_hr_calc")
+        with _hc2:
+            resting_hr_for_calc = st.slider("Resting HR (bpm)", min_value=30, max_value=100,
+                                             value=60, key="ui_resting_hr",
+                                             on_change=sync_from_calc)
+        _hr_reserve = avg_hr_for_calc - resting_hr_for_calc
+        st.caption(f"HR reserve used: {_hr_reserve} bpm — higher reserve = more accurate calorie estimate")
 
-    # Also allow manual kcal override
-    manual_kcal = st.toggle("I know my exact kcal burn per session — enter manually", key="ui_manual_kcal")
+    manual_kcal = st.toggle("🔢 I know my exact kcal burn per session", key="ui_manual_kcal")
     if manual_kcal:
-        manual_kcal_val = st.number_input("kcal burned per session", min_value=0.0, max_value=5000.0,
-                                           value=300.0, format="%.0f", key="ui_manual_kcal_val")
+        manual_kcal_val = st.slider("kcal burned per session", min_value=0, max_value=2000,
+                                     value=300, step=10, key="ui_manual_kcal_val", format="%d kcal")
+    else:
+        manual_kcal_val = 0.0
 
-    # Compute
+    # ── Compute ──
     try:
         base_met = ACTIVITIES.get(activity_ex, {}).get(intensity_label, 4.0)
     except Exception:
         base_met = 4.0
-
     try:
         w_ex = float(weight_kg)
     except Exception:
@@ -748,19 +841,31 @@ with st.expander("🏃 Exercise log — enter before clicking Calculate", expand
     kcal_per_week_ex = sessions_per_week * kcal_per_session
     st.session_state["exercise_kcal_per_week"] = kcal_per_week_ex
     st.session_state["exercise_last"] = {
-        "activity": activity_ex,
-        "intensity": intensity_label,
-        "minutes": int(minutes_per_session),
-        "sessions_per_week": int(sessions_per_week),
+        "activity": activity_ex, "intensity": intensity_label,
+        "minutes": int(minutes_per_session), "sessions_per_week": int(sessions_per_week),
         "kcal_per_session": round(kcal_per_session, 1),
         "kcal_per_week": round(kcal_per_week_ex, 1),
         "rpe": int(rpe),
         "avg_hr": int(avg_hr_for_calc) if avg_hr_for_calc is not None else None,
     }
 
-    st.write(f"Estimated exercise burn: **{kcal_per_week_ex:.0f} kcal/week** "
-             f"({kcal_per_session:.0f} kcal/session × {sessions_per_week} sessions)")
-    st.caption("MET values are approximate. Use the HR option or adjust RPE for a more accurate estimate.")
+    # ── Live burn summary card ──
+    _burn_color = "#22C55E" if kcal_per_week_ex >= 1500 else "#3B82F6" if kcal_per_week_ex >= 500 else "#94A3B8"
+    st.markdown(
+        f'<div style="background:rgba(15,23,42,0.7);border:1px solid rgba(148,163,184,0.15);'
+        f'border-radius:14px;padding:14px 16px;margin-top:10px;">'
+        f'<div style="color:#94A3B8;font-size:11px;margin-bottom:4px;">ESTIMATED WEEKLY BURN</div>'
+        f'<div style="color:{_burn_color};font-weight:800;font-size:28px;">{kcal_per_week_ex:.0f} kcal/week</div>'
+        f'<div style="color:#94A3B8;font-size:12px;margin-top:4px;">'
+        f'{kcal_per_session:.0f} kcal/session × {sessions_per_week} sessions · '
+        f'{_act_icons_map.get(activity_ex,"🏅")} {activity_ex}</div>'
+        f'<div style="margin-top:10px;background:rgba(255,255,255,0.05);border-radius:999px;height:6px;overflow:hidden;">'
+        f'<div style="width:{min(100, int(kcal_per_week_ex/30))}%;background:{_burn_color};height:100%;border-radius:999px;"></div>'
+        f'</div>'
+        f'<div style="color:#64748B;font-size:10px;margin-top:4px;">MET-based estimate · adjust RPE or use HR for more accuracy</div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
 # ── Biological age inputs ─────────────────────────────────────────────────────
 if run_bioage:
