@@ -7,6 +7,7 @@ from io import BytesIO
 import streamlit as st
 import streamlit.components.v1 as components
 import calculators
+import matplotlib.pyplot as plt
 
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
