@@ -1614,31 +1614,36 @@ if results:
                 }
                 _icon = next((v for k, v in _focus_icons.items() if k.lower() in str(_focus).lower()), "📍")
 
-                st.markdown(
-                    f'<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">'
-                    f'<div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">'
-                    f'<div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};'
-                    f'display:flex;align-items:center;justify-content:center;'
-                    f'font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>'
-                    f'{"" if _is_last else "<div style=\\"width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;\\"></div>"}'
-                    f'</div>'
-                    f'<div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);'
-                    f'border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">'
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">'
-                    f'<div>'
-                    f'<span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_pw:.1f} kg</span>'
-                    f'<span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_icon} {_focus}</span>'
-                    f'</div>'
-                    f'<div style="background:rgba(255,255,255,0.06);border-radius:999px;'
-                    f'padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>'
-                    f'</div>'
-                    f'<div style="margin-top:7px;background:rgba(255,255,255,0.05);'
-                    f'border-radius:999px;height:5px;overflow:hidden;">'
-                    f'<div style="width:{_prog}%;background:{_dot_color};height:100%;'
-                    f'border-radius:999px;"></div></div>'
-                    f'</div></div>',
-                    unsafe_allow_html=True
-                )
+                                _connector = ""
+                if not _is_last:
+                    _connector = '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
+
+                _milestone_html = f"""
+<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
+  <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
+    <div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>
+    {_connector}
+  </div>
+  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);
+  border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+      <div>
+        <span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_pw:.1f} kg</span>
+        <span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_icon} {_focus}</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.06);border-radius:999px;
+      padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>
+    </div>
+    <div style="margin-top:7px;background:rgba(255,255,255,0.05);
+    border-radius:999px;height:5px;overflow:hidden;">
+      <div style="width:{_prog}%;background:{_dot_color};height:100%;border-radius:999px;"></div>
+    </div>
+  </div>
+</div>
+"""
+                st.markdown(_milestone_html, unsafe_allow_html=True)
     # ── PDF ───────────────────────────────────────────────────────────────────
     st.markdown("---")
     report = {
