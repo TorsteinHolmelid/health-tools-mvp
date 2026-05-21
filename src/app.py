@@ -1264,7 +1264,7 @@ if results:
   </div>
 </div>"""
 
-        components.html(vo2_html, height=1600, scrolling=False)
+        components.html(vo2_html, height=2000, scrolling=True)
 
         # VO2 tips
         tips = results["vo2"].get("tips", [])
