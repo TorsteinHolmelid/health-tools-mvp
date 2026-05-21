@@ -969,32 +969,27 @@ if run_plan and run_bmi:
                     "</div>"
                 )
 
-            st.markdown(
-                f"""
-            <div style="background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.15);
-            border-radius:14px;padding:14px 16px;margin-top:8px;">
-              <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-                <div style="text-align:center;">
-                  <div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">RATE</div>
-                  <div style="color:{_rate_color};font-weight:800;font-size:20px;">{_rate:+.2f} kg/wk</div>
-                </div>
-            
-                <div style="text-align:center;">
-                  <div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">DURATION</div>
-                  <div style="color:#E5E7EB;font-weight:800;font-size:20px;">{_wks} wks</div>
-                </div>
-            
-                <div style="text-align:center;">
-                  <div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">TARGET</div>
-                  <div style="color:#E5E7EB;font-weight:800;font-size:20px;">{_tw:.1f} kg</div>
-                </div>
-              </div>
-            
-              {_warn_html}
-            </div>
-            """,
-                unsafe_allow_html=True,
+            _preview_html = (
+                '<div style="background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.15);'
+                'border-radius:14px;padding:14px 16px;margin-top:8px;">'
+                '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
+                '<div style="text-align:center;">'
+                '<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">RATE</div>'
+                f'<div style="color:{_rate_color};font-weight:800;font-size:20px;">{_rate:+.2f} kg/wk</div>'
+                '</div>'
+                '<div style="text-align:center;">'
+                '<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">DURATION</div>'
+                f'<div style="color:#E5E7EB;font-weight:800;font-size:20px;">{_wks} wks</div>'
+                '</div>'
+                '<div style="text-align:center;">'
+                '<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">TARGET</div>'
+                f'<div style="color:#E5E7EB;font-weight:800;font-size:20px;">{_tw:.1f} kg</div>'
+                '</div>'
+                '</div>'
+                f'{_warn_html}'
+                '</div>'
             )
+            st.markdown(_preview_html, unsafe_allow_html=True)
 
 # ── Calculate ─────────────────────────────────────────────────────────────────
 if st.button("Calculate / Generate report", key="btn_calculate"):
