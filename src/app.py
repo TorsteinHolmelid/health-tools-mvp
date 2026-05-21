@@ -1172,10 +1172,13 @@ if results:
         vo2_html = f"""
 <style>
   .vo2-wrap{{font-family:Arial,sans-serif;color:#E5E7EB;padding:2px}}
+  .vo2-wrap{{font-family:Arial,sans-serif;color:#E5E7EB;padding:2px}}
+  .vo2-grid{{display:grid;grid-template-columns:1.2fr 0.8fr;gap:14px;align-items:stretch}}
+  .vo2-card{{
   .vo2-card {{
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
 }}
 
 @media (max-width: 1100px) {{
