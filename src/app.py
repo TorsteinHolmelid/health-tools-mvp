@@ -1094,7 +1094,7 @@ if results:
             st.caption(f"Exercise contribution: {w_kcal:.0f} kcal/week = "
                        f"{w_kcal/7:.0f} kcal/day added to TDEE.")
 
-    # ── VO2 ───────────────────────────────────────────────────────────────────
+# ── VO2 ───────────────────────────────────────────────────────────────────
     if "vo2" in results:
         st.markdown("---")
         st.subheader("VO2 max & fitness")
@@ -1108,7 +1108,6 @@ if results:
         c2.metric("Percentile", f"{v_pct:.0f}%")
         c3.metric("Ranking", top_text)
 
-        # ── FIX: pct_color based on actual percentile ──
         if v_pct >= 90:
             pct_color = "#22C55E"; pct_label = "Excellent"
         elif v_pct >= 80:
@@ -1131,7 +1130,6 @@ if results:
         else:
             interpretation_text = "You are below the average for your age, but this is very trainable."
 
-        # Age-band reference data  (male avg, female avg, bar colour)
         vo2_rows = [
             ("20–29", 44, 40, "#26A690"),
             ("30–39", 40, 36, "#3B82F6"),
@@ -1154,120 +1152,57 @@ if results:
         else:
             current_avg = {b: w for b, _, w, _ in vo2_rows}
 
-        # ── FIX: bar colour = band's own colour; active band uses pct_color ──
-        band_bars_html = "".join([
-            f"""
-      <div class="band{' band-active' if band == active_band else ''}">
-        <div class="band-lbl">{band}</div>
-        <div class="band-bar">
-          <div class="band-fill" style="width:{min(100, max(0, int(current_avg[band] / 50.0 * 100)))}%;
-               background:{pct_color if band == active_band else color};"></div>
-          <div class="band-badge">{current_avg[band]} avg</div>
-        </div>
-        <div class="band-val">{'Your group' if band == active_band else 'Average'}</div>
-      </div>"""
-            for band, _, _, color in vo2_rows
-        ])
+        # ── Age band bars (matplotlib) ──
+        st.markdown("#### VO2 max across age bands")
+        fig_bands, ax_bands = plt.subplots(figsize=(7, 3))
+        fig_bands.patch.set_facecolor("#111827")
+        ax_bands.set_facecolor("#111827")
 
-        vo2_html = f"""
-<style>
-  .vo2-wrap{{font-family:Arial,sans-serif;color:#E5E7EB;padding:2px}}
-  .vo2-wrap{{font-family:Arial,sans-serif;color:#E5E7EB;padding:2px}}
-  .vo2-grid{{display:grid;grid-template-columns:1.2fr 0.8fr;gap:14px;align-items:stretch}}
-  .vo2-card{{
-  .vo2-card {{
-    min-width: 0;
-    width: 100%;
-    box-sizing: border-box;
-}}
+        bands = [r[0] for r in vo2_rows]
+        avgs  = [current_avg[r[0]] for r in vo2_rows]
+        colors_list = [pct_color if r[0] == active_band else r[3] for r in vo2_rows]
 
-@media (max-width: 1100px) {{
-    .vo2-grid {{
-        grid-template-columns: 1fr;
-    }}
-}}
-  .vo2-card{{background:#1F2937;border:1px solid #374151;border-radius:16px;padding:18px}}
-  .vo2-title{{margin:0 0 6px 0;font-size:20px;font-weight:700;color:#F9FAFB}}
-  .vo2-sub{{margin:0 0 16px 0;font-size:12px;line-height:1.4;color:#9CA3AF}}
-  .metric-row{{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}}
-  .metric{{background:#111827;border:1px solid #374151;border-radius:12px;padding:10px 12px;min-width:0}}
-  .metric-k{{margin:0 0 4px 0;font-size:12px;color:#9CA3AF}}
-  .metric-v{{margin:0;font-size:20px;font-weight:700;color:#F9FAFB;line-height:1.1}}
-  .band{{display:grid;grid-template-columns:56px 1fr 70px;gap:10px;align-items:center;margin:10px 0}}
-  .band-lbl{{font-size:12px;color:#D1D5DB;white-space:nowrap}}
-  .band-bar{{height:16px;background:#111827;border:1px solid #374151;border-radius:999px;overflow:hidden;position:relative}}
-  .band-fill{{height:100%;border-radius:999px}}
-  .band-badge{{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:700;color:#111827;background:rgba(255,255,255,0.88);padding:1px 6px;border-radius:999px}}
-  .band-val{{text-align:right;font-size:12px;font-weight:700;color:#E5E7EB}}
-  .band-active{{background:#F8FAFC;border-radius:12px;padding:8px 10px}}
-  .band-active .band-lbl{{color:#0F172A;font-weight:700}}
-  .band-active .band-val{{color:#26A690}}
-  .pill-row{{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}}
-  .pill{{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#CBD5E1;background:#111827;border:1px solid #374151;border-radius:999px;padding:6px 10px}}
-  .dot{{width:10px;height:10px;border-radius:50%;flex:0 0 10px}}
-  .gauge-wrap{{display:flex;flex-direction:column;align-items:center}}
-  .gauge-head{{width:100%;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}}
-  .gauge-k{{margin:0;font-size:20px;font-weight:700;color:#F9FAFB}}
-  .gauge-sub{{margin:4px 0 0 0;font-size:12px;color:#9CA3AF;line-height:1.4}}
-  .pct-num{{margin:0;font-size:34px;font-weight:700;line-height:1;color:{pct_color};text-align:right}}
-  .pct-lbl{{margin:3px 0 0 0;font-size:12px;color:#D1D5DB;text-align:right}}
-  .callout{{width:100%;background:#111827;border:1px solid #374151;border-radius:12px;padding:12px;color:#D1D5DB;font-size:12px;line-height:1.45;margin-top:12px}}
-  .legend-col{{width:100%;margin-top:14px;display:grid;gap:8px}}
-  .legend-item{{display:flex;align-items:center;gap:8px;background:#111827;border:1px solid #374151;border-radius:999px;padding:8px 10px;font-size:12px;color:#CBD5E1}}
-</style>
-<div class="vo2-wrap">
-  <div class="vo2-grid">
-    <div class="vo2-card">
-      <div class="vo2-title">VO2 max across age bands</div>
-      <div class="vo2-sub">A live and readable view.</div>
-      <div class="metric-row">
-        <div class="metric"><div class="metric-k">Your VO2 max</div><div class="metric-v">{v_val:.1f}</div></div>
-        <div class="metric"><div class="metric-k">Age band</div><div class="metric-v">{active_band or "—"}</div></div>
-        <div class="metric"><div class="metric-k">Rating</div><div class="metric-v">{pct_label}</div></div>
-      </div>
-      {band_bars_html}
-      <div class="pill-row">
-        <div class="pill"><span class="dot" style="background:#26A690"></span>Very strong (20s)</div>
-        <div class="pill"><span class="dot" style="background:#3B82F6"></span>Strong (30s)</div>
-        <div class="pill"><span class="dot" style="background:#7C7CF5"></span>Mid range (40s)</div>
-        <div class="pill"><span class="dot" style="background:#F59E0B"></span>Below avg (50s)</div>
-        <div class="pill"><span class="dot" style="background:#EF6A3B"></span>Needs work (60+)</div>
-      </div>
-    </div>
-    <div class="vo2-card">
-      <div class="gauge-wrap">
-        <div class="gauge-head">
-          <div>
-            <div class="gauge-k">Population percentile</div>
-            <div class="gauge-sub">How you compare with others in your age group.</div>
-          </div>
-          <div>
-            <div class="pct-num">{v_pct:.0f}%</div>
-            <div class="pct-lbl">{pct_label}</div>
-          </div>
-        </div>
-        <svg width="100%" viewBox="0 0 260 170">
-          <path d="M40 122 A90 90 0 0 1 220 122" fill="none" stroke="#4B5563" stroke-width="18" stroke-linecap="round" pathLength="100"/>
-          <path d="M40 122 A90 90 0 0 1 220 122" fill="none" stroke="{pct_color}" stroke-width="18" stroke-linecap="round" pathLength="100" stroke-dasharray="{v_pct} 100"/>
-          <circle cx="130" cy="122" r="50" fill="#1F2937" stroke="#374151" stroke-width="1"/>
-          <text x="130" y="116" text-anchor="middle" font-size="36" font-weight="700" fill="#F9FAFB">{int(round(v_pct))}</text>
-          <text x="130" y="136" text-anchor="middle" font-size="12" fill="#CBD5E1">percentile</text>
-          <text x="40" y="158" text-anchor="start" font-size="12" fill="#9CA3AF">0</text>
-          <text x="130" y="158" text-anchor="middle" font-size="12" fill="#9CA3AF">50</text>
-          <text x="220" y="158" text-anchor="end" font-size="12" fill="#9CA3AF">100</text>
-        </svg>
-        <div class="callout"><b>Interpretation:</b> {interpretation_text}</div>
-        <div class="legend-col">
-          <div class="legend-item"><span class="dot" style="background:{pct_color}"></span>Your result: {pct_label}</div>
-          <div class="legend-item"><span class="dot" style="background:#3B82F6"></span>Population average</div>
-          <div class="legend-item"><span class="dot" style="background:#26A690"></span>Better than average</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>"""
+        bars = ax_bands.barh(bands, avgs, color=colors_list, edgecolor="none", height=0.55)
+        ax_bands.axvline(v_val, color="white", linewidth=2, linestyle="--", label=f"You: {v_val:.1f}")
 
-        components.html(vo2_html, height=1450, scrolling=False)
+        for bar, val in zip(bars, avgs):
+            ax_bands.text(val + 0.5, bar.get_y() + bar.get_height()/2,
+                         f"{val} avg", va="center", fontsize=9, color="#9CA3AF")
+
+        ax_bands.set_xlabel("VO2 max (ml/kg/min)", color="#9CA3AF", fontsize=9)
+        ax_bands.tick_params(colors="#D1D5DB", labelsize=9)
+        ax_bands.spines[:].set_visible(False)
+        ax_bands.legend(fontsize=9, frameon=False, labelcolor="white")
+        for spine in ax_bands.spines.values():
+            spine.set_visible(False)
+        plt.tight_layout()
+        st.pyplot(fig_bands, use_container_width=True)
+        plt.close(fig_bands)
+
+        # ── Percentile gauge (matplotlib) ──
+        st.markdown(f"#### Population percentile — **{pct_label}**")
+        fig_gauge, ax_gauge = plt.subplots(figsize=(5, 2.2))
+        fig_gauge.patch.set_facecolor("#111827")
+        ax_gauge.set_facecolor("#111827")
+
+        ax_gauge.barh(0, 100, color="#374151", height=0.4, edgecolor="none")
+        ax_gauge.barh(0, v_pct, color=pct_color, height=0.4, edgecolor="none")
+        ax_gauge.scatter([v_pct], [0], s=180, color="white", zorder=5, edgecolor=pct_color, linewidth=2)
+        ax_gauge.text(v_pct, 0.28, f"{v_pct:.0f}th percentile",
+                     ha="center", fontsize=10, fontweight="bold", color="white")
+        ax_gauge.text(v_pct, -0.32, interpretation_text,
+                     ha="center", fontsize=8, color="#9CA3AF", wrap=True)
+
+        ax_gauge.set_xlim(0, 100)
+        ax_gauge.set_ylim(-0.6, 0.6)
+        ax_gauge.set_xticks([0, 25, 50, 75, 100])
+        ax_gauge.tick_params(colors="#9CA3AF", labelsize=8)
+        ax_gauge.set_yticks([])
+        for spine in ax_gauge.spines.values():
+            spine.set_visible(False)
+        plt.tight_layout()
+        st.pyplot(fig_gauge, use_container_width=True)
+        plt.close(fig_gauge)
 
         # VO2 tips
         tips = results["vo2"].get("tips", [])
