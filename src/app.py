@@ -55,47 +55,154 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-st.markdown("""
+st.markdown(
+    """
 <style>
-img, svg, iframe { max-width: 100% !important; height: auto !important; }
-@media (max-width: 600px) {
-    .main > div { padding-left: 8px !important; padding-right: 8px !important; }
-    .streamlit-expanderHeader { font-size: 16px !important; }
+:root{
+  --bg0:#070D18;
+  --bg1:#0B1220;
+  --card: rgba(15,23,42,.72);
+  --card2: rgba(17,28,51,.62);
+  --stroke: rgba(148,163,184,.16);
+  --stroke2: rgba(148,163,184,.10);
+  --text:#E5E7EB;
+  --muted:#94A3B8;
+  --muted2:#A7B4C6;
+  --accent:#0EA5A3;
+  --accent2:#3B82F6;
+  --good:#22C55E;
+  --warn:#F59E0B;
+  --bad:#EF4444;
+  --radius:16px;
 }
-.stApp { background-color: #0b1220; color: #e6eef8; }
-[data-testid="stSidebar"] {
-  background-color: #0b1220 !important; color: #e6eef8 !important;
-  border-right: 1px solid rgba(255,255,255,0.03); padding: 18px;
-}
-.stTextInput>div>div>input, .stNumberInput>div>div>input,
-textarea, select, .stSelectbox>div>div>div, .stDateInput>div>div>input {
-  background-color: rgba(255,255,255,0.04) !important; color: #e6eef8 !important;
-  border: 1px solid rgba(255,255,255,0.08) !important;
-  border-radius: 8px !important; padding: 8px !important;
-}
-.stExpander > button {
-  background-color: rgba(255,255,255,0.03) !important; color: #e6eef8 !important;
-  border: 1px solid rgba(255,255,255,0.04) !important;
-  border-radius: 8px !important; padding: 8px 12px !important;
-}
-.result-box {
-  background-color: rgba(255,255,255,0.03); color: #e6eef8;
-  border: 1px solid rgba(255,255,255,0.04);
-  padding: 14px; border-radius: 10px; margin-bottom: 12px;
-}
-.stButton>button {
-  background-color: #0ea5a3 !important; color: #022b2a !important;
-  border-radius: 8px !important; padding: 8px 12px !important; font-weight: 600 !important;
-}
-.stButton>button:hover { filter: brightness(0.95); }
-h1, h2, h3, p, label { color: #e6eef8 !important; }
-.stTable td, .stTable th { color: #e6eef8 !important; }
-@media (max-width: 600px) { .stButton>button { width: 100% !important; } }
-</style>
-""", unsafe_allow_html=True)
 
-st.title("Health Tools — MVP")
-st.caption("Educational tool only — not a diagnostic tool. Data is not stored.")
+img, svg, iframe { max-width: 100% !important; height: auto !important; }
+
+.stApp{
+  background:
+    radial-gradient(1200px 600px at 18% -10%, rgba(14,165,163,.20), transparent 60%),
+    radial-gradient(900px 520px at 90% 0%, rgba(59,130,246,.15), transparent 55%),
+    linear-gradient(180deg, var(--bg0), var(--bg1) 40%, #070B14);
+  color: var(--text);
+}
+
+.block-container{
+  max-width: 980px;
+  padding-top: 1.35rem;
+  padding-bottom: 2.2rem;
+}
+
+h1, h2, h3, p, label, li { color: var(--text) !important; }
+small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !important; }
+
+.ht-hero{
+  background: linear-gradient(135deg, rgba(14,165,163,.18), rgba(59,130,246,.12));
+  border: 1px solid var(--stroke);
+  border-radius: calc(var(--radius) + 6px);
+  padding: 18px 18px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.25);
+  backdrop-filter: blur(8px);
+  margin-bottom: 14px;
+}
+.ht-hero h1{ margin:0; font-size: 38px; letter-spacing:-0.02em; }
+.ht-hero .sub{ margin-top:6px; color: var(--muted2); font-size: 13px; line-height:1.4; }
+.ht-pills{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.ht-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  background: rgba(17,24,39,.65);
+  border: 1px solid var(--stroke2);
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--muted2);
+  font-size: 12px;
+}
+
+.ht-card{
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 14px 14px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.22);
+  backdrop-filter: blur(8px);
+  margin-bottom: 12px;
+}
+
+.ht-h2{
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  margin: 2px 0 6px 0;
+}
+.ht-sub{ color: var(--muted); font-size: 13px; margin: 0 0 10px 0; }
+
+[data-testid="stMetric"]{
+  background: rgba(15,23,42,.55);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.stTextInput input, .stNumberInput input, textarea, select,
+.stSelectbox [data-baseweb="select"]{
+  background-color: rgba(255,255,255,0.04) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
+}
+
+[data-testid="stExpander"] details{
+  background: rgba(15,23,42,.45) !important;
+  border: 1px solid var(--stroke) !important;
+  border-radius: var(--radius) !important;
+  overflow: hidden !important;
+}
+[data-testid="stExpander"] summary{
+  padding: 10px 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+[data-testid="stExpander"] summary:hover{
+  background: rgba(148,163,184,.06) !important;
+}
+
+[data-testid="stCheckbox"] input{ transform: scale(1.10); }
+[data-testid="stToggle"] input{ transform: scale(1.05); }
+
+.stButton > button{
+  background: linear-gradient(135deg, #0EA5A3, #22C55E) !important;
+  color: #052e2b !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  padding: 10px 14px !important;
+  font-weight: 750 !important;
+  box-shadow: 0 14px 34px rgba(14,165,163,.18);
+}
+.stButton > button:hover{ filter: brightness(0.97); transform: translateY(-1px); }
+
+@media (max-width: 600px){
+  .main > div { padding-left: 10px !important; padding-right: 10px !important; }
+  .ht-hero h1{ font-size: 30px; }
+  .stButton > button { width: 100% !important; }
+}
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+st.markdown(
+    """
+<div class="ht-hero">
+  <h1>Health Tools — MVP</h1>
+  <div class="sub">Educational tool only — not a diagnostic tool. Data is not stored.</div>
+  <div class="ht-pills">
+    <span class="ht-pill">Privacy‑first</span>
+    <span class="ht-pill">Mobile‑friendly</span>
+    <span class="ht-pill">Explainable results</span>
+  </div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
 
 # ── Consent ───────────────────────────────────────────────────────────────────
 if "consent_given" not in st.session_state:
@@ -309,14 +416,19 @@ def create_pdf_bytes(report: dict) -> bytes:
     return buffer.read()
 
 
-# ── Sidebar ───────────────────────────────────────────────────────────────────
-st.sidebar.header("Modules")
-run_bmi = st.sidebar.checkbox("BMI calculator", value=True, key="s_bmi")
-run_vo2 = st.sidebar.checkbox("VO2max estimate", value=True, key="s_vo2")
-run_bioage = st.sidebar.checkbox("Biological age", value=True, key="s_bio")
-run_conditions = st.sidebar.checkbox("Conditions & recommendations", value=True, key="s_conditions")
-run_plan = st.sidebar.checkbox("Weight goal / plan", value=True, key="s_plan")
-st.sidebar.markdown("---")
+# ── Modules (main) ────
+with st.expander("⚙️ Choose modules", expanded=False):
+    st.caption("Turn modules on/off. (Nothing is stored.)")
+    cA, cB = st.columns(2)
+    with cA:
+        run_bmi = st.toggle("BMI calculator", value=True, key="s_bmi")
+        run_vo2 = st.toggle("VO2max estimate", value=True, key="s_vo2")
+        run_bioage = st.toggle("Biological age", value=True, key="s_bio")
+    with cB:
+        run_conditions = st.toggle("Conditions & recommendations", value=True, key="s_conditions")
+        run_plan = st.toggle("Weight goal / plan", value=True, key="s_plan")
+
+# ── Sidebar (kept minimal) ────
 st.sidebar.info("This app does not store personal health data.")
 
 # ── Session state defaults ────────────────────────────────────────────────────
@@ -330,8 +442,9 @@ if "age" not in st.session_state:
     st.session_state["age"] = 30
 
 # ── Basic inputs ──────────────────────────────────────────────────────────────
-st.header("Basic information")
-
+st.markdown("## 🧾 Basic information")
+st.caption("These inputs drive BMI, calories, VO2 and biological age estimates.")
+st.markdown('<div class="ht-card">', unsafe_allow_html=True)
 resting_hr_basic = st.number_input(
     "Resting HR (bpm)",
     min_value=30, max_value=120,
@@ -362,7 +475,7 @@ with c3:
 with c4:
     weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=70.0,
                                  format="%.1f", key="inp_weight")
-
+st.markdown("</div>", unsafe_allow_html=True)
 if age < 18:
     st.warning("BMI and fitness estimates are less reliable under 18.")
 elif age >= 70:
@@ -580,56 +693,97 @@ with st.expander("🏃 Exercise log — enter before clicking Calculate", expand
 # ── Biological age inputs ─────────────────────────────────────────────────────
 if run_bioage:
     with st.expander("Biological age inputs", expanded=True):
-        st.caption("Leave any field blank or use 'I don't know' where available.")
-        smoker = st.checkbox("Smoker?", key="bio_smoker")
-        diabetes = st.checkbox("Diabetes?", key="bio_diabetes")
-        family_history = st.checkbox("Family history of premature cardiovascular disease?", key="bio_family_hist")
-        if sex == "F":
-            menopause = st.checkbox("Post-menopausal?", key="bio_menopause")
-        st.markdown("#### Cardiovascular")
-        bp_unknown = st.checkbox("I don't know my systolic blood pressure", value=True, key="bio_bp_unknown")
-        if not bp_unknown:
-            bp_systolic = st.number_input("Systolic blood pressure (mmHg)", min_value=70.0,
-                                           max_value=260.0, value=120.0, key="bio_bp_val")
-        chol_unknown = st.checkbox("I don't know my cholesterol", value=True, key="bio_chol_unknown")
-        if not chol_unknown:
-            cholesterol = st.number_input("Cholesterol (mg/dL)", min_value=50.0,
-                                           max_value=500.0, value=180.0, key="bio_chol_val")
-        rhr_unknown = st.checkbox("I don't know my resting heart rate", value=True, key="bio_rhr_unknown")
-        if not rhr_unknown:
-            resting_hr = st.number_input("Resting heart rate (bpm)", min_value=30, max_value=220,
-                                          value=70, key="bio_rhr_val")
-        st.markdown("#### Lifestyle")
-        sleep_unknown = st.checkbox("I don't know my sleep duration", value=True, key="bio_sleep_unknown")
-        if not sleep_unknown:
-            sleep_hours = st.number_input("Average sleep per night (hours)", min_value=0.0,
-                                           max_value=24.0, value=7.0, format="%.1f", key="bio_sleep_val")
-        alcohol_unknown = st.checkbox("I don't know my alcohol intake", value=True, key="bio_alc_unknown")
-        if not alcohol_unknown:
-            alcohol_units = st.number_input("Alcohol units per week", min_value=0,
-                                             max_value=300, value=0, key="bio_alc_val")
-        fruit_veg = st.number_input("Daily fruit & vegetable servings", min_value=0,
-                                     max_value=20, value=3, key="bio_fv")
-        perceived_stress = st.slider("Perceived stress (1 low – 10 high)", min_value=1,
-                                      max_value=10, value=5, key="bio_stress")
-        grip_unknown = st.checkbox("I don't know my grip strength", value=True, key="bio_grip_unknown")
-        if not grip_unknown:
-            grip_strength = st.number_input("Grip strength (kg)", min_value=0.0,
-                                             max_value=100.0, value=30.0, format="%.1f", key="bio_grip_val")
-        st.markdown("#### Body composition")
-        bio_waist_unknown = st.checkbox("I don't know my waist-to-hip ratio", value=True, key="bio_waist_unknown")
-        if not bio_waist_unknown:
+                st.caption("Leave any field blank or use 'I don't know' where available.")
+
+        t_core, t_cardio, t_life, t_body = st.tabs(["Core", "Cardio", "Lifestyle", "Body comp"])
+
+        with t_core:
             c1, c2 = st.columns(2)
             with c1:
-                waist_bio = st.number_input("Waist (cm)", min_value=30.0, max_value=300.0,
-                                             value=80.0, format="%.1f", key="bio_waist_val")
+                smoker = st.toggle("Smoker?", key="bio_smoker")
+                diabetes = st.toggle("Diabetes?", key="bio_diabetes")
             with c2:
-                hip_bio = st.number_input("Hip (cm)", min_value=30.0, max_value=300.0,
-                                           value=95.0, format="%.1f", key="bio_hip_val")
-            if waist_cm is None:
-                waist_cm = waist_bio
-            if hip_cm is None:
-                hip_cm = hip_bio
+                family_history = st.toggle(
+                    "Family history of premature cardiovascular disease?",
+                    key="bio_family_hist",
+                )
+                if sex == "F":
+                    menopause = st.toggle("Post-menopausal?", key="bio_menopause")
+
+        with t_cardio:
+            st.markdown("#### 🫀 Cardiovascular")
+            bp_unknown = st.toggle("I don't know my systolic blood pressure", value=True, key="bio_bp_unknown")
+            if not bp_unknown:
+                bp_systolic = st.number_input(
+                    "Systolic blood pressure (mmHg)",
+                    min_value=70.0, max_value=260.0, value=120.0, key="bio_bp_val"
+                )
+
+            chol_unknown = st.toggle("I don't know my cholesterol", value=True, key="bio_chol_unknown")
+            if not chol_unknown:
+                cholesterol = st.number_input(
+                    "Cholesterol (mg/dL)",
+                    min_value=50.0, max_value=500.0, value=180.0, key="bio_chol_val"
+                )
+
+            rhr_unknown = st.toggle("I don't know my resting heart rate", value=True, key="bio_rhr_unknown")
+            if not rhr_unknown:
+                resting_hr = st.number_input(
+                    "Resting heart rate (bpm)",
+                    min_value=30, max_value=220, value=70, key="bio_rhr_val"
+                )
+
+        with t_life:
+            st.markdown("#### 😴 Lifestyle")
+            sleep_unknown = st.toggle("I don't know my sleep duration", value=True, key="bio_sleep_unknown")
+            if not sleep_unknown:
+                sleep_hours = st.number_input(
+                    "Average sleep per night (hours)",
+                    min_value=0.0, max_value=24.0, value=7.0, format="%.1f", key="bio_sleep_val"
+                )
+
+            alcohol_unknown = st.toggle("I don't know my alcohol intake", value=True, key="bio_alc_unknown")
+            if not alcohol_unknown:
+                alcohol_units = st.number_input(
+                    "Alcohol units per week",
+                    min_value=0, max_value=300, value=0, key="bio_alc_val"
+                )
+
+            fruit_veg = st.number_input(
+                "Daily fruit & vegetable servings",
+                min_value=0, max_value=20, value=3, key="bio_fv"
+            )
+            perceived_stress = st.slider(
+                "Perceived stress (1 low – 10 high)",
+                min_value=1, max_value=10, value=5, key="bio_stress"
+            )
+
+        with t_body:
+            st.markdown("#### ⚖️ Body composition")
+            grip_unknown = st.toggle("I don't know my grip strength", value=True, key="bio_grip_unknown")
+            if not grip_unknown:
+                grip_strength = st.number_input(
+                    "Grip strength (kg)",
+                    min_value=0.0, max_value=100.0, value=30.0, format="%.1f", key="bio_grip_val"
+                )
+
+            bio_waist_unknown = st.toggle("I don't know my waist-to-hip ratio", value=True, key="bio_waist_unknown")
+            if not bio_waist_unknown:
+                c1, c2 = st.columns(2)
+                with c1:
+                    waist_bio = st.number_input(
+                        "Waist (cm)", min_value=30.0, max_value=300.0,
+                        value=80.0, format="%.1f", key="bio_waist_val"
+                    )
+                with c2:
+                    hip_bio = st.number_input(
+                        "Hip (cm)", min_value=30.0, max_value=300.0,
+                        value=95.0, format="%.1f", key="bio_hip_val"
+                    )
+                if waist_cm is None:
+                    waist_cm = waist_bio
+                if hip_cm is None:
+                    hip_cm = hip_bio
 
 # ── Conditions ────────────────────────────────────────────────────────────────
 selected_conditions = []
