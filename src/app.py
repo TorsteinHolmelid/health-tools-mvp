@@ -886,15 +886,15 @@ if run_plan and run_bmi:
             _tw = target_weight if target_weight else (target_bmi * (float(height_cm)/100)**2 if target_bmi and height_cm else _cw)
             _rate = (_tw - _cw) / _wks if _wks > 0 else 0
             _safe = abs(_rate) <= 1.0
-_rate_color = "#22C55E" if _safe else "#F59E0B"
+            _rate_color = "#22C55E" if _safe else "#F59E0B"
 
-_warn_html = ""
-if not _safe:
-    _warn_html = (
-        '<div style="color:#F59E0B;font-size:12px;margin-top:10px;">'
-        "⚠️ Rate above 1 kg/week — consider a longer timeline for safety."
-        "</div>"
-    )
+            _warn_html = ""
+            if not _safe:
+                _warn_html = (
+                    '<div style="color:#F59E0B;font-size:12px;margin-top:10px;">'
+                    "⚠️ Rate above 1 kg/week — consider a longer timeline for safety."
+                    "</div>"
+                )
 
 st.markdown(
     f"""
