@@ -1176,7 +1176,7 @@ if results:
   min-width: 0;
   width: 100%;
   box-sizing: border-box;
-}
+}}
 
 @media (max-width: 1100px) {{
     .vo2-grid {{
