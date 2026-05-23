@@ -22,31 +22,34 @@ from calculators import (
 )
 
 # ── Resting HR sync ──────────────────────────────────────────────────────────
-def sync_from_basic():
-    val = st.session_state.get("basic_resting_hr")
+_HR_KEYS = [
+    "resting_hr", "global_resting_hr", "basic_resting_hr",
+    "ui_resting_hr", "vo2_rhr_value", "bio_rhr_val",
+]
+
+def _sync_hr(source_key: str):
+    val = st.session_state.get(source_key)
     if val is None:
         return
     try:
         v = int(val)
     except Exception:
         return
-    st.session_state["resting_hr"] = v
-    st.session_state["ui_resting_hr"] = v
-    st.session_state["global_resting_hr"] = v
+    for k in _HR_KEYS:
+        if k != source_key:
+            st.session_state[k] = v
 
+def sync_from_basic():
+    _sync_hr("basic_resting_hr")
 
 def sync_from_calc():
-    val = st.session_state.get("ui_resting_hr")
-    if val is None:
-        return
-    try:
-        v = int(val)
-    except Exception:
-        return
-    st.session_state["resting_hr"] = v
-    st.session_state["basic_resting_hr"] = v
-    st.session_state["global_resting_hr"] = v
+    _sync_hr("ui_resting_hr")
 
+def sync_from_vo2():
+    _sync_hr("vo2_rhr_value")
+
+def sync_from_bio():
+    _sync_hr("bio_rhr_val")
 
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -606,7 +609,8 @@ if run_vo2:
         if not resting_hr_unknown:
             default_rhr = st.session_state.get("global_resting_hr") or 70
             resting_hr = st.slider("Resting HR (bpm)", min_value=30, max_value=120,
-                    value=int(default_rhr), key="vo2_rhr_value")
+                    value=int(default_rhr), key="vo2_rhr_value",
+                    on_change=sync_from_vo2)
             _hr_zone = "🟢 Athletic" if resting_hr < 55 else "🟡 Normal" if resting_hr < 75 else "🔴 Elevated"
             st.caption(f"{_hr_zone} — prefilled from basic inputs above.")
         else:
@@ -921,7 +925,8 @@ if run_bioage:
                 resting_hr = st.number_input(
                     "Resting heart rate (bpm)",
                     min_value=30, max_value=220,
-                    value=int(_bio_rhr_known or 70), key="bio_rhr_val"
+                    value=int(_bio_rhr_known or 70), key="bio_rhr_val",
+                    on_change=sync_from_bio
                 )
 
         with t_life:
