@@ -277,7 +277,7 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
 
 
 from reportlab.lib.colors import HexColor
-
+def create_pdf_bytes(report: dict) -> bytes:
     C_BG     = HexColor("#0F172A")
     C_CARD   = HexColor("#1E293B")
     C_CARD2  = HexColor("#162032")
