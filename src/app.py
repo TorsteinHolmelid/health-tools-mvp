@@ -440,6 +440,12 @@ if "global_avg_hr" not in st.session_state:
     st.session_state["global_avg_hr"] = None
 if "age" not in st.session_state:
     st.session_state["age"] = 30
+if "global_resting_hr" not in st.session_state:
+    st.session_state["global_resting_hr"] = None
+if "global_waist_cm" not in st.session_state:
+    st.session_state["global_waist_cm"] = None
+if "global_hip_cm" not in st.session_state:
+    st.session_state["global_hip_cm"] = None
 
 # ── Basic inputs ──────────────────────────────────────────────────────────────
 st.markdown("## 🧾 Basic information")
@@ -517,10 +523,14 @@ if run_bmi:
             c1, c2 = st.columns(2)
             with c1:
                 waist_cm = st.number_input("Waist (cm)", min_value=30.0, max_value=300.0,
-                                            value=80.0, format="%.1f", key="b_waist")
+                                            value=float(st.session_state.get("global_waist_cm") or 80.0),
+                                            format="%.1f", key="b_waist")
             with c2:
                 hip_cm = st.number_input("Hip (cm)", min_value=30.0, max_value=300.0,
-                                          value=95.0, format="%.1f", key="b_hip")
+                                          value=float(st.session_state.get("global_hip_cm") or 95.0),
+                                          format="%.1f", key="b_hip")
+            st.session_state["global_waist_cm"] = waist_cm
+            st.session_state["global_hip_cm"] = hip_cm
         use_neck = st.toggle("Add neck measurement for body-fat estimate", value=False, key="b_use_neck")
         if use_neck:
             neck_cm = st.number_input("Neck (cm)", min_value=20.0, max_value=80.0,
@@ -806,7 +816,8 @@ with st.expander("🏃 Exercise log — enter before clicking Calculate", expand
                                          value=int(avg_hr), key="ui_avg_hr_calc")
         with _hc2:
             resting_hr_for_calc = st.slider("Resting HR (bpm)", min_value=30, max_value=100,
-                                             value=60, key="ui_resting_hr",
+                                             value=int(st.session_state.get("global_resting_hr") or 60),
+                                             key="ui_resting_hr",
                                              on_change=sync_from_calc)
         _hr_reserve = avg_hr_for_calc - resting_hr_for_calc
         st.caption(f"HR reserve used: {_hr_reserve} bpm — higher reserve = more accurate calorie estimate")
@@ -903,11 +914,14 @@ if run_bioage:
                     min_value=50.0, max_value=500.0, value=180.0, key="bio_chol_val"
                 )
 
-            rhr_unknown = st.toggle("I don't know my resting heart rate", value=True, key="bio_rhr_unknown")
+            _bio_rhr_known = st.session_state.get("global_resting_hr")
+            rhr_unknown = st.toggle("I don't know my resting heart rate",
+                                    value=(_bio_rhr_known is None), key="bio_rhr_unknown")
             if not rhr_unknown:
                 resting_hr = st.number_input(
                     "Resting heart rate (bpm)",
-                    min_value=30, max_value=220, value=70, key="bio_rhr_val"
+                    min_value=30, max_value=220,
+                    value=int(_bio_rhr_known or 70), key="bio_rhr_val"
                 )
 
         with t_life:
@@ -950,12 +964,14 @@ if run_bioage:
                 with c1:
                     waist_bio = st.number_input(
                         "Waist (cm)", min_value=30.0, max_value=300.0,
-                        value=80.0, format="%.1f", key="bio_waist_val"
+                        value=float(st.session_state.get("global_waist_cm") or 80.0),
+                        format="%.1f", key="bio_waist_val"
                     )
                 with c2:
                     hip_bio = st.number_input(
                         "Hip (cm)", min_value=30.0, max_value=300.0,
-                        value=95.0, format="%.1f", key="bio_hip_val"
+                        value=float(st.session_state.get("global_hip_cm") or 95.0),
+                        format="%.1f", key="bio_hip_val"
                     )
                 if waist_cm is None:
                     waist_cm = waist_bio
