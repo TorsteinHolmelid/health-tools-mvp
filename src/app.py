@@ -2291,7 +2291,7 @@ if results:
     for f in results.get("bio_factors", [])
   ])}
 </div>
-        """, height=100 + len(results.get("bio_factors", [])) * 32)
+        """, height=260 + len(results.get("bio_factors", [])) * 44)
     # ── Conditions ────────────────────────────────────────────────────────────
     if "triage" in results:
         st.markdown("---")
