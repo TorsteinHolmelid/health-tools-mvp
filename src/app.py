@@ -2281,17 +2281,17 @@ if results:
     f'''<div class="ba-bar-row">
       <div class="ba-label">{f["label"]}</div>
       <div class="ba-track">
-        <div class="ba-fill" style="width:{min(100, abs(f.get("delta",0)) / 5 * 100):.1f}%;
+        <div class="ba-fill" style="width:{max(3, min(100, abs(f.get("delta",0)) / 5 * 100)):.1f}%;
         background:{"#22C55E" if f.get("delta",0) <= 0 else "#EF4444"};"></div>
       </div>
       <div class="ba-delta" style="color:{"#22C55E" if f.get("delta",0) <= 0 else "#EF4444"};">
         {f.get("delta",0):+.0f} yrs
       </div>
     </div>'''
-    for f in results.get("bio_factors", [])
+    for f in results.get("bio_factors", []) if abs(f.get("delta", 0)) > 0
   ])}
 </div>
-        """, height=400 + len(results.get("bio_factors", [])) * 44)
+        """, height=max(280, 200 + len([f for f in results.get("bio_factors", []) if abs(f.get("delta", 0)) > 0]) * 52))
     # ── Conditions ────────────────────────────────────────────────────────────
     if "triage" in results:
         st.markdown("---")
