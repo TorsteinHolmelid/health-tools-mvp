@@ -1006,7 +1006,7 @@ target_bmi = None
 plan_weeks = 12
 
 if run_plan and run_bmi:
-        with st.expander("🎯 Goal / plan", expanded=True):        # Visual toggle
+    with st.expander("🎯 Goal / plan", expanded=True):        # Visual toggle
         create_plan = st.toggle("Activate weight goal plan", value=False, key="plan_create")
 
         if create_plan:
