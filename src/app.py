@@ -2020,28 +2020,28 @@ if results:
         v_pct = max(0.0, min(100.0, float(results["vo2"].get("percentile") or 0)))
         top_text = f"Top {100 - v_pct:.1f}%"
 
-        components.html(f"""
+        _vo2_html = """
 <style>
-  .vo2-row {{
+  .vo2-row {
     display: flex; gap: 12px; font-family: Arial, sans-serif;
     background: #1F2937; border: 1px solid #374151;
     border-radius: 16px; padding: 18px 20px;
-  }}
-  .vo2-card {{
+  }
+  .vo2-card {
     flex: 1; text-align: center;
     background: #111827; border-radius: 12px; padding: 14px 8px;
     border: 1px solid #374151;
-  }}
-  .vo2-label {{
+  }
+  .vo2-label {
     font-size: 10px; color: #6B7280; text-transform: uppercase;
     letter-spacing: .06em; margin-bottom: 6px;
-  }}
-  .vo2-num {{
-    font-size: 36px; font-weight: 800; line-height: 1;
-  }}
-  .vo2-sub {{
+  }
+  .vo2-num {
+    font-size: 36px; font-weight: 800; line-height: 1; color: VO2COLOR;
+  }
+  .vo2-sub {
     font-size: 11px; color: #9CA3AF; margin-top: 4px;
-  }}
+  }
 </style>
 <div class="vo2-row">
   <div class="vo2-card">
@@ -2061,8 +2061,8 @@ if results:
   </div>
 </div>
 <script>
-(function() {{
-  function animCount(id, target, decimals, duration) {{
+(function() {
+  function animCount(id, target, decimals, duration) {
     var el = document.getElementById(id);
     if (!el) return;
     var start = null;
@@ -2073,14 +2073,23 @@ if results:
       el.textContent = (target * ease).toFixed(decimals);
       if (p < 1) requestAnimationFrame(step);
       else el.textContent = target.toFixed(decimals);
-    }}
+    }
     requestAnimationFrame(step);
-  }}
+  }
   animCount('vo2-val-anim', {v_val:.4f}, 1, 1000);
   animCount('vo2-pct-anim', {v_pct:.1f}, 0, 1000);
-}})();
+})();
 </script>
-        """, height=150)
+        """
+        _vo2_html = (
+            _vo2_html
+            .replace("VO2COLOR", pct_color)
+            .replace("VO2VAL", f"{v_val:.4f}")
+            .replace("VO2PCT", f"{v_pct:.1f}")
+            .replace("PCT_LABEL", pct_label)
+            .replace("TOP_TEXT", top_text)
+        )
+        components.html(_vo2_html, height=150)
 
         if v_pct >= 90:
             pct_color = "#22C55E"; pct_label = "Excellent"
