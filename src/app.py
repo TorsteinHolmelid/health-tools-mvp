@@ -2173,9 +2173,10 @@ if results:
             for tip in tips:
                 st.write(f"• {tip}")
 
-    # ── Biological age ────────────────────────────────────────────────────────
-st.markdown("---")
-        st.subheader("Biological age")
+# ── Biological age ────
+if "bio_age" in results:
+    st.markdown("---")
+    st.subheader("Biological age")
         _bio_val = results["bio_age"]["value"]
         _chron = float(age)
         _diff = _bio_val - _chron
