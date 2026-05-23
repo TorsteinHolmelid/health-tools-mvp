@@ -737,21 +737,20 @@ with st.expander("🏃 Exercise log", expanded=True):
     for _gi, _ga in enumerate(_group_acts):
         with _gcols[_gi]:
             _is_sel = (_ga == st.session_state.get("ui_activity_type", "Walking (casual)"))
-            _bg = "rgba(14,165,163,0.18)" if _is_sel else "rgba(255,255,255,0.03)"
-            _border = "#0ea5a3" if _is_sel else "rgba(255,255,255,0.08)"
             _ico = _act_icons_map.get(_ga, "🏅")
             _short = _ga.split("(")[0].split("/")[0].strip()
-            st.markdown(
-                f'<div style="background:{_bg};border:1.5px solid {_border};border-radius:12px;'
-                f'padding:8px 4px;text-align:center;">'
-                f'<div style="font-size:22px;">{_ico}</div>'
-                f'<div style="font-size:10px;font-weight:700;color:#E5E7EB;margin-top:2px;">{_short}</div>'
-                f'</div>', unsafe_allow_html=True
-            )
+            if st.button(
+                f"{_ico}\n{_short}",
+                key=f"act_type_btn_{_sel_group}_{_gi}",
+                type="primary" if _is_sel else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["ui_activity_type"] = _ga
 
-    activity_ex = st.selectbox("Activity", _group_acts,
-                                index=_group_acts.index(_current_act) if _current_act in _group_acts else 0,
-                                key="ui_activity_type", label_visibility="collapsed")
+    activity_ex = st.session_state.get("ui_activity_type", "Walking (casual)")
+    if activity_ex not in _group_acts:
+        activity_ex = _group_acts[0]
+        st.session_state["ui_activity_type"] = activity_ex
 
     st.markdown("---")
 
@@ -765,20 +764,14 @@ with st.expander("🏃 Exercise log", expanded=True):
     for _ii, (_io, _iico, _id) in enumerate(zip(_int_opts, _int_icons, _int_descs)):
         with _int_cols[_ii]:
             _is_int = (_io == _cur_int)
-            _ibg = "rgba(14,165,163,0.18)" if _is_int else "rgba(255,255,255,0.03)"
-            _iborder = "#0ea5a3" if _is_int else "rgba(255,255,255,0.08)"
-            st.markdown(
-                f'<div style="background:{_ibg};border:1.5px solid {_iborder};border-radius:12px;'
-                f'padding:10px 6px;text-align:center;">'
-                f'<div style="font-size:20px;">{_iico}</div>'
-                f'<div style="font-size:12px;font-weight:700;color:#E5E7EB;">{_io}</div>'
-                f'<div style="font-size:10px;color:#94A3B8;margin-top:2px;">{_id}</div>'
-                f'</div>', unsafe_allow_html=True
-            )
-    intensity_label = st.radio("Intensity", _int_opts,
-                                index=_int_opts.index(_cur_int),
-                                horizontal=True, key="ui_intensity",
-                                label_visibility="collapsed")
+            if st.button(
+                f"{_iico}\n{_io}\n{_id}",
+                key=f"int_btn_{_ii}",
+                type="primary" if _is_int else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["ui_intensity"] = _io
+    intensity_label = st.session_state.get("ui_intensity", "Moderate")
 
     st.markdown("---")
 
