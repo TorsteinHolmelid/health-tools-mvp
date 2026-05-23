@@ -518,8 +518,8 @@ rockport_hr = 0
 if run_bmi:
     with st.expander("BMI inputs and body composition", expanded=True):
         st.markdown("BMI is a simple screening tool, not a diagnosis.")
-        use_waist_hip = st.toggle("Add waist and hip measurements", value=False, key="b_use_whr")
-        if use_waist_hip:
+        use_waist_hip = st.toggle("I don't know my waist & hip measurements", value=False, key="b_use_whr")
+        if not use_waist_hip:
             c1, c2 = st.columns(2)
             with c1:
                 waist_cm = st.number_input("Waist (cm)", min_value=30.0, max_value=300.0,
@@ -531,8 +531,8 @@ if run_bmi:
                                           format="%.1f", key="b_hip")
             st.session_state["global_waist_cm"] = waist_cm
             st.session_state["global_hip_cm"] = hip_cm
-        use_neck = st.toggle("Add neck measurement for body-fat estimate", value=False, key="b_use_neck")
-        if use_neck:
+        use_neck = st.toggle("I don't know my neck measurement", value=False, key="b_use_neck")
+        if not use_neck:
             neck_cm = st.number_input("Neck (cm)", min_value=20.0, max_value=80.0,
                                        value=38.0, format="%.1f", key="b_neck")
         bodyfat_requested = st.checkbox("Estimate body fat (Navy method)", value=False, key="b_bodyfat")
@@ -612,7 +612,7 @@ if run_vo2:
         else:
             resting_hr = None
 
-        max_hr_unknown = st.toggle("I don't know my max heart rate", value=True, key="vo2_maxhr_unknown")
+        max_hr_unknown = st.toggle("I don't know my max heart rate", value=False, key="vo2_maxhr_unknown")
         if not max_hr_unknown:
             max_hr = st.slider("Max HR (bpm)", min_value=100, max_value=240,
                     value=180, key="vo2_maxhr_val")
@@ -689,7 +689,7 @@ ACTIVITIES = {
     "Housework / Light chores":      {"Light": 2.0, "Moderate": 3.0, "Hard": 3.5},
 }
 
-with st.expander("🏃 Exercise log — enter before clicking Calculate", expanded=False):
+with st.expander("🏃 Exercise log", expanded=True):
 
     # ── Activity picker — grouped visual cards ──
     _act_groups = {
@@ -900,14 +900,14 @@ if run_bioage:
 
         with t_cardio:
             st.markdown("#### 🫀 Cardiovascular")
-            bp_unknown = st.toggle("I don't know my systolic blood pressure", value=True, key="bio_bp_unknown")
+            bp_unknown = st.toggle("I don't know my systolic blood pressure", value=False, key="bio_bp_unknown")
             if not bp_unknown:
                 bp_systolic = st.number_input(
                     "Systolic blood pressure (mmHg)",
                     min_value=70.0, max_value=260.0, value=120.0, key="bio_bp_val"
                 )
 
-            chol_unknown = st.toggle("I don't know my cholesterol", value=True, key="bio_chol_unknown")
+            chol_unknown = st.toggle("I don't know my cholesterol", value=False, key="bio_chol_unknown")
             if not chol_unknown:
                 cholesterol = st.number_input(
                     "Cholesterol (mg/dL)",
@@ -926,14 +926,14 @@ if run_bioage:
 
         with t_life:
             st.markdown("#### 😴 Lifestyle")
-            sleep_unknown = st.toggle("I don't know my sleep duration", value=True, key="bio_sleep_unknown")
+            sleep_unknown = st.toggle("I don't know my sleep duration", value=False, key="bio_sleep_unknown")
             if not sleep_unknown:
                 sleep_hours = st.number_input(
                     "Average sleep per night (hours)",
                     min_value=0.0, max_value=24.0, value=7.0, format="%.1f", key="bio_sleep_val"
                 )
 
-            alcohol_unknown = st.toggle("I don't know my alcohol intake", value=True, key="bio_alc_unknown")
+            alcohol_unknown = st.toggle("I don't know my alcohol intake", value=False, key="bio_alc_unknown")
             if not alcohol_unknown:
                 alcohol_units = st.number_input(
                     "Alcohol units per week",
@@ -951,14 +951,14 @@ if run_bioage:
 
         with t_body:
             st.markdown("#### ⚖️ Body composition")
-            grip_unknown = st.toggle("I don't know my grip strength", value=True, key="bio_grip_unknown")
+            grip_unknown = st.toggle("I don't know my grip strength", value=False, key="bio_grip_unknown")
             if not grip_unknown:
                 grip_strength = st.number_input(
                     "Grip strength (kg)",
                     min_value=0.0, max_value=100.0, value=30.0, format="%.1f", key="bio_grip_val"
                 )
 
-            bio_waist_unknown = st.toggle("I don't know my waist-to-hip ratio", value=True, key="bio_waist_unknown")
+            bio_waist_unknown = st.toggle("I don't know my waist-to-hip ratio", value=False, key="bio_waist_unknown")
             if not bio_waist_unknown:
                 c1, c2 = st.columns(2)
                 with c1:
@@ -1006,8 +1006,7 @@ target_bmi = None
 plan_weeks = 12
 
 if run_plan and run_bmi:
-    with st.expander("🎯 Goal / plan", expanded=False):
-        # Visual toggle
+        with st.expander("🎯 Goal / plan", expanded=True):        # Visual toggle
         create_plan = st.toggle("Activate weight goal plan", value=False, key="plan_create")
 
         if create_plan:
