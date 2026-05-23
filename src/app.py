@@ -14,7 +14,7 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
-from reportlab.platypus import Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, HRFlowable, Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from calculators import (
     bmr_mifflin,
@@ -275,163 +275,615 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
     return t
 
 
-def create_pdf_bytes(report: dict) -> bytes:
+from reportlab.lib.colors import HexColor
+
+    C_BG     = HexColor("#0F172A")
+    C_CARD   = HexColor("#1E293B")
+    C_CARD2  = HexColor("#162032")
+    C_ACCENT = HexColor("#0EA5A3")
+    C_BLUE   = HexColor("#3B82F6")
+    C_GOOD   = HexColor("#22C55E")
+    C_WARN   = HexColor("#F59E0B")
+    C_BAD    = HexColor("#EF4444")
+    C_TEXT   = HexColor("#E5E7EB")
+    C_MUTED  = HexColor("#94A3B8")
+    C_STROKE = HexColor("#334155")
+
+    PAGE_W, PAGE_H = A4
+    CONTENT_W = PAGE_W - 36 * mm
+
     buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4,
-                            leftMargin=14*mm, rightMargin=14*mm,
-                            topMargin=18*mm, bottomMargin=14*mm)
-    styles = getSampleStyleSheet()
-    title_s = ParagraphStyle("T", parent=styles["Title"], fontName="Helvetica-Bold",
-                             fontSize=20, leading=24, alignment=TA_CENTER,
-                             textColor=colors.HexColor("#0f172a"))
-    sub_s = ParagraphStyle("S", parent=styles["BodyText"], fontName="Helvetica",
-                           fontSize=9.5, leading=12, alignment=TA_CENTER,
-                           textColor=colors.HexColor("#475569"))
-    sec_s = ParagraphStyle("H", parent=styles["Heading2"], fontName="Helvetica-Bold",
-                           fontSize=13, leading=15, textColor=colors.HexColor("#0f172a"), spaceAfter=4)
-    body_s = ParagraphStyle("B", parent=styles["BodyText"], fontName="Helvetica",
-                            fontSize=9.2, leading=12, textColor=colors.HexColor("#111827"))
-    small_s = ParagraphStyle("Sm", parent=styles["BodyText"], fontName="Helvetica-Oblique",
-                             fontSize=7.8, leading=10, textColor=colors.HexColor("#475569"))
 
-    story = []
-    story.append(Paragraph("Health Tools — Report", title_s))
-    story.append(Spacer(1, 3*mm))
-    story.append(Paragraph("Educational report. Not a medical diagnosis.", sub_s))
-    story.append(Spacer(1, 6*mm))
+    styles_rl = getSampleStyleSheet()
 
-    inp = report.get("inputs", {})
-    story.append(make_key_value_table([
-        ("Generated", report.get("generated", "")),
-        ("Age", str(inp.get("age", "—"))),
-        ("Sex", str(inp.get("sex", "—"))),
-        ("Height", f'{inp.get("height_cm", "—")} cm'),
-        ("Weight", f'{inp.get("weight_kg", "—")} kg'),
-    ]))
-    story.append(Spacer(1, 6*mm))
+    def ps(name, fontName="Helvetica", fontSize=10, leading=13, textColor=C_TEXT,
+           alignment=0, spaceAfter=4, spaceBefore=0, bold=False):
+        fn = "Helvetica-Bold" if bold else fontName
+        return ParagraphStyle(
+            name, parent=styles_rl["Normal"],
+            fontName=fn, fontSize=fontSize, leading=leading,
+            textColor=textColor, alignment=alignment,
+            spaceAfter=spaceAfter, spaceBefore=spaceBefore,
+        )
 
-    # Summary
-    summary = []
-    if report.get("bmi"):
-        summary.append(("BMI", f'{report["bmi"]["value"]:.1f} ({report["bmi"]["category"]})'))
-    if report.get("vo2"):
-        v = report["vo2"]
-        summary.append(("VO2max", f'{v["value"]:.1f} ml/kg/min | {v.get("rating","—")} | {v.get("percentile","—")}th percentile'))
-    if report.get("bio_age"):
-        summary.append(("Biological age", f'{report["bio_age"]["value"]:.1f} years'))
-    if report.get("triage"):
-        summary.append(("Conditions note", report["triage"].get("message", "—")))
-    if summary:
-        story.append(Paragraph("Summary", sec_s))
-        story.append(make_key_value_table(summary))
-        story.append(Spacer(1, 6*mm))
+    P = Paragraph
 
-    # BMI
-    if report.get("bmi"):
-        story.append(Paragraph("BMI", sec_s))
-        story.append(Paragraph("BMI is a screening measure, not a diagnosis.", body_s))
-        story.append(Spacer(1, 2*mm))
-        story.append(make_key_value_table([
-            ("BMI", f'{report["bmi"]["value"]:.1f}'),
-            ("Category", report["bmi"]["category"]),
-        ]))
-        story.append(Spacer(1, 4*mm))
+    # ── Custom Flowables ──────────────────────────────────────────
 
-    # VO2
-    if report.get("vo2"):
-        v = report["vo2"]
-        story.append(Paragraph("VO2max", sec_s))
-        story.append(make_key_value_table([
-            ("Method", v.get("method", "—")),
-            ("VO2max", f'{v["value"]:.1f} ml/kg/min'),
-            ("Age band", v.get("age_band", "—")),
-            ("Percentile", f'{v.get("percentile","—")}th'),
-            ("Rating", v.get("rating", "—")),
-        ]))
-        story.append(Spacer(1, 4*mm))
-        tips = v.get("tips", [])
-        if tips:
-            story.append(Paragraph("VO2 improvement tips", sec_s))
-            for tip in tips:
-                story.append(Paragraph(f"• {escape(str(tip))}", body_s))
-            story.append(Spacer(1, 4*mm))
+    class Gap(Flowable):
+        def __init__(self, h=8):
+            super().__init__()
+            self._h = h
+        def wrap(self, aw, ah):
+            return aw, self._h
+        def draw(self):
+            pass
 
-    # Biological age
-    if report.get("bio_age"):
-        story.append(Paragraph("Biological age", sec_s))
-        story.append(make_key_value_table([("Biological age", f'{report["bio_age"]["value"]:.1f} years')]))
-        story.append(Spacer(1, 3*mm))
-        if report.get("bio_factors"):
-            story.append(make_key_value_table(
-                [(f["label"], f'{f.get("delta", 0):+.0f} years') for f in report["bio_factors"]],
-                col_widths=(70*mm, 100*mm)
-            ))
-            story.append(Spacer(1, 4*mm))
+    class SectionHeader(Flowable):
+        def __init__(self, title, width=CONTENT_W, accent=None):
+            super().__init__()
+            self.title  = title
+            self.w      = width
+            self.accent = accent or C_ACCENT
+            self.h      = 38
 
-    # Conditions
-    if report.get("triage"):
-        story.append(Paragraph("Conditions & Recommendations", sec_s))
-        story.append(make_key_value_table([("Note", report["triage"].get("message", "—"))]))
-        story.append(Spacer(1, 3*mm))
-        recs = report.get("triage_recommendations", [])
-        for r in recs:
-            story.append(Paragraph(f"• {escape(str(r))}", body_s))
-        if recs:
-            story.append(Spacer(1, 4*mm))
+        def wrap(self, aw, ah):
+            return self.w, self.h
 
-    # Plan
-    if report.get("plan") and not report["plan"].get("error"):
-        plan = report["plan"]
-        story.append(Paragraph("Weight goal / plan", sec_s))
-        story.append(make_key_value_table([
-            ("Current maintenance kcal", f'{plan.get("current_needs_kcal","—")} kcal/day'),
-            ("Recommended daily kcal", f'{plan.get("recommended_daily_kcal","—")} kcal/day'),
-            ("Expected weekly change", f'{plan.get("kg_per_week",0):+.2f} kg/week'),
-        ]))
-        story.append(Spacer(1, 3*mm))
-        milestones = plan.get("milestones", [])
-        if milestones:
-            story.append(make_key_value_table(
-                [(f'Week {m.get("Week")}', f'{m.get("Projected weight (kg)")} kg — {m.get("Focus")}') for m in milestones],
-                col_widths=(40*mm, 135*mm)
-            ))
-            story.append(Spacer(1, 4*mm))
+        def draw(self):
+            c = self.canv
+            c.setFillColor(C_CARD)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setFillColor(self.accent)
+            c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            c.setFillColor(C_TEXT)
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(14, 13, self.title)
 
-    # Exercise log
-    ex = report.get("exercise_log")
-    if ex:
-        story.append(Paragraph("Exercise log", sec_s))
-        story.append(make_key_value_table([
-            ("Activity", ex.get("activity", "—")),
-            ("Intensity", ex.get("intensity", "—")),
-            ("Minutes/session", str(ex.get("minutes", "—"))),
-            ("Sessions/week", str(ex.get("sessions_per_week", "—"))),
-            ("kcal/session", f'{ex.get("kcal_per_session","—"):.0f}'),
-            ("kcal/week", f'{ex.get("kcal_per_week","—"):.0f}'),
-        ]))
-        story.append(Spacer(1, 4*mm))
+    class MetricRow(Flowable):
+        def __init__(self, metrics, width=CONTENT_W):
+            # metrics = list of (label, value, sub, color_hex_str)
+            super().__init__()
+            self.metrics = metrics
+            self.w       = width
+            self.h       = 62
+            n            = len(metrics)
+            self.card_w  = (width - (n - 1) * 8) / n if n > 0 else width
 
-    story.append(Spacer(1, 3*mm))
-    story.append(Paragraph(
-        "Disclaimer: educational demo only. Not clinically validated. "
-        "For symptoms, worsening health, or emergency signs, seek professional help immediately.",
-        small_s
-    ))
+        def wrap(self, aw, ah):
+            return self.w, self.h
 
-    def add_header(canvas, doc):
+        def draw(self):
+            c = self.canv
+            cw = self.card_w
+            for i, (label, value, sub, col_str) in enumerate(self.metrics):
+                col = HexColor(col_str) if isinstance(col_str, str) else col_str
+                x   = i * (cw + 8)
+                c.setFillColor(C_CARD)
+                c.roundRect(x, 0, cw, 58, 8, fill=1, stroke=0)
+                c.setFillColor(col)
+                c.roundRect(x, 55, cw, 3, 1, fill=1, stroke=0)
+                c.setFillColor(C_MUTED)
+                c.setFont("Helvetica", 7)
+                c.drawString(x + 8, 43, str(label).upper()[:22])
+                c.setFillColor(col)
+                c.setFont("Helvetica-Bold", 15)
+                c.drawString(x + 8, 25, str(value)[:18])
+                if sub:
+                    c.setFillColor(C_MUTED)
+                    c.setFont("Helvetica", 7)
+                    c.drawString(x + 8, 10, str(sub)[:24])
+
+    class BMIBar(Flowable):
+        def __init__(self, bmi_val, width=CONTENT_W):
+            super().__init__()
+            self.bmi = bmi_val
+            self.w   = width
+            self.h   = 96
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
+        def draw(self):
+            c   = self.canv
+            bmi = self.bmi
+            w   = self.w
+
+            c.setFillColor(C_CARD)
+            c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+
+            if bmi < 18.5:   bmi_col = "#3B82F6"
+            elif bmi < 25.0: bmi_col = "#22C55E"
+            elif bmi < 30.0: bmi_col = "#F59E0B"
+            else:            bmi_col = "#EF4444"
+
+            c.setFillColor(HexColor(bmi_col))
+            c.setFont("Helvetica-Bold", 26)
+            c.drawString(12, 62, f"{bmi:.1f}")
+            c.setFillColor(C_MUTED)
+            c.setFont("Helvetica", 8)
+            c.drawString(12, 52, "BMI Score")
+
+            scale_max = 45.0
+            bar_x = 12
+            bar_y = 28
+            bar_h = 14
+            bar_w = w - 24
+
+            segs = [
+                (0, 18.5, "#3B82F6",  "Underweight"),
+                (18.5, 25.0, "#22C55E", "Normal"),
+                (25.0, 30.0, "#F59E0B", "Overweight"),
+                (30.0, 45.0, "#EF4444", "Obese"),
+            ]
+
+            for i, (s, e, col, lbl) in enumerate(segs):
+                sx = bar_x + (s / scale_max) * bar_w
+                sw = ((e - s) / scale_max) * bar_w
+                c.setFillColor(HexColor(col))
+                if i == 0:
+                    c.roundRect(sx, bar_y, sw, bar_h, 3, fill=1, stroke=0)
+                    c.rect(sx + 3, bar_y, sw - 3, bar_h, fill=1, stroke=0)
+                elif i == len(segs) - 1:
+                    c.roundRect(sx, bar_y, sw, bar_h, 3, fill=1, stroke=0)
+                    c.rect(sx, bar_y, sw - 3, bar_h, fill=1, stroke=0)
+                else:
+                    c.rect(sx, bar_y, sw, bar_h, fill=1, stroke=0)
+                c.setFillColor(HexColor("#0F172A"))
+                c.setFont("Helvetica-Bold", 6)
+                c.drawCentredString(sx + sw / 2, bar_y + 4, lbl)
+
+            mx = bar_x + min(1.0, bmi / scale_max) * bar_w
+            c.setStrokeColor(colors.white)
+            c.setLineWidth(1.5)
+            c.line(mx, bar_y - 2, mx, bar_y + bar_h + 2)
+            c.setFillColor(colors.white)
+            path = c.beginPath()
+            path.moveTo(mx,     bar_y + bar_h + 9)
+            path.lineTo(mx - 5, bar_y + bar_h + 2)
+            path.lineTo(mx + 5, bar_y + bar_h + 2)
+            path.close()
+            c.drawPath(path, fill=1, stroke=0)
+
+            for lbl, pos in [("0", 0), ("18.5", 18.5), ("25", 25), ("30", 30), ("45", 45)]:
+                lx = bar_x + (pos / scale_max) * bar_w
+                c.setFillColor(C_MUTED)
+                c.setFont("Helvetica", 6)
+                c.drawCentredString(lx, bar_y - 9, lbl)
+
+    class VO2Visual(Flowable):
+        def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
+            super().__init__()
+            self.vo2  = vo2_val
+            self.pct  = float(percentile or 0)
+            self.rating = rating
+            self.w    = width
+            self.h    = 86
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
+        def draw(self):
+            c   = self.canv
+            w   = self.w
+            pct = self.pct
+
+            if pct >= 80:   col = "#22C55E"
+            elif pct >= 60: col = "#3B82F6"
+            elif pct >= 40: col = "#F59E0B"
+            else:           col = "#EF4444"
+
+            c.setFillColor(C_CARD)
+            c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+
+            c.setFillColor(HexColor(col))
+            c.setFont("Helvetica-Bold", 26)
+            c.drawString(12, 54, f"{self.vo2:.1f}")
+            c.setFillColor(C_MUTED)
+            c.setFont("Helvetica", 8)
+            c.drawString(12, 44, "ml / kg / min")
+            c.setFillColor(HexColor(col))
+            c.setFont("Helvetica-Bold", 10)
+            c.drawString(12, 28, str(self.rating or "—"))
+            c.setFillColor(C_MUTED)
+            c.setFont("Helvetica", 7)
+            c.drawString(12, 16, "Rating")
+
+            bx  = w * 0.44
+            bw  = w * 0.52
+            bh  = 12
+            by  = 40
+            c.setFillColor(C_STROKE)
+            c.roundRect(bx, by, bw, bh, 4, fill=1, stroke=0)
+            fill_w = max(8, (pct / 100.0) * bw)
+            c.setFillColor(HexColor(col))
+            c.roundRect(bx, by, fill_w, bh, 4, fill=1, stroke=0)
+            c.setFillColor(C_MUTED)
+            c.setFont("Helvetica", 7)
+            c.drawString(bx, by + bh + 5, "POPULATION PERCENTILE")
+            c.setFillColor(HexColor(col))
+            c.setFont("Helvetica-Bold", 11)
+            c.drawRightString(bx + bw, by - 11, f"{pct:.0f}th percentile")
+
+            # 5-zone mini scale
+            zones = [
+                (0,  20,  "#EF4444"),
+                (20, 40,  "#F59E0B"),
+                (40, 60,  "#3B82F6"),
+                (60, 80,  "#22C55E"),
+                (80, 100, "#10B981"),
+            ]
+            sz_y = 16
+            sz_h = 7
+            for zs, ze, zc in zones:
+                zx = bx + (zs / 100) * bw
+                zw = ((ze - zs) / 100) * bw
+                c.setFillColor(HexColor(zc))
+                c.rect(zx, sz_y, zw, sz_h, fill=1, stroke=0)
+            c.setStrokeColor(colors.white)
+            c.setLineWidth(1.5)
+            mx2 = bx + (pct / 100) * bw
+            c.line(mx2, sz_y - 1, mx2, sz_y + sz_h + 1)
+
+    class BioFactorBars(Flowable):
+        def __init__(self, factors, width=CONTENT_W):
+            super().__init__()
+            self.factors = factors[:8]
+            self.w       = width
+            self.h       = len(self.factors) * 22 + 8
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
+        def draw(self):
+            c = self.canv
+            c.setFillColor(C_CARD)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+
+            row_h = 22
+            bar_x = self.w * 0.42
+            bar_w = self.w * 0.45
+            label_max = self.w * 0.40
+
+            for i, f in enumerate(self.factors):
+                y       = self.h - 14 - i * row_h
+                delta   = float(f.get("delta", 0))
+                col_str = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
+                bar_pct = min(abs(delta) / 10.0, 1.0)
+
+                c.setFillColor(C_MUTED)
+                c.setFont("Helvetica", 7.5)
+                lbl = str(f.get("label", ""))[:32]
+                c.drawString(10, y - 4, lbl)
+
+                c.setFillColor(C_STROKE)
+                c.roundRect(bar_x, y - 4, bar_w, 8, 2, fill=1, stroke=0)
+                if bar_pct > 0:
+                    c.setFillColor(HexColor(col_str))
+                    c.roundRect(bar_x, y - 4, bar_pct * bar_w, 8, 2, fill=1, stroke=0)
+
+                c.setFillColor(HexColor(col_str))
+                c.setFont("Helvetica-Bold", 7.5)
+                c.drawRightString(self.w - 4, y - 4, f"{delta:+.1f} yrs")
+
+    class MilestoneLine(Flowable):
+        def __init__(self, week, weight, focus, progress_pct, col_str, is_last, width=CONTENT_W):
+            super().__init__()
+            self.week         = week
+            self.weight       = weight
+            self.focus        = focus
+            self.progress_pct = progress_pct
+            self.col_str      = col_str
+            self.is_last      = is_last
+            self.w            = width
+            self.h            = 48
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
+        def draw(self):
+            c   = self.canv
+            col = HexColor(self.col_str)
+
+            if not self.is_last:
+                c.setStrokeColor(C_STROKE)
+                c.setLineWidth(1)
+                c.line(13, 0, 13, 10)
+
+            c.setFillColor(col)
+            c.circle(13, 36, 11, fill=1, stroke=0)
+            c.setFillColor(colors.white)
+            c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(13, 32, str(self.week))
+
+            c.setFillColor(C_CARD)
+            c.roundRect(32, 14, self.w - 36, 34, 6, fill=1, stroke=0)
+            c.setFillColor(col)
+            c.roundRect(32, 44, self.w - 36, 4, 2, fill=1, stroke=0)
+
+            c.setFillColor(col)
+            c.setFont("Helvetica-Bold", 12)
+            c.drawString(42, 32, f"{self.weight:.1f} kg")
+            c.setFillColor(C_MUTED)
+            c.setFont("Helvetica", 7.5)
+            c.drawString(42, 20, str(self.focus)[:40])
+
+            bx = self.w - 90
+            bw = 80
+            c.setFillColor(C_STROKE)
+            c.roundRect(bx, 20, bw, 6, 2, fill=1, stroke=0)
+            c.setFillColor(col)
+            c.roundRect(bx, 20, self.progress_pct / 100 * bw, 6, 2, fill=1, stroke=0)
+            c.setFillColor(C_MUTED)
+            c.setFont("Helvetica", 6.5)
+            c.drawRightString(bx + bw, 13, f"{self.progress_pct:.0f}%")
+
+    # ── Page template (dark bg + header/footer) ──────────────────
+
+    def draw_page(canvas, doc):
         canvas.saveState()
-        canvas.setFillColor(colors.HexColor("#0f172a"))
-        canvas.rect(0, A4[1] - 26, A4[0], 26, fill=1, stroke=0)
-        canvas.setFillColor(colors.white)
-        canvas.setFont("Helvetica-Bold", 11)
-        canvas.drawString(doc.leftMargin, A4[1] - 18, "Health Tools — Report")
+        canvas.setFillColor(C_BG)
+        canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+        canvas.setFillColor(C_ACCENT)
+        canvas.rect(0, PAGE_H - 3, PAGE_W, 3, fill=1, stroke=0)
+        canvas.setFillColor(C_CARD)
+        canvas.rect(0, PAGE_H - 22, PAGE_W, 19, fill=1, stroke=0)
+        canvas.setFillColor(C_TEXT)
+        canvas.setFont("Helvetica-Bold", 8.5)
+        canvas.drawString(18 * mm, PAGE_H - 15, "HEALTH TOOLS — PREMIUM REPORT")
+        canvas.setFillColor(C_MUTED)
         canvas.setFont("Helvetica", 8)
-        canvas.drawRightString(A4[0] - doc.rightMargin, A4[1] - 18, f"Page {canvas.getPageNumber()}")
-        canvas.setFillColor(colors.HexColor("#64748b"))
-        canvas.drawString(doc.leftMargin, 10, "Educational use only — not medical advice")
+        canvas.drawRightString(PAGE_W - 18 * mm, PAGE_H - 15,
+                               f"Page {canvas.getPageNumber()}")
+        canvas.setFillColor(C_STROKE)
+        canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
+        canvas.setFillColor(HexColor("#64748B"))
+        canvas.setFont("Helvetica", 6.5)
+        canvas.drawString(18 * mm, 4,
+                          "Educational use only — not medical advice — health-tools.streamlit.app")
+        canvas.drawRightString(PAGE_W - 18 * mm, 4,
+                               datetime.utcnow().strftime("%Y-%m-%d UTC"))
         canvas.restoreState()
 
-    doc.build(story, onFirstPage=add_header, onLaterPages=add_header)
+    # ── Build story ───────────────────────────────────────────────
+
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        leftMargin=18 * mm, rightMargin=18 * mm,
+        topMargin=26 * mm, bottomMargin=18 * mm,
+    )
+
+    story = []
+    inp = report.get("inputs", {})
+
+    # Cover
+    story.append(Gap(6))
+    story.append(P("HEALTH TOOLS",
+                   ps("cvt", fontSize=30, leading=34, textColor=C_ACCENT,
+                      bold=True, alignment=TA_CENTER)))
+    story.append(P("Premium Health Report",
+                   ps("cvs", fontSize=15, leading=19, textColor=C_TEXT,
+                      alignment=TA_CENTER, spaceAfter=6)))
+
+    # Info row
+    age_v  = inp.get("age", "—")
+    sex_v  = inp.get("sex", "—")
+    h_v    = inp.get("height_cm", "—")
+    w_v    = inp.get("weight_kg", "—")
+    gen_v  = report.get("generated", "—")
+
+    info_data = [
+        [P("AGE",     ps("il", fontSize=7, textColor=C_MUTED)),
+         P("SEX",     ps("il", fontSize=7, textColor=C_MUTED)),
+         P("HEIGHT",  ps("il", fontSize=7, textColor=C_MUTED)),
+         P("WEIGHT",  ps("il", fontSize=7, textColor=C_MUTED)),
+         P("GENERATED", ps("il", fontSize=7, textColor=C_MUTED))],
+        [P(f"{age_v} yrs", ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
+         P(str(sex_v),     ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
+         P(f"{h_v} cm",    ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
+         P(f"{w_v} kg",    ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
+         P(str(gen_v),     ps("iv", fontSize=8,  textColor=C_MUTED))],
+    ]
+    info_t = Table(info_data, colWidths=[CONTENT_W / 5] * 5)
+    info_t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), C_CARD),
+        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [C_CARD, C_CARD2]),
+        ("BOX",       (0, 0), (-1, -1), 1,   C_STROKE),
+        ("INNERGRID", (0, 0), (-1, -1), 0.5, C_STROKE),
+        ("TOPPADDING",    (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
+    ]))
+    story.append(info_t)
+    story.append(Gap(10))
+
+    # ── BMI ──
+    if report.get("bmi"):
+        bmi_v   = float(report["bmi"]["value"])
+        bmi_cat = report["bmi"]["category"]
+        story.append(SectionHeader("Body Mass Index"))
+        story.append(Gap(5))
+        story.append(BMIBar(bmi_v))
+        if report.get("whr") or report.get("bodyfat"):
+            story.append(Gap(4))
+            extra = []
+            if report.get("whr"):
+                extra.append(("Waist-to-hip ratio",
+                               f'{report["whr"]["value"]:.2f} — {report["whr"]["category"]}'))
+            if report.get("bodyfat"):
+                extra.append(("Body fat (Navy method)",
+                               f'{report["bodyfat"]["value"]:.1f}%'))
+            for lbl, val in extra:
+                story.append(P(
+                    f'<font color="#94A3B8">{lbl}:</font>  '
+                    f'<font color="#E5E7EB"><b>{val}</b></font>',
+                    ps("be", fontSize=9, leading=14),
+                ))
+        story.append(Gap(10))
+
+    # ── VO2 ──
+    if report.get("vo2"):
+        v = report["vo2"]
+        story.append(SectionHeader("VO2max & Cardio Fitness"))
+        story.append(Gap(5))
+        story.append(VO2Visual(
+            float(v["value"]),
+            float(v.get("percentile") or 0),
+            v.get("rating", "—"),
+        ))
+        story.append(Gap(5))
+        meta_data = [
+            [P("METHOD",          ps("ml", fontSize=7, textColor=C_MUTED)),
+             P("AGE BAND",        ps("ml", fontSize=7, textColor=C_MUTED)),
+             P("POPULATION MEAN", ps("ml", fontSize=7, textColor=C_MUTED))],
+            [P(str(v.get("method", "—")),
+               ps("mv", fontSize=9, bold=True, textColor=C_TEXT)),
+             P(str(v.get("age_band", "—")),
+               ps("mv", fontSize=9, bold=True, textColor=C_TEXT)),
+             P(f'{v.get("mean", "—")} ml/kg/min',
+               ps("mv", fontSize=9, bold=True, textColor=C_TEXT))],
+        ]
+        meta_t = Table(meta_data, colWidths=[CONTENT_W / 3] * 3)
+        meta_t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), C_CARD2),
+            ("BOX",       (0, 0), (-1, -1), 1,   C_STROKE),
+            ("INNERGRID", (0, 0), (-1, -1), 0.5, C_STROKE),
+            ("TOPPADDING",    (0, 0), (-1, -1), 7),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 10),
+        ]))
+        story.append(meta_t)
+        tips = v.get("tips", [])
+        if tips:
+            story.append(Gap(6))
+            story.append(P("Training Recommendations",
+                           ps("trh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
+            for tip in tips[:5]:
+                story.append(P(
+                    f"→  {escape(str(tip))}",
+                    ps(f"tip{id(tip)}", fontSize=8.5, leading=12,
+                       textColor=HexColor("#CBD5E1"), spaceAfter=3),
+                ))
+        story.append(Gap(10))
+
+    # ── Biological age ──
+    if report.get("bio_age"):
+        bio_val   = float(report["bio_age"]["value"])
+        chron_age = float(inp.get("age", bio_val) or bio_val)
+        diff      = bio_val - chron_age
+        bio_col   = "#22C55E" if diff <= -1 else "#F59E0B" if diff <= 2 else "#EF4444"
+        diff_txt  = f"{abs(diff):.1f} yrs {'younger' if diff < 0 else 'older'} than calendar"
+
+        story.append(SectionHeader("Biological Age"))
+        story.append(Gap(5))
+        story.append(MetricRow([
+            ("BIOLOGICAL AGE",    f"{bio_val:.1f} yrs",    diff_txt,              bio_col),
+            ("CHRONOLOGICAL AGE", f"{chron_age:.0f} yrs",  "Calendar age",        "#94A3B8"),
+            ("DIFFERENCE",        f"{diff:+.1f} yrs",       "Bio vs. calendar",    bio_col),
+        ]))
+        if report.get("bio_factors"):
+            story.append(Gap(6))
+            story.append(P("Factor Breakdown",
+                           ps("bfh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
+            story.append(BioFactorBars(report["bio_factors"]))
+        story.append(Gap(10))
+
+    # ── Exercise log ──
+    ex = report.get("exercise_log")
+    if ex:
+        story.append(SectionHeader("Exercise Log"))
+        story.append(Gap(5))
+        kcal_pw   = float(ex.get("kcal_per_week", 0))
+        total_min = int(ex.get("minutes", 0)) * int(ex.get("sessions_per_week", 0))
+        story.append(MetricRow([
+            ("ACTIVITY",    str(ex.get("activity", "—"))[:18],
+             str(ex.get("intensity", "—")),                    "#0EA5A3"),
+            ("KCAL / SESSION", f'{ex.get("kcal_per_session", 0):.0f}',
+             "kcal",                                           "#3B82F6"),
+            ("KCAL / WEEK", f'{kcal_pw:.0f}',
+             f'{ex.get("sessions_per_week", 0)}× per week',   "#22C55E"),
+            ("VOLUME",      f'{total_min} min/wk',
+             f'{ex.get("minutes", 0)} min × {ex.get("sessions_per_week", 0)}', "#F59E0B"),
+        ]))
+        story.append(Gap(4))
+        who_met = total_min >= 150
+        who_col = "#22C55E" if who_met else "#F59E0B"
+        who_txt = ("✓  Meets WHO 150 min/week guidelines"
+                   if who_met else
+                   f"⚠  {150 - total_min} min/week below WHO 150 min target")
+        story.append(P(who_txt,
+                       ps("who", fontSize=8.5, textColor=HexColor(who_col), spaceAfter=2)))
+        story.append(Gap(10))
+
+    # ── Conditions ──
+    if report.get("triage") and report.get("triage_recommendations"):
+        story.append(SectionHeader("Conditions & Recommendations"))
+        story.append(Gap(5))
+        for r in report["triage_recommendations"]:
+            story.append(P(
+                f"→  {escape(str(r))}",
+                ps(f"rec{id(r)}", fontSize=8.5, leading=13,
+                   textColor=HexColor("#CBD5E1"), spaceAfter=3),
+            ))
+        story.append(Gap(10))
+
+    # ── Plan ──
+    if report.get("plan") and not report["plan"].get("error"):
+        plan = report["plan"]
+        story.append(SectionHeader("Weight Goal Plan"))
+        story.append(Gap(5))
+        story.append(MetricRow([
+            ("MAINTENANCE",  f'{plan.get("current_needs_kcal", "—")} kcal',
+             "per day",                                  "#94A3B8"),
+            ("RECOMMENDED",  f'{plan.get("recommended_daily_kcal", "—")} kcal',
+             "per day",                                  "#0EA5A3"),
+            ("WEEKLY CHANGE", f'{float(plan.get("kg_per_week", 0)):+.2f} kg',
+             "per week",                                 "#3B82F6"),
+        ]))
+        milestones = plan.get("milestones", [])
+        if milestones:
+            story.append(Gap(6))
+            story.append(P("Milestone Roadmap",
+                           ps("mrh", fontSize=10, bold=True,
+                              textColor=C_ACCENT, spaceAfter=3)))
+            try:
+                start_w = float(inp.get("weight_kg", 70) or 70)
+            except Exception:
+                start_w = 70.0
+            try:
+                end_w = float(milestones[-1].get("Projected weight (kg)", start_w))
+            except Exception:
+                end_w = start_w
+            total_change = abs(end_w - start_w)
+            m_cols = ["#3B82F6", "#7C3AED", "#0EA5A3", "#22C55E"]
+            for i, m in enumerate(milestones):
+                try:
+                    pw = float(m.get("Projected weight (kg)", start_w))
+                except Exception:
+                    pw = start_w
+                prog = (min(100, max(0, int(abs(pw - start_w) / total_change * 100)))
+                        if total_change > 0.01 else 100)
+                story.append(MilestoneLine(
+                    week=m.get("Week", i + 1),
+                    weight=pw,
+                    focus=m.get("Focus", ""),
+                    progress_pct=prog,
+                    col_str=m_cols[i % len(m_cols)],
+                    is_last=(i == len(milestones) - 1),
+                ))
+        story.append(Gap(10))
+
+    # Disclaimer
+    story.append(Gap(4))
+    story.append(P(
+        "This report is generated for educational purposes only and is not a medical diagnosis, "
+        "clinical assessment, or substitute for professional healthcare advice. "
+        "Always consult a qualified healthcare professional regarding any medical concerns.",
+        ps("disc", fontSize=7.5, leading=10, textColor=HexColor("#64748B")),
+    ))
+
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.read()
 
