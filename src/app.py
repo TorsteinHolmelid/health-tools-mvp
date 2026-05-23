@@ -9,7 +9,7 @@ import streamlit.components.v1 as components
 import calculators
 import matplotlib.pyplot as plt
 
-from reportlab.lib import colors
+pythonfrom reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
