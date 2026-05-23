@@ -2216,13 +2216,37 @@ if results:
                 unsafe_allow_html=True,
             )
 
-    # ── Conditions ────
+
+# ── Conditions ────
     if "triage" in results:
         st.markdown("---")
         st.subheader("Conditions & recommendations")
         if results.get("triage_recommendations"):
-            for r in results["triage_recommendations"]:
-                st.write(r)
+            _rec_cards_html = ""
+            for _r in results["triage_recommendations"]:
+                _r_lower = str(_r).lower()
+                if any(w in _r_lower for w in ["avoid", "risk", "warning", "stop", "danger", "limit"]):
+                    _rc = "#EF4444"; _ri = "⚠️"; _rbg = "rgba(239,68,68,0.08)"; _rb = "rgba(239,68,68,0.25)"
+                elif any(w in _r_lower for w in ["exercise", "train", "cardio", "walk", "run", "strength", "activity"]):
+                    _rc = "#3B82F6"; _ri = "🏃"; _rbg = "rgba(59,130,246,0.08)"; _rb = "rgba(59,130,246,0.25)"
+                elif any(w in _r_lower for w in ["diet", "eat", "food", "nutrition", "calori", "protein", "vegetable", "fruit"]):
+                    _rc = "#22C55E"; _ri = "🥗"; _rbg = "rgba(34,197,94,0.08)"; _rb = "rgba(34,197,94,0.25)"
+                elif any(w in _r_lower for w in ["sleep", "stress", "mental", "relax", "breath", "meditat"]):
+                    _rc = "#A78BFA"; _ri = "😴"; _rbg = "rgba(167,139,250,0.08)"; _rb = "rgba(167,139,250,0.25)"
+                elif any(w in _r_lower for w in ["doctor", "consult", "medical", "physician", "specialist", "monitor"]):
+                    _rc = "#F59E0B"; _ri = "🩺"; _rbg = "rgba(245,158,11,0.08)"; _rb = "rgba(245,158,11,0.25)"
+                else:
+                    _rc = "#0EA5A3"; _ri = "💡"; _rbg = "rgba(14,165,163,0.08)"; _rb = "rgba(14,165,163,0.25)"
+                _rec_cards_html += (
+                    '<div style="display:flex;align-items:flex-start;gap:12px;'
+                    'background:' + _rbg + ';border:1px solid ' + _rb + ';'
+                    'border-left:3px solid ' + _rc + ';border-radius:12px;'
+                    'padding:12px 14px;margin-bottom:8px;">'
+                    '<div style="font-size:18px;line-height:1.3;">' + _ri + '</div>'
+                    '<div style="font-size:13px;color:#E5E7EB;line-height:1.6;">' + str(_r) + '</div>'
+                    '</div>'
+                )
+            st.markdown(_rec_cards_html, unsafe_allow_html=True)
         else:
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
