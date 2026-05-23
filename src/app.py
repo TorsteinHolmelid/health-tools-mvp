@@ -727,9 +727,12 @@ with st.expander("🏃 Exercise log", expanded=True):
     st.markdown("**🎯 Activity type**")
     _current_act = st.session_state.get("ui_activity_type", "Walking (casual)")
     _group_names = list(_act_groups.keys())
-    _current_group = next((g for g, acts in _act_groups.items() if _current_act in acts), _group_names[0])
-    _sel_group = st.radio("Category", _group_names, index=_group_names.index(_current_group),
-                          horizontal=True, key="ui_act_group", label_visibility="collapsed")
+    if "ui_act_group" not in st.session_state:
+        st.session_state["ui_act_group"] = next(
+            (g for g, acts in _act_groups.items() if _current_act in acts), _group_names[0]
+        )
+    _sel_group = st.radio("Category", _group_names,
+                    horizontal=True, key="ui_act_group", label_visibility="collapsed")
 
     _group_acts = _act_groups[_sel_group]
     _n = len(_group_acts)
