@@ -2037,7 +2037,7 @@ if results:
     letter-spacing: .06em; margin-bottom: 6px;
   }}
   .vo2-num {{
-    font-size: 36px; font-weight: 800; color: {pct_color}; line-height: 1;
+    font-size: 36px; font-weight: 800; line-height: 1;
   }}
   .vo2-sub {{
     font-size: 11px; color: #9CA3AF; margin-top: 4px;
@@ -2046,12 +2046,12 @@ if results:
 <div class="vo2-row">
   <div class="vo2-card">
     <div class="vo2-label">VO2 max</div>
-    <div class="vo2-num" id="vo2-val-anim">0.0</div>
+    <div class="vo2-num" id="vo2-val-anim" style="color:{pct_color}">0.0</div>
     <div class="vo2-sub">ml/kg/min</div>
   </div>
   <div class="vo2-card">
     <div class="vo2-label">Percentile</div>
-    <div class="vo2-num" id="vo2-pct-anim">0</div>
+    <div class="vo2-num" id="vo2-pct-anim" style="color:{pct_color}">0</div>
     <div class="vo2-sub">of your age group</div>
   </div>
   <div class="vo2-card">
