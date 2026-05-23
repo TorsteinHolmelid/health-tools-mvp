@@ -2177,15 +2177,121 @@ if results:
     if "bio_age" in results:
         st.markdown("---")
         st.subheader("Biological age")
-        st.metric("Biological age", f"{results['bio_age']['value']:.1f} years")
-        if results.get("bio_factors"):
-            st.markdown("**Factor breakdown**")
-            factor_rows = [
-                {"Factor": f["label"], "Effect": f"{f.get('delta', 0):+.0f} years"}
-                for f in results["bio_factors"]
-            ]
-            st.table(factor_rows)
 
+        _bio_val = results["bio_age"]["value"]
+        _chron = float(age)
+        _diff = _bio_val - _chron
+        _diff_color = "#22C55E" if _diff <= 0 else "#EF4444"
+        _diff_label = f"{abs(_diff):.1f} years younger" if _diff <= 0 else f"{abs(_diff):.1f} years older"
+        _diff_sign = "▼" if _diff <= 0 else "▲"
+
+        components.html(f"""
+<style>
+  .ba-wrap {{
+    font-family: Arial, sans-serif;
+    background: #1F2937;
+    border: 1px solid #374151;
+    border-radius: 16px;
+    padding: 20px 22px 18px 22px;
+    color: #E5E7EB;
+    max-width: 100%;
+  }}
+  .ba-top {{
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }}
+  .ba-val {{
+    font-size: 52px;
+    font-weight: 800;
+    color: {_diff_color};
+    line-height: 1;
+  }}
+  .ba-sub {{ font-size: 13px; color: #9CA3AF; margin-top: 4px; }}
+  .ba-badge {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: {_diff_color}22;
+    border: 1px solid {_diff_color};
+    color: {_diff_color};
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 6px 14px;
+  }}
+  .ba-bar-row {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }}
+  .ba-label {{
+    font-size: 11px;
+    color: #9CA3AF;
+    min-width: 140px;
+    max-width: 140px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }}
+  .ba-track {{
+    flex: 1;
+    background: rgba(255,255,255,0.06);
+    border-radius: 999px;
+    height: 10px;
+    position: relative;
+    overflow: hidden;
+  }}
+  .ba-fill {{
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.5s ease;
+  }}
+  .ba-delta {{
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 52px;
+    text-align: right;
+    white-space: nowrap;
+  }}
+  .ba-section-title {{
+    font-size: 12px;
+    font-weight: 700;
+    color: #6B7280;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin: 14px 0 8px 0;
+  }}
+</style>
+
+<div class="ba-wrap">
+  <div class="ba-top">
+    <div>
+      <div class="ba-val">{_bio_val:.1f}</div>
+      <div class="ba-sub">Biological age &nbsp;·&nbsp; Chronological: {_chron:.0f} yrs</div>
+    </div>
+    <div class="ba-badge">{_diff_sign} {_diff_label} than average</div>
+  </div>
+  <div class="ba-section-title">Factor breakdown</div>
+  {"".join([
+    f'''<div class="ba-bar-row">
+      <div class="ba-label">{f["label"]}</div>
+      <div class="ba-track">
+        <div class="ba-fill" style="width:{min(100, abs(f.get("delta",0)) / 5 * 100):.1f}%;
+        background:{"#22C55E" if f.get("delta",0) <= 0 else "#EF4444"};"></div>
+      </div>
+      <div class="ba-delta" style="color:{"#22C55E" if f.get("delta",0) <= 0 else "#EF4444"};">
+        {f.get("delta",0):+.0f} yrs
+      </div>
+    </div>'''
+    for f in results.get("bio_factors", [])
+  ])}
+</div>
+        """, height=100 + len(results.get("bio_factors", [])) * 32)
     # ── Conditions ────────────────────────────────────────────────────────────
     if "triage" in results:
         st.markdown("---")
