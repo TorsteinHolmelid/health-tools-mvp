@@ -2020,18 +2020,18 @@ if results:
         v_pct = max(0.0, min(100.0, float(results["vo2"].get("percentile") or 0)))
         top_text = f"Top {100 - v_pct:.1f}%"
 
-if v_pct >= 90:
-    pct_color = "#22C55E"; pct_label = "Excellent"
-elif v_pct >= 80:
-    pct_color = "#3B82F6"; pct_label = "Very good"
-elif v_pct >= 60:
-    pct_color = "#7C7CF5"; pct_label = "Good"
-elif v_pct >= 40:
-    pct_color = "#F59E0B"; pct_label = "Below average"
-else:
-    pct_color = "#EF6A3B"; pct_label = "Low"
-
-_vo2_html = """
+    if v_pct >= 90:
+        pct_color = "#22C55E"; pct_label = "Excellent"
+    elif v_pct >= 80:
+        pct_color = "#3B82F6"; pct_label = "Very good"
+    elif v_pct >= 60:
+        pct_color = "#7C7CF5"; pct_label = "Good"
+    elif v_pct >= 40:
+        pct_color = "#F59E0B"; pct_label = "Below average"
+    else:
+        pct_color = "#EF6A3B"; pct_label = "Low"
+    
+    _vo2_html = """
 <style>
   .vo2-row {
     display: flex; gap: 12px; font-family: Arial, sans-serif;
