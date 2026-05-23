@@ -2174,46 +2174,48 @@ if results:
                 st.write(f"• {tip}")
 
     # ── Biological age ────────────────────────────────────────────────────────
-    if "bio_age" in results:
-            st.markdown("---")
-            st.subheader("Biological age")
-    
-            _diff = _bio_val - _chron
-            _diff_color = "#22C55E" if _diff <= 0 else "#EF4444"
-            _diff_label = f"{abs(_diff):.1f} years younger" if _diff <= 0 else f"{abs(_diff):.1f} years older"
-            _diff_sign = "▼" if _diff <= 0 else "▲"
-    
-            _factors_html = "".join([
-                f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
-                f'<div style="font-size:11px;color:#9CA3AF;min-width:140px;max-width:140px;'
-                f'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{f["label"]}</div>'
-                f'<div style="flex:1;background:rgba(255,255,255,0.06);border-radius:999px;height:10px;overflow:hidden;">'
-                f'<div style="width:{max(3, min(100, abs(f.get("delta", 0)) / 5 * 100)):.1f}%;height:100%;border-radius:999px;'
-                f'background:{"#22C55E" if f.get("delta", 0) <= 0 else "#EF4444"};"></div></div>'
-                f'<div style="font-size:11px;font-weight:700;min-width:52px;text-align:right;'
-                f'color:{"#22C55E" if f.get("delta", 0) <= 0 else "#EF4444"};">{f.get("delta", 0):+.0f} yrs</div>'
-                f'</div>'
-                for f in results.get("bio_factors", [])
-            ])
-    
-            st.markdown(
-                f'<div style="font-family:Arial,sans-serif;background:#1F2937;border:1px solid #374151;'
-                f'border-radius:16px;padding:20px 22px 18px 22px;color:#E5E7EB;">'
-                f'<div style="display:flex;justify-content:space-between;align-items:flex-start;'
-                f'margin-bottom:18px;flex-wrap:wrap;gap:12px;">'
-                f'<div><div style="font-size:52px;font-weight:800;color:{_diff_color};line-height:1;">{_bio_val:.1f}</div>'
-                f'<div style="font-size:13px;color:#9CA3AF;margin-top:4px;">Biological age &nbsp;·&nbsp; Chronological: {_chron:.0f} yrs</div></div>'
-                f'<div style="display:inline-flex;align-items:center;gap:6px;background:{_diff_color}22;'
-                f'border:1px solid {_diff_color};color:{_diff_color};font-size:14px;font-weight:700;'
-                f'border-radius:999px;padding:6px 14px;">{_diff_sign} {_diff_label} than average</div>'
-                f'</div>'
-                f'<div style="font-size:12px;font-weight:700;color:#6B7280;letter-spacing:0.08em;'
-                f'text-transform:uppercase;margin-bottom:10px;">Factor breakdown</div>'
-                f'{_factors_html}'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-    # ── Conditions ────────────────────────────────────────────────────────────
+st.markdown("---")
+        st.subheader("Biological age")
+        _bio_val = results["bio_age"]["value"]
+        _chron = float(age)
+        _diff = _bio_val - _chron
+        _diff_color = "#22C55E" if _diff <= 0 else "#EF4444"
+        _diff_label = f"{abs(_diff):.1f} years younger" if _diff <= 0 else f"{abs(_diff):.1f} years older"
+        _diff_sign = "▼" if _diff <= 0 else "▲"
+        _factors_html = "".join([
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
+            '<div style="font-size:11px;color:#9CA3AF;min-width:140px;max-width:140px;'
+            'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + f["label"] + '</div>'
+            '<div style="flex:1;background:rgba(255,255,255,0.06);border-radius:999px;height:10px;overflow:hidden;">'
+            '<div style="width:' + str(max(3, min(100, abs(f.get("delta", 0)) / 5 * 100))) + '%;height:100%;border-radius:999px;'
+            'background:' + ("#22C55E" if f.get("delta", 0) <= 0 else "#EF4444") + ';"></div></div>'
+            '<div style="font-size:11px;font-weight:700;min-width:52px;text-align:right;'
+            'color:' + ("#22C55E" if f.get("delta", 0) <= 0 else "#EF4444") + ';">'
+            + f'{f.get("delta", 0):+.0f} yrs' +
+            '</div></div>'
+            for f in results.get("bio_factors", [])
+        ])
+        st.markdown(
+            '<div style="font-family:Arial,sans-serif;background:#1F2937;border:1px solid #374151;'
+            'border-radius:16px;padding:20px 22px 18px 22px;color:#E5E7EB;">'
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;'
+            'margin-bottom:18px;flex-wrap:wrap;gap:12px;">'
+            '<div><div style="font-size:52px;font-weight:800;color:' + _diff_color + ';line-height:1;">'
+            + f"{_bio_val:.1f}" +
+            '</div><div style="font-size:13px;color:#9CA3AF;margin-top:4px;">Biological age &nbsp;&middot;&nbsp; Chronological: '
+            + f"{_chron:.0f}" + ' yrs</div></div>'
+            '<div style="display:inline-flex;align-items:center;gap:6px;background:' + _diff_color + '22;'
+            'border:1px solid ' + _diff_color + ';color:' + _diff_color + ';font-size:14px;font-weight:700;'
+            'border-radius:999px;padding:6px 14px;">' + _diff_sign + " " + _diff_label + ' than average</div>'
+            '</div>'
+            '<div style="font-size:12px;font-weight:700;color:#6B7280;letter-spacing:0.08em;'
+            'text-transform:uppercase;margin-bottom:10px;">Factor breakdown</div>'
+            + _factors_html +
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── Conditions ────
     if "triage" in results:
         st.markdown("---")
         st.subheader("Conditions & recommendations")
