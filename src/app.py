@@ -171,7 +171,7 @@ small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !imp
 [data-testid="stCheckbox"] input{ transform: scale(1.10); }
 [data-testid="stToggle"] input{ transform: scale(1.05); }
 
-.stButton > button{
+.stButton > button[data-testid="baseButton-primary"]{
   background: linear-gradient(135deg, #0EA5A3, #22C55E) !important;
   color: #052e2b !important;
   border: 0 !important;
@@ -180,7 +180,24 @@ small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !imp
   font-weight: 750 !important;
   box-shadow: 0 14px 34px rgba(14,165,163,.18);
 }
-.stButton > button:hover{ filter: brightness(0.97); transform: translateY(-1px); }
+.stButton > button[data-testid="baseButton-primary"]:hover{
+  filter: brightness(0.97); transform: translateY(-1px);
+}
+.stButton > button[data-testid="baseButton-secondary"]{
+  background: rgba(255,255,255,0.03) !important;
+  border: 1.5px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
+  color: #E5E7EB !important;
+  font-weight: 600 !important;
+  white-space: pre-wrap !important;
+  min-height: 82px !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+.stButton > button[data-testid="baseButton-secondary"]:hover{
+  border-color: rgba(14,165,163,0.5) !important;
+  background: rgba(14,165,163,0.08) !important;
+}
 
 @media (max-width: 600px){
   .main > div { padding-left: 10px !important; padding-right: 10px !important; }
@@ -215,7 +232,7 @@ if not st.session_state.consent_given:
     with st.expander("Please read: Consent & privacy", expanded=True):
         st.markdown("This demo stores nothing by default and is for educational purposes only. By continuing you confirm you understand it's not clinical advice.")
     cols = st.columns([1, 1])
-    if cols[0].button("I agree", key="consent_agree"):
+    if cols[0].button("I agree", key="consent_agree", type="primary"):
         st.session_state.consent_given = True
         try:
             if not st.session_state.get("_consent_rerun_done"):
@@ -548,32 +565,24 @@ if run_vo2:
         _act_options = ["Sedentary", "Light", "Moderate", "Active", "Very active", "Athlete"]
         _act_icons   = ["🛋️", "🚶", "🚴", "🏃", "⚡", "🏅"]
         _act_descs   = ["Desk job, no exercise", "1–2x/week light", "3–4x/week moderate",
-                        "5x/week vigorous", "2x/day training", "Elite / competitive"]
+                        "5x/week vigorous", "6–7x/week or daily", "2x/day / elite"]
 
-        _prev_act = st.session_state.get("v_activity", "Moderate")
-        _prev_idx = _act_options.index(_prev_act) if _prev_act in _act_options else 2
+        _current_act = st.session_state.get("v_activity", "Moderate")
 
         st.markdown("**Activity level**")
         _act_cols = st.columns(6)
         for _ci, (_ao, _ai, _ad) in enumerate(zip(_act_options, _act_icons, _act_descs)):
             with _act_cols[_ci]:
-                _selected = (_ao == st.session_state.get("v_activity", "Moderate"))
-                _bg = "rgba(14,165,163,0.18)" if _selected else "rgba(255,255,255,0.03)"
-                _border = "#0ea5a3" if _selected else "rgba(255,255,255,0.08)"
-                st.markdown(
-                    f'<div style="background:{_bg};border:1.5px solid {_border};border-radius:12px;'
-                    f'padding:8px 4px;text-align:center;cursor:pointer;">'
-                    f'<div style="font-size:22px;">{_ai}</div>'
-                    f'<div style="font-size:10px;font-weight:700;color:#E5E7EB;margin-top:2px;">{_ao}</div>'
-                    f'<div style="font-size:9px;color:#94A3B8;margin-top:1px;">{_ad}</div>'
-                    f'</div>', unsafe_allow_html=True
-                )
+                _selected = (_ao == _current_act)
+                if st.button(
+                    f"{_ai}\n{_ao}\n{_ad}",
+                    key=f"act_btn_{_ci}",
+                    type="primary" if _selected else "secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state["v_activity"] = _ao
 
-        activity_level = st.selectbox(
-            "Select activity level",
-            _act_options, index=_prev_idx, key="v_activity",
-            label_visibility="collapsed"
-        )
+        activity_level = st.session_state.get("v_activity", "Moderate")
 
         st.markdown("---")
 
