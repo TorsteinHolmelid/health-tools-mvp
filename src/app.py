@@ -2175,8 +2175,8 @@ if results:
 
 # ── Biological age ────
 if "bio_age" in results:
-    st.markdown("---")
-    st.subheader("Biological age")
+        st.markdown("---")
+        st.subheader("Biological age")
         _bio_val = results["bio_age"]["value"]
         _chron = float(age)
         _diff = _bio_val - _chron
