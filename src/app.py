@@ -2539,7 +2539,7 @@ if not _unlocked:
         '</div>',
         unsafe_allow_html=True
     )
-    stripe_link = "https://din-app.streamlit.app/?session_id={CHECKOUT_SESSION_ID}"
+    stripe_link = "https://buy.stripe.com/test_7sY00kgyK1oL2TA3jG1Fe01"
     st.link_button(
         "🔓 Unlock full report — 49 kr",
         stripe_link,
