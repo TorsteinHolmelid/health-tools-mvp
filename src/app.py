@@ -935,13 +935,14 @@ def create_pdf_bytes(report: dict) -> bytes:
 
     styles_rl = getSampleStyleSheet()
 
-    def ps(name, fontName="Helvetica", fontSize=10, leading=13, textColor=C_TEXT,
+    def ps(name, fontName="Helvetica", fontSize=10, leading=13, textColor=None,
            alignment=0, spaceAfter=4, spaceBefore=0, bold=False):
         fn = "Helvetica-Bold" if bold else fontName
+        _tc = textColor if textColor is not None else C_TEXT
         return ParagraphStyle(
             name, parent=styles_rl["Normal"],
             fontName=fn, fontSize=fontSize, leading=leading,
-            textColor=textColor, alignment=alignment,
+            textColor=_tc, alignment=alignment,
             spaceAfter=spaceAfter, spaceBefore=spaceBefore,
         )
 
