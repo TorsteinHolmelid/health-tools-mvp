@@ -9,6 +9,23 @@ import streamlit.components.v1 as components
 import calculators
 import matplotlib.pyplot as plt
 
+# --- Stripe return / simple MVP unlock ---
+paid = None
+try:
+    paid = st.query_params.get("paid")
+except Exception:
+    paid = st.experimental_get_query_params().get("paid")
+
+# paid kan vere "true" eller ["true"] avhengig av Streamlit-versjon
+if paid == "true" or paid == ["true"]:
+    st.session_state["report_unlocked"] = True
+    st.success("✅ Betaling registrert. Rapporten er no låst opp!")
+    # Fjern ?paid=true frå URL så den ikkje triggar kvar refresh
+    try:
+        st.query_params.clear()
+    except Exception:
+        st.experimental_set_query_params()
+
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_CENTER
