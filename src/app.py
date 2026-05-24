@@ -2534,14 +2534,14 @@ if not _unlocked:
         '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
         'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
         '</div>'
-        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">49 kr</div>'
+        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">4,99 USD</div>'
         '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
         '</div>',
         unsafe_allow_html=True
     )
     stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
     st.link_button(
-        "🔓 Unlock full report — 49 kr",
+        "🔓 Unlock full report — 4,99 USD",
         stripe_link,
         type="primary",
         use_container_width=True,
