@@ -347,17 +347,17 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     def PS(name, font="Helvetica", size=10, lead=13, color=None, bold=False,
         align=0, after=4, before=0):
         _color = color if color is not None else C_TEXT
-    return ParagraphStyle(
-                name=name,
-                parent=styles["Normal"],
-                fontName=("Helvetica-Bold" if bold else font),
-                fontSize=size,
-                leading=lead,
-                textColor=_color,
-                alignment=align,
-                spaceAfter=after,
-                spaceBefore=before,
-            )
+        return ParagraphStyle(
+            name=name,
+            parent=styles["Normal"],
+            fontName=("Helvetica-Bold" if bold else font),
+            fontSize=size,
+            leading=lead,
+            textColor=_color,
+            alignment=align,
+            spaceAfter=after,
+            spaceBefore=before,
+        )
 
     def P(text, style):
         # keep it simple (avoid heavy HTML)
