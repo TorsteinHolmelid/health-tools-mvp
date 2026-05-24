@@ -2496,8 +2496,7 @@ if results:
                     f'</div>',
                     unsafe_allow_html=True
                 )
-    # ── PDF ───────────────────────────────────────────────────────────────────
-    # ── Paywall ────
+# ── PDF / Paywall ────
     st.markdown("---")
     _unlocked = st.session_state.get("report_unlocked", False)
 
@@ -2525,39 +2524,45 @@ if results:
             '</div>',
             unsafe_allow_html=True
         )
-        # Her legger vi inn linken du fikk fra Stripe
-    stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02" 
 
-# Vi bytter ut st.button med st.link_button
-    st.link_button("🔓 Unlock full report — $4.99", stripe_link, type="primary", use_container_width=True)
-
-    # ── PDF ────
-    st.markdown("---")
-    report = {
-        "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
-        "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
-        "bmi": results.get("bmi"),
-        "bodyfat": results.get("bodyfat"),
-        "whr": results.get("whr"),
-        "vo2": results.get("vo2"),
-        "bio_age": results.get("bio_age"),
-        "bio_factors": results.get("bio_factors"),
-        "triage": results.get("triage"),
-        "triage_recommendations": results.get("triage_recommendations"),
-        "plan": results.get("plan"),
-        "exercise_log": st.session_state.get("exercise_last"),
-    }
-    try:
-        pdf_bytes = create_pdf_bytes(report)
-        st.download_button(
-            "📄 Download PDF report",
-            data=pdf_bytes,
-            file_name="health_tools_report.pdf",
-            mime="application/pdf",
-            key="pdf_btn",
+        stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
+        st.link_button(
+            "🔓 Unlock full report — 49 kr",
+            stripe_link,
+            type="primary",
+            use_container_width=True,
         )
-    except Exception as e:
-        st.warning(f"PDF generation unavailable: {e}")
+
+        st.caption("Etter betaling blir du sendt tilbake til appen, og rapporten blir låst opp i denne økta.")
+    else:
+        st.success("✅ Report unlocked!")
+
+        report = {
+            "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
+            "bmi": results.get("bmi"),
+            "bodyfat": results.get("bodyfat"),
+            "whr": results.get("whr"),
+            "vo2": results.get("vo2"),
+            "bio_age": results.get("bio_age"),
+            "bio_factors": results.get("bio_factors"),
+            "triage": results.get("triage"),
+            "triage_recommendations": results.get("triage_recommendations"),
+            "plan": results.get("plan"),
+            "exercise_log": st.session_state.get("exercise_last"),
+        }
+
+        try:
+            pdf_bytes = create_pdf_bytes(report)
+            st.download_button(
+                "📄 Download PDF report",
+                data=pdf_bytes,
+                file_name="health_tools_report.pdf",
+                mime="application/pdf",
+                key="pdf_btn",
+            )
+        except Exception as e:
+            st.warning(f"PDF generation unavailable: {e}")
 
 else:
     st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
