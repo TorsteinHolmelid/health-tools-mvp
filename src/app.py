@@ -2496,59 +2496,66 @@ if results:
                     f'</div>',
                     unsafe_allow_html=True
                 )
-# ── Paywall / PDF ────
-    st.markdown("---")
-    _unlocked = st.session_state.get("report_unlocked", False)
+else:
+    st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
 
-    if st.session_state.get("report_unlocked"):
-        st.success("✅ Rapport låst opp!")
+# ── Paywall / PDF ────  (UTANFOR if results: blokka)
+st.markdown("---")
+_unlocked = st.session_state.get("report_unlocked", False)
 
-    if not _unlocked:
-        st.markdown(
-            '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
-            'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
-            'text-align:center;margin:10px 0;">'
-            '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
-            '🔒 Unlock your full report</div>'
-            '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
-            'Get your complete personalized health analysis as a premium PDF</div>'
-            '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
-            '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-            'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
-            '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-            'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
-            '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-            'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
-            '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-            'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
-            '</div>'
-            '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">49 kr</div>'
-            '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
-            '</div>',
-            unsafe_allow_html=True
-        )
-        stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
-        st.link_button(
-            "🔓 Unlock full report — 49 kr",
-            stripe_link,
-            type="primary",
-            use_container_width=True,
-        )
-        st.caption("Etter betaling kjem du tilbake til appen. Legg til ?paid=true i URL-en for å låse opp.")
+if _unlocked:
+    st.success("✅ Rapport låst opp!")
 
+if not _unlocked:
+    st.markdown(
+        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
+        'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
+        'text-align:center;margin:10px 0;">'
+        '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
+        '🔒 Unlock your full report</div>'
+        '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
+        'Get your complete personalized health analysis as a premium PDF</div>'
+        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
+        '</div>'
+        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">49 kr</div>'
+        '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+    stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
+    st.link_button(
+        "🔓 Unlock full report — 49 kr",
+        stripe_link,
+        type="primary",
+        use_container_width=True,
+    )
+    st.caption("Etter betaling kjem du tilbake til appen. Legg til ?paid=true i URL-en for å låse opp.")
+
+else:
+    results_for_pdf = st.session_state.get("results", {})
+    if not results_for_pdf:
+        st.info("Kjør beregningane først, så kan du laste ned PDF-rapporten.")
     else:
         report = {
             "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
-            "bmi": results.get("bmi"),
-            "bodyfat": results.get("bodyfat"),
-            "whr": results.get("whr"),
-            "vo2": results.get("vo2"),
-            "bio_age": results.get("bio_age"),
-            "bio_factors": results.get("bio_factors"),
-            "triage": results.get("triage"),
-            "triage_recommendations": results.get("triage_recommendations"),
-            "plan": results.get("plan"),
+            "bmi": results_for_pdf.get("bmi"),
+            "bodyfat": results_for_pdf.get("bodyfat"),
+            "whr": results_for_pdf.get("whr"),
+            "vo2": results_for_pdf.get("vo2"),
+            "bio_age": results_for_pdf.get("bio_age"),
+            "bio_factors": results_for_pdf.get("bio_factors"),
+            "triage": results_for_pdf.get("triage"),
+            "triage_recommendations": results_for_pdf.get("triage_recommendations"),
+            "plan": results_for_pdf.get("plan"),
             "exercise_log": st.session_state.get("exercise_last"),
         }
         try:
@@ -2562,6 +2569,3 @@ if results:
             )
         except Exception as e:
             st.warning(f"PDF generation unavailable: {e}")
-
-else:
-    st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
