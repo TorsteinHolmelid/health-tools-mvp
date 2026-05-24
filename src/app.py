@@ -2443,7 +2443,78 @@ if results:
 </div>
 """
                 st.markdown(_milestone_html, unsafe_allow_html=True)
+
+                # ── Coach Insight ──
+                _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
+                _tw_coach = float(milestones[-1].get("Projected weight (kg)", weight_kg)) if milestones else float(weight_kg)
+                _wks_coach = int(plan_weeks) if plan_weeks else 12
+                if _rate < 0:
+                    _coach_msg = (
+                        f"At {abs(_rate):.2f} kg/week, you are on a safe and sustainable fat loss trajectory. "
+                        f"You will reach {_tw_coach:.1f} kg in approximately {_wks_coach} weeks. "
+                        f"Consistency is your biggest advantage — small daily habits compound over time."
+                    )
+                    _coach_icon = "🟢"
+                elif _rate > 0:
+                    _coach_msg = (
+                        f"You are in a controlled weight gain phase at {_rate:.2f} kg/week. "
+                        f"Target: {_tw_coach:.1f} kg in {_wks_coach} weeks. "
+                        f"Focus on strength training to maximise lean muscle gain."
+                    )
+                    _coach_icon = "🔵"
+                else:
+                    _coach_msg = (
+                        "You are at maintenance calories. "
+                        "Focus on body recomposition — building muscle while maintaining weight."
+                    )
+                    _coach_icon = "⚪"
+        
+                st.markdown(
+                    f'<div style="background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(34,197,94,0.08));'
+                    f'border:1px solid rgba(14,165,163,0.3);border-left:4px solid #0EA5A3;'
+                    f'border-radius:14px;padding:16px 18px;margin:14px 0;">'
+                    f'<div style="color:#0EA5A3;font-size:12px;font-weight:700;letter-spacing:0.08em;'
+                    f'text-transform:uppercase;margin-bottom:8px;">🧠 Coach Insight</div>'
+                    f'<div style="color:#E5E7EB;font-size:14px;line-height:1.7;">{_coach_icon} {_coach_msg}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
     # ── PDF ───────────────────────────────────────────────────────────────────
+    # ── Paywall ────
+    st.markdown("---")
+    _unlocked = st.session_state.get("report_unlocked", False)
+
+    if not _unlocked:
+        st.markdown(
+            '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
+            'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
+            'text-align:center;margin:10px 0;">'
+            '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
+            '🔒 Unlock your full report</div>'
+            '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
+            'Get your complete personalized health analysis as a premium PDF</div>'
+            '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
+            '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+            'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
+            '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+            'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
+            '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+            'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
+            '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+            'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
+            '</div>'
+            '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">49 kr</div>'
+            '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+        if st.button("🔓 Unlock full report — 49 kr", type="primary", use_container_width=True, key="unlock_btn"):
+            st.session_state["report_unlocked"] = True
+            st.rerun()
+    else:
+        st.success("✅ Report unlocked!")
+
+    # ── PDF ────
     st.markdown("---")
     report = {
         "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
