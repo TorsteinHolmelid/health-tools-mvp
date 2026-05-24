@@ -2533,7 +2533,7 @@ if results:
             use_container_width=True,
         )
 
-        st.caption("Etter betaling blir du sendt tilbake til appen, og rapporten blir låst opp i denne økta.")
+        st.caption("After payment, you will be directed back to the app and the report will be unlocked for this session.")
     else:
         st.success("✅ Report unlocked!")
 
