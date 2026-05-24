@@ -2499,11 +2499,11 @@ if results:
 else:
     st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
 
-# ── Paywall / PDF ────  (UTANFOR if results: blokka)
+# ── Paywall / PDF ────  ← UTANFOR if results: (ingen innrykk!)
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
-if _unlocked:
+if st.session_state.get("report_unlocked"):
     st.success("✅ Rapport låst opp!")
 
 if not _unlocked:
@@ -2540,22 +2540,22 @@ if not _unlocked:
     st.caption("Etter betaling kjem du tilbake til appen. Legg til ?paid=true i URL-en for å låse opp.")
 
 else:
-    results_for_pdf = st.session_state.get("results", {})
-    if not results_for_pdf:
-        st.info("Kjør beregningane først, så kan du laste ned PDF-rapporten.")
+    _results_for_pdf = st.session_state.get("results", {})
+    if not _results_for_pdf:
+        st.info("Kjør beregningane først (trykk 'Calculate'), så kan du laste ned PDF-rapporten.")
     else:
         report = {
             "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
-            "bmi": results_for_pdf.get("bmi"),
-            "bodyfat": results_for_pdf.get("bodyfat"),
-            "whr": results_for_pdf.get("whr"),
-            "vo2": results_for_pdf.get("vo2"),
-            "bio_age": results_for_pdf.get("bio_age"),
-            "bio_factors": results_for_pdf.get("bio_factors"),
-            "triage": results_for_pdf.get("triage"),
-            "triage_recommendations": results_for_pdf.get("triage_recommendations"),
-            "plan": results_for_pdf.get("plan"),
+            "bmi": _results_for_pdf.get("bmi"),
+            "bodyfat": _results_for_pdf.get("bodyfat"),
+            "whr": _results_for_pdf.get("whr"),
+            "vo2": _results_for_pdf.get("vo2"),
+            "bio_age": _results_for_pdf.get("bio_age"),
+            "bio_factors": _results_for_pdf.get("bio_factors"),
+            "triage": _results_for_pdf.get("triage"),
+            "triage_recommendations": _results_for_pdf.get("triage_recommendations"),
+            "plan": _results_for_pdf.get("plan"),
             "exercise_log": st.session_state.get("exercise_last"),
         }
         try:
