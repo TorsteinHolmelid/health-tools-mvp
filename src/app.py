@@ -1524,29 +1524,41 @@ class InsightBlock(Flowable):
         S("df", size=7.5, lead=11, color=DIM, italic=True, align=TA_CENTER, after=4)
     ))
     
-        doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-        buf.seek(0)
-        return buf.read()
+def create_pdf_bytes(report: dict) -> bytes:
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.colors import HexColor
-    def create_pdf_bytes(report: dict) -> bytes:
-        C_BG     = HexColor("#0F172A")
-        C_CARD   = HexColor("#1E293B")
-        C_CARD2  = HexColor("#162032")
-        C_ACCENT = HexColor("#0EA5A3")
-        C_BLUE   = HexColor("#3B82F6")
-        C_GOOD   = HexColor("#22C55E")
-        C_WARN   = HexColor("#F59E0B")
-        C_BAD    = HexColor("#EF4444")
-        C_TEXT   = HexColor("#E5E7EB")
-        C_MUTED  = HexColor("#94A3B8")
-        C_STROKE = HexColor("#334155")
-    
-        PAGE_W, PAGE_H = A4
-        CONTENT_W = PAGE_W - 36 * mm
-    
-        buffer = BytesIO()
-    
-        styles_rl = getSampleStyleSheet()
+
+    # Fargepalett
+    C_BG     = HexColor("#0F172A")
+    C_CARD   = HexColor("#1E293B")
+    C_CARD2  = HexColor("#162032")
+    C_ACCENT = HexColor("#0EA5A3")
+    C_BLUE   = HexColor("#3B82F6")
+    C_GOOD   = HexColor("#22C55E")
+    C_WARN   = HexColor("#F59E0B")
+    C_BAD    = HexColor("#EF4444")
+    C_TEXT   = HexColor("#E5E7EB")
+    C_MUTED  = HexColor("#94A3B8")
+    C_STROKE = HexColor("#334155")
+
+    PAGE_W, PAGE_H = A4
+    CONTENT_W = PAGE_W - 36 * mm
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+    )
+
+    styles_rl = getSampleStyleSheet()
 
     def ps(name, fontName="Helvetica", fontSize=10, leading=13, textColor=None,
            alignment=0, spaceAfter=4, spaceBefore=0, bold=False):
@@ -1560,6 +1572,27 @@ class InsightBlock(Flowable):
         )
 
     P = Paragraph
+
+    # --- BUILD STORY HERE ---
+    # Her skal du lime inn din eksisterende kode som fyller `story`-listen,
+    # definisjoner av Flowables (InsightBlock osv.) kan forbli i modul-scope,
+    # eller flyttes inn her hvis de trenger variabler definert ovenfor.
+    #
+    # Eksempel placeholder:
+    story = []
+    story.append(P(report.get("title", "Health Report"), ps("title", fontSize=14, bold=True)))
+    story.append(Spacer(1, 6))
+    # --- END placeholder ---
+    #
+    # Hvis du allerede hadde definert `draw_page` (side-header/footer), må den
+    # være tilgjengelig her (definert tidligere i fila), eller du kan definere
+    # en lokal draw_page-funksjon her før doc.build.
+
+    # Bygg PDF med side-draw callback (bruk eksisterende draw_page hvis du har det)
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+
+    buf.seek(0)
+    return buf.read()
 
     # ── Custom Flowables ──────────────────────────────────────────
 
