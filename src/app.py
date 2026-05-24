@@ -345,7 +345,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     styles = getSampleStyleSheet()
 
     def PS(name, font="Helvetica", size=10, lead=13, color=None, bold=False,
-               align=0, after=4, before=0):
+    align=0, after=4, before=0):
     _color = color if color is not None else C_TEXT
     return ParagraphStyle(
                 name=name,
