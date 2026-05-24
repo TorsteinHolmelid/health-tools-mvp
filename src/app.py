@@ -301,7 +301,619 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
     ]))
     return t
 
+def create_pdf_bytes_ultimate(report: dict) -> bytes:
+    """
+    Ultimate premium PDF:
+    - Multi-page with Executive Summary + Deep Dives + Plan
+    - Matplotlib charts embedded as images
+    - Personalized insights + 7-day plan + 12-week roadmap chart (if milestones exist)
+    """
+    from io import BytesIO
+    from datetime import datetime
 
+    # Matplotlib -> image bytes (safe backend)
+    import matplotlib.pyplot as _plt
+    _plt.switch_backend("Agg")
+
+    from reportlab.lib import colors
+    from reportlab.lib.colors import HexColor
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        Flowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        PageBreak, KeepTogether
+    )
+
+    # ---------- Theme ----------
+    C_BG     = HexColor("#0B1220")
+    C_CARD   = HexColor("#111C33")
+    C_CARD2  = HexColor("#0F172A")
+    C_ACCENT = HexColor("#0EA5A3")
+    C_BLUE   = HexColor("#3B82F6")
+    C_GOOD   = HexColor("#22C55E")
+    C_WARN   = HexColor("#F59E0B")
+    C_BAD    = HexColor("#EF4444")
+    C_TEXT   = HexColor("#E5E7EB")
+    C_MUTED  = HexColor("#94A3B8")
+    C_STROKE = HexColor("#334155")
+
+    PAGE_W, PAGE_H = A4
+    CONTENT_W = PAGE_W - 36 * mm
+
+    styles = getSampleStyleSheet()
+
+    def PS(name, font="Helvetica", size=10, lead=13, color=C_TEXT, bold=False,
+           align=0, after=4, before=0):
+        return ParagraphStyle(
+            name=name,
+            parent=styles["Normal"],
+            fontName=("Helvetica-Bold" if bold else font),
+            fontSize=size,
+            leading=lead,
+            textColor=color,
+            alignment=align,
+            spaceAfter=after,
+            spaceBefore=before,
+        )
+
+    def P(text, style):
+        # keep it simple (avoid heavy HTML)
+        return Paragraph(str(text), style)
+
+    class Gap(Flowable):
+        def __init__(self, h=8):
+            super().__init__()
+            self.h = h
+        def wrap(self, aw, ah):
+            return aw, self.h
+        def draw(self):
+            pass
+
+    class SectionHeader(Flowable):
+        def __init__(self, title, width=CONTENT_W, accent=C_ACCENT):
+            super().__init__()
+            self.title = title
+            self.w = width
+            self.h = 34
+            self.accent = accent
+        def wrap(self, aw, ah):
+            return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(C_CARD)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setFillColor(self.accent)
+            c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            c.setFillColor(C_TEXT)
+            c.setFont("Helvetica-Bold", 11.5)
+            c.drawString(14, 11, self.title)
+
+    class MetricRow(Flowable):
+        """Small dashboard row"""
+        def __init__(self, metrics, width=CONTENT_W):
+            super().__init__()
+            self.metrics = metrics  # list of (label, value, sub, color)
+            self.w = width
+            self.h = 58
+            n = max(1, len(metrics))
+            self.card_w = (width - (n - 1) * 8) / n
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
+        def draw(self):
+            c = self.canv
+            cw = self.card_w
+            for i, (label, value, sub, col) in enumerate(self.metrics):
+                x = i * (cw + 8)
+                col = HexColor(col) if isinstance(col, str) else col
+                c.setFillColor(C_CARD)
+                c.roundRect(x, 0, cw, 54, 8, fill=1, stroke=0)
+                c.setFillColor(col)
+                c.roundRect(x, 51, cw, 3, 1, fill=1, stroke=0)
+
+                c.setFillColor(C_MUTED)
+                c.setFont("Helvetica", 7)
+                c.drawString(x + 8, 39, str(label).upper()[:24])
+
+                c.setFillColor(col)
+                c.setFont("Helvetica-Bold", 14)
+                c.drawString(x + 8, 22, str(value)[:20])
+
+                if sub:
+                    c.setFillColor(C_MUTED)
+                    c.setFont("Helvetica", 7)
+                    c.drawString(x + 8, 10, str(sub)[:28])
+
+    def _fig_to_png_bytes(fig, face=C_BG):
+        buf = BytesIO()
+        fig.patch.set_facecolor(face)
+        fig.savefig(buf, format="png", dpi=220, bbox_inches="tight", facecolor=face)
+        buf.seek(0)
+        return buf
+
+    def _add_mpl_image(fig, width_mm=170):
+        from reportlab.platypus import Image as RLImage
+        # preserve aspect ratio using figure size
+        w_in, h_in = fig.get_size_inches()
+        aspect = (h_in / w_in) if w_in else 0.6
+        img_buf = _fig_to_png_bytes(fig)
+        img = RLImage(img_buf)
+        img.drawWidth = width_mm * mm
+        img.drawHeight = (width_mm * mm) * aspect
+        _plt.close(fig)
+        return img
+
+    def _safe_float(x):
+        try:
+            return float(x)
+        except Exception:
+            return None
+
+    # ---------- Page chrome ----------
+    def draw_page(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(C_BG)
+        canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+
+        # top accent line
+        canvas.setFillColor(C_ACCENT)
+        canvas.rect(0, PAGE_H - 3, PAGE_W, 3, fill=1, stroke=0)
+
+        # header bar
+        canvas.setFillColor(C_CARD2)
+        canvas.rect(0, PAGE_H - 24, PAGE_W, 20, fill=1, stroke=0)
+        canvas.setFillColor(C_TEXT)
+        canvas.setFont("Helvetica-Bold", 8.5)
+        canvas.drawString(18 * mm, PAGE_H - 16, "HEALTH TOOLS — PREMIUM REPORT")
+        canvas.setFillColor(C_MUTED)
+        canvas.setFont("Helvetica", 8)
+        canvas.drawRightString(PAGE_W - 18 * mm, PAGE_H - 16, f"Page {canvas.getPageNumber()}")
+
+        # footer
+        canvas.setFillColor(C_STROKE)
+        canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
+        canvas.setFillColor(HexColor("#64748B"))
+        canvas.setFont("Helvetica", 6.5)
+        canvas.drawString(18 * mm, 4, "Educational use only — not medical advice — health-tools.streamlit.app")
+        canvas.drawRightString(PAGE_W - 18 * mm, 4, datetime.utcnow().strftime("%Y-%m-%d UTC"))
+
+        canvas.restoreState()
+
+    # ---------- Extract data ----------
+    inp = report.get("inputs", {}) or {}
+    age = inp.get("age", "—")
+    sex = inp.get("sex", "—")
+    height_cm = inp.get("height_cm", "—")
+    weight_kg = inp.get("weight_kg", "—")
+
+    bmi = report.get("bmi") or {}
+    vo2 = report.get("vo2") or {}
+    bio_age = report.get("bio_age") or {}
+    bio_factors = report.get("bio_factors") or []
+    plan = report.get("plan") or {}
+    exlog = report.get("exercise_log") or {}
+    triage_recs = report.get("triage_recommendations") or []
+
+    bmi_v = _safe_float(bmi.get("value"))
+    vo2_v = _safe_float(vo2.get("value"))
+    vo2_pct = _safe_float(vo2.get("percentile")) or 0.0
+    bio_v = _safe_float(bio_age.get("value"))
+    age_f = _safe_float(age)
+
+    # ---------- Insight logic (simple + transparent) ----------
+    insights = []
+    biggest_lever = None
+
+    if bmi_v is not None:
+        if bmi_v >= 30:
+            insights.append("Your BMI is in a high range. The fastest wins usually come from a sustainable calorie strategy + daily movement + strength training.")
+            biggest_lever = biggest_lever or "Energy balance (calories) + routine"
+        elif bmi_v >= 25:
+            insights.append("Your BMI is slightly elevated. A small daily deficit plus 2–3 strength sessions/week is often the most efficient approach.")
+            biggest_lever = biggest_lever or "Consistency (strength + steps)"
+        elif bmi_v < 18.5:
+            insights.append("Your BMI is low. Prioritize strength training and adequate protein/energy intake to support performance and resilience.")
+            biggest_lever = biggest_lever or "Strength + adequate fueling"
+        else:
+            insights.append("Your BMI sits in a typical range. Focus on fitness (VO2) and strength to improve long-term health markers.")
+            biggest_lever = biggest_lever or "Cardio fitness + strength"
+
+    if vo2_v is not None:
+        if vo2_pct < 40:
+            insights.append("Your cardio fitness is below average for your age group — the good news: VO2 responds quickly to training (often noticeable within 3–6 weeks).")
+            biggest_lever = biggest_lever or "VO2 training (easy volume + intervals)"
+        elif vo2_pct < 60:
+            insights.append("Your cardio fitness is around average. Adding 1 interval day + 1 longer easy session weekly is a strong upgrade.")
+        else:
+            insights.append("Your cardio fitness is good. Maintain with 2–3 quality sessions/week and avoid long breaks to keep it.")
+
+    if (bio_v is not None) and (age_f is not None):
+        diff = bio_v - age_f
+        if diff > 2:
+            insights.append("Your biological age is estimated higher than calendar age. The largest improvements usually come from sleep, activity consistency, and cardiovascular risk factors.")
+            biggest_lever = biggest_lever or "Lifestyle fundamentals (sleep + activity)"
+        elif diff < -1:
+            insights.append("Your biological age is estimated younger than calendar age — keep the routines that support sleep, movement, and cardio fitness.")
+
+    if not biggest_lever:
+        biggest_lever = "Consistency"
+
+    # ---------- Charts ----------
+    def make_vo2_gauge(percentile):
+        import numpy as np
+        fig = _plt.figure(figsize=(7.2, 2.6))
+        ax = fig.add_subplot(111)
+        ax.set_facecolor(C_BG)
+        fig.patch.set_facecolor(C_BG)
+
+        pct = max(0.0, min(100.0, float(percentile or 0.0)))
+
+        # zones
+        zones = [
+            (0, 40,  "#EF4444", "Low"),
+            (40, 60, "#F59E0B", "Below avg"),
+            (60, 80, "#3B82F6", "Good"),
+            (80, 100,"#22C55E", "Excellent"),
+        ]
+
+        theta = np.linspace(np.pi, 2*np.pi, 400)
+        ax.plot(np.cos(theta), np.sin(theta), color="#334155", lw=10, solid_capstyle="round")
+
+        # colored arcs
+        for s, e, col, _ in zones:
+            t = np.linspace(np.pi + (s/100.0)*np.pi, np.pi + (e/100.0)*np.pi, 120)
+            ax.plot(np.cos(t), np.sin(t), color=col, lw=10, solid_capstyle="butt")
+
+        # needle
+        ang = np.pi + (pct/100.0)*np.pi
+        ax.plot([0, 0.85*np.cos(ang)], [0, 0.85*np.sin(ang)], color="white", lw=2)
+        ax.scatter([0], [0], s=40, color="white")
+
+        ax.text(0, -0.15, f"{pct:.0f}th percentile", color="#E5E7EB", fontsize=14, fontweight="bold", ha="center")
+        ax.text(0, -0.32, "Population ranking (your age group)", color="#94A3B8", fontsize=9, ha="center")
+
+        ax.set_aspect("equal")
+        ax.axis("off")
+        return fig
+
+    def make_weight_projection(milestones, start_weight):
+        # milestones: list of dicts with Week + Projected weight (kg)
+        xs, ys = [], []
+        for m in milestones or []:
+            try:
+                xs.append(int(m.get("Week")))
+                ys.append(float(m.get("Projected weight (kg)")))
+            except Exception:
+                continue
+        if not xs or not ys:
+            return None
+
+        fig = _plt.figure(figsize=(7.2, 3.2))
+        ax = fig.add_subplot(111)
+        ax.set_facecolor(C_BG)
+        fig.patch.set_facecolor(C_BG)
+
+        ax.plot(xs, ys, color="#0EA5A3", lw=2.5, marker="o", ms=5)
+        ax.scatter([xs[0]], [ys[0]], color="#3B82F6", s=50, zorder=3)
+        ax.scatter([xs[-1]], [ys[-1]], color="#22C55E", s=50, zorder=3)
+
+        ax.set_title("Projected weight trajectory", color="#E5E7EB", fontsize=12, fontweight="bold")
+        ax.set_xlabel("Week", color="#94A3B8")
+        ax.set_ylabel("Weight (kg)", color="#94A3B8")
+
+        ax.grid(True, color="#243244", alpha=0.6)
+        ax.tick_params(colors="#94A3B8")
+        for spine in ax.spines.values():
+            spine.set_color("#334155")
+
+        # annotate delta
+        try:
+            delta = ys[-1] - ys[0]
+            ax.text(xs[-1], ys[-1], f"  {ys[-1]:.1f} kg  ({delta:+.1f})", color="#E5E7EB", fontsize=9, va="center")
+        except Exception:
+            pass
+
+        return fig
+
+    def make_bio_factor_bars(factors):
+        if not factors:
+            return None
+        # pick top 8 by absolute delta
+        try:
+            top = sorted(factors, key=lambda d: abs(float(d.get("delta", 0))), reverse=True)[:8]
+        except Exception:
+            top = factors[:8]
+
+        labels, vals, cols = [], [], []
+        for f in top:
+            lbl = str(f.get("label", ""))[:28]
+            try:
+                v = float(f.get("delta", 0))
+            except Exception:
+                v = 0.0
+            labels.append(lbl)
+            vals.append(v)
+            cols.append("#22C55E" if v <= 0 else "#EF4444")
+
+        fig = _plt.figure(figsize=(7.2, 3.6))
+        ax = fig.add_subplot(111)
+        ax.set_facecolor(C_BG)
+        fig.patch.set_facecolor(C_BG)
+
+        y = list(range(len(labels)))[::-1]
+        ax.barh(y, vals[::-1], color=cols[::-1], alpha=0.95)
+        ax.axvline(0, color="#64748B", lw=1)
+
+        ax.set_yticks(y)
+        ax.set_yticklabels(labels[::-1], color="#E5E7EB", fontsize=9)
+        ax.set_xlabel("Estimated impact (years)", color="#94A3B8")
+        ax.set_title("Biological age — biggest drivers", color="#E5E7EB", fontsize=12, fontweight="bold")
+
+        ax.grid(axis="x", color="#243244", alpha=0.6)
+        ax.tick_params(colors="#94A3B8")
+        for spine in ax.spines.values():
+            spine.set_color("#334155")
+
+        return fig
+
+    # ---------- 7-day plan (simple but premium) ----------
+    def build_7_day_plan(vo2_percentile, has_plan):
+        # keep generic, avoid medical promises
+        pct = float(vo2_percentile or 0.0)
+        interval_day = "Intervals (short)" if pct < 60 else "Tempo / hills (moderate)"
+        days = [
+            ("Day 1", "Easy cardio (Zone 2 feel)", "30–45 min", "Build base + recovery-friendly"),
+            ("Day 2", "Strength (full body)", "25–40 min", "Muscle & metabolism support"),
+            ("Day 3", "Active recovery + mobility", "20–30 min", "Reduce stiffness, improve consistency"),
+            ("Day 4", interval_day, "20–30 min", "Raise VO2 and cardio capacity"),
+            ("Day 5", "Strength (full body)", "25–40 min", "Progressive overload + posture"),
+            ("Day 6", "Long easy walk / bike", "45–75 min", "Weekly volume (easy intensity)"),
+            ("Day 7", "Review + plan next week", "10 min", "Make it sustainable"),
+        ]
+        if has_plan:
+            days[6] = ("Day 7", "Review + meal prep + plan", "20–30 min", "Make calories & training effortless")
+        return days
+
+    plan_7 = build_7_day_plan(vo2_pct, bool(plan and not plan.get("error")))
+
+    # ---------- PDF build ----------
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=18 * mm, rightMargin=18 * mm,
+        topMargin=26 * mm, bottomMargin=18 * mm
+    )
+
+    story = []
+
+    # ===== Cover / Executive Summary =====
+    story.append(Gap(6))
+    story.append(P("HEALTH TOOLS", PS("t1", size=28, lead=32, color=C_ACCENT, bold=True, align=TA_CENTER, after=2)))
+    story.append(P("Ultimate Premium Health Report", PS("t2", size=14, lead=18, color=C_TEXT, align=TA_CENTER, after=10)))
+
+    info = [
+        ["AGE", "SEX", "HEIGHT", "WEIGHT", "GENERATED"],
+        [f"{age} yrs", str(sex), f"{height_cm} cm", f"{weight_kg} kg", str(report.get("generated", "—"))],
+    ]
+    t = Table(info, colWidths=[CONTENT_W/5]*5)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,-1), C_CARD),
+        ("ROWBACKGROUNDS", (0,0), (-1,-1), [C_CARD2, C_CARD]),
+        ("TEXTCOLOR", (0,0), (-1,0), C_MUTED),
+        ("TEXTCOLOR", (0,1), (-1,1), C_TEXT),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTNAME", (0,1), (-1,1), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,-1), 9),
+        ("BOX", (0,0), (-1,-1), 1, C_STROKE),
+        ("INNERGRID", (0,0), (-1,-1), 0.5, C_STROKE),
+        ("LEFTPADDING", (0,0), (-1,-1), 8),
+        ("RIGHTPADDING", (0,0), (-1,-1), 8),
+        ("TOPPADDING", (0,0), (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+    ]))
+    story.append(t)
+    story.append(Gap(10))
+
+    # Summary metric row
+    metrics = []
+    if bmi_v is not None:
+        col = "#22C55E" if bmi_v < 25 else "#F59E0B" if bmi_v < 30 else "#EF4444"
+        metrics.append(("BMI", f"{bmi_v:.1f}", str(bmi.get("category", "")), col))
+    if vo2_v is not None:
+        col = "#22C55E" if vo2_pct >= 80 else "#3B82F6" if vo2_pct >= 60 else "#F59E0B" if vo2_pct >= 40 else "#EF4444"
+        metrics.append(("VO2max", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th pct", col))
+    if bio_v is not None and age_f is not None:
+        diff = bio_v - age_f
+        col = "#22C55E" if diff <= -1 else "#F59E0B" if diff <= 2 else "#EF4444"
+        metrics.append(("Bio age", f"{bio_v:.1f}", f"{diff:+.1f} vs age", col))
+    if plan and not plan.get("error"):
+        try:
+            rec = int(plan.get("recommended_daily_kcal"))
+            cur = int(plan.get("current_needs_kcal"))
+            d = rec - cur
+            col = "#22C55E" if d < 0 else "#3B82F6" if d > 0 else "#94A3B8"
+            metrics.append(("Calories", f"{rec} kcal", f"{d:+d}/day", col))
+        except Exception:
+            pass
+
+    if metrics:
+        story.append(SectionHeader("Executive Summary"))
+        story.append(Gap(6))
+        story.append(MetricRow(metrics[:4]))
+        story.append(Gap(8))
+
+    story.append(P(f"<b>Biggest leverage right now:</b> {biggest_lever}", PS("bl", size=10, lead=14, color=C_TEXT, after=6)))
+    story.append(P("What follows is designed to be actionable: visuals, explanation, and a simple plan you can execute.",
+                   PS("bl2", size=9, lead=13, color=C_MUTED, after=10)))
+
+    # Insights bullets
+    story.append(SectionHeader("Your Key Insights", accent=C_BLUE))
+    story.append(Gap(6))
+    for s in insights[:6]:
+        story.append(P(f"• {s}", PS("ins", size=9.5, lead=14, color=C_TEXT, after=3)))
+    story.append(Gap(6))
+
+    # VO2 gauge chart
+    if vo2_v is not None:
+        story.append(P("<b>Cardio ranking (VO2 percentile)</b>", PS("h", size=10, bold=True, color=C_ACCENT, after=4)))
+        fig = make_vo2_gauge(vo2_pct)
+        story.append(_add_mpl_image(fig, width_mm=170))
+        story.append(Gap(6))
+
+    story.append(PageBreak())
+
+    # ===== Deep dive: BMI / Body comp =====
+    if bmi_v is not None:
+        story.append(SectionHeader("Deep Dive — Body Composition"))
+        story.append(Gap(6))
+
+        cat = str(bmi.get("category", "") or "")
+        story.append(P(f"<b>Your BMI:</b> {bmi_v:.1f} ({cat})", PS("b1", size=11, lead=15, bold=True, after=4)))
+
+        if bmi_v < 18.5:
+            expl = "BMI can underestimate health in very lean or muscular individuals. If you feel low energy or struggle to gain strength, focus on progressive strength training and adequate daily energy intake."
+        elif bmi_v < 25:
+            expl = "BMI is in a typical range. The biggest upgrades usually come from cardio fitness, strength, and sleep — not aggressive dieting."
+        elif bmi_v < 30:
+            expl = "BMI is moderately elevated. Small daily habits (steps + strength + a modest calorie deficit) often beat extreme diets."
+        else:
+            expl = "BMI is high. The most reliable path is consistency: daily movement, strength training 2–3x/week, and a calorie strategy you can sustain."
+
+        story.append(P(expl, PS("b2", size=9.5, lead=14, color=C_TEXT, after=8)))
+
+        # Optional WHR / bodyfat lines if present
+        if report.get("whr"):
+            try:
+                whr = report["whr"]
+                story.append(P(f"<b>Waist-to-hip ratio:</b> {float(whr.get('value')):.2f} — {whr.get('category','')}",
+                               PS("whr", size=9.2, lead=13, color=C_MUTED, after=3)))
+            except Exception:
+                pass
+        if report.get("bodyfat"):
+            try:
+                bf = report["bodyfat"]
+                story.append(P(f"<b>Body fat (Navy estimate):</b> {float(bf.get('value')):.1f}%",
+                               PS("bf", size=9.2, lead=13, color=C_MUTED, after=8)))
+            except Exception:
+                pass
+
+        story.append(PageBreak())
+
+    # ===== Deep dive: Bio age =====
+    if bio_v is not None and age_f is not None:
+        story.append(SectionHeader("Deep Dive — Biological Age"))
+        story.append(Gap(6))
+        diff = bio_v - age_f
+        diff_txt = f"{abs(diff):.1f} years {'older' if diff > 0 else 'younger'} than calendar age"
+        diff_col = "#EF4444" if diff > 2 else "#F59E0B" if diff > 0 else "#22C55E"
+
+        story.append(MetricRow([
+            ("Biological age", f"{bio_v:.1f} yrs", diff_txt, diff_col),
+            ("Calendar age", f"{age_f:.0f} yrs", "Input age", "#94A3B8"),
+            ("Difference", f"{diff:+.1f} yrs", "Bio vs calendar", diff_col),
+        ]))
+        story.append(Gap(8))
+        story.append(P(
+            "Biological age here is a <b>heuristic estimate</b> based on your inputs. "
+            "Use it as a direction tool: improvements come from fundamentals (sleep, activity, cardio fitness, body composition).",
+            PS("bioex", size=9.5, lead=14, color=C_TEXT, after=8)
+        ))
+
+        fig = make_bio_factor_bars(bio_factors)
+        if fig is not None:
+            story.append(_add_mpl_image(fig, width_mm=170))
+            story.append(Gap(6))
+
+        story.append(PageBreak())
+
+    # ===== Plan =====
+    story.append(SectionHeader("Your Action Plan (Premium)"))
+    story.append(Gap(6))
+
+    # 7-day plan table
+    story.append(P("<b>7-Day Kickstart Plan</b>", PS("p1", size=11, lead=15, bold=True, color=C_ACCENT, after=6)))
+    plan_table = [["Day", "Session", "Duration", "Why it matters"]]
+    for d, sess, dur, why in plan_7:
+        plan_table.append([d, sess, dur, why])
+
+    tt = Table(plan_table, colWidths=[22*mm, 58*mm, 28*mm, 62*mm])
+    tt.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), C_CARD2),
+        ("TEXTCOLOR", (0,0), (-1,0), C_TEXT),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,-1), 8.8),
+        ("BACKGROUND", (0,1), (-1,-1), C_CARD),
+        ("BOX", (0,0), (-1,-1), 1, C_STROKE),
+        ("INNERGRID", (0,0), (-1,-1), 0.5, C_STROKE),
+        ("TEXTCOLOR", (0,1), (-1,-1), C_TEXT),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 6),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+    ]))
+    story.append(tt)
+    story.append(Gap(10))
+
+    # Calorie strategy (if plan exists)
+    if plan and not plan.get("error"):
+        try:
+            cur = int(plan.get("current_needs_kcal"))
+            rec = int(plan.get("recommended_daily_kcal"))
+            delta = rec - cur
+            label = "Deficit" if delta < 0 else "Surplus" if delta > 0 else "Maintenance"
+            col = C_GOOD if delta < 0 else C_BLUE if delta > 0 else C_MUTED
+
+            story.append(P("<b>Calorie Strategy</b>", PS("cs1", size=11, lead=15, bold=True, color=C_ACCENT, after=4)))
+            story.append(P(
+                f"Your estimated maintenance is <b>{cur} kcal/day</b>. "
+                f"Your recommended target is <b>{rec} kcal/day</b> "
+                f"(<font color='{col.hexval()}'><b>{label}: {delta:+d} kcal/day</b></font>).",
+                PS("cs2", size=9.5, lead=14, color=C_TEXT, after=8)
+            ))
+        except Exception:
+            pass
+
+    # Weight projection chart (if milestones exist)
+    milestones = plan.get("milestones") if isinstance(plan, dict) else None
+    if milestones:
+        try:
+            start_w = float(inp.get("weight_kg")) if _safe_float(inp.get("weight_kg")) is not None else None
+        except Exception:
+            start_w = None
+        fig = make_weight_projection(milestones, start_w)
+        if fig is not None:
+            story.append(P("<b>12-Week Roadmap (projection)</b>", PS("wr1", size=11, lead=15, bold=True, color=C_ACCENT, after=4)))
+            story.append(_add_mpl_image(fig, width_mm=170))
+            story.append(Gap(8))
+
+    # Conditions / recs (if any)
+    if triage_recs:
+        story.append(SectionHeader("Condition-Aware Recommendations", accent=C_WARN))
+        story.append(Gap(6))
+        for r in triage_recs[:10]:
+            story.append(P(f"• {r}", PS("tr", size=9.2, lead=13.5, color=C_TEXT, after=3)))
+        story.append(Gap(6))
+
+    # Closing + safety
+    story.append(SectionHeader("Safety + Next Steps", accent=C_BAD))
+    story.append(Gap(6))
+    story.append(P(
+        "If you experience red-flag symptoms (e.g., chest pain, fainting, severe shortness of breath, "
+        "sudden neurological symptoms), seek medical help urgently. For ongoing concerns, consult a qualified clinician.",
+        PS("s1", size=9.2, lead=13.5, color=C_TEXT, after=8)
+    ))
+    story.append(P(
+        "This report is educational and not a medical diagnosis. Use it to guide training and lifestyle decisions responsibly.",
+        PS("s2", size=8.2, lead=11.5, color=C_MUTED, after=2)
+    ))
+
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    buf.seek(0)
+    return buf.read()
 from reportlab.lib.colors import HexColor
 def create_pdf_bytes(report: dict) -> bytes:
     C_BG     = HexColor("#0F172A")
@@ -2568,7 +3180,7 @@ else:
             "exercise_log": st.session_state.get("exercise_last"),
         }
         try:
-            pdf_bytes = create_pdf_bytes(report)
+            pdf_bytes = create_pdf_bytes_ultimate(report)
             st.download_button(
                 "📄 Download PDF report",
                 data=pdf_bytes,
