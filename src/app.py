@@ -2546,7 +2546,7 @@ if not _unlocked:
         type="primary",
         use_container_width=True,
     )
-    st.caption("Etter betaling kjem du tilbake til appen. Legg til ?paid=true i URL-en for å låse opp.")
+    st.caption("After payment, you will return to the app")
 
 else:
     _results_for_pdf = st.session_state.get("results", {})
