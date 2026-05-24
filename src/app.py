@@ -2563,5 +2563,5 @@ if results:
         except Exception as e:
             st.warning(f"PDF generation unavailable: {e}")
 
-else:
-    st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
+    else:
+        st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
