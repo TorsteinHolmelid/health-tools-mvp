@@ -30,7 +30,11 @@ if _session_id and (
 ):
     st.session_state["report_unlocked"] = True
     st.session_state["stripe_session_id"] = _session_id
-
+# --- Verified badge ---
+if st.session_state.get("stripe_session_id"):
+    _sid = st.session_state["stripe_session_id"]
+    st.sidebar.success(f"✅ Betaling verifisert  •  ID: ...{_sid[-6:]}")
+    
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_CENTER
