@@ -2529,7 +2529,7 @@ if results:
 stripe_link = "https://buy.stripe.com/7sY00kgyK1oL2TA3jG1Fe01" 
 
 # Vi bytter ut st.button med st.link_button
-st.link_button("🔓 Unlock full report — 49 kr", stripe_link, type="primary", use_container_width=True)
+st.link_button("🔓 Unlock full report — $4.99", stripe_link, type="primary", use_container_width=True)
     else:
         st.success("✅ Report unlocked!")
 
