@@ -966,10 +966,22 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c.drawRightString(bx+bw2,11,f"{self.prog:.0f}%")
 
 class InsightBlock(Flowable):
-    def __init__(self, title, text, color, width=CONTENT_W):
+    def __init__(self, title, text, color, width=None):
         super().__init__()
         self.title = title
         self.text = text
+
+        # beregn standardbredde hvis ingen er gitt
+        if width is None:
+            try:
+                from reportlab.lib.pagesizes import A4
+                from reportlab.lib.units import mm
+                PAGE_W, _ = A4
+                width = PAGE_W - 36 * mm
+            except Exception:
+                # sikker fallback dersom reportlab ikke er tilgjengelig
+                width = 150  # en konservativ standardverdi i punkter
+
         # aksepter enten en reportlab Color-instans eller en hex-streng
         from reportlab.lib import colors as _rl_colors
         try:
@@ -985,6 +997,8 @@ class InsightBlock(Flowable):
             self.color = HexColor("#94A3B8")
 
         self.w = width
+
+        # Merk: _styles og TEXT må være definert på modulnivå tidligere i fila.
         self._para = Paragraph(
             f"<b>{title}:</b>  {text}",
             ParagraphStyle(
