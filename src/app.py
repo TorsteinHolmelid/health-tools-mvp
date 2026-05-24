@@ -9,21 +9,27 @@ import streamlit.components.v1 as components
 import calculators
 import matplotlib.pyplot as plt
 
-# --- Stripe return / simple MVP unlock ---
-paid = None
+# --- Stripe return — Nivå 2 (session_id) ---
+_session_id = None
 try:
-    paid = st.query_params.get("paid")
+    _session_id = st.query_params.get("session_id")
 except Exception:
     try:
-        paid = st.experimental_get_query_params().get("paid")
+        _raw = st.experimental_get_query_params().get("session_id")
+        _session_id = _raw[0] if isinstance(_raw, list) else _raw
     except Exception:
-        paid = None
+        _session_id = None
 
-if isinstance(paid, list):
-    paid = paid[0] if paid else None
+if isinstance(_session_id, list):
+    _session_id = _session_id[0] if _session_id else None
 
-if paid == "true":
+# Godta alle ekte Stripe session IDs (cs_live_ eller cs_test_)
+if _session_id and (
+    str(_session_id).startswith("cs_live_") or
+    str(_session_id).startswith("cs_test_")
+):
     st.session_state["report_unlocked"] = True
+    st.session_state["stripe_session_id"] = _session_id
 
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
