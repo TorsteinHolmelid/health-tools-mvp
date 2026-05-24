@@ -428,30 +428,30 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                     c.setFont("Helvetica", 7)
                     c.drawString(x + 8, 10, str(sub)[:28])
 
-    def _fig_to_png_bytes(fig, face=C_BG):
-        buf = BytesIO()
-        fig.patch.set_facecolor(face)
-        fig.savefig(buf, format="png", dpi=220, bbox_inches="tight", facecolor=face)
-        buf.seek(0)
-        return buf
-
-    def _add_mpl_image(fig, width_mm=170):
-        from reportlab.platypus import Image as RLImage
-        # preserve aspect ratio using figure size
-        w_in, h_in = fig.get_size_inches()
-        aspect = (h_in / w_in) if w_in else 0.6
-        img_buf = _fig_to_png_bytes(fig)
-        img = RLImage(img_buf)
-        img.drawWidth = width_mm * mm
-        img.drawHeight = (width_mm * mm) * aspect
-        _plt.close(fig)
-        return img
-
-    def _safe_float(x):
-        try:
-            return float(x)
-        except Exception:
-            return None
+        def _fig_to_png_bytes(fig, face=C_BG):
+            buf = BytesIO()
+            fig.patch.set_facecolor(face)
+            fig.savefig(buf, format="png", dpi=220, bbox_inches="tight", facecolor=face)
+            buf.seek(0)
+            return buf
+    
+        def _add_mpl_image(fig, width_mm=170):
+            from reportlab.platypus import Image as RLImage
+            # preserve aspect ratio using figure size
+            w_in, h_in = fig.get_size_inches()
+            aspect = (h_in / w_in) if w_in else 0.6
+            img_buf = _fig_to_png_bytes(fig)
+            img = RLImage(img_buf)
+            img.drawWidth = width_mm * mm
+            img.drawHeight = (width_mm * mm) * aspect
+            _plt.close(fig)
+            return img
+    
+        def _safe_float(x):
+            try:
+                return float(x)
+            except Exception:
+                return None
 
     # ---------- Page chrome ----------
     def draw_page(canvas, doc):
