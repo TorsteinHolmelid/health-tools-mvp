@@ -353,7 +353,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 fontName=("Helvetica-Bold" if bold else font),
                 fontSize=size,
                 leading=lead,
-                textColor=color,
+                textColor=_color,
                 alignment=align,
                 spaceAfter=after,
                 spaceBefore=before,
