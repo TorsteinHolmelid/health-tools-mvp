@@ -969,28 +969,28 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         def __init__(self, title, text, color, width=CONTENT_W):
             super().__init__()
             self.title = title; self.text = text
-           # aksepter enten en reportlab Color-instans eller en hex-streng
-from reportlab.lib import colors as _rl_colors
-try:
-    if isinstance(color, _rl_colors.Color):
-        self.color = color
-    elif isinstance(color, str):
-        self.color = HexColor(color)
-    else:
-        # fallback: forsøk å konvertere til streng og lage HexColor
-        self.color = HexColor(str(color))
-except Exception:
-    # som siste utvei bruk en nøytral farge
-    self.color = HexColor("#94A3B8")
-            self.w = width
-            self._para = Paragraph(
-                f"<b>{title}:</b>  {text}",
-                ParagraphStyle("_ib", parent=_styles["Normal"],
-                               fontName="Helvetica", fontSize=8.8, leading=13,
-                               textColor=TEXT, spaceAfter=0)
-            )
-            _, ph = self._para.wrap(width-20, 9999)
-            self.h = max(36, ph+16)
+                   # aksepter enten en reportlab Color-instans eller en hex-streng
+        from reportlab.lib import colors as _rl_colors
+        try:
+            if isinstance(color, _rl_colors.Color):
+                self.color = color
+            elif isinstance(color, str):
+                self.color = HexColor(color)
+            else:
+                # fallback: forsøk å konvertere til streng og lage HexColor
+                self.color = HexColor(str(color))
+        except Exception:
+            # som siste utvei bruk en nøytral farge
+            self.color = HexColor("#94A3B8")
+                    self.w = width
+                    self._para = Paragraph(
+                        f"<b>{title}:</b>  {text}",
+                        ParagraphStyle("_ib", parent=_styles["Normal"],
+                                       fontName="Helvetica", fontSize=8.8, leading=13,
+                                       textColor=TEXT, spaceAfter=0)
+                    )
+                    _, ph = self._para.wrap(width-20, 9999)
+                    self.h = max(36, ph+16)
 
         def wrap(self, aw, ah):
             _, ph = self._para.wrap(self.w-20, 9999)
