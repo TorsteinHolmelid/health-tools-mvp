@@ -2499,11 +2499,11 @@ if results:
 else:
     st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
 
-# ── Paywall / PDF ────  ← UTANFOR if results: (ingen innrykk!)
+# ── Paywall / PDF ──── (0 innrykk — UTANFOR if results:)
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
-if st.session_state.get("report_unlocked"):
+if _unlocked:
     st.success("✅ Rapport låst opp!")
 
 if not _unlocked:
@@ -2542,7 +2542,7 @@ if not _unlocked:
 else:
     _results_for_pdf = st.session_state.get("results", {})
     if not _results_for_pdf:
-        st.info("Kjør beregningane først (trykk 'Calculate'), så kan du laste ned PDF-rapporten.")
+        st.warning("⚠️ Kjør beregningane først (trykk 'Calculate'), så kan du laste ned PDF-rapporten.")
     else:
         report = {
             "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
