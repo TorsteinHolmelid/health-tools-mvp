@@ -969,7 +969,19 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         def __init__(self, title, text, color, width=CONTENT_W):
             super().__init__()
             self.title = title; self.text = text
-            self.color = color if isinstance(color, HexColor) else HexColor(color)
+           # aksepter enten en reportlab Color-instans eller en hex-streng
+from reportlab.lib import colors as _rl_colors
+try:
+    if isinstance(color, _rl_colors.Color):
+        self.color = color
+    elif isinstance(color, str):
+        self.color = HexColor(color)
+    else:
+        # fallback: forsøk å konvertere til streng og lage HexColor
+        self.color = HexColor(str(color))
+except Exception:
+    # som siste utvei bruk en nøytral farge
+    self.color = HexColor("#94A3B8")
             self.w = width
             self._para = Paragraph(
                 f"<b>{title}:</b>  {text}",
