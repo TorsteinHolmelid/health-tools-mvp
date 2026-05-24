@@ -1523,30 +1523,30 @@ class InsightBlock(Flowable):
         "or substitute for professional healthcare advice. No personal data is stored or transmitted.",
         S("df", size=7.5, lead=11, color=DIM, italic=True, align=TA_CENTER, after=4)
     ))
-
-    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-    buf.seek(0)
-    return buf.read()
-from reportlab.lib.colors import HexColor
-def create_pdf_bytes(report: dict) -> bytes:
-    C_BG     = HexColor("#0F172A")
-    C_CARD   = HexColor("#1E293B")
-    C_CARD2  = HexColor("#162032")
-    C_ACCENT = HexColor("#0EA5A3")
-    C_BLUE   = HexColor("#3B82F6")
-    C_GOOD   = HexColor("#22C55E")
-    C_WARN   = HexColor("#F59E0B")
-    C_BAD    = HexColor("#EF4444")
-    C_TEXT   = HexColor("#E5E7EB")
-    C_MUTED  = HexColor("#94A3B8")
-    C_STROKE = HexColor("#334155")
-
-    PAGE_W, PAGE_H = A4
-    CONTENT_W = PAGE_W - 36 * mm
-
-    buffer = BytesIO()
-
-    styles_rl = getSampleStyleSheet()
+    
+        doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+        buf.seek(0)
+        return buf.read()
+    from reportlab.lib.colors import HexColor
+    def create_pdf_bytes(report: dict) -> bytes:
+        C_BG     = HexColor("#0F172A")
+        C_CARD   = HexColor("#1E293B")
+        C_CARD2  = HexColor("#162032")
+        C_ACCENT = HexColor("#0EA5A3")
+        C_BLUE   = HexColor("#3B82F6")
+        C_GOOD   = HexColor("#22C55E")
+        C_WARN   = HexColor("#F59E0B")
+        C_BAD    = HexColor("#EF4444")
+        C_TEXT   = HexColor("#E5E7EB")
+        C_MUTED  = HexColor("#94A3B8")
+        C_STROKE = HexColor("#334155")
+    
+        PAGE_W, PAGE_H = A4
+        CONTENT_W = PAGE_W - 36 * mm
+    
+        buffer = BytesIO()
+    
+        styles_rl = getSampleStyleSheet()
 
     def ps(name, fontName="Helvetica", fontSize=10, leading=13, textColor=None,
            alignment=0, spaceAfter=4, spaceBefore=0, bold=False):
