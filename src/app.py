@@ -14,17 +14,16 @@ paid = None
 try:
     paid = st.query_params.get("paid")
 except Exception:
-    paid = st.experimental_get_query_params().get("paid")
-
-if paid == "true" or paid == ["true"]:
-    st.session_state["report_unlocked"] = True
-    st.success("✅ Betaling registrert. Rapporten er no låst opp!")
-    # Fjern ?paid=true frå URL så den ikkje triggar kvar refresh
     try:
-        st.query_params.clear()
+        paid = st.experimental_get_query_params().get("paid")
     except Exception:
-        st.experimental_set_query_params()
-    st.rerun()
+        paid = None
+
+if isinstance(paid, list):
+    paid = paid[0] if paid else None
+
+if paid == "true":
+    st.session_state["report_unlocked"] = True
 
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
