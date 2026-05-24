@@ -2525,9 +2525,11 @@ if results:
             '</div>',
             unsafe_allow_html=True
         )
-        if st.button("🔓 Unlock full report — 49 kr", type="primary", use_container_width=True, key="unlock_btn"):
-            st.session_state["report_unlocked"] = True
-            st.rerun()
+        # Her legger vi inn linken du fikk fra Stripe
+stripe_link = "https://buy.stripe.com/7sY00kgyK1oL2TA3jG1Fe01" 
+
+# Vi bytter ut st.button med st.link_button
+st.link_button("🔓 Unlock full report — 49 kr", stripe_link, type="primary", use_container_width=True)
     else:
         st.success("✅ Report unlocked!")
 
