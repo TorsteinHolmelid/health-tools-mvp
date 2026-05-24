@@ -428,7 +428,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                     c.setFont("Helvetica", 7)
                     c.drawString(x + 8, 10, str(sub)[:28])
 
-def _fig_to_png_bytes(fig, face=C_BG):
+    def _fig_to_png_bytes(fig, face=C_BG):
         buf = BytesIO()
         fig.patch.set_facecolor(face)
         fig.savefig(buf, format="png", dpi=220, bbox_inches="tight", facecolor=face)
