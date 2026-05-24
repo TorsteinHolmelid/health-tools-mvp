@@ -328,6 +328,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
 
     # ---------- Theme ----------
     C_BG     = HexColor("#0B1220")
+    MPL_BG   = "#0B1220"
     C_CARD   = HexColor("#111C33")
     C_CARD2  = HexColor("#0F172A")
     C_ACCENT = HexColor("#0EA5A3")
@@ -428,10 +429,11 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                     c.setFont("Helvetica", 7)
                     c.drawString(x + 8, 10, str(sub)[:28])
 
-    def _fig_to_png_bytes(fig, face=C_BG):
+    def _fig_to_png_bytes(fig, face=None):
         buf = BytesIO()
-        fig.patch.set_facecolor(face)
-        fig.savefig(buf, format="png", dpi=220, bbox_inches="tight", facecolor=face)
+        _face = face if face is not None else MPL_BG
+        fig.patch.set_facecolor(_face)
+        fig.savefig(buf, format="png", dpi=220, bbox_inches="tight", facecolor=_face)
         buf.seek(0)
         return buf
 
@@ -546,8 +548,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         import numpy as np
         fig = _plt.figure(figsize=(7.2, 2.6))
         ax = fig.add_subplot(111)
-        ax.set_facecolor(C_BG)
-        fig.patch.set_facecolor(C_BG)
+        ax.set_facecolor(MPL_BG)
+        fig.patch.set_facecolor(MPL_BG)
 
         pct = max(0.0, min(100.0, float(percentile or 0.0)))
 
@@ -593,8 +595,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
 
         fig = _plt.figure(figsize=(7.2, 3.2))
         ax = fig.add_subplot(111)
-        ax.set_facecolor(C_BG)
-        fig.patch.set_facecolor(C_BG)
+        ax.set_facecolor(MPL_BG)
+        fig.patch.set_facecolor(MPL_BG)
 
         ax.plot(xs, ys, color="#0EA5A3", lw=2.5, marker="o", ms=5)
         ax.scatter([xs[0]], [ys[0]], color="#3B82F6", s=50, zorder=3)
@@ -640,8 +642,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
 
         fig = _plt.figure(figsize=(7.2, 3.6))
         ax = fig.add_subplot(111)
-        ax.set_facecolor(C_BG)
-        fig.patch.set_facecolor(C_BG)
+        ax.set_facecolor(MPL_BG)
+        fig.patch.set_facecolor(MPL_BG)
 
         y = list(range(len(labels)))[::-1]
         ax.barh(y, vals[::-1], color=cols[::-1], alpha=0.95)
