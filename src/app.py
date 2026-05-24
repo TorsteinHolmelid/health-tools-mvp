@@ -2526,7 +2526,7 @@ if results:
             unsafe_allow_html=True
         )
         # Her legger vi inn linken du fikk fra Stripe
-stripe_link = "https://buy.stripe.com/7sY00kgyK1oL2TA3jG1Fe01" 
+stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02" 
 
 # Vi bytter ut st.button med st.link_button
 st.link_button("🔓 Unlock full report — $4.99", stripe_link, type="primary", use_container_width=True)
