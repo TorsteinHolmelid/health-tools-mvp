@@ -3,7 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from html import escape
 from io import BytesIO
-
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+PAGE_W, PAGE_H = A4
+CONTENT_W = PAGE_W - 36 * mm
 import streamlit as st
 import streamlit.components.v1 as components
 import calculators
