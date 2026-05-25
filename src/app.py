@@ -325,9 +325,16 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     from io import BytesIO
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Spacer as VGap
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Flowable
     from reportlab.lib.colors import black, HexColor
-
+    class VGap(Flowable):
+            def __init__(self, h=8):
+                super().__init__()
+                self._h = h
+            def wrap(self, aw, ah): 
+                return aw, self._h
+            def draw(self): 
+                pass
     # Setup av stilar
     _styles = getSampleStyleSheet()
     TEXT = black
