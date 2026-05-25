@@ -987,132 +987,132 @@ def _sf(x):
             c.setFillColor(MUTED); c.setFont("Helvetica",6)
             c.drawRightString(bx+bw2,11,f"{self.prog:.0f}%")
 
-class InsightBlock(Flowable):
-    def __init__(self, title, text, color, width=None):
-        super().__init__()
-        self.title = title
-        self.text = text
-
-        # Beregn standardbredde hvis ingen er gitt
-        if width is None:
+    class InsightBlock(Flowable):
+        def __init__(self, title, text, color, width=None):
+            super().__init__()
+            self.title = title
+            self.text = text
+    
+            # Beregn standardbredde hvis ingen er gitt
+            if width is None:
+                try:
+                    from reportlab.lib.pagesizes import A4
+                    from reportlab.lib.units import mm
+                    PAGE_W, _ = A4
+                    width = PAGE_W - 36 * mm
+                except Exception:
+                    width = 150  # Fallback
+    
+            # Håndter farge
             try:
-                from reportlab.lib.pagesizes import A4
-                from reportlab.lib.units import mm
-                PAGE_W, _ = A4
-                width = PAGE_W - 36 * mm
+                if isinstance(color, colors.Color):
+                    self.color = color
+                elif isinstance(color, str):
+                    self.color = HexColor(color)
+                else:
+                    self.color = HexColor(str(color))
             except Exception:
-                width = 150  # Fallback
-
-        # Håndter farge
-        try:
-            if isinstance(color, colors.Color):
-                self.color = color
-            elif isinstance(color, str):
-                self.color = HexColor(color)
-            else:
-                self.color = HexColor(str(color))
-        except Exception:
-            self.color = HexColor("#94A3B8")
-
-        self.w = width
-
-        # Lag avsnittet for teksten
-        self._para = Paragraph(
-            f"<b>{title}:</b>  {text}",
-            ParagraphStyle(
-                "_ib",
-                parent=_styles["Normal"],
-                fontName="Helvetica",
-                fontSize=8.8,
-                leading=13,
-                textColor=TEXT,
-                spaceAfter=0,
-            ),
+                self.color = HexColor("#94A3B8")
+    
+            self.w = width
+    
+            # Lag avsnittet for teksten
+            self._para = Paragraph(
+                f"<b>{title}:</b>  {text}",
+                ParagraphStyle(
+                    "_ib",
+                    parent=_styles["Normal"],
+                    fontName="Helvetica",
+                    fontSize=8.8,
+                    leading=13,
+                    textColor=TEXT,
+                    spaceAfter=0,
+                ),
+            )
+            _, ph = self._para.wrap(width - 20, 9999)
+            self.h = max(36, ph + 16)
+    
+        def wrap(self, aw, ah):
+            _, ph = self._para.wrap(self.w - 20, 9999)
+            self.h = max(36, ph + 16)
+            return self.w, self.h
+    
+        def draw(self):
+            c = self.canv
+            c.setFillColor(CARD)
+            c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
+            c.setFillColor(self.color)
+            c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._para.drawOn(c, 14, 8)
+    
+    
+    # ── HER SLUTTER KLASSEN OG VI GÅR TILBAKE INNI FUNKSJONEN (4 MELLOMROM INNRYKK) ──
+    
+        def draw_page(canvas, doc):
+            canvas.saveState()
+            canvas.setFillColor(BG)
+            canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+            canvas.setFillColor(ACCENT)
+            canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
+            canvas.setFillColor(CARD2)
+            canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
+            canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5)
+            canvas.drawString(MARGIN_H, PAGE_H-15, "HEALTH TOOLS — PREMIUM REPORT")
+            canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8)
+            canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
+            canvas.setFillColor(STROKE)
+            canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
+            canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5)
+            canvas.drawString(MARGIN_H, 4,
+                              "Educational use only — not a medical diagnosis — health-tools.streamlit.app")
+            canvas.drawRightString(PAGE_W-MARGIN_H, 4,
+                                   datetime.utcnow().strftime("%Y-%m-%d UTC"))
+            canvas.restoreState()
+    
+        buf  = BytesIO()
+        doc  = SimpleDocTemplate(
+            buf, pagesize=A4,
+            leftMargin=MARGIN_H, rightMargin=MARGIN_H,
+            topMargin=26*mm, bottomMargin=18*mm,
         )
-        _, ph = self._para.wrap(width - 20, 9999)
-        self.h = max(36, ph + 16)
-
-    def wrap(self, aw, ah):
-        _, ph = self._para.wrap(self.w - 20, 9999)
-        self.h = max(36, ph + 16)
-        return self.w, self.h
-
-    def draw(self):
-        c = self.canv
-        c.setFillColor(CARD)
-        c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
-        c.setFillColor(self.color)
-        c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-        self._para.drawOn(c, 14, 8)
-
-
-# ── HER SLUTTER KLASSEN OG VI GÅR TILBAKE INNI FUNKSJONEN (4 MELLOMROM INNRYKK) ──
-
-    def draw_page(canvas, doc):
-        canvas.saveState()
-        canvas.setFillColor(BG)
-        canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
-        canvas.setFillColor(ACCENT)
-        canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
-        canvas.setFillColor(CARD2)
-        canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
-        canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5)
-        canvas.drawString(MARGIN_H, PAGE_H-15, "HEALTH TOOLS — PREMIUM REPORT")
-        canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8)
-        canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
-        canvas.setFillColor(STROKE)
-        canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
-        canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5)
-        canvas.drawString(MARGIN_H, 4,
-                          "Educational use only — not a medical diagnosis — health-tools.streamlit.app")
-        canvas.drawRightString(PAGE_W-MARGIN_H, 4,
-                               datetime.utcnow().strftime("%Y-%m-%d UTC"))
-        canvas.restoreState()
-
-    buf  = BytesIO()
-    doc  = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=MARGIN_H, rightMargin=MARGIN_H,
-        topMargin=26*mm, bottomMargin=18*mm,
-    )
-    story = []
-
-    # ── PAGE 1: Cover + Executive Dashboard ──────────────────────────────
-    story.append(Spacer(1, 4))
-    story.append(P("HEALTH TOOLS",
-                   S("h1", size=30, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
-    story.append(P("Premium Individual Health Report",
-                   S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
-
-    info_rows = [
-        [P("AGE",    S("il",size=6.5,color=MUTED,align=TA_CENTER)),
-         P("SEX",    S("il",size=6.5,color=MUTED,align=TA_CENTER)),
-         P("HEIGHT", S("il",size=6.5,color=MUTED,align=TA_CENTER)),
-         P("WEIGHT", S("il",size=6.5,color=MUTED,align=TA_CENTER)),
-         P("DATE",   S("il",size=6.5,color=MUTED,align=TA_CENTER))],
-        [P(f"{age_v} yrs",   S("iv",size=11,bold=True,align=TA_CENTER)),
-         P(str(sex_v),        S("iv",size=11,bold=True,align=TA_CENTER)),
-         P(f"{h_v} cm",       S("iv",size=11,bold=True,align=TA_CENTER)),
-         P(f"{w_v} kg",       S("iv",size=11,bold=True,align=TA_CENTER)),
-         P(str(gen_v)[:10],   S("iv",size=8, color=MUTED,align=TA_CENTER))],
-    ]
-    it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
-    it.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,-1), CARD),
-        ("ROWBACKGROUNDS",(0,0),(-1,-1), [CARD, CARD2]),
-        ("BOX",           (0,0),(-1,-1), 1,   STROKE),
-        ("INNERGRID",     (0,0),(-1,-1), 0.5, STROKE),
-        ("TOPPADDING",    (0,0),(-1,-1), 8),
-        ("BOTTOMPADDING", (0,0),(-1,-1), 8),
-    ]))
-    story.append(it)
-    story.append(VGap(8))
-
-    story.append(SecHeader("Overall Health Dashboard",
-                            subtitle="Composite score across 5 dimensions — for directional guidance only"))
-    story.append(VGap(6))
-    story.append(HealthScoreRing(health_score, score_label, score_col))
-    story.append(VGap(8))
+        story = []
+    
+        # ── PAGE 1: Cover + Executive Dashboard ──────────────────────────────
+        story.append(Spacer(1, 4))
+        story.append(P("HEALTH TOOLS",
+                       S("h1", size=30, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
+        story.append(P("Premium Individual Health Report",
+                       S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
+    
+        info_rows = [
+            [P("AGE",    S("il",size=6.5,color=MUTED,align=TA_CENTER)),
+             P("SEX",    S("il",size=6.5,color=MUTED,align=TA_CENTER)),
+             P("HEIGHT", S("il",size=6.5,color=MUTED,align=TA_CENTER)),
+             P("WEIGHT", S("il",size=6.5,color=MUTED,align=TA_CENTER)),
+             P("DATE",   S("il",size=6.5,color=MUTED,align=TA_CENTER))],
+            [P(f"{age_v} yrs",   S("iv",size=11,bold=True,align=TA_CENTER)),
+             P(str(sex_v),        S("iv",size=11,bold=True,align=TA_CENTER)),
+             P(f"{h_v} cm",       S("iv",size=11,bold=True,align=TA_CENTER)),
+             P(f"{w_v} kg",       S("iv",size=11,bold=True,align=TA_CENTER)),
+             P(str(gen_v)[:10],   S("iv",size=8, color=MUTED,align=TA_CENTER))],
+        ]
+        it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
+        it.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0),(-1,-1), CARD),
+            ("ROWBACKGROUNDS",(0,0),(-1,-1), [CARD, CARD2]),
+            ("BOX",           (0,0),(-1,-1), 1,   STROKE),
+            ("INNERGRID",     (0,0),(-1,-1), 0.5, STROKE),
+            ("TOPPADDING",    (0,0),(-1,-1), 8),
+            ("BOTTOMPADDING", (0,0),(-1,-1), 8),
+        ]))
+        story.append(it)
+        story.append(VGap(8))
+    
+        story.append(SecHeader("Overall Health Dashboard",
+                                subtitle="Composite score across 5 dimensions — for directional guidance only"))
+        story.append(VGap(6))
+        story.append(HealthScoreRing(health_score, score_label, score_col))
+        story.append(VGap(8))
 
     kmetrics = []
     if bmi_v  is not None:
