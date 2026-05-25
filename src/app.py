@@ -329,6 +329,17 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     def _si(x):
         try: return int(x)
         except: return None
+
+    def S(name, size=10, color=TEXT, after=6, leading=None):
+            # Bruker standard '_styles' eller 'styles' som base
+            return ParagraphStyle(
+                name,
+                parent=_styles["Normal"], 
+                fontSize=size,
+                textColor=color,
+                spaceAfter=after,
+                leading=leading or (size + 4)
+            )
 # LEGG TIL DENNE LINJEN (Sørg for at S peker på VGap-klassen din):
     S = VGap
     # --- UTREKNINGER & DATA-PARSING ---
