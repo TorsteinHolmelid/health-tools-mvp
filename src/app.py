@@ -1527,9 +1527,9 @@ story.append(VGap(6))
 
 for title, color, text in insights:
     story.append(InsightBlock(title=title, text=text, color=color))
-
-story.append(VGap(4))
-story.append(VGap(6)) # ✅ FIKSET: Flyttet helt ut til venstre, på linje med de andre
+    
+    story.append(VGap(4))
+    story.append(VGap(6)) # ✅ FIKSET: Flyttet helt ut til venstre, på linje med de andre
     if triage_r:
         story.append(SecHeader("Condition-Aware Recommendations", accent=WARN))
         story.append(VGap(6))
