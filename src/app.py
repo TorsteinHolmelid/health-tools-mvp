@@ -1062,7 +1062,7 @@ class InsightBlock(Flowable):
     story = []
 
     # ── PAGE 1: Cover + Executive Dashboard ──────────────────────────────
-    story.append(VGap(4))
+    story.append(Spacer(1, 4))
     story.append(P("HEALTH TOOLS",
                    S("h1", size=30, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
     story.append(P("Premium Individual Health Report",
