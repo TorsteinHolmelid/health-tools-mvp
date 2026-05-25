@@ -1620,10 +1620,10 @@ def create_pdf_bytes(report: dict) -> bytes:
     # en lokal draw_page-funksjon her før doc.build.
 
     # Bygg PDF med side-draw callback (bruk eksisterende draw_page hvis du har det)
+# Sørg for at disse tre linjene står helt til slutt i funksjonen, med 4 mellomrom foran:
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-
     buf.seek(0)
-    return buf.read()
+    return buf.getvalue()
 
     # ── Custom Flowables ──────────────────────────────────────────
 
