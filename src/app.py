@@ -993,7 +993,7 @@ class InsightBlock(Flowable):
         self.title = title
         self.text = text
 
-        # beregn standardbredde hvis ingen er gitt
+        # Beregn standardbredde hvis ingen er gitt
         if width is None:
             try:
                 from reportlab.lib.pagesizes import A4
@@ -1001,26 +1001,22 @@ class InsightBlock(Flowable):
                 PAGE_W, _ = A4
                 width = PAGE_W - 36 * mm
             except Exception:
-                # sikker fallback dersom reportlab ikke er tilgjengelig
-                width = 150  # en konservativ standardverdi i punkter
+                width = 150  # Fallback
 
-        # aksepter enten en reportlab Color-instans eller en hex-streng
-        from reportlab.lib import colors as _rl_colors
+        # Håndter farge
         try:
-            if isinstance(color, _rl_colors.Color):
+            if isinstance(color, colors.Color):
                 self.color = color
             elif isinstance(color, str):
                 self.color = HexColor(color)
             else:
-                # fallback: forsøk å konvertere til streng og lage HexColor
                 self.color = HexColor(str(color))
         except Exception:
-            # som siste utvei bruk en nøytral farge
             self.color = HexColor("#94A3B8")
 
         self.w = width
 
-        # Merk: _styles og TEXT må være definert på modulnivå tidligere i fila.
+        # Lag avsnittet for teksten
         self._para = Paragraph(
             f"<b>{title}:</b>  {text}",
             ParagraphStyle(
@@ -1050,9 +1046,8 @@ class InsightBlock(Flowable):
         self._para.drawOn(c, 14, 8)
 
 
-# ════════════════════════════════════════════════════════════════════
-# PAGE TEMPLATE (Flyttet ut av klassen - skal ha nøyaktig 4 mellomrom innrykk siden den er inni create_pdf_bytes_ultimate)
-# ════════════════════════════════════════════════════════════════════
+# NÅAVSLUTTES KLASSEN. NESTE LINJE ER INNHOPP PÅ 4 MELLOMROM:
+# Sørg for at denne linjen under har 4 mellomrom foran seg, slik at den fortsetter inni create_pdf_bytes_ultimate:
 
     def draw_page(canvas, doc):
         canvas.saveState()
@@ -1075,9 +1070,6 @@ class InsightBlock(Flowable):
                                datetime.utcnow().strftime("%Y-%m-%d UTC"))
         canvas.restoreState()
 
-    # ════════════════════════════════════════════════════════════════════
-    # BUILD STORY
-    # ════════════════════════════════════════════════════════════════════
     buf  = BytesIO()
     doc  = SimpleDocTemplate(
         buf, pagesize=A4,
