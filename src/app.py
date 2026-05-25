@@ -1046,8 +1046,7 @@ class InsightBlock(Flowable):
         self._para.drawOn(c, 14, 8)
 
 
-# NÅAVSLUTTES KLASSEN. NESTE LINJE ER INNHOPP PÅ 4 MELLOMROM:
-# Sørg for at denne linjen under har 4 mellomrom foran seg, slik at den fortsetter inni create_pdf_bytes_ultimate:
+# ── HER SLUTTER KLASSEN OG VI GÅR TILBAKE INNI FUNKSJONEN (4 MELLOMROM INNRYKK) ──
 
     def draw_page(canvas, doc):
         canvas.saveState()
