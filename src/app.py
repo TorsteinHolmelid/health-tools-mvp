@@ -6,7 +6,8 @@ from io import BytesIO
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 PAGE_W, PAGE_H = A4
-CONTENT_W = PAGE_W - 36 * mm
+MARGIN_H = 18 * mm
+CONTENT_W = PAGE_W - 2 * MARGIN_H
 import streamlit as st
 import streamlit.components.v1 as components
 import calculators
