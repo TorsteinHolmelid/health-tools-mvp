@@ -8,6 +8,9 @@ from reportlab.lib.units import mm
 PAGE_W, PAGE_H = A4
 MARGIN_H = 18 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN_H
+
+def P(txt, style):
+    return Paragraph(str(txt), style)
 from reportlab.platypus import Spacer as VGap
 import streamlit as st
 import streamlit.components.v1 as components
@@ -364,9 +367,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             alignment=align,
             spaceAfter=after, spaceBefore=before,
         )
-
-    def P(txt, style):
-        return Paragraph(str(txt), style)
 
     def _sf(x):
         try: return float(x)
