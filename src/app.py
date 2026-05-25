@@ -1036,15 +1036,19 @@ class InsightBlock(Flowable):
         _, ph = self._para.wrap(width - 20, 9999)
         self.h = max(36, ph + 16)
 
-        def wrap(self, aw, ah):
-            _, ph = self._para.wrap(self.w-20, 9999)
-            self.h = max(36, ph+16); return self.w, self.h
+    # HER VAR FEILEN (wrap og draw skal ha nøyaktig 4 mellomrom innrykk, ikke 8):
+    def wrap(self, aw, ah):
+        _, ph = self._para.wrap(self.w - 20, 9999)
+        self.h = max(36, ph + 16)
+        return self.w, self.h
 
-        def draw(self):
-            c = self.canv
-            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
-            c.setFillColor(self.color); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-            self._para.drawOn(c, 14, 8)
+    def draw(self):
+        c = self.canv
+        c.setFillColor(CARD)
+        c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
+        c.setFillColor(self.color)
+        c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+        self._para.drawOn(c, 14, 8)
 
     # ════════════════════════════════════════════════════════════════════
     # PAGE TEMPLATE
