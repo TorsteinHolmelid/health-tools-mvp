@@ -1036,7 +1036,6 @@ class InsightBlock(Flowable):
         _, ph = self._para.wrap(width - 20, 9999)
         self.h = max(36, ph + 16)
 
-    # HER VAR FEILEN (wrap og draw skal ha nøyaktig 4 mellomrom innrykk, ikke 8):
     def wrap(self, aw, ah):
         _, ph = self._para.wrap(self.w - 20, 9999)
         self.h = max(36, ph + 16)
@@ -1050,9 +1049,10 @@ class InsightBlock(Flowable):
         c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
         self._para.drawOn(c, 14, 8)
 
-    # ════════════════════════════════════════════════════════════════════
-    # PAGE TEMPLATE
-    # ════════════════════════════════════════════════════════════════════
+
+# ════════════════════════════════════════════════════════════════════
+# PAGE TEMPLATE (Flyttet ut av klassen - skal ha nøyaktig 4 mellomrom innrykk siden den er inni create_pdf_bytes_ultimate)
+# ════════════════════════════════════════════════════════════════════
 
     def draw_page(canvas, doc):
         canvas.saveState()
