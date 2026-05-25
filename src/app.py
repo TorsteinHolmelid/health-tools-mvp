@@ -563,46 +563,245 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     ]
     if has_plan and kg_pw is not None:
         plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Align food plan with weekly goal")
-# ── GLOBALE REPORLAB-HJELPERE FOR KLASSER ───────────────────────────────────
-_styles = getSampleStyleSheet()
+# ════════════════════════════════════════════════════════════════════
+    # CUSTOM FLOWABLES (Med riktig innrykk inne i funksjonen)
+    # ════════════════════════════════════════════════════════════════════
 
-# Globale farge-fallbacks hvis de ikke er definert øverst enda
-BG      = colors.HexColor("#0B1220")
-CARD    = colors.HexColor("#111C33")
-CARD2   = colors.HexColor("#0F172A")
-ACCENT  = colors.HexColor("#0EA5A3")
-TEXT    = colors.HexColor("#E5E7EB")
-MUTED   = colors.HexColor("#94A3B8")
-STROKE  = colors.HexColor("#334155")
-GOOD    = colors.HexColor("#22C55E")
-WARN    = colors.HexColor("#F59E0B")
-BAD     = colors.HexColor("#EF4444")
-BLUE    = colors.HexColor("#3B82F6")
-TA_LEFT = 0
-TA_CENTER = 1
-TA_RIGHT = 2
+    class VGap(Flowable):
+        def __init__(self, h=8):
+            super().__init__()
+            self._h = h
+        def wrap(self, aw, ah): return aw, self._h
+        def draw(self): pass
 
-def S(name, size=10, lead=None, color=None, bold=False,
-      align=TA_LEFT, after=4, before=0, italic=False):
-    fn = ("Helvetica-BoldOblique" if (bold and italic) else
-          "Helvetica-Bold" if bold else
-          "Helvetica-Oblique" if italic else "Helvetica")
-    return ParagraphStyle(
-        name, parent=_styles["Normal"],
-        fontName=fn, fontSize=size,
-        leading=lead or (size * 1.32),
-        textColor=color or TEXT,
-        alignment=align,
-        spaceAfter=after, spaceBefore=before,
-    )
+    class SecHeader(Flowable):
+        def __init__(self, title, subtitle="", accent=None, width=CONTENT_W):
+            super().__init__()
+            self.title    = title
+            self.subtitle = subtitle
+            self.accent   = accent or ACCENT
+            self.w        = width
+            self.h        = 46 if subtitle else 36
 
-def P(txt, style):
-    return Paragraph(str(txt), style)
+        def wrap(self, aw, ah): return self.w, self.h
 
-def _sf(x):
-    try: return float(x)
-    except: return None
-# ─────────────────────────────────────────────────────────────────────────────
+        def draw(self):
+            c = self.canv
+            c.setFillColor(CARD)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setFillColor(self.accent)
+            c.roundRect(0, 0, 5, self.h, 2, fill=1, stroke=0)
+            c.setFillColor(TEXT)
+            c.setFont("Helvetica-Bold", 13)
+            c.drawString(16, self.h - 22, self.title)
+            if self.subtitle:
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 7.5)
+                c.drawString(16, 8, self.subtitle[:90])
+
+    class MetricCard(Flowable):
+        def __init__(self, metrics, width=CONTENT_W, card_h=66):
+            super().__init__()
+            self.metrics = metrics
+            self.w       = width
+            self.h       = card_h
+            n            = max(1, len(metrics))
+            self.card_w  = (width - (n - 1) * 6) / n
+
+        def wrap(self, aw, ah): return self.w, self.h
+
+        def draw(self):
+            c = self.canv; cw = self.card_w; ch = self.h
+            for i, (lbl, val, sub, col_s) in enumerate(self.metrics):
+                col = HexColor(col_s) if isinstance(col_s, str) else col_s
+                x = i * (cw + 6)
+                c.setFillColor(CARD)
+                c.roundRect(x, 0, cw, ch, 8, fill=1, stroke=0)
+                c.setFillColor(col)
+                c.roundRect(x, ch - 4, cw, 4, 2, fill=1, stroke=0)
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 6.5)
+                c.drawString(x + 10, ch - 16, str(lbl).upper()[:22])
+                c.setFillColor(col)
+                c.setFont("Helvetica-Bold", 16)
+                c.drawString(x + 10, ch - 34, str(val)[:18])
+                if sub:
+                    c.setFillColor(MUTED)
+                    c.setFont("Helvetica", 7.5)
+                    c.drawString(x + 10, ch - 47, str(sub)[:26])
+
+    class HealthScoreRing(Flowable):
+        def __init__(self, score, label, color, width=CONTENT_W):
+            super().__init__()
+            self.score = score; self.label = label
+            self.color = color; self.w = width; self.h = 130
+
+        def wrap(self, aw, ah): return self.w, self.h
+
+        def draw(self):
+            c = self.canv; cx = self.w / 2; cy = self.h / 2 + 14; R = 46
+            # bg ring
+            c.setStrokeColor(STROKE); c.setLineWidth(13)
+            c.circle(cx, cy, R, fill=0, stroke=1)
+            # score arc
+            frac  = self.score / 100.0
+            steps = max(2, int(frac * 72))
+            for i in range(steps):
+                a1 = math.pi / 2 - (i / 72) * 2 * math.pi
+                a2 = math.pi / 2 - ((i + 1) / 72) * 2 * math.pi
+                x1 = cx + R * math.cos(a1); y1 = cy + R * math.sin(a1)
+                x2 = cx + R * math.cos(a2); y2 = cy + R * math.sin(a2)
+                c.setStrokeColor(self.color); c.setLineWidth(13)
+                c.line(x1, y1, x2, y2)
+            # inner text
+            c.setFillColor(self.color); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(cx, cy + 6, str(self.score))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+            c.drawCentredString(cx, cy - 8, "/ 100")
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 10)
+            c.drawCentredString(cx, cy - 22, self.label)
+            # dimension scores row
+            dims = list(radar.items())
+            dw   = self.w / len(dims)
+            for j, (dim, sc) in enumerate(dims):
+                dx = j * dw + dw / 2; dy = 10
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                c.setFillColor(CARD2)
+                c.roundRect(j * dw + 2, 2, dw - 4, 24, 4, fill=1, stroke=0)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold", 9)
+                c.drawCentredString(dx, dy + 8, str(sc))
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6)
+                c.drawCentredString(dx, dy, dim)
+
+    class BMIScale(Flowable):
+        def __init__(self, bmi_val, width=CONTENT_W):
+            super().__init__()
+            self.bmi = bmi_val; self.w = width; self.h = 100
+
+        def wrap(self, aw, ah): return self.w, self.h
+
+        def draw(self):
+            c = self.canv; bmi = self.bmi; w = self.w
+            c.setFillColor(CARD)
+            c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            col = bmi_color(bmi)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30)
+            c.drawString(14, 62, f"{bmi:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+            c.drawString(14, 52, "BMI")
+            cat = ("Underweight" if bmi < 18.5 else "Normal weight"
+                   if bmi < 25 else "Overweight" if bmi < 30 else "Obese")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 9)
+            c.drawString(14, 39, cat)
+            SMAX = 45.0; bx, by, bh = 14, 18, 13; bw = w - 28
+            segs = [(0,18.5,"#3B82F6","Underweight"),(18.5,25,"#22C55E","Normal"),
+                    (25,30,"#F59E0B","Overweight"),(30,45,"#EF4444","Obese")]
+            for i, (s, e, cl, lbl) in enumerate(segs):
+                sx = bx + (s/SMAX)*bw; sw = ((e-s)/SMAX)*bw
+                c.setFillColor(HexColor(cl))
+                if i == 0:
+                    c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0)
+                    c.rect(sx+3,by,sw-3,bh,fill=1,stroke=0)
+                elif i == len(segs)-1:
+                    c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0)
+                    c.rect(sx,by,sw-3,bh,fill=1,stroke=0)
+                else:
+                    c.rect(sx,by,sw,bh,fill=1,stroke=0)
+                c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
+                c.drawCentredString(sx+sw/2, by+4, lbl)
+            mx = bx + min(1.0, bmi/SMAX)*bw
+            c.setStrokeColor(white); c.setLineWidth(1.5)
+            c.line(mx, by-2, mx, by+bh+2)
+            c.setFillColor(white)
+            path = c.beginPath()
+            path.moveTo(mx, by+bh+9); path.lineTo(mx-5, by+bh+2)
+            path.lineTo(mx+5, by+bh+2); path.close()
+            c.drawPath(path, fill=1, stroke=0)
+            for lbl, pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
+                lx = bx + (pos/SMAX)*bw
+                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5)
+                c.drawCentredString(lx, by-8, lbl)
+
+    class VO2Visual(Flowable):
+        def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
+            super().__init__()
+            self.vo2 = vo2_val; self.pct = float(percentile or 0)
+            self.rat = rating; self.w = width; self.h = 90
+
+        def wrap(self, aw, ah): return self.w, self.h
+
+        def draw(self):
+            c = self.canv; w = self.w; pct = self.pct
+            col = vo2_color(pct)
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30)
+            c.drawString(14, 56, f"{self.vo2:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+            c.drawString(14, 46, "ml / kg / min")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 10)
+            c.drawString(14, 32, str(self.rat or "—"))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7)
+            c.drawString(14, 20, "Rating")
+            bx = w*0.44; bw2 = w*0.51; bh = 13; by = 48
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(bx, by+bh+6, "POPULATION PERCENTILE")
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
+            c.setFillColor(col)
+            c.roundRect(bx, by, max(8, (pct/100)*bw2), bh, 4, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 12)
+            c.drawRightString(bx+bw2, by-14, f"{pct:.0f}th percentile")
+            zones = [(0,20,"#EF4444"),(20,40,"#F59E0B"),(40,60,"#3B82F6"),
+                     (60,80,"#22C55E"),(80,100,"#10B981")]
+            sz_y = 18; sz_h = 7
+            for zs, ze, zc in zones:
+                zx = bx + (zs/100)*bw2; zw = ((ze-zs)/100)*bw2
+                c.setFillColor(HexColor(zc)); c.rect(zx, sz_y, zw, sz_h, fill=1, stroke=0)
+            c.setStrokeColor(white); c.setLineWidth(1.5)
+            nx = bx + (pct/100)*bw2; c.line(nx, sz_y-2, nx, sz_y+sz_h+2)
+            zlabels = ["Low","Below avg","Average","Good","Excellent"]
+            for j, (zl, (zs, ze, _)) in enumerate(zip(zlabels, zones)):
+                zx2 = bx + ((zs+ze)/200)*bw2
+                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5)
+                c.drawCentredString(zx2, sz_y-8, zl)
+
+    class RadarChart(Flowable):
+        def __init__(self, scores_dict, width=CONTENT_W):
+            super().__init__()
+            self.scores = scores_dict; self.w = width; self.h = 165
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; cx = self.w/2; cy = self.h/2 + 10; R = 58
+            labels = list(self.scores.keys())
+            vals = [self.scores[k]/100.0 for k in labels]
+            n = len(labels)
+            def pt(i, r):
+                ang = math.pi/2 + 2*math.pi*i/n
+                return cx + r*math.cos(ang), cy + r*math.sin(ang)
+            for r_f in [0.25, 0.5, 0.75, 1.0]:
+                c.setStrokeColor(STROKE); c.setLineWidth(0.5)
+                path = c.beginPath()
+                for i in range(n):
+                    x, y = pt(i, R*r_f)
+                    if i == 0: path.moveTo(x, y)
+                    else: path.lineTo(x, y)
+                path.close(); c.drawPath(path, fill=0, stroke=1)
+            for i in range(n):
+                x, y = pt(i, R)
+                c.line(cx, cy, x, y)
+                lx, ly = pt(i, R + 11)
+                c.setFillColor(MUTED); c.setFont("Helvetica-Bold", 6.5)
+                c.drawCentredString(lx, ly-2, labels[i])
+            c.setFillColor(HexColor("rgba(14,165,163,0.25)"))
+            c.setStrokeColor(ACCENT); c.setLineWidth(2)
+            path = c.beginPath()
+            for i in range(n):
+                x, y = pt(i, R*vals[i])
+                if i == 0: path.moveTo(x, y)
+                else: path.lineTo(x, y)
+            path.close(); c.drawPath(path, fill=1, stroke=1)
+            for i in range(n):
+                x, y = pt(i, R*vals[i])
+                c.setFillColor(white); c.circle(x, y, 2.5, fill=1, stroke=0)
     # ════════════════════════════════════════════════════════════════════
     # CUSTOM FLOWABLES
     # ════════════════════════════════════════════════════════════════════
