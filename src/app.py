@@ -1435,9 +1435,9 @@ def _sf(x):
 
     story.append(PageBreak())
 
-    # ── PAGE 6: Weight Roadmap + 7-Day Plan ───────────────────────────────
+# ── PAGE 6: Weight Roadmap + 7-Day Plan ───────────────────────────────
     story.append(SecHeader("Weight Goal Roadmap",
-                            subtitle="Projected milestones toward your target"))
+                           subtitle="Projected milestones toward your target"))
     story.append(VGap(6))
 
     if milestones:
@@ -1472,8 +1472,8 @@ def _sf(x):
                        S("nm", size=9, color=MUTED, after=10)))
 
     story.append(SecHeader("7-Day Kickstart Training Plan",
-                            subtitle="A practical starting week — adapt to your schedule and recovery",
-                            accent=BLUE))
+                           subtitle="A practical starting week — adapt to your schedule and recovery",
+                           accent=BLUE))
     story.append(VGap(6))
 
     day_cols_list = ["#3B82F6","#22C55E","#94A3B8","#F59E0B","#22C55E","#0EA5A3","#6366F1"]
@@ -1512,15 +1512,14 @@ def _sf(x):
     ))
     story.append(PageBreak())
 
-# ── PAGE 7: Insights + Conditions + Safety ────────────────────────────
+    # ── PAGE 7: Insights + Conditions + Safety ────────────────────────────
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic health advice"))
     story.append(VGap(6))
 
     for title, color, text in insights:
         story.append(InsightBlock(title=title, text=text, color=color))
+        story.append(VGap(6))
         
-        story.append(VGap(4))
-        story.append(VGap(6)) # ✅ FIKSET: Flyttet helt ut til venstre, på linje med de andre
     if triage_r:
         story.append(SecHeader("Condition-Aware Recommendations", accent=WARN))
         story.append(VGap(6))
@@ -1529,8 +1528,8 @@ def _sf(x):
                            S(f"tr{id(r)}", size=8.5, lead=13, color=TEXT, after=3)))
         story.append(VGap(8))
 
-        story.append(SecHeader("Safety & Important Notices", accent=BAD))
-        story.append(VGap(6))
+    story.append(SecHeader("Safety & Important Notices", accent=BAD))
+    story.append(VGap(6))
     for title, col, text in [
         ("Seek urgent care immediately if you experience", WARN,
          "Chest pain or pressure, severe shortness of breath at rest, fainting or near-fainting, "
@@ -1555,73 +1554,7 @@ def _sf(x):
         S("df", size=7.5, lead=11, color=DIM, italic=True, align=TA_CENTER, after=4)
     ))
     
-    def create_pdf_bytes(report: dict) -> bytes:
-        from io import BytesIO
-        from reportlab.lib.pagesizes import A4
-        from reportlab.lib.units import mm
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.colors import HexColor
-    
-        # Fargepalett
-        C_BG     = HexColor("#0F172A")
-        C_CARD   = HexColor("#1E293B")
-        C_CARD2  = HexColor("#162032")
-        C_ACCENT = HexColor("#0EA5A3")
-        C_BLUE   = HexColor("#3B82F6")
-        C_GOOD   = HexColor("#22C55E")
-        C_WARN   = HexColor("#F59E0B")
-        C_BAD    = HexColor("#EF4444")
-        C_TEXT   = HexColor("#E5E7EB")
-        C_MUTED  = HexColor("#94A3B8")
-        C_STROKE = HexColor("#334155")
-    
-        PAGE_W, PAGE_H = A4
-        CONTENT_W = PAGE_W - 36 * mm
-    
-        buf = BytesIO()
-        doc = SimpleDocTemplate(
-            buf,
-            pagesize=A4,
-            leftMargin=18 * mm,
-            rightMargin=18 * mm,
-            topMargin=18 * mm,
-            bottomMargin=18 * mm,
-        )
-    
-        styles_rl = getSampleStyleSheet()
-
-    def ps(name, fontName="Helvetica", fontSize=10, leading=13, textColor=None,
-           alignment=0, spaceAfter=4, spaceBefore=0, bold=False):
-        fn = "Helvetica-Bold" if bold else fontName
-        _tc = textColor if textColor is not None else C_TEXT
-        return ParagraphStyle(
-            name, parent=styles_rl["Normal"],
-            fontName=fn, fontSize=fontSize, leading=leading,
-            textColor=_tc, alignment=alignment,
-            spaceAfter=spaceAfter, spaceBefore=spaceBefore,
-        )
-
-    P = Paragraph
-
-    # --- BUILD STORY HERE ---
-    # Her skal du lime inn din eksisterende kode som fyller `story`-listen,
-    # definisjoner av Flowables (InsightBlock osv.) kan forbli i modul-scope,
-    # eller flyttes inn her hvis de trenger variabler definert ovenfor.
-    #
-    # Eksempel placeholder:
-    story = []
-    story.append(P(report.get("title", "Health Report"), ps("title", fontSize=14, bold=True)))
-    story.append(Spacer(1, 6))
-    # --- END placeholder ---
-    #
-    # Hvis du allerede hadde definert `draw_page` (side-header/footer), må den
-    # være tilgjengelig her (definert tidligere i fila), eller du kan definere
-    # en lokal draw_page-funksjon her før doc.build.
-
-# ... (all koden for side 7, treningsplaner osv.)
-
-    # Sørg for at disse tre linjene står HELT til slutt i funksjonen med nøyaktig 4 mellomrom foran:
+    # ── HER BYGGES RAPPORTEN ENDELIG UTEN AVBRYTELSER ──
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buf.seek(0)
     return buf.getvalue()
