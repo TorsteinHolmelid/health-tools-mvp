@@ -1516,7 +1516,7 @@ def _sf(x):
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic health advice"))
     story.append(VGap(6))
 
-for title, color, text in insights:
+    for title, color, text in insights:
     story.append(InsightBlock(title=title, text=text, color=color))
     
     story.append(VGap(4))
