@@ -310,112 +310,68 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
     return t
 
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
-    """
-    ULTIMATE PREMIUM PDF — pure ReportLab, no matplotlib dependency.
-    Pages:
-      1. Cover + Executive Dashboard
-      2. Body Composition Deep Dive
-      3. Cardio Fitness (VO2max)
-      4. Biological Age + Radar
-      5. Nutrition & Calorie Plan
-      6. Weight Roadmap + 7-Day Plan
-      7. Key Insights + Conditions + Safety
-    """
-    # Importar
     from io import BytesIO
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
     from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Flowable
     from reportlab.lib.colors import black, HexColor
+
     class VGap(Flowable):
-            def __init__(self, h=8):
-                super().__init__()
-                self._h = h
-            def wrap(self, aw, ah): 
-                return aw, self._h
-            def draw(self): 
-                pass
-    # Setup av stilar
+        def __init__(self, h=8):
+            super().__init__(); self._h = h
+        def wrap(self, aw, ah): return aw, self._h
+        def draw(self): pass
+
     _styles = getSampleStyleSheet()
     TEXT = black
-    MUTED = HexColor("#666666")
-
-    # Hjelpefunksjonar for data
-    def _sf(x):
-        try: return float(x)
-        except: return None
-
-    def _si(x):
-        try: return int(x)
-        except: return None
-
-    # Funksjon for tekststilar (Erstattar den gamle S-funksjonen)
+    
     def CreateStyle(name, size=10, color=TEXT, after=6, leading=None):
-        return ParagraphStyle(
-            name,
-            parent=_styles["Normal"], 
-            fontSize=size,
-            textColor=color,
-            spaceAfter=after,
-            leading=leading or (size + 4)
-        )
+        return ParagraphStyle(name, parent=_styles["Normal"], fontSize=size, textColor=color, 
+                              spaceAfter=after, leading=leading or (size + 4))
 
-    # Opprett PDF-dokument
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
     story = []
 
-    # --- UTREKNINGER & DATA-PARSING ---
-    inputs = report.get("inputs", {})
-    # DEBUG: Sjå kva data du får inn i terminalen
-    print(f"Inputs mottatt: {inputs}")
-    
-    # --- HER BYRJAR SIDE-STRUKTUREN DIN ---
-    # Side 1: Cover + Executive Dashboard
+    # Hjelpefunksjon for å hente ut verdi fra ordbøker trygt
+    def get_val(key, subkey="value"):
+        data = report.get(key)
+        if isinstance(data, dict): return data.get(subkey, "N/A")
+        return data if data is not None else "N/A"
+
+    # --- SIDE 1 ---
     story.append(Paragraph("<b>Health Report</b>", CreateStyle("Title", size=24)))
     story.append(VGap(12))
     story.append(Paragraph("<b>1. Executive Dashboard</b>", CreateStyle("H1", size=16)))
-    # Side 1: Cover + Executive Dashboard
-    story.append(Paragraph("<b>Health Report</b>", CreateStyle("Title", size=24)))
-    story.append(VGap(12))
-    story.append(Paragraph("<b>1. Executive Dashboard</b>", CreateStyle("H1", size=16)))
-    
-    # --- DEBUG: SJEKK DATA ---
-    story.append(Paragraph(f"Debug: Inputs inneholder {len(inputs)} nøkler.", CreateStyle("Normal", color="red")))
-    story.append(Paragraph(f"Debug: BMI-verdi fra report: {report.get('bmi')}", CreateStyle("Normal", color="red")))
-    # [Her kjem din logikk for dashboard]
+    story.append(Paragraph(f"Alder: {report.get('inputs', {}).get('age', 'N/A')}", CreateStyle("Normal")))
     story.append(PageBreak())
 
-    # Side 2: Body Composition
+    # --- SIDE 2: Body Composition ---
     story.append(Paragraph("<b>2. Body Composition Deep Dive</b>", CreateStyle("H1", size=16)))
-    # [Her kjem din logikk for body comp]
+    story.append(Paragraph(f"BMI: {get_val('bmi', 'value')} ({get_val('bmi', 'category')})", CreateStyle("Normal")))
     story.append(PageBreak())
 
-    # Side 3: Cardio Fitness
+    # --- SIDE 3: Cardio ---
     story.append(Paragraph("<b>3. Cardio Fitness (VO2max)</b>", CreateStyle("H1", size=16)))
-    # [Her kjem din logikk for VO2]
+    story.append(Paragraph(f"VO2max: {get_val('vo2', 'value')}", CreateStyle("Normal")))
     story.append(PageBreak())
 
-    # Side 4: Biological Age
+    # --- SIDE 4: Bio Age ---
     story.append(Paragraph("<b>4. Biological Age + Radar</b>", CreateStyle("H1", size=16)))
-    # [Her kjem din logikk for Bio Age]
+    story.append(Paragraph(f"Biologisk alder: {get_val('bio_age', 'value')}", CreateStyle("Normal")))
     story.append(PageBreak())
 
-    # Side 5: Nutrition
+    # --- SIDE 5: Nutrition ---
     story.append(Paragraph("<b>5. Nutrition & Calorie Plan</b>", CreateStyle("H1", size=16)))
-    # [Her kjem din logikk for Nutrition]
     story.append(PageBreak())
 
-    # Side 6: Weight Roadmap
+    # --- SIDE 6: Weight Roadmap ---
     story.append(Paragraph("<b>6. Weight Roadmap + 7-Day Plan</b>", CreateStyle("H1", size=16)))
-    # [Her kjem din logikk for Weight]
     story.append(PageBreak())
 
-    # Side 7: Key Insights
+    # --- SIDE 7: Insights ---
     story.append(Paragraph("<b>7. Key Insights + Conditions + Safety</b>", CreateStyle("H1", size=16)))
-    # [Her kjem din logikk for Insights]
 
-    # Ferdigstilling
     doc.build(story)
     pdf_out = buffer.getvalue()
     buffer.close()
