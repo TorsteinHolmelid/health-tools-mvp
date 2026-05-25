@@ -1513,8 +1513,8 @@ def _sf(x):
     story.append(PageBreak())
 
 # ── PAGE 7: Insights + Conditions + Safety ────────────────────────────
-story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic health advice"))
-story.append(VGap(6))
+    story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic health advice"))
+    story.append(VGap(6))
 
 for title, color, text in insights:
     story.append(InsightBlock(title=title, text=text, color=color))
