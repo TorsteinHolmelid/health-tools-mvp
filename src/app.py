@@ -329,7 +329,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     def _si(x):
         try: return int(x)
         except: return None
-
+# LEGG TIL DENNE LINJEN (Sørg for at S peker på VGap-klassen din):
+    S = VGap
     # --- UTREKNINGER & DATA-PARSING ---
     inputs = report.get("inputs", {})
     # Resten av koden din fortsetter herfra...
