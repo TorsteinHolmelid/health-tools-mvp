@@ -321,7 +321,19 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
       6. Weight Roadmap + 7-Day Plan
       7. Key Insights + Conditions + Safety
     """
-# Hjelpefunksjonar for trygg tallkonvertering (lagt til for å fikse '_sf' feil)
+    # Importar
+    from io import BytesIO
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Spacer as VGap
+    from reportlab.lib.colors import black, HexColor
+
+    # Setup av stilar
+    _styles = getSampleStyleSheet()
+    TEXT = black
+    MUTED = HexColor("#666666")
+
+    # Hjelpefunksjonar for data
     def _sf(x):
         try: return float(x)
         except: return None
@@ -330,34 +342,67 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         try: return int(x)
         except: return None
 
-    def S(name, size=10, color=TEXT, after=6, leading=None):
-            # Bruker standard '_styles' eller 'styles' som base
-            return ParagraphStyle(
-                name,
-                parent=_styles["Normal"], 
-                fontSize=size,
-                textColor=color,
-                spaceAfter=after,
-                leading=leading or (size + 4)
-            )
-# LEGG TIL DENNE LINJEN (Sørg for at S peker på VGap-klassen din):
-    S = VGap
+    # Funksjon for tekststilar (Erstattar den gamle S-funksjonen)
+    def CreateStyle(name, size=10, color=TEXT, after=6, leading=None):
+        return ParagraphStyle(
+            name,
+            parent=_styles["Normal"], 
+            fontSize=size,
+            textColor=color,
+            spaceAfter=after,
+            leading=leading or (size + 4)
+        )
+
+    # Opprett PDF-dokument
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
+    story = []
+
     # --- UTREKNINGER & DATA-PARSING ---
     inputs = report.get("inputs", {})
-    # Resten av koden din fortsetter herfra...
-    from io import BytesIO
-    from datetime import datetime
-    import math
+    
+    # --- HER BYRJAR SIDE-STRUKTUREN DIN ---
+    # Side 1: Cover + Executive Dashboard
+    story.append(Paragraph("<b>Health Report</b>", CreateStyle("Title", size=24)))
+    story.append(VGap(12))
+    story.append(Paragraph("<b>1. Executive Dashboard</b>", CreateStyle("H1", size=16)))
+    # [Her kjem din logikk for dashboard]
+    story.append(PageBreak())
 
-    from reportlab.lib.colors import HexColor, white, black
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.lib.units import mm
-    from reportlab.platypus import (
-        Flowable, Paragraph, SimpleDocTemplate, Spacer,
-        Table, TableStyle, PageBreak, KeepTogether,
-    )
+    # Side 2: Body Composition
+    story.append(Paragraph("<b>2. Body Composition Deep Dive</b>", CreateStyle("H1", size=16)))
+    # [Her kjem din logikk for body comp]
+    story.append(PageBreak())
+
+    # Side 3: Cardio Fitness
+    story.append(Paragraph("<b>3. Cardio Fitness (VO2max)</b>", CreateStyle("H1", size=16)))
+    # [Her kjem din logikk for VO2]
+    story.append(PageBreak())
+
+    # Side 4: Biological Age
+    story.append(Paragraph("<b>4. Biological Age + Radar</b>", CreateStyle("H1", size=16)))
+    # [Her kjem din logikk for Bio Age]
+    story.append(PageBreak())
+
+    # Side 5: Nutrition
+    story.append(Paragraph("<b>5. Nutrition & Calorie Plan</b>", CreateStyle("H1", size=16)))
+    # [Her kjem din logikk for Nutrition]
+    story.append(PageBreak())
+
+    # Side 6: Weight Roadmap
+    story.append(Paragraph("<b>6. Weight Roadmap + 7-Day Plan</b>", CreateStyle("H1", size=16)))
+    # [Her kjem din logikk for Weight]
+    story.append(PageBreak())
+
+    # Side 7: Key Insights
+    story.append(Paragraph("<b>7. Key Insights + Conditions + Safety</b>", CreateStyle("H1", size=16)))
+    # [Her kjem din logikk for Insights]
+
+    # Ferdigstilling
+    doc.build(story)
+    pdf_out = buffer.getvalue()
+    buffer.close()
+    return pdf_out
 
     # ── Theme ────────────────────────────────────────────────────────────
     BG      = HexColor("#0B1220")
