@@ -367,6 +367,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
 
     # --- UTREKNINGER & DATA-PARSING ---
     inputs = report.get("inputs", {})
+    # DEBUG: Sjå kva data du får inn i terminalen
+print(f"Inputs mottatt: {inputs}")
     
     # --- HER BYRJAR SIDE-STRUKTUREN DIN ---
     # Side 1: Cover + Executive Dashboard
