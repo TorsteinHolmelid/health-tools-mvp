@@ -1619,7 +1619,9 @@ def create_pdf_bytes(report: dict) -> bytes:
     # være tilgjengelig her (definert tidligere i fila), eller du kan definere
     # en lokal draw_page-funksjon her før doc.build.
 
-# Bygg dokumentet og returner de binære dataene
+# ... (all koden for side 7, treningsplaner osv.)
+
+    # Sørg for at disse tre linjene står HELT til slutt i funksjonen med nøyaktig 4 mellomrom foran:
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buf.seek(0)
     return buf.getvalue()
