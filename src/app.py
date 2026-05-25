@@ -321,6 +321,18 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
       6. Weight Roadmap + 7-Day Plan
       7. Key Insights + Conditions + Safety
     """
+# Hjelpefunksjonar for trygg tallkonvertering (lagt til for å fikse '_sf' feil)
+    def _sf(x):
+        try: return float(x)
+        except: return None
+
+    def _si(x):
+        try: return int(x)
+        except: return None
+
+    # --- UTREKNINGER & DATA-PARSING ---
+    inputs = report.get("inputs", {})
+    # Resten av koden din fortsetter herfra...
     from io import BytesIO
     from datetime import datetime
     import math
