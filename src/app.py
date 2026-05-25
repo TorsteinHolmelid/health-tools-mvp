@@ -375,6 +375,14 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(Paragraph("<b>Health Report</b>", CreateStyle("Title", size=24)))
     story.append(VGap(12))
     story.append(Paragraph("<b>1. Executive Dashboard</b>", CreateStyle("H1", size=16)))
+    # Side 1: Cover + Executive Dashboard
+    story.append(Paragraph("<b>Health Report</b>", CreateStyle("Title", size=24)))
+    story.append(VGap(12))
+    story.append(Paragraph("<b>1. Executive Dashboard</b>", CreateStyle("H1", size=16)))
+    
+    # --- DEBUG: SJEKK DATA ---
+    story.append(Paragraph(f"Debug: Inputs inneholder {len(inputs)} nøkler.", CreateStyle("Normal", color="red")))
+    story.append(Paragraph(f"Debug: BMI-verdi fra report: {report.get('bmi')}", CreateStyle("Normal", color="red")))
     # [Her kjem din logikk for dashboard]
     story.append(PageBreak())
 
