@@ -347,9 +347,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     INDIGO  = HexColor("#6366F1")
     DIM     = HexColor("#64748B")
 
-    PAGE_W, PAGE_H = A4
-    MARGIN_H  = 18 * mm
-    CONTENT_W = PAGE_W - 2 * MARGIN_H
 
     _styles = getSampleStyleSheet()
 
