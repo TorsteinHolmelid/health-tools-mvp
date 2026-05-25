@@ -352,25 +352,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     DIM     = HexColor("#64748B")
 
 
-    _styles = getSampleStyleSheet()
-
-    def S(name, size=10, lead=None, color=None, bold=False,
-          align=TA_LEFT, after=4, before=0, italic=False):
-        fn = ("Helvetica-BoldOblique" if (bold and italic) else
-              "Helvetica-Bold" if bold else
-              "Helvetica-Oblique" if italic else "Helvetica")
-        return ParagraphStyle(
-            name, parent=_styles["Normal"],
-            fontName=fn, fontSize=size,
-            leading=lead or (size * 1.32),
-            textColor=color or TEXT,
-            alignment=align,
-            spaceAfter=after, spaceBefore=before,
-        )
-
-    def _sf(x):
-        try: return float(x)
-        except: return None
 
     # ── Data extraction ───────────────────────────────────────────────────
     inp       = report.get("inputs", {}) or {}
@@ -582,7 +563,46 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     ]
     if has_plan and kg_pw is not None:
         plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Align food plan with weekly goal")
+# ── GLOBALE REPORLAB-HJELPERE FOR KLASSER ───────────────────────────────────
+_styles = getSampleStyleSheet()
 
+# Globale farge-fallbacks hvis de ikke er definert øverst enda
+BG      = colors.HexColor("#0B1220")
+CARD    = colors.HexColor("#111C33")
+CARD2   = colors.HexColor("#0F172A")
+ACCENT  = colors.HexColor("#0EA5A3")
+TEXT    = colors.HexColor("#E5E7EB")
+MUTED   = colors.HexColor("#94A3B8")
+STROKE  = colors.HexColor("#334155")
+GOOD    = colors.HexColor("#22C55E")
+WARN    = colors.HexColor("#F59E0B")
+BAD     = colors.HexColor("#EF4444")
+BLUE    = colors.HexColor("#3B82F6")
+TA_LEFT = 0
+TA_CENTER = 1
+TA_RIGHT = 2
+
+def S(name, size=10, lead=None, color=None, bold=False,
+      align=TA_LEFT, after=4, before=0, italic=False):
+    fn = ("Helvetica-BoldOblique" if (bold and italic) else
+          "Helvetica-Bold" if bold else
+          "Helvetica-Oblique" if italic else "Helvetica")
+    return ParagraphStyle(
+        name, parent=_styles["Normal"],
+        fontName=fn, fontSize=size,
+        leading=lead or (size * 1.32),
+        textColor=color or TEXT,
+        alignment=align,
+        spaceAfter=after, spaceBefore=before,
+    )
+
+def P(txt, style):
+    return Paragraph(str(txt), style)
+
+def _sf(x):
+    try: return float(x)
+    except: return None
+# ─────────────────────────────────────────────────────────────────────────────
     # ════════════════════════════════════════════════════════════════════
     # CUSTOM FLOWABLES
     # ════════════════════════════════════════════════════════════════════
