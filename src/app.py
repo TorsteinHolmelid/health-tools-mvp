@@ -1517,10 +1517,10 @@ def _sf(x):
     story.append(VGap(6))
 
     for title, color, text in insights:
-    story.append(InsightBlock(title=title, text=text, color=color))
-    
-    story.append(VGap(4))
-    story.append(VGap(6)) # ✅ FIKSET: Flyttet helt ut til venstre, på linje med de andre
+        story.append(InsightBlock(title=title, text=text, color=color))
+        
+        story.append(VGap(4))
+        story.append(VGap(6)) # ✅ FIKSET: Flyttet helt ut til venstre, på linje med de andre
     if triage_r:
         story.append(SecHeader("Condition-Aware Recommendations", accent=WARN))
         story.append(VGap(6))
@@ -1529,8 +1529,8 @@ def _sf(x):
                            S(f"tr{id(r)}", size=8.5, lead=13, color=TEXT, after=3)))
         story.append(VGap(8))
 
-    story.append(SecHeader("Safety & Important Notices", accent=BAD))
-    story.append(VGap(6))
+        story.append(SecHeader("Safety & Important Notices", accent=BAD))
+        story.append(VGap(6))
     for title, col, text in [
         ("Seek urgent care immediately if you experience", WARN,
          "Chest pain or pressure, severe shortness of breath at rest, fainting or near-fainting, "
