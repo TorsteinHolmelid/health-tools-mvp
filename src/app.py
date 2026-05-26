@@ -784,7 +784,7 @@ class ExpertInsightBox(Flowable):
             self._header.drawOn(c, 14, self.h - 18)
             self._body.drawOn(c, 14, 8)
 
-    class ActionableMilestoneBox(Flowable):
+        class ActionableMilestoneBox(Flowable):
         """Teal-accented Actionable Milestone box — specific 4-week protocol."""
         def __init__(self, steps: list, width=CONTENT_W):
             super().__init__()
