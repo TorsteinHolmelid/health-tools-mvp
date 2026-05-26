@@ -758,7 +758,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
             c.setFillColor(self.color); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
             self._para.drawOn(c, 14, 8)
-class ExpertInsightBox(Flowable):
+    class ExpertInsightBox(Flowable):
         """Gold-accented Expert Insight box — scientific rationale for each section."""
         def __init__(self, section: str, text: str, width=CONTENT_W):
             super().__init__()
