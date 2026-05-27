@@ -16,31 +16,30 @@ import streamlit as st
 
 def render_premium_download_gate(pdf_bytes):
     """
-    Ein visuelt ryddig boks som signaliserer verdi før nedlasting.
+    Renders the premium download section in a clean, professional container.
     """
     with st.container(border=True):
-        st.subheader("✅ Din Premium Helse-rapport er klar")
+        st.subheader("✅ Your Premium Health Report is ready")
         st.markdown("""
-        Vi har analysert dataa dine og generert ein skreddarsydd protokoll. 
-        Denne inneheld:
-        * 🎯 **3 viktigaste helse-prioriteringar**
-        * 📊 **Radar-analyse av dine biomarkørar**
-        * 📝 **Konkret action-plan for neste 30 dagar**
+        We have analyzed your biomarkers and generated a tailored 30-day protocol.
+        This report includes:
+        * 🎯 **Top 3 health priorities**
+        * 📊 **Radar analysis of your biomarkers**
+        * 📝 **Actionable 30-day health plan**
         """)
         
-        # Eg legg til litt 'whitespace' over knappen for balanse
         st.write("") 
         
         st.download_button(
-            label="📥 Last ned din PDF-rapport (4.99 USD)",
+            label="📥 Download your PDF Report (4.99 USD)",
             data=pdf_bytes,
-            file_name="Min_Helse_Audit.pdf",
+            file_name="Health_Audit_Report.pdf",
             mime="application/pdf",
-            type="primary", # Dette gjer knappen 'solid' og viktig
+            type="primary",
             use_container_width=True
         )
         
-        st.caption("Ditt kjøp er sikra med 100% kryptering.")
+        st.caption("Your purchase is secured with 100% encryption.")
 import streamlit.components.v1 as components
 import calculators
 import matplotlib.pyplot as plt
