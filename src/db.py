@@ -1,6 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
-
+from datetime import datetime
 # Vi brukar @st.cache_resource for at appen ikkje skal koble til 
 # databasen på nytt kvar gong brukaren trykker på ein knapp (effektivitet)
 @st.cache_resource
