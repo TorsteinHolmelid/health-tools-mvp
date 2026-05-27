@@ -1,12 +1,13 @@
 import streamlit as st
 from supabase import create_client, Client
 from datetime import datetime
-# Vi brukar @st.cache_resource for at appen ikkje skal koble til 
-# databasen på nytt kvar gong brukaren trykker på ein knapp (effektivitet)
+
 @st.cache_resource
 def get_db_client() -> Client:
-    url = st.secrets["https://nrjanqqbjcxbmblpthtf.supabase.co"]
-    key = st.secrets["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yamFucXFiamN4Ym1ibHB0aHRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODQzMTcsImV4cCI6MjA5NTQ2MDMxN30.AYjOImaxb_QLaJZtsDaYATZOrfcWBug85U1UokJgRSo"]
+    # Her ber du Streamlit om å slå opp variabelen i "skapet" sitt
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    
     return create_client(url, key)
 # Legg til dette i db.py
 
