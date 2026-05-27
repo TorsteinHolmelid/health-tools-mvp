@@ -17,6 +17,8 @@ def P(txt, style):
     return Paragraph(str(txt), style)
 from reportlab.platypus import Spacer as VGap
 import streamlit as st
+if "generated" not in st.session_state:
+    st.session_state.generated = False
 
 def render_premium_download_gate(pdf_bytes):
     """
@@ -2748,8 +2750,12 @@ if run_plan and run_bmi:
             )
             st.markdown(_preview_html, unsafe_allow_html=True)
 
-# ── Calculate ─────────────────────────────────────────────────────────────────
-if st.button("Calculate / Generate report", key="btn_calculate"):
+# 1. Knappen gjør KUN én ting: slår på minnet i appen
+if st.button("📊 Calculate & Generate Report", type="primary", use_container_width=True):
+    st.session_state.generated = True
+
+# 2. Hvis minnet er aktivert (brukeren har trykket), kjører alt dette:
+if st.session_state.generated:
     import traceback, logging
 
     def _f(val, name=""):
