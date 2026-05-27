@@ -2751,6 +2751,7 @@ if run_plan and run_bmi:
             st.markdown(_preview_html, unsafe_allow_html=True)
 
 # 1. Knappen gjør KUN én ting: slår på minnet i appen
+# 1. Knappen gjør KUN én ting: slår på minnet i appen
 if st.button("📊 Calculate & Generate Report", type="primary", use_container_width=True):
     st.session_state.generated = True
 
@@ -2805,22 +2806,7 @@ if st.session_state.generated:
         target_bmi_f = _f(target_bmi, "target_bmi")
 
         results = {}
-        try:
-            db = get_db_client()
-            save_health_metrics(db, st.session_state["user_id"], results)
-                    # Vi kan legge til ein liten logg for deg sjølv
-            print("Data saved successfully.")
-        except Exception as e:
-            st.error(f"Could not save to history: {e}")
-                # ------------------------------------------
         
-                # Deretter oppdaterer du session state slik at resten av appen får resultata
-        st.session_state["results"] = results
-        
-    except Exception as e:
-                # Din eksisterende feilhåndtering
-        st.error(f"Calculation error: {e}")
-        traceback.print_exc()
         # BMI
         if run_bmi:
             bmi_value, bmi_category = calculators.bmi_calc(weight_f, height_f)
@@ -2828,7 +2814,7 @@ if st.session_state.generated:
             if waist_f is not None and hip_f is not None:
                 whr_value = calculators.waist_hip_ratio(waist_f, hip_f)
                 results["whr"] = {"value": float(whr_value),
-                                   "category": calculators.whr_category(sex, whr_value)}
+                    "category": calculators.whr_category(sex, whr_value)}
 
         # Body fat
         if bodyfat_requested and neck_f is not None:
@@ -2837,12 +2823,12 @@ if st.session_state.generated:
                     if waist_f is None:
                         raise ValueError("Waist required for male body-fat estimate.")
                     bf = calculators.body_fat_navy(sex=sex, height_cm=height_f,
-                                                    neck_cm=neck_f, waist_cm=waist_f)
+                        neck_cm=neck_f, waist_cm=waist_f)
                 else:
                     if waist_f is None or hip_f is None:
                         raise ValueError("Waist and hip required for female body-fat estimate.")
                     bf = calculators.body_fat_navy(sex=sex, height_cm=height_f,
-                                                    neck_cm=neck_f, waist_cm=waist_f, hip_cm=hip_f)
+                        neck_cm=neck_f, waist_cm=waist_f, hip_cm=hip_f)
                 results["bodyfat"] = {"value": round(float(bf), 1)}
             except Exception as e:
                 st.warning(f"Body-fat estimate skipped: {e}")
@@ -2953,9 +2939,18 @@ if st.session_state.generated:
                 else:
                     results["plan"] = plan
 
-    
+        # Nå lagrer vi til databasen ETTER at alle beregninger er gjort
+        try:
+            db = get_db_client()
+            save_health_metrics(db, st.session_state["user_id"], results)
+            print("Data saved successfully.")
+        except Exception as e:
+            st.error(f"Could not save to history: {e}")
+            
+        # Oppdater session state slik at resten av appen får resultata
         st.session_state["results"] = results
         st.success("Calculation finished — results ready.")
+        
     except Exception as e:
         st.error(f"Error during calculation: {e}")
         st.text(traceback.format_exc())
