@@ -3705,19 +3705,20 @@ else:
         }
         try:
             pdf_bytes = create_pdf_bytes_ultimate(report)
-            # ... etter at du har generert pdf_bytes ...
+
+           # ... etter at du har generert pdf_bytes ...
             with st.container(border=True):
-                st.subheader("✅ Din Premium Helse-rapport er klar")
-                st.markdown("Vi har analysert biomarkørane dine og generert ein skreddarsydd 30-dagars protokoll.")
+                st.subheader("✅ Your Premium Health Report is ready")
+                st.markdown("We have analyzed your biomarkers and generated a tailored 30-day protocol designed to optimize your health.")
                 
                 st.download_button(
-                    label="📥 Last ned din PDF-rapport (4.99 USD)",
+                    label="📥 Download your PDF Report (4.99 USD)",
                     data=pdf_bytes,
-                    file_name="Min_Helse_Audit.pdf",
+                    file_name="Health_Audit_Report.pdf",
                     mime="application/pdf",
                     type="primary",
                     use_container_width=True
                 )
-                st.caption("Ditt kjøp er sikra med 100% kryptering.")
+                st.caption("Your purchase is secured with 100% encryption.")
         except Exception as e:
             st.warning(f"PDF generation unavailable: {e}")
