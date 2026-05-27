@@ -3,21 +3,7 @@ from db import get_db_client
 # ... ein stad i koden når du treng å bruke databasen:
 db = get_db_client()
 
-# Eksempel: Lagre data (kjem vi tilbake til)
-# Her henter du data fra variablene dine
-# Her henter du data fra variablene dine
-user_id_verdi = "test" 
-bmi_verdi = 24         
 
-# Dette er koden som faktisk lagrer til Supabase
-try:
-    # Alt det som skal lagres
-    data = {"user_id": user_id_verdi, "bmi": bmi_verdi}
-    response = db.table("health_metrics").insert(data).execute()
-    st.success("Lagret til historikk!")
-except Exception as e:
-    # HER må linjen være rykket inn med Tab eller mellomrom
-    st.error(f"Kunne ikke lagre: {e}")
 from datetime import datetime
 from html import escape
 from io import BytesIO
@@ -2147,29 +2133,6 @@ if age < 18:
 elif age >= 70:
     st.info("For older adults, BMI is often less informative.")
 
-# --- NY LOGIKK: Knapp for å lagre ---
-if st.button("Generate report & Save"):
-    # 1. Utfør beregninger
-    bmi_val = weight_kg / ((height_cm / 100) ** 2)
-    bio_age_val = 30.0 # Erstatt med din faktiske funksjon for bio_age
-    
-    # 2. Pakk dataene
-    metrics = {
-        "weight": float(weight_kg),
-        "bmi": round(float(bmi_val), 2),
-        "bio_age": float(bio_age_val)
-    }
-    
-    # 3. Lagre til Supabase
-    try:
-        # Merk: Bruk en unik ID eller hent fra en bruker-sesjon
-        user_id = "9dca6f9e-8a7a-4291-89f8-2f8e9ecd7840" 
-        
-        save_health_metrics(db, user_id, metrics)
-        st.success("✅ Rapporten er generert og lagret!")
-        st.write("Data lagret:", metrics)
-    except Exception as e:
-        st.error(f"Kunne ikke lagre til databasen: {e}")
 
 # local defaults
 activity_level = "Moderate"
