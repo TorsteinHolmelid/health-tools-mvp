@@ -5,8 +5,9 @@ db = get_db_client()
 
 # Eksempel: Lagre data (kjem vi tilbake til)
 # Her henter du data fra variablene dine
-user_id_verdi = "test" # Eller variabelen som holder bruker-ID
-bmi_verdi = 24         # Eller variabelen som holder BMI-resultatet
+# Her henter du data fra variablene dine
+user_id_verdi = "test" 
+bmi_verdi = 24         
 
 # Dette er koden som faktisk lagrer til Supabase
 try:
@@ -15,7 +16,8 @@ try:
     response = db.table("health_metrics").insert(data).execute()
     st.success("Lagret til historikk!")
 except Exception as e:
-st.error(f"Kunne ikke lagre: {e}")
+    # HER må linjen være rykket inn med Tab eller mellomrom
+    st.error(f"Kunne ikke lagre: {e}")
 from datetime import datetime
 from html import escape
 from io import BytesIO
