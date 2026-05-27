@@ -16,7 +16,7 @@ try:
     st.success("Lagret til historikk!")
 except Exception as e:
     # Denne linjen må ha innrykk, og stå rett under 'except'
-    st.error(f"Kunne ikke lagre: {e}")
+st.error(f"Kunne ikke lagre: {e}")
 from datetime import datetime
 from html import escape
 from io import BytesIO
