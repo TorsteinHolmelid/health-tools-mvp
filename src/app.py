@@ -1,3 +1,10 @@
+from db import get_db_client
+
+# ... ein stad i koden når du treng å bruke databasen:
+db = get_db_client()
+
+# Eksempel: Lagre data (kjem vi tilbake til)
+# db.table("health_metrics").insert({"user_id": "test", "bmi": 24}).execute()
 from __future__ import annotations
 
 from datetime import datetime
