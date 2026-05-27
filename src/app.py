@@ -2953,12 +2953,7 @@ if st.session_state.generated:
                 else:
                     results["plan"] = plan
 
-    except Exception as e:
-        st.error(f"Error during calculation: {e}")
-        st.text(traceback.format_exc())
-        logging.exception("Calculation failed")
-        st.session_state["results"] = {}
-    else:
+    
         st.session_state["results"] = results
         st.success("Calculation finished — results ready.")
     except Exception as e:
