@@ -3688,6 +3688,7 @@ else:
     if not _results_for_pdf:
         st.warning("⚠️ Kjør beregningane først (trykk 'Calculate'), så kan du laste ned PDF-rapporten.")
     else:
+        # 1. Bygg rapport-data
         report = {
             "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
@@ -3702,8 +3703,15 @@ else:
             "plan": _results_for_pdf.get("plan"),
             "exercise_log": st.session_state.get("exercise_last"),
         }
+        
+        # 2. Generer PDF og kall funksjonen
         try:
             pdf_bytes = create_pdf_bytes_ultimate(report)
+            # Her kallar vi funksjonen du definerte øvst!
+            render_premium_download_gate(pdf_bytes)
+            
+        except Exception as e:
+            st.error(f"Error generating report: {e}")
 
            # ... etter at du har generert pdf_bytes ...
             with st.container(border=True):
