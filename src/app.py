@@ -3738,10 +3738,7 @@ else:
             # Her kallar vi funksjonen du definerte øvst!
             render_premium_download_gate(pdf_bytes)
             
-        except Exception as e:
-            st.error(f"Error generating report: {e}")
-
-           # ... etter at du har generert pdf_bytes ...
+            # --- FLYTTET HIT INN (Riktig innrykk) ---
             with st.container(border=True):
                 st.subheader("✅ Your Premium Health Report is ready")
                 st.markdown("We have analyzed your biomarkers and generated a tailored 30-day protocol designed to optimize your health.")
@@ -3755,5 +3752,6 @@ else:
                     use_container_width=True
                 )
                 st.caption("Your purchase is secured with 100% encryption.")
+                
         except Exception as e:
-            st.warning(f"PDF generation unavailable: {e}")
+            st.error(f"Error generating report: {e}")
