@@ -3,6 +3,7 @@ from supabase import create_client, Client
 from datetime import datetime
 
 @st.cache_resource
+st.write("Dine tilgjengelege secrets er:", st.secrets.keys())
 def get_db_client() -> Client:
     # Her ber du Streamlit om å slå opp variabelen i "skapet" sitt
     url = st.secrets["SUPABASE_URL"]
