@@ -10,12 +10,13 @@ bmi_verdi = 24         # Eller variabelen som holder BMI-resultatet
 
 # Dette er koden som faktisk lagrer til Supabase
 try:
+    # Alt det som skal lagres
     data = {"user_id": user_id_verdi, "bmi": bmi_verdi}
     response = db.table("health_metrics").insert(data).execute()
     st.success("Lagret til historikk!")
 except Exception as e:
+    # Denne linjen må ha innrykk, og stå rett under 'except'
     st.error(f"Kunne ikke lagre: {e}")
-
 from datetime import datetime
 from html import escape
 from io import BytesIO
