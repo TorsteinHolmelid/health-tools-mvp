@@ -11,13 +11,12 @@ def get_db_client() -> Client:
     return create_client(url, key)
 
 def save_health_metrics(db, user_id, metrics):
-    """Lagrar brukar-data til Supabase."""
     data = {
         "user_id": user_id,
         "weight": metrics.get("weight"),
         "bmi": metrics.get("bmi"),
-        "bio_age": metrics.get("bio_age"),
-        "created_at": datetime.utcnow().isoformat()
+        "bio_age": metrics.get("bio_age")
+        # Fjern "created_at": ... herfra
     }
     return db.table("health_metrics").insert(data).execute()
 def get_health_history(db, user_id):
