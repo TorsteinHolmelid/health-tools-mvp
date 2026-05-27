@@ -2797,22 +2797,22 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         target_bmi_f = _f(target_bmi, "target_bmi")
 
         results = {}
-    try:
-                db = get_db_client()
-                save_health_metrics(db, st.session_state["user_id"], results)
-                # Vi kan legge til ein liten logg for deg sjølv
-                print("Data saved successfully.")
-            except Exception as e:
-                st.error(f"Could not save to history: {e}")
-            # ------------------------------------------
-    
-            # Deretter oppdaterer du session state slik at resten av appen får resultata
-            st.session_state["results"] = results
-    
+        try:
+            db = get_db_client()
+            save_health_metrics(db, st.session_state["user_id"], results)
+                    # Vi kan legge til ein liten logg for deg sjølv
+            print("Data saved successfully.")
         except Exception as e:
-            # Din eksisterende feilhåndtering
-            st.error(f"Calculation error: {e}")
-            traceback.print_exc()
+            st.error(f"Could not save to history: {e}")
+                # ------------------------------------------
+        
+                # Deretter oppdaterer du session state slik at resten av appen får resultata
+        st.session_state["results"] = results
+        
+    except Exception as e:
+                # Din eksisterende feilhåndtering
+        st.error(f"Calculation error: {e}")
+        traceback.print_exc()
         # BMI
         if run_bmi:
             bmi_value, bmi_category = calculators.bmi_calc(weight_f, height_f)
