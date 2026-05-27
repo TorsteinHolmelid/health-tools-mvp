@@ -13,10 +13,55 @@ def P(txt, style):
     return Paragraph(str(txt), style)
 from reportlab.platypus import Spacer as VGap
 import streamlit as st
+
+def render_premium_download_gate(pdf_bytes):
+    """
+    Ein visuelt ryddig boks som signaliserer verdi før nedlasting.
+    """
+    with st.container(border=True):
+        st.subheader("✅ Din Premium Helse-rapport er klar")
+        st.markdown("""
+        Vi har analysert dataa dine og generert ein skreddarsydd protokoll. 
+        Denne inneheld:
+        * 🎯 **3 viktigaste helse-prioriteringar**
+        * 📊 **Radar-analyse av dine biomarkørar**
+        * 📝 **Konkret action-plan for neste 30 dagar**
+        """)
+        
+        # Eg legg til litt 'whitespace' over knappen for balanse
+        st.write("") 
+        
+        st.download_button(
+            label="📥 Last ned din PDF-rapport (4.99 USD)",
+            data=pdf_bytes,
+            file_name="Min_Helse_Audit.pdf",
+            mime="application/pdf",
+            type="primary", # Dette gjer knappen 'solid' og viktig
+            use_container_width=True
+        )
+        
+        st.caption("Ditt kjøp er sikra med 100% kryptering.")
 import streamlit.components.v1 as components
 import calculators
 import matplotlib.pyplot as plt
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib import colors
 
+class PDFStyles:
+    # Fargepalett
+    PRIMARY = colors.HexColor("#0EA5A3")
+    BG = colors.HexColor("#0B1220")
+    TEXT = colors.HexColor("#E5E7EB")
+    MUTED = colors.HexColor("#94A3B8")
+    
+    # Styles
+    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=colors.white)
+    H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=colors.white)
+    Body = ParagraphStyle("Body", fontName="Helvetica", fontSize=10, leading=14, spaceAfter=10, textColor=colors.lightgrey)
+    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=colors.HexColor("#64748B"), uppercase=True)
+
+# Bruk denne i koden din slik:
+# doc.build([Paragraph("Health Audit", PDFStyles.H1), ...])
 # --- Stripe return — Nivå 2 (session_id) ---
 _session_id = None
 try:
@@ -55,7 +100,22 @@ from calculators import (
     bmr_mifflin,
     tdee_including_weekly_exercise,
 )
+# 1. Stil-system (Brand-fargar)
+class PDFStyles:
+    PRIMARY = HexColor("#0EA5A3")
+    BG = HexColor("#0B1220")
+    TEXT = HexColor("#E5E7EB")
+    MUTED = HexColor("#94A3B8")
+    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=HexColor("#FFFFFF"))
 
+# 2. Dine Custom Flowables (flytta ut av funksjonen)
+class PremiumRadarChart(Flowable):
+    def __init__(self, scores, width=400):
+        super().__init__()
+        self.scores = scores
+        self.w = width
+        self.h = 300
+    # ... (her legg du inn Radar-logikken din) ...
 # ── Resting HR sync ──────────────────────────────────────────────────────────
 _HR_KEYS = [
     "resting_hr", "global_resting_hr", "basic_resting_hr",
@@ -3645,12 +3705,19 @@ else:
         }
         try:
             pdf_bytes = create_pdf_bytes_ultimate(report)
-            st.download_button(
-                "📄 Download PDF report",
-                data=pdf_bytes,
-                file_name="health_tools_report.pdf",
-                mime="application/pdf",
-                key="pdf_btn",
-            )
+            # ... etter at du har generert pdf_bytes ...
+            with st.container(border=True):
+                st.subheader("✅ Din Premium Helse-rapport er klar")
+                st.markdown("Vi har analysert biomarkørane dine og generert ein skreddarsydd 30-dagars protokoll.")
+                
+                st.download_button(
+                    label="📥 Last ned din PDF-rapport (4.99 USD)",
+                    data=pdf_bytes,
+                    file_name="Min_Helse_Audit.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True
+                )
+                st.caption("Ditt kjøp er sikra med 100% kryptering.")
         except Exception as e:
             st.warning(f"PDF generation unavailable: {e}")
