@@ -1,6 +1,5 @@
 from __future__ import annotations
 from db import get_db_client
-
 # ... ein stad i koden når du treng å bruke databasen:
 db = get_db_client()
 
@@ -50,6 +49,11 @@ def render_premium_download_gate(pdf_bytes):
 import streamlit.components.v1 as components
 import calculators
 import matplotlib.pyplot as plt
+import uuid
+from db import get_db_client, save_health_metrics # Hugs å importere save-funksjonen
+
+if "user_id" not in st.session_state:
+    st.session_state["user_id"] = str(uuid.uuid4())
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib import colors
 
@@ -2793,7 +2797,22 @@ if st.button("Calculate / Generate report", key="btn_calculate"):
         target_bmi_f = _f(target_bmi, "target_bmi")
 
         results = {}
-
+    try:
+                db = get_db_client()
+                save_health_metrics(db, st.session_state["user_id"], results)
+                # Vi kan legge til ein liten logg for deg sjølv
+                print("Data saved successfully.")
+            except Exception as e:
+                st.error(f"Could not save to history: {e}")
+            # ------------------------------------------
+    
+            # Deretter oppdaterer du session state slik at resten av appen får resultata
+            st.session_state["results"] = results
+    
+        except Exception as e:
+            # Din eksisterende feilhåndtering
+            st.error(f"Calculation error: {e}")
+            traceback.print_exc()
         # BMI
         if run_bmi:
             bmi_value, bmi_category = calculators.bmi_calc(weight_f, height_f)
