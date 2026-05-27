@@ -2096,6 +2096,8 @@ if "global_hip_cm" not in st.session_state:
 st.markdown("## 🧾 Basic information")
 st.caption("These inputs drive BMI, calories, VO2 and biological age estimates.")
 st.markdown('<div class="ht-card">', unsafe_allow_html=True)
+
+# --- Dine eksisterende inputs ---
 resting_hr_basic = st.number_input(
     "Resting HR (bpm)",
     min_value=30, max_value=120,
@@ -2127,10 +2129,35 @@ with c4:
     weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=70.0,
                                  format="%.1f", key="inp_weight")
 st.markdown("</div>", unsafe_allow_html=True)
+
 if age < 18:
     st.warning("BMI and fitness estimates are less reliable under 18.")
 elif age >= 70:
     st.info("For older adults, BMI is often less informative.")
+
+# --- NY LOGIKK: Knapp for å lagre ---
+if st.button("Generate report & Save"):
+    # 1. Utfør beregninger
+    bmi_val = weight_kg / ((height_cm / 100) ** 2)
+    bio_age_val = 30.0 # Erstatt med din faktiske funksjon for bio_age
+    
+    # 2. Pakk dataene
+    metrics = {
+        "weight": float(weight_kg),
+        "bmi": round(float(bmi_val), 2),
+        "bio_age": float(bio_age_val)
+    }
+    
+    # 3. Lagre til Supabase
+    try:
+        # Merk: Bruk en unik ID eller hent fra en bruker-sesjon
+        user_id = "9dca6f9e-8a7a-4291-89f8-2f8e9ecd7840" 
+        
+        save_health_metrics(db, user_id, metrics)
+        st.success("✅ Rapporten er generert og lagret!")
+        st.write("Data lagret:", metrics)
+    except Exception as e:
+        st.error(f"Kunne ikke lagre til databasen: {e}")
 
 # local defaults
 activity_level = "Moderate"
