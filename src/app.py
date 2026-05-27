@@ -2961,7 +2961,11 @@ if st.session_state.generated:
     else:
         st.session_state["results"] = results
         st.success("Calculation finished — results ready.")
-
+    except Exception as e:
+        st.error(f"Error during calculation: {e}")
+        st.text(traceback.format_exc())
+        logging.exception("Calculation failed")
+        st.session_state["results"] = {} # Tøm hvis feil
 # ── Display results ───────────────────────────────────────────────────────────
 results = st.session_state.get("results", {})
 
