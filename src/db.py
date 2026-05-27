@@ -4,9 +4,7 @@ from datetime import datetime
 
 @st.cache_resource
 def get_db_client() -> Client:
-    # Vi flyttar st.write INN i funksjonen for å debugge
-    st.write("Dine tilgjengelege secrets er:", st.secrets.keys())
-    
+    # Denne linjen er nå fjernet for at appen skal se fin ut
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     
@@ -22,7 +20,6 @@ def save_health_metrics(db, user_id, metrics):
         "created_at": datetime.utcnow().isoformat()
     }
     return db.table("health_metrics").insert(data).execute()
-
 def get_health_history(db, user_id):
     """Hentar historikk for graf-visning."""
     return db.table("health_metrics") \
