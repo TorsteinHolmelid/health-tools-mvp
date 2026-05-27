@@ -5,8 +5,8 @@ from datetime import datetime
 # databasen på nytt kvar gong brukaren trykker på ein knapp (effektivitet)
 @st.cache_resource
 def get_db_client() -> Client:
-    url = st.secrets["SUPABASE_URL"]
-    key = st.secrets["SUPABASE_KEY"]
+    url = st.secrets["https://nrjanqqbjcxbmblpthtf.supabase.co"]
+    key = st.secrets["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5yamFucXFiamN4Ym1ibHB0aHRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4ODQzMTcsImV4cCI6MjA5NTQ2MDMxN30.AYjOImaxb_QLaJZtsDaYATZOrfcWBug85U1UokJgRSo"]
     return create_client(url, key)
 # Legg til dette i db.py
 
