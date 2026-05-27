@@ -18,6 +18,7 @@ def save_health_metrics(db, user_id, metrics):
         "bio_age": metrics.get("bio_age")
         # Fjern "created_at": ... herfra
     }
+    st.write("Data som sendes til Supabase:", data)
     return db.table("health_metrics").insert(data).execute()
 def get_health_history(db, user_id):
     """Hentar historikk for graf-visning."""
