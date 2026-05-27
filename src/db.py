@@ -3,14 +3,14 @@ from supabase import create_client, Client
 from datetime import datetime
 
 @st.cache_resource
-st.write("Dine tilgjengelege secrets er:", st.secrets.keys())
 def get_db_client() -> Client:
-    # Her ber du Streamlit om å slå opp variabelen i "skapet" sitt
+    # Vi flyttar st.write INN i funksjonen for å debugge
+    st.write("Dine tilgjengelege secrets er:", st.secrets.keys())
+    
     url = st.secrets["SUPABASE_URL"]
     key = st.secrets["SUPABASE_KEY"]
     
     return create_client(url, key)
-# Legg til dette i db.py
 
 def save_health_metrics(db, user_id, metrics):
     """Lagrar brukar-data til Supabase."""
