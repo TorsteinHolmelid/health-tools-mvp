@@ -4,7 +4,17 @@ from db import get_db_client
 db = get_db_client()
 
 # Eksempel: Lagre data (kjem vi tilbake til)
-# db.table("health_metrics").insert({"user_id": "test", "bmi": 24}).execute()
+# Her henter du data fra variablene dine
+user_id_verdi = "test" # Eller variabelen som holder bruker-ID
+bmi_verdi = 24         # Eller variabelen som holder BMI-resultatet
+
+# Dette er koden som faktisk lagrer til Supabase
+try:
+    data = {"user_id": user_id_verdi, "bmi": bmi_verdi}
+    response = db.table("health_metrics").insert(data).execute()
+    st.success("Lagret til historikk!")
+except Exception as e:
+    st.error(f"Kunne ikke lagre: {e}")
 
 from datetime import datetime
 from html import escape
