@@ -1537,15 +1537,15 @@ def get_premium_strategy_page(goal, protein_focus):
         "Share the full report with your physician or performance coach at your next consultation.",
         S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
     ))   
-    # I PDF-generatoren din:
+       # ── LEGG TIL PREMIUM SIDE 7 HER ──
     if "goal_mode" in st.session_state and st.session_state["goal_mode"]:
         story.extend(get_premium_strategy_page(
             st.session_state["goal_mode"], 
             st.session_state.get("protein_focus", True)
         ))
     else:
-        # Hvis brukeren ikke har valgt noe, legg til en standard-side eller hopp over
         story.extend(get_premium_strategy_page("Lose fat", True))
+    # ─────────────────────────────────
 
     # ── BYGG ──
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
