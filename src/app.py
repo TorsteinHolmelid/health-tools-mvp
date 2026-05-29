@@ -1383,7 +1383,67 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(P("Consistency over 12+ weeks beats perfect 2-week blocks every time.", S("prg", size=8, color=MUTED, italic=True, after=4)))
     story.append(PageBreak())
 
-    # ── PAGE 7: Insights + Conditions + Safety ──
+    # --- PAGE 7
+def get_premium_strategy_page(goal, protein_focus):
+    """
+    Returnerer en liste med PDF-elementer for den nye premium-siden.
+    """
+    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib import colors
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+    styles = getSampleStyleSheet()
+    story = []
+
+    # Styles
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, textColor=colors.HexColor("#1F2937"), spaceAfter=10)
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=16, textColor=colors.HexColor("#3B82F6"), spaceBefore=10, spaceAfter=10)
+    body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=11, leading=14, spaceAfter=10)
+
+    # Content
+    story.append(Paragraph("Your Strategy Roadmap", title_style))
+    story.append(Paragraph(f"Goal: {goal}", section_style))
+    story.append(Spacer(1, 5*mm))
+
+    # Visual "Premium" Bar
+    fill_color = colors.HexColor("#22C55E") if goal == "Lose fat" else colors.HexColor("#F59E0B")
+    bar_data = [["", ""]]
+    bar_table = Table(bar_data, colWidths=[120*mm, 30*mm])
+    bar_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, 0), fill_color),
+        ('BACKGROUND', (1, 0), (1, 0), colors.HexColor("#E5E7EB")),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.white),
+    ]))
+    story.append(bar_table)
+    story.append(Paragraph("Current Progress vs Goal Target", styles['Italic']))
+    story.append(Spacer(1, 10*mm))
+
+    # Detailed Table
+    advice = {
+        "Lose fat": "Focus on a consistent 300-500 kcal deficit. Keep protein high to retain muscle. Cardio: 3x per week.",
+        "Build muscle (bulk)": "Slight caloric surplus (200 kcal). Focus on heavy compound lifts. Protein intake is non-negotiable.",
+        "Body Recomposition": "Maintenance calories. High protein is critical (2.0g/kg). Strength training is the engine of change."
+    }
+    
+    data = [["Focus Area", "Core Action", "Pro-Tip"],
+            ["Nutrition", advice.get(goal, "Balanced"), "Track " + ("High Protein" if protein_focus else "Macros")],
+            ["Training", "Compound Lifts", "Progressive Overload"],
+            ["Lifestyle", "Sleep & Hydration", "Manage Stress"]]
+    
+    t = Table(data, colWidths=[30*mm, 70*mm, 40*mm])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1F2937")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+    ]))
+    story.append(t)
+    story.append(PageBreak())
+    
+    return story
+
+    # ── PAGE 8: Insights + Conditions + Safety ──
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
     story.append(VGap(6))
     for title, color, text in insights:
