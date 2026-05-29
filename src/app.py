@@ -1562,32 +1562,7 @@ def get_premium_strategy_page(goal, protein_focus):
     except Exception as e:
         # Hvis noe går galt her, logg det i stedet for å la PDF-en kræsje
         st.error(f"Feil i premium-side: {e}")
-    # ─────────────────────────────────
-    # ── SIKKERHETS-RENSING AV STORY ──
-    # Vi fjerner alt som kan være 'None' før vi bygger
-    story = [item for item in story if item is not None]
-
-    # ── LEGG TIL PREMIUM SIDE 7 ──
-    # Vi henter verdier, men sjekker at de finnes
-    goal = st.session_state.get("goal_mode") or "Lose fat"
-    protein = st.session_state.get("protein_focus", True)
-    
-    # Hent siden som en liste
-    premium_elements = get_premium_strategy_page(goal, protein)
-    
-    # Legg til elementene i story, men kun hvis de er gyldige
-    for element in premium_elements:
-        if element is not None:
-            story.append(element)
-    # ──────────────────────────────
-
-    # ── BYGG ──
-    try:
-        doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-        return buf.getvalue()
-    except Exception as e:
-        st.error(f"PDF-byggefeil: {e}")
-        return None
+ 
 
     # ── BYGG ──
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
