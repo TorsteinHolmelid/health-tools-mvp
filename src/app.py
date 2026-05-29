@@ -1563,6 +1563,24 @@ def get_premium_strategy_page(goal, protein_focus):
         # Hvis noe går galt her, logg det i stedet for å la PDF-en kræsje
         st.error(f"Feil i premium-side: {e}")
  
+    # ── 1. RENS STORY FOR NONE-VERDIER (DETTE FIKSER FEILEN) ──
+    # Vi går gjennom listen og fjerner alle None-elementer
+    cleaned_story = []
+    for i, item in enumerate(story):
+        if item is None:
+            print(f"!!! ADVARSEL: Fant None-objekt på plass {i} i story-listen !!!")
+        else:
+            cleaned_story.append(item)
+    
+    # ── 2. BYGG PDF MED REN LISTE ──
+    try:
+        doc.build(cleaned_story, onFirstPage=draw_page, onLaterPages=draw_page)
+        return buf.getvalue()
+    except Exception as e:
+        st.error(f"Kritisk feil ved bygging: {e}")
+        # Skriv ut innholdet i cleaned_story for å debugge hvis det fortsatt feiler
+        print("Story innhold (typer):", [type(x) for x in cleaned_story])
+        raise e
 
     # ── BYGG ──
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
