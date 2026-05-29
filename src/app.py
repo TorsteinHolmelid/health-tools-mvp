@@ -1406,7 +1406,7 @@ def get_premium_strategy_page(goal, protein_focus):
 
     styles = getSampleStyleSheet()
     story = []
-
+    return story
     # Styles
     title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=24, textColor=colors.HexColor("#1F2937"), spaceAfter=10)
     section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=16, textColor=colors.HexColor("#3B82F6"), spaceBefore=10, spaceAfter=10)
