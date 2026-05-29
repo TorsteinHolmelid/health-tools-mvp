@@ -1546,6 +1546,25 @@ def get_premium_strategy_page(goal, protein_focus):
     else:
         story.extend(get_premium_strategy_page("Lose fat", True))
     # ─────────────────────────────────
+    # ── LEGG TIL PREMIUM SIDE 7 ──
+    try:
+        side_7 = get_premium_strategy_page(
+            st.session_state.get("goal_mode", "Lose fat"), 
+            st.session_state.get("protein_focus", True)
+        )
+        if side_7 is not None:
+            story.extend(side_7)
+    except Exception as e:
+        # Hvis noe går galt her, logg det i stedet for å la PDF-en kræsje
+        st.error(f"Feil i premium-side: {e}")
+    # ─────────────────────────────────
+
+    # --- SIKKERHETSSJEKK: Fjern eventuelle None-elementer fra story ---
+    story = [item for item in story if item is not None]
+
+    # ── BYGG ──
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    return buf.getvalue()
 
     # ── BYGG ──
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
