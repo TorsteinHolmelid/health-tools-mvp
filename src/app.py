@@ -979,11 +979,11 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
 
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN_H, rightMargin=MARGIN_H, topMargin=26*mm, bottomMargin=18*mm)
-        def safe_append(item):
-        if item is not None:
-            story.append(item)
-        else:
-            print("!!! ADVARSEL: Forsøkte å legge til None i PDF-story !!!")
+    def safe_append(item):
+    if item is not None:
+        story.append(item)
+    else:
+        print("!!! ADVARSEL: Forsøkte å legge til None i PDF-story !!!")
 
     story = []
 
