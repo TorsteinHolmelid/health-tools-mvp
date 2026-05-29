@@ -1561,6 +1561,16 @@ def get_premium_strategy_page(goal, protein_focus):
 
     # --- SIKKERHETSSJEKK: Fjern eventuelle None-elementer fra story ---
     story = [item for item in story if item is not None]
+    # ── DEBUGGING - Hvor ligger None-verdien? ──
+    for i, item in enumerate(story):
+        if item is None:
+            print(f"!!! FEIL: Element på plass {i} i story-listen er None !!!")
+            # Her kan vi prøve å fjerne det automatisk
+            story[i] = Spacer(1, 1) 
+    
+    # ── BYGG ──
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    return buf.getvalue()
 
     # ── BYGG ──
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
