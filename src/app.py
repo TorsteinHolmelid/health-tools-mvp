@@ -1440,8 +1440,7 @@ def get_premium_strategy_page(goal, protein_focus):
     ]))
     story.append(t)
     story.append(PageBreak())
-    
-    return story
+
 
     # ── PAGE 8: Insights + Conditions + Safety ──
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
