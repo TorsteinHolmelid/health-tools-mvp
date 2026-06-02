@@ -2713,65 +2713,59 @@ if run_plan and run_bmi:
                 horizontal=True,
                 key="goal_mode_input"
             )
-            
+
             protein_focus = st.toggle("High protein focus (recommended for muscle growth)", value=True, key="protein_toggle")
-            
+
             # Add a new toggle to integrate sport/fitness activity into your plan
             exercise_integration = st.toggle(
                 "Integrate sport/fitness activity into your plan",
                 True,
                 key="exercise_integration"
             )
+
             if exercise_integration:
-    st.markdown("##### Activities")
-    
-    _act_groups = {
-        "🚶 Low impact":  ["Walking (casual)", "Brisk walking", "Yoga / Pilates",
-                           "Housework / Light chores", "Gardening / Heavy yard work"],
-        "🚴 Cardio":      ["Cycling (leisure)", "Cycling (vigorous)", "Elliptical",
-                           "Rowing (moderate/vigorous)", "Swimming"],
-        "🏃 High impact": ["Running/jogging", "HIIT", "Stair climbing / Stairmaster"],
-        "⚽ Sports":      ["Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
-                           "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"],
-        "💪 Strength":    ["Strength training (weights)", "Boxing / Martial arts",
-                           "Rock climbing / Bouldering", "Hiking (incline)"],
-    }
+                st.markdown("##### Activities")
 
-    selected_activities = []
+                _act_groups = {
+                    "🚶 Low impact":  ["Walking (casual)", "Brisk walking", "Yoga / Pilates",
+                                       "Housework / Light chores", "Gardening / Heavy yard work"],
+                    "🚴 Cardio":      ["Cycling (leisure)", "Cycling (vigorous)", "Elliptical",
+                                       "Rowing (moderate/vigorous)", "Swimming"],
+                    "🏃 High impact": ["Running/jogging", "HIIT", "Stair climbing / Stairmaster"],
+                    "⚽ Sports":      ["Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
+                                       "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"],
+                    "💪 Strength":    ["Strength training (weights)", "Boxing / Martial arts",
+                                       "Rock climbing / Bouldering", "Hiking (incline)"],
+                }
 
-    for group_name, group_items in _act_groups.items():
-        st.markdown(f"**{group_name}**")
-        cols = st.columns(3)
-        for i, activity in enumerate(group_items):
-            with cols[i % 3]:
-                if st.checkbox(activity, key=f"act_{activity}"):
-                    selected_activities.append(activity)
+                selected_activities = []
 
-    if selected_activities:
-        st.success(
-            f"{len(selected_activities)} activit{'ies' if len(selected_activities) > 1 else 'y'} selected: "
-            + ", ".join(selected_activities)
-        )
-    else:
-        st.caption("No activities selected yet.")
+                for group_name, group_items in _act_groups.items():
+                    st.markdown(f"**{group_name}**")
+                    cols = st.columns(3)
+                    for i, activity in enumerate(group_items):
+                        with cols[i % 3]:
+                            if st.checkbox(activity, key=f"act_{activity}"):
+                                selected_activities.append(activity)
 
-    st.session_state["selected_activities"] = selected_activities
-else:
-    st.session_state["selected_activities"] = []
-            
-            # Create an empty list to store the selected value of exercise_integration
-            exercise_integrations = []
-            
-            if exercise_integration:
-                exercise_integrations.append(exercise_integration)
-                
+                if selected_activities:
+                    st.success(
+                        f"{len(selected_activities)} activit{'ies' if len(selected_activities) > 1 else 'y'} selected: "
+                        + ", ".join(selected_activities)
+                    )
+                else:
+                    st.caption("No activities selected yet.")
+
+                st.session_state["selected_activities"] = selected_activities
+            else:
+                st.session_state["selected_activities"] = []
+
             # Save to session_state so it is available for PDF generation later
             st.session_state["goal_mode"] = goal_mode
             st.session_state["protein_focus"] = protein_focus
-            st.session_state["exercise_integrations"] = exercise_integrations
-            
+
             # --------------------------------------------
-    
+
             st.markdown("#### ⏱️ Timeline")
             plan_weeks = st.slider(
                 "Weeks to reach target",
