@@ -2722,15 +2722,14 @@ if run_plan and run_bmi:
             # --------------------------------------------
 
     else:  # Partially included
-        
-        plan_updates[f"{activity}_included"] = "Partially"
-             st.markdown("#### ⏱️ Timeline")
-              plan_weeks = st.slider(
-                  "Weeks to reach target",
-                   min_value=4, max_value=52, value=12, step=1,
-                  key="plan_weeks",
-                format="%d weeks"
-               )
+       plan_updates[f"{activity}_included"] = "Partially"
+       st.markdown("#### ⏱️ Timeline")
+       plan_weeks = st.slider(
+        "Weeks to reach target",
+        min_value=4, max_value=52, value=12, step=1,
+        key="plan_weeks",
+        format="%d weeks"
+     )
 
             # Visual timeline preview
             _wks = int(plan_weeks)
