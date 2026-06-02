@@ -4176,7 +4176,7 @@ else:
             "exercise_log": st.session_state.get("exercise_last"),
         }
         # Legg til dette før pdf_bytes = ...
-st.write("DEBUG REPORT:", report)
+        st.write("DEBUG REPORT:", report)
         # 2. Generer PDF og vis rapporten på skjermen
         try:
             pdf_bytes = create_pdf_bytes_ultimate(report)
