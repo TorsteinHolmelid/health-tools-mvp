@@ -2706,30 +2706,30 @@ if run_plan and run_bmi:
                 target_weight = None
 
             # --- INSERT THE NEW STRATEGY SECTION HERE ---
-            st.markdown("#### ⚙️ Strategy")
-            goal_mode = st.radio(
-                "What is your primary goal?",
-                ["Lose fat", "Build muscle (bulk)", "Body Recomposition"],
-                horizontal=True,
-                key="goal_mode_input"
-            )
-            
-            protein_focus = st.toggle("High protein focus (recommended for muscle growth)", value=True, key="protein_toggle")
-            
-            # Save to session_state so it is available for PDF generation later
-            st.session_state["goal_mode"] = goal_mode
-            st.session_state["protein_focus"] = protein_focus
-            # --------------------------------------------
-        
-            else:  # Partially included
-               plan_updates[f"{activity}_included"] = "Partially"
-               st.markdown("#### ⏱️ Timeline")
-               plan_weeks = st.slider(
-                "Weeks to reach target",
-                min_value=4, max_value=52, value=12, step=1,
-                key="plan_weeks",
-                format="%d weeks"
-             )
+st.markdown("#### ⚙️ Strategy")
+goal_mode = st.radio(
+    "What is your primary goal?",
+    ["Lose fat", "Build muscle (bulk)", "Body Recomposition"],
+    horizontal=True,
+    key="goal_mode_input"
+)
+
+protein_focus = st.toggle("High protein focus (recommended for muscle growth)", value=True, key="protein_toggle")
+
+# Save to session_state so it is available for PDF generation later
+st.session_state["goal_mode"] = goal_mode
+st.session_state["protein_focus"] = protein_focus
+
+# --------------------------------------------
+else:  # Partially included
+    plan_updates[f"{activity}_included"] = "Partially"
+    st.markdown("#### ⏱️ Timeline")
+    plan_weeks = st.slider(
+        "Weeks to reach target",
+        min_value=4, max_value=52, value=12, step=1,
+        key="plan_weeks",
+        format="%d weeks"
+    )
 
             # Visual timeline preview
             _wks = int(plan_weeks)
