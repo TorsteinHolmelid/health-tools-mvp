@@ -2722,6 +2722,42 @@ if run_plan and run_bmi:
                 True,
                 key="exercise_integration"
             )
+            if exercise_integration:
+    st.markdown("##### Activities")
+    
+    _act_groups = {
+        "🚶 Low impact":  ["Walking (casual)", "Brisk walking", "Yoga / Pilates",
+                           "Housework / Light chores", "Gardening / Heavy yard work"],
+        "🚴 Cardio":      ["Cycling (leisure)", "Cycling (vigorous)", "Elliptical",
+                           "Rowing (moderate/vigorous)", "Swimming"],
+        "🏃 High impact": ["Running/jogging", "HIIT", "Stair climbing / Stairmaster"],
+        "⚽ Sports":      ["Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
+                           "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"],
+        "💪 Strength":    ["Strength training (weights)", "Boxing / Martial arts",
+                           "Rock climbing / Bouldering", "Hiking (incline)"],
+    }
+
+    selected_activities = []
+
+    for group_name, group_items in _act_groups.items():
+        st.markdown(f"**{group_name}**")
+        cols = st.columns(3)
+        for i, activity in enumerate(group_items):
+            with cols[i % 3]:
+                if st.checkbox(activity, key=f"act_{activity}"):
+                    selected_activities.append(activity)
+
+    if selected_activities:
+        st.success(
+            f"{len(selected_activities)} activit{'ies' if len(selected_activities) > 1 else 'y'} selected: "
+            + ", ".join(selected_activities)
+        )
+    else:
+        st.caption("No activities selected yet.")
+
+    st.session_state["selected_activities"] = selected_activities
+else:
+    st.session_state["selected_activities"] = []
             
             # Create an empty list to store the selected value of exercise_integration
             exercise_integrations = []
