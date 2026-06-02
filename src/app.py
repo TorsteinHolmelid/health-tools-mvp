@@ -2716,17 +2716,23 @@ if run_plan and run_bmi:
             
             protein_focus = st.toggle("High protein focus (recommended for muscle growth)", value=True, key="protein_toggle")
             
-            # Add a new toggle to integrate sport, idrett or treningstype
+            # Add a new toggle to integrate sport/fitness activity into your plan
             exercise_integration = st.toggle(
                 "Integrate sport/fitness activity into your plan",
                 True,
                 key="exercise_integration"
             )
             
+            # Create an empty list to store the selected value of exercise_integration
+            exercise_integrations = []
+            
+            if exercise_integration:
+                exercise_integrations.append(exercise_integration)
+                
             # Save to session_state so it is available for PDF generation later
             st.session_state["goal_mode"] = goal_mode
             st.session_state["protein_focus"] = protein_focus
-            st.session_state["exercise_integration"] = exercise_integration
+            st.session_state["exercise_integrations"] = exercise_integrations
             
             # --------------------------------------------
     
