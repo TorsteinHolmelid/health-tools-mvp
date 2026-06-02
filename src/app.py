@@ -2720,20 +2720,9 @@ if run_plan and run_bmi:
             st.session_state["goal_mode"] = goal_mode
             st.session_state["protein_focus"] = protein_focus
             # --------------------------------------------
-# Create checkboxes for each activity type
-for activity in activities:
-    activities[activity] = st.checkbox(activity, value=activities.get(activity))
 
-# Update the plan based on user selections
-plan_updates = {}
-for activity, selected in activities.items():
-    if selected is True:
-        plan_updates[f"{activity}_included"] = "Yes"
-    elif selected is False:
-        plan_updates[f"{activity}_included"] = "No"
     else:  # Partially included
-        plan_updates[f"{activity}_included"] = "Partially"
-    else:  # Partially included
+        
         plan_updates[f"{activity}_included"] = "Partially"
              st.markdown("#### ⏱️ Timeline")
               plan_weeks = st.slider(
