@@ -2720,9 +2720,6 @@ if run_plan and run_bmi:
             st.session_state["goal_mode"] = goal_mode
             st.session_state["protein_focus"] = protein_focus
             # --------------------------------------------
-            # Create checkboxes for each activity type
-            for activity in activities:
-                activities[activity] = st.checkbox(activity, value=activities.get(activity))
     
             st.markdown("#### ⏱️ Timeline")
             plan_weeks = st.slider(
