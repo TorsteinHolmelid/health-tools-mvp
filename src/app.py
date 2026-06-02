@@ -2720,16 +2720,16 @@ if run_plan and run_bmi:
             st.session_state["goal_mode"] = goal_mode
             st.session_state["protein_focus"] = protein_focus
             # --------------------------------------------
-
-    else:  # Partially included
-       plan_updates[f"{activity}_included"] = "Partially"
-       st.markdown("#### ⏱️ Timeline")
-       plan_weeks = st.slider(
-        "Weeks to reach target",
-        min_value=4, max_value=52, value=12, step=1,
-        key="plan_weeks",
-        format="%d weeks"
-     )
+        
+            else:  # Partially included
+               plan_updates[f"{activity}_included"] = "Partially"
+               st.markdown("#### ⏱️ Timeline")
+               plan_weeks = st.slider(
+                "Weeks to reach target",
+                min_value=4, max_value=52, value=12, step=1,
+                key="plan_weeks",
+                format="%d weeks"
+             )
 
             # Visual timeline preview
             _wks = int(plan_weeks)
