@@ -1382,7 +1382,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     # ── PAGE 6: Weight Roadmap + 7-Day Plan ──
     story.append(SecHeader("Weight Goal Roadmap", subtitle="Projected milestones toward your target"))
     story.append(VGap(6))
-
     if milestones:
         try: start_w = float(w_v or 70)
         except: start_w = 70.0
@@ -1395,18 +1394,20 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             prog = min(100, max(0, int(abs(pw-start_w)/total_change*100))) if total_change > 0.01 else 100
             story.append(MilestoneRow(m.get("Week", i+1), pw, str(m.get("Focus","")), prog, m_cols[i % len(m_cols)], (i == len(milestones)-1)))
         story.append(VGap(10))
-    else: story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
+    else:
+        story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
 
-        story.append(PageBreak())
-        story.append(SecHeader("Personalised Training Programme",
-            subtitle="Evidence-based weekly plan built around your selected activities and goal"))
-        story.append(VGap(6))
-        
-        # ── Pull values from session_state ──
-        _goal        = st.session_state.get("goal_mode", "Body Recomposition")
-        _activities  = st.session_state.get("selected_activities", [])
-        _weeks       = st.session_state.get("plan_weeks", 12)
-        _protein_on  = st.session_state.get("protein_focus", True)
+    # ── Personalised Training Programme ──  ← UTANFOR if/else, same innrykk
+    story.append(PageBreak())
+    story.append(SecHeader("Personalised Training Programme",
+        subtitle="Evidence-based weekly plan built around your selected activities and goal"))
+    story.append(VGap(6))
+
+    # ── Pull values from session_state ──
+    _goal        = st.session_state.get("goal_mode", "Body Recomposition")
+    _activities  = st.session_state.get("selected_activities", [])
+    _weeks       = st.session_state.get("plan_weeks", 12)
+    _protein_on  = st.session_state.get("protein_focus", True)
         
         # ── Activity → category map ──
         _strength_acts  = {"Strength training (weights)", "Boxing / Martial arts",
