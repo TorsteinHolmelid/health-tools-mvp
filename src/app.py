@@ -1543,7 +1543,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             P("COACHING NOTE",S("th", size=7.5, bold=True, color=MUTED)),
         ]
         
-     _intensity_colors = {
+    _intensity_colors = {
             "Light":          HexColor("#14532D"),
             "Light–Moderate": HexColor("#166534"),
             "Moderate":       HexColor("#1E3A5F"),
