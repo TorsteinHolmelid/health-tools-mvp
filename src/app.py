@@ -1553,7 +1553,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         }
         
     _sched_rows = [_sched_header]
-        for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
+    for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
             _sched_rows.append([
                 P(day,   S(f"td{i}", size=8.5, bold=True, color=TEXT)),
                 P(stype, S(f"ts{i}", size=8,   color=HexColor("#1D4ED8"))),
