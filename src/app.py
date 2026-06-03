@@ -1397,20 +1397,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(VGap(10))
     else: story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
 
-    story.append(SecHeader("7-Day Kickstart Training Plan", subtitle="A practical starting week — adapt to your schedule", accent=BLUE))
-    story.append(VGap(6))
-
-    day_cols_list = ["#3B82F6","#22C55E","#94A3B8","#F59E0B","#22C55E","#0EA5A3","#6366F1"]
-    plan_data = [[P("DAY", S("ph",size=7,bold=True,color=MUTED)), P("SESSION", S("ph",size=7,bold=True,color=MUTED)), P("DURATION", S("ph",size=7,bold=True,color=MUTED)), P("PURPOSE", S("ph",size=7,bold=True,color=MUTED))]]
-    for j, (day, sess, dur, why) in enumerate(plan_7):
-        dc = day_cols_list[j % len(day_cols_list)]
-        plan_data.append([P(day, S(f"pd{j}",size=8.5,bold=True,color=HexColor(dc))), P(sess, S(f"ps{j}",size=8.5,color=TEXT)), P(dur, S(f"pr{j}",size=8.5,color=MUTED,align=TA_CENTER)), P(why, S(f"pw{j}",size=8, color=MUTED))])
-    pt = Table(plan_data, colWidths=[20*mm, 65*mm, 28*mm, None])
-    pt.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 7), ("BOTTOMPADDING", (0,0), (-1,-1), 7), ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP")]))
-    story.append(pt); story.append(VGap(6))
-    story.append(P("Consistency over 12+ weeks beats perfect 2-week blocks every time.", S("prg", size=8, color=MUTED, italic=True, after=4)))
-    story.append(PageBreak())
-story.append(PageBreak())
+        story.append(PageBreak())
         story.append(SecHeader("Personalised Training Programme",
             subtitle="Evidence-based weekly plan built around your selected activities and goal"))
         story.append(VGap(6))
