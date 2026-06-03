@@ -1399,40 +1399,40 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
 
     # ── Personalised Training Programme ──
-    story.append(PageBreak())
-    story.append(SecHeader("Personalised Training Programme",
-        subtitle="Evidence-based weekly plan built around your selected activities and goal"))
-    story.append(VGap(6))
+        story.append(PageBreak())    
+        story.append(SecHeader("Personalised Training Programme",
+            subtitle="Evidence-based weekly plan built around your selected activities and goal"))
+        story.append(VGap(6))
 
     # ── Pull values from session_state ──
-    _goal       = st.session_state.get("goal_mode", "Body Recomposition")
-    _activities = st.session_state.get("selected_activities", [])
-    _weeks      = st.session_state.get("plan_weeks", 12)
-    _protein_on = st.session_state.get("protein_focus", True)
+        _goal       = st.session_state.get("goal_mode", "Body Recomposition")
+        _activities = st.session_state.get("selected_activities", [])
+        _weeks      = st.session_state.get("plan_weeks", 12)
+        _protein_on = st.session_state.get("protein_focus", True)
 
     # ── Activity → category map ──
-    _strength_acts = {"Strength training (weights)", "Boxing / Martial arts",
+        _strength_acts = {"Strength training (weights)", "Boxing / Martial arts",
                       "Rock climbing / Bouldering", "Hiking (incline)"}
-    _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)",
+        _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)",
                       "Swimming", "Rowing (moderate/vigorous)", "HIIT",
                       "Elliptical", "Stair climbing / Stairmaster"}
-    _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
+        _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
                       "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
-    _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates",
+        _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates",
                       "Housework / Light chores", "Gardening / Heavy yard work"}
 
-    _has_strength = bool(_activities and _strength_acts & set(_activities))
-    _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
-    _has_sport    = bool(_activities and _sport_acts    & set(_activities))
-    _has_low      = bool(_activities and _low_acts      & set(_activities))
-
-    _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
-    _sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
-    _sel_sport    = [a for a in _activities if a in _sport_acts]
-    _sel_low      = [a for a in _activities if a in _low_acts]
+        _has_strength = bool(_activities and _strength_acts & set(_activities))
+        _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
+        _has_sport    = bool(_activities and _sport_acts    & set(_activities))
+        _has_low      = bool(_activities and _low_acts      & set(_activities))
+    
+        _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
+        _sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
+        _sel_sport    = [a for a in _activities if a in _sport_acts]
+        _sel_low      = [a for a in _activities if a in _low_acts]
         
         # ── Goal-based parameter table ──
-    _goal_params = {
+        _goal_params = {
             "Lose fat":               {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
                                        "phase1": "Metabolic Reset (Wk 1–3)", "phase2": "Progressive Overload (Wk 4–8)",
                                        "phase3": "Intensification (Wk 9–12)", "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass."},
@@ -1443,20 +1443,20 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                                        "phase1": "Foundation (Wk 1–3)", "phase2": "Recomposition Block (Wk 4–8)",
                                        "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
         }
-    _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
+        _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
         
         # ── Goal overview box ──
-    story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  "
+        story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  "
                     f"Calorie adjustment: {_gp['deficit']:+d} kcal/day  ·  Target protein: {_gp['protein']}",
                     S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
-    story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
-    story.append(VGap(4))
+        story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
+        story.append(VGap(4))
         
         # ── Phase Timeline Bar ──
-    story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
+        story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
-    _phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
-    _phase_rows = [
+        _phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
+        _phase_rows = [
             [P("PHASE 1", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
              P("PHASE 2", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
              P("PHASE 3", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True))],
@@ -1467,8 +1467,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
              P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
              P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
         ]
-    _pt = Table(_phase_rows, colWidths=_phase_cols)
-    _pt.setStyle(TableStyle([
+        _pt = Table(_phase_rows, colWidths=_phase_cols)
+        _pt.setStyle(TableStyle([
             ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
             ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
             ("BACKGROUND",    (2,0), (2,-1), _PHASE3_BG),
@@ -1482,13 +1482,13 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             ("LEFTPADDING",   (0,0), (-1,-1), 6),
             ("RIGHTPADDING",  (0,0), (-1,-1), 6),
         ]))
-    story.append(_pt)
-    story.append(VGap(10))
+        story.append(_pt)
+        story.append(VGap(10))
         
         # ── Weekly Schedule Table ──
-    story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
+        story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
-    _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         
         def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                             sel_strength, sel_cardio, sel_sport, sel_low):
