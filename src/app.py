@@ -1350,12 +1350,12 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         ]
         
         _intensity_colors = {
-            "Light":          HexColor("#DCFCE7"),
-            "Light–Moderate": HexColor("#D1FAE5"),
-            "Moderate":       HexColor("#DBEAFE"),
-            "Moderate–Hard":  HexColor("#EDE9FE"),
-            "Hard":           HexColor("#FCE7F3"),
-            "—":              HexColor("#F9FAFB"),
+            "Light":          HexColor("#14532D"),
+            "Light–Moderate": HexColor("#166534"),
+            "Moderate":       HexColor("#1E3A5F"),
+            "Moderate–Hard":  HexColor("#3B1F6E"),
+            "Hard":           HexColor("#7F1D1D"),
+            "—":              _ROW_B,
         }
         
         _sched_rows = [_sched_header]
@@ -1401,10 +1401,10 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         
         # ── Intensity Legend ──
         _legend_items = [
-            ("Light",          "#DCFCE7", "Zone 1–2 · <65% HRmax"),
-            ("Moderate",       "#DBEAFE", "Zone 2–3 · 65–80% HRmax"),
-            ("Moderate–Hard",  "#EDE9FE", "Zone 3–4 · 80–87% HRmax"),
-            ("Hard",           "#FCE7F3", "Zone 4–5 · 87–95% HRmax"),
+            ("Light",         "#14532D", "Zone 1–2 · <65% HRmax"),
+            ("Moderate",      "#1E3A5F", "Zone 2–3 · 65–80% HRmax"),
+            ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"),
+            ("Hard",          "#7F1D1D", "Zone 4–5 · 87–95% HRmax"),
         ]
         _leg_rows = [[
             P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)),
