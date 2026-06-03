@@ -1381,7 +1381,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
 
         # ── PAGE 6: Weight Roadmap + 7-Day Plan ──
     story.append(SecHeader("Weight Goal Roadmap", subtitle="Projected milestones toward your target"))
-     story.append(VGap(6))
+    story.append(VGap(6))
      if milestones:
          try: start_w = float(w_v or 70)
          except: start_w = 70.0
