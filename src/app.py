@@ -1205,7 +1205,212 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             "Hard":           HexColor("#7F1D1D"),
             "—":              _ROW_B,
         }
-        story.append(PageBreak())
+      
+    # ── PAGE 4: Biological Age + Radar ──
+    story.append(SecHeader("Biological Age & 5-Dimension Radar", subtitle="Heuristic estimate — use as directional guide, not clinical measure"))
+    story.append(VGap(6))
+
+    if bio_v is not None and age_f is not None:
+        story.append(BioAgeBar(bio_v, age_f))
+        story.append(VGap(8))
+        if bio_diff > 3: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years above calendar age. Highest-leverage improvements: sleep consistency, cardio fitness, and stress management."
+        elif bio_diff > 0: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years above calendar age. Focus on the red/amber factors in your factor breakdown."
+        else: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {abs(bio_diff):.1f} years below calendar age. This reflects well on your current habits. Maintain the routines that got you here."
+        story.append(P(bio_expl, S("bioe", size=9, lead=14, after=8)))
+
+        if factors:
+            story.append(P("Factor breakdown — what's driving your bio age estimate:", S("fbh", size=9.5, bold=True, color=ACCENT, after=4)))
+            story.append(FactorBars(factors))
+            story.append(VGap(4))
+            story.append(P("Green = factor favourably reducing biological age. Red/amber = factor adding years. Focus on the longest red bars first.", S("fbl", size=7.5, color=MUTED, italic=True, after=8)))
+    
+    story.append(P("5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)))
+    story.append(RadarChart(radar))
+    story.append(VGap(4))
+    story.append(P("Score 70+ = good. 45–70 = room to improve. Below 45 = priority area.", S("rl", size=7.5, color=MUTED, italic=True, after=4)))
+# ── Bio Age Expert Insight ──
+    if bio_v is not None and age_f is not None:
+        if bio_diff > 3:
+            _bio_insight = (
+                f"A biological age estimate {bio_diff:.1f} years above calendar age signals that multiple "
+                "lifestyle and physiological factors are accelerating your cellular ageing trajectory. "
+                "The most evidence-supported interventions for biological age reversal: consistent sleep "
+                "(7–9h with fixed schedule), VO2max improvement, and chronic stress reduction. "
+                "Each yields an estimated 1–3 year bio-age reduction over 6–12 months of consistent application."
+            )
+            _bio_steps = [
+                "Sleep protocol: Fixed bed/wake time within ±30 min every day — the single highest-ROI bio-age lever",
+                "Add 1 daily 10-min stress-reduction practice — breathwork or meditation lowers cortisol long-term",
+                "Target VO2max improvement of 5+ ml/kg/min over 12 weeks — see Cardio section for exact protocol",
+                "3-month reassessment: re-measure all input markers to track biological age regression",
+            ]
+        elif bio_diff > 0:
+            _bio_insight = (
+                f"A biological age estimate {bio_diff:.1f} years above calendar age indicates moderate acceleration "
+                "in one or more longevity markers. Research indicates that targeted interventions on 2–3 key "
+                "factors produce faster bio-age regression than attempting broad simultaneous lifestyle change. "
+                "Your factor breakdown above identifies exactly where to focus effort first."
+            )
+            _bio_steps = [
+                "Identify your top 2 red/amber factors from the bar chart above — these are your exclusive focus",
+                "Implement one targeted change per factor this week — compounding begins with single consistent habits",
+                "Track weekly proxies: resting HR, sleep duration, daily step count — the three bio-age proxy markers",
+                "12-week goal: reduce biological age estimate by 1–2 years through targeted factor improvement",
+            ]
+        else:
+            _bio_insight = (
+                f"A biological age estimate {abs(bio_diff):.1f} years below calendar age is a measurable longevity "
+                "advantage. Research indicates individuals with biological age 2+ years below calendar age have "
+                "significantly lower risk of age-related disease onset and maintain higher functional capacity "
+                "later in life. Your current habits represent compound interest working in your favour."
+            )
+            _bio_steps = [
+                "Document your current lifestyle protocols in detail — replicate them consistently to protect this advantage",
+                "Identify the 2 green factors contributing most to your score — safeguard them from lifestyle drift",
+                "Annual re-measurement: biological age is dynamic — monitor annually to detect early regression",
+                "Next tier: target top-quartile VO2max for your age group to further extend this biological advantage",
+            ]
+        story.append(VGap(6))
+        story.append(ExpertInsightBox("Biological Age", _bio_insight))
+        story.append(VGap(6))
+        story.append(ActionableMilestoneBox(_bio_steps))
+        story.append(VGap(8))
+    story.append(CompoundingEffectBox())
+    story.append(VGap(6))
+    story.append(PageBreak())
+
+    # ── PAGE 5: Nutrition & Calorie Plan ──
+    story.append(SecHeader("Nutrition & Calorie Strategy", subtitle="Energy balance is the foundation of body composition"))
+    story.append(VGap(6))
+
+    if cur_kcal and rec_kcal:
+        story.append(CalorieBar(cur_kcal, rec_kcal, kg_pw))
+        story.append(VGap(8))
+        d_kcal = int(rec_kcal - cur_kcal)
+        if d_kcal < 0: cal_text = f"A target of {int(rec_kcal)} kcal creates a deficit of {abs(d_kcal)} kcal/day. Expected rate: {abs(kg_pw or 0):.2f} kg/week. Keep protein high to protect muscle."
+        elif d_kcal > 0: cal_text = f"A target of {int(rec_kcal)} kcal creates a surplus of {d_kcal} kcal/day. Expected rate: +{abs(kg_pw or 0):.2f} kg/week. Pair this with progressive strength training."
+        else: cal_text = f"Your target of {int(rec_kcal)} kcal matches estimated maintenance. This supports body recomposition."
+        story.append(P(cal_text, S("ct", size=9, lead=14, after=8)))
+
+        try: wt = float(w_v or 70)
+        except: wt = 70.0
+        protein_g = int(wt * 1.8); fat_g = int(int(rec_kcal) * 0.28 / 9); carb_g = max(0, int((int(rec_kcal) - protein_g*4 - fat_g*9) / 4))
+
+        story.append(P("Suggested daily macro targets", S("mach", size=9.5, bold=True, color=ACCENT, after=4)))
+        macro_data = [
+            [P("MACRO", S("mh",size=7,color=MUTED,bold=True)), P("GRAMS", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("KCAL", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("RATIO", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("KEY ROLE", S("mh",size=7,color=MUTED,bold=True))],
+            [P("Protein", S("pr",size=9,bold=True,color=BLUE)), P(f"{protein_g} g", S("pv",size=9,align=TA_CENTER)), P(f"{protein_g*4}", S("pv",size=9,align=TA_CENTER)), P("~30%", S("pv",size=9,align=TA_CENTER)), P("Muscle repair, satiety, metabolic rate", S("pw",size=8,color=MUTED))],
+            [P("Fat", S("fr",size=9,bold=True,color=WARN)), P(f"{fat_g} g", S("fv",size=9,align=TA_CENTER)), P(f"{fat_g*9}", S("fv",size=9,align=TA_CENTER)), P("~28%", S("fv",size=9,align=TA_CENTER)), P("Hormones, brain, fat-soluble vitamins", S("fw",size=8,color=MUTED))],
+            [P("Carbs", S("cr",size=9,bold=True,color=GOOD)), P(f"{carb_g} g", S("cv",size=9,align=TA_CENTER)), P(f"{carb_g*4}", S("cv",size=9,align=TA_CENTER)), P("~42%", S("cv",size=9,align=TA_CENTER)), P("Training energy, recovery, cognition", S("cw",size=8,color=MUTED))],
+        ]
+        mac_t = Table(macro_data, colWidths=[40*mm,25*mm,22*mm,20*mm,None])
+        mac_t.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 7), ("BOTTOMPADDING", (0,0), (-1,-1), 7), ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP")]))
+        story.append(mac_t); story.append(VGap(8))
+        story.append(P("Macros estimated using Mifflin-St Jeor + standard ratios. Adjust every 2–3 weeks based on actual progress.", S("dn", size=7.5, color=MUTED, italic=True, after=4)))
+    else: story.append(P("Calorie plan not generated.", S("ncp", size=9, color=MUTED, after=8)))
+
+    if exlog and ex_act:
+        story.append(VGap(6)); story.append(SecHeader("Exercise Log Summary", accent=BLUE)); story.append(VGap(6))
+        ex_metrics = [("Activity", ex_act[:18], ex_int, "#0EA5A3"), ("Kcal / session", f"{ex_kcal_s:.0f}", "kcal", "#3B82F6"), ("Kcal / week", f"{ex_kcal_w:.0f}", f"{ex_sess}x/week", "#22C55E"), ("Weekly volume", f"{ex_total_min} min", f"{ex_min}min × {ex_sess}", "#F59E0B")]
+        story.append(MetricCard(ex_metrics, card_h=66)); story.append(VGap(4))
+        who_txt = "✓ Meets WHO 150 min/week guidelines" if ex_total_min >= 150 else f"⚠ {150-ex_total_min} min below WHO 150 min/week target"
+        story.append(P(who_txt, S("who", size=8.5, color=HexColor("#22C55E" if ex_total_min >= 150 else "#F59E0B"), after=4)))
+# ── Nutrition Expert Insight ──
+    if cur_kcal and rec_kcal:
+        _d_kcal_e = int(rec_kcal - cur_kcal)
+        if _d_kcal_e < -600:
+            _nut_insight = (
+                f"A deficit exceeding 600 kcal/day activates adaptive thermogenesis — your metabolic rate "
+                "down-regulates by 20–30% within 2–3 weeks to compensate (Leibel et al., NEJM, 1995). "
+                "Additionally, deficits above 500 kcal/day substantially increase muscle catabolism. "
+                "The evidence-based recommendation: reduce to a 400–500 kcal/day deficit and prioritise "
+                "high protein (1.8–2.2 g/kg) to protect every kilogram of lean mass."
+            )
+            _nut_steps = [
+                "Recalibrate to a 400–500 kcal/day deficit — the sustainable zone for fat loss without metabolic slowdown",
+                "Protein target: 1.8 g per kg bodyweight daily — distribute across 3–4 meals with 30–40g per serving",
+                "Reweigh weekly at identical conditions — adjust calories every 2 weeks based on the observed trend",
+                "Minimum fat intake: 0.8 g/kg/day — below this threshold, hormonal health and fat-soluble vitamins suffer",
+            ]
+        elif _d_kcal_e < 0:
+            _nut_insight = (
+                f"Your deficit of {abs(_d_kcal_e)} kcal/day aligns with evidence-based fat loss guidelines "
+                "(ACSM Position Stand). At this rate, lean mass preservation is maximised while producing "
+                "consistent fat loss. Protein at 1.8 g/kg/day combined with resistance training ensures "
+                "the weight lost is predominantly fat — the critical distinction for long-term body composition."
+            )
+            _nut_steps = [
+                "Protein first: Build every meal around a 30–40g protein source before adding carbohydrates or fats",
+                "Calorie cycling: +500 kcal on resistance training days, −300 kcal on rest days — same weekly average",
+                "Satiety protocol: Target 25–35g fibre/day and 35 ml water/kg bodyweight to reduce adherence friction",
+                "Stall protocol: If weight loss stops for 10+ days, reduce by 150 kcal only — avoid dramatic adjustments",
+            ]
+        elif _d_kcal_e > 0:
+            _nut_insight = (
+                f"A controlled surplus of {_d_kcal_e} kcal/day is the evidence-based approach for lean muscle "
+                "accretion (Barakat et al., Strength and Conditioning Journal, 2020). Aggressive surpluses "
+                "(>500 kcal/day) result in disproportionate fat gain rather than additional muscle tissue. "
+                "The 1.8–2.2 g/kg protein target is non-negotiable — muscle protein synthesis requires adequate "
+                "substrate independent of total calorie intake."
+            )
+            _nut_steps = [
+                "Protein timing: Consume 30–40g protein within 90 minutes post-resistance training session",
+                "Carbohydrate strategy: Prioritise carbs around training windows — they fuel the performance that drives growth",
+                "Monthly audit: If gaining >0.4 kg/week, reduce surplus by 150 kcal — excess gain is fat, not muscle",
+                "Sleep 7–9h nightly — 70% of growth hormone (the primary muscle repair signal) is secreted during deep sleep",
+            ]
+        else:
+            _nut_insight = (
+                "Maintenance calories optimally support body recomposition — simultaneously losing fat and gaining "
+                "muscle. This is the most underrated strategy in body composition science: slower than aggressive "
+                "cutting or bulking, but producing the most favourable long-term composition change for most "
+                "individuals at an intermediate fitness level (Barakat et al., 2020)."
+            )
+            _nut_steps = [
+                "Resistance training 3×/week is the essential driver of recomposition — nutrition alone is insufficient",
+                "Protein at 2.0 g/kg/day — higher than for deficit or surplus phases due to dual anabolic demand",
+                "Track body fat percentage, not scale weight — the scale is an unreliable proxy during recomposition",
+                "12-week commitment: Body recomposition results require 8–12 weeks before becoming objectively measurable",
+            ]
+        story.append(VGap(6))
+        story.append(ExpertInsightBox("Nutrition & Calorie Strategy", _nut_insight))
+        story.append(VGap(6))
+        story.append(ActionableMilestoneBox(_nut_steps))
+        story.append(VGap(6))
+    story.append(PageBreak())
+
+    # ── PAGE 6: Weight Roadmap + 7-Day Plan ──
+    story.append(SecHeader("Weight Goal Roadmap", subtitle="Projected milestones toward your target"))
+    story.append(VGap(6))
+
+    if milestones:
+        try: start_w = float(w_v or 70)
+        except: start_w = 70.0
+        try: end_w = float(milestones[-1].get("Projected weight (kg)", start_w))
+        except: end_w = start_w
+        total_change = abs(end_w - start_w); m_cols = ["#3B82F6","#6366F1","#0EA5A3","#22C55E"]
+        story.append(P(f"Starting weight: {start_w:.1f} kg → Target: {end_w:.1f} kg", S("mrt", size=9.5, bold=True, color=TEXT, after=6)))
+        for i, m in enumerate(milestones):
+            pw = float(m.get("Projected weight (kg)", start_w))
+            prog = min(100, max(0, int(abs(pw-start_w)/total_change*100))) if total_change > 0.01 else 100
+            story.append(MilestoneRow(m.get("Week", i+1), pw, str(m.get("Focus","")), prog, m_cols[i % len(m_cols)], (i == len(milestones)-1)))
+        story.append(VGap(10))
+    else: story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
+
+    story.append(SecHeader("7-Day Kickstart Training Plan", subtitle="A practical starting week — adapt to your schedule", accent=BLUE))
+    story.append(VGap(6))
+
+    day_cols_list = ["#3B82F6","#22C55E","#94A3B8","#F59E0B","#22C55E","#0EA5A3","#6366F1"]
+    plan_data = [[P("DAY", S("ph",size=7,bold=True,color=MUTED)), P("SESSION", S("ph",size=7,bold=True,color=MUTED)), P("DURATION", S("ph",size=7,bold=True,color=MUTED)), P("PURPOSE", S("ph",size=7,bold=True,color=MUTED))]]
+    for j, (day, sess, dur, why) in enumerate(plan_7):
+        dc = day_cols_list[j % len(day_cols_list)]
+        plan_data.append([P(day, S(f"pd{j}",size=8.5,bold=True,color=HexColor(dc))), P(sess, S(f"ps{j}",size=8.5,color=TEXT)), P(dur, S(f"pr{j}",size=8.5,color=MUTED,align=TA_CENTER)), P(why, S(f"pw{j}",size=8, color=MUTED))])
+    pt = Table(plan_data, colWidths=[20*mm, 65*mm, 28*mm, None])
+    pt.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 7), ("BOTTOMPADDING", (0,0), (-1,-1), 7), ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP")]))
+    story.append(pt); story.append(VGap(6))
+    story.append(P("Consistency over 12+ weeks beats perfect 2-week blocks every time.", S("prg", size=8, color=MUTED, italic=True, after=4)))
+    story.append(PageBreak())
+story.append(PageBreak())
         story.append(SecHeader("Personalised Training Programme",
             subtitle="Evidence-based weekly plan built around your selected activities and goal"))
         story.append(VGap(6))
@@ -1609,211 +1814,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         ))
         
         story.append(PageBreak())
-    # ── PAGE 4: Biological Age + Radar ──
-    story.append(SecHeader("Biological Age & 5-Dimension Radar", subtitle="Heuristic estimate — use as directional guide, not clinical measure"))
-    story.append(VGap(6))
-
-    if bio_v is not None and age_f is not None:
-        story.append(BioAgeBar(bio_v, age_f))
-        story.append(VGap(8))
-        if bio_diff > 3: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years above calendar age. Highest-leverage improvements: sleep consistency, cardio fitness, and stress management."
-        elif bio_diff > 0: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years above calendar age. Focus on the red/amber factors in your factor breakdown."
-        else: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {abs(bio_diff):.1f} years below calendar age. This reflects well on your current habits. Maintain the routines that got you here."
-        story.append(P(bio_expl, S("bioe", size=9, lead=14, after=8)))
-
-        if factors:
-            story.append(P("Factor breakdown — what's driving your bio age estimate:", S("fbh", size=9.5, bold=True, color=ACCENT, after=4)))
-            story.append(FactorBars(factors))
-            story.append(VGap(4))
-            story.append(P("Green = factor favourably reducing biological age. Red/amber = factor adding years. Focus on the longest red bars first.", S("fbl", size=7.5, color=MUTED, italic=True, after=8)))
-    
-    story.append(P("5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)))
-    story.append(RadarChart(radar))
-    story.append(VGap(4))
-    story.append(P("Score 70+ = good. 45–70 = room to improve. Below 45 = priority area.", S("rl", size=7.5, color=MUTED, italic=True, after=4)))
-# ── Bio Age Expert Insight ──
-    if bio_v is not None and age_f is not None:
-        if bio_diff > 3:
-            _bio_insight = (
-                f"A biological age estimate {bio_diff:.1f} years above calendar age signals that multiple "
-                "lifestyle and physiological factors are accelerating your cellular ageing trajectory. "
-                "The most evidence-supported interventions for biological age reversal: consistent sleep "
-                "(7–9h with fixed schedule), VO2max improvement, and chronic stress reduction. "
-                "Each yields an estimated 1–3 year bio-age reduction over 6–12 months of consistent application."
-            )
-            _bio_steps = [
-                "Sleep protocol: Fixed bed/wake time within ±30 min every day — the single highest-ROI bio-age lever",
-                "Add 1 daily 10-min stress-reduction practice — breathwork or meditation lowers cortisol long-term",
-                "Target VO2max improvement of 5+ ml/kg/min over 12 weeks — see Cardio section for exact protocol",
-                "3-month reassessment: re-measure all input markers to track biological age regression",
-            ]
-        elif bio_diff > 0:
-            _bio_insight = (
-                f"A biological age estimate {bio_diff:.1f} years above calendar age indicates moderate acceleration "
-                "in one or more longevity markers. Research indicates that targeted interventions on 2–3 key "
-                "factors produce faster bio-age regression than attempting broad simultaneous lifestyle change. "
-                "Your factor breakdown above identifies exactly where to focus effort first."
-            )
-            _bio_steps = [
-                "Identify your top 2 red/amber factors from the bar chart above — these are your exclusive focus",
-                "Implement one targeted change per factor this week — compounding begins with single consistent habits",
-                "Track weekly proxies: resting HR, sleep duration, daily step count — the three bio-age proxy markers",
-                "12-week goal: reduce biological age estimate by 1–2 years through targeted factor improvement",
-            ]
-        else:
-            _bio_insight = (
-                f"A biological age estimate {abs(bio_diff):.1f} years below calendar age is a measurable longevity "
-                "advantage. Research indicates individuals with biological age 2+ years below calendar age have "
-                "significantly lower risk of age-related disease onset and maintain higher functional capacity "
-                "later in life. Your current habits represent compound interest working in your favour."
-            )
-            _bio_steps = [
-                "Document your current lifestyle protocols in detail — replicate them consistently to protect this advantage",
-                "Identify the 2 green factors contributing most to your score — safeguard them from lifestyle drift",
-                "Annual re-measurement: biological age is dynamic — monitor annually to detect early regression",
-                "Next tier: target top-quartile VO2max for your age group to further extend this biological advantage",
-            ]
-        story.append(VGap(6))
-        story.append(ExpertInsightBox("Biological Age", _bio_insight))
-        story.append(VGap(6))
-        story.append(ActionableMilestoneBox(_bio_steps))
-        story.append(VGap(8))
-    story.append(CompoundingEffectBox())
-    story.append(VGap(6))
-    story.append(PageBreak())
-
-    # ── PAGE 5: Nutrition & Calorie Plan ──
-    story.append(SecHeader("Nutrition & Calorie Strategy", subtitle="Energy balance is the foundation of body composition"))
-    story.append(VGap(6))
-
-    if cur_kcal and rec_kcal:
-        story.append(CalorieBar(cur_kcal, rec_kcal, kg_pw))
-        story.append(VGap(8))
-        d_kcal = int(rec_kcal - cur_kcal)
-        if d_kcal < 0: cal_text = f"A target of {int(rec_kcal)} kcal creates a deficit of {abs(d_kcal)} kcal/day. Expected rate: {abs(kg_pw or 0):.2f} kg/week. Keep protein high to protect muscle."
-        elif d_kcal > 0: cal_text = f"A target of {int(rec_kcal)} kcal creates a surplus of {d_kcal} kcal/day. Expected rate: +{abs(kg_pw or 0):.2f} kg/week. Pair this with progressive strength training."
-        else: cal_text = f"Your target of {int(rec_kcal)} kcal matches estimated maintenance. This supports body recomposition."
-        story.append(P(cal_text, S("ct", size=9, lead=14, after=8)))
-
-        try: wt = float(w_v or 70)
-        except: wt = 70.0
-        protein_g = int(wt * 1.8); fat_g = int(int(rec_kcal) * 0.28 / 9); carb_g = max(0, int((int(rec_kcal) - protein_g*4 - fat_g*9) / 4))
-
-        story.append(P("Suggested daily macro targets", S("mach", size=9.5, bold=True, color=ACCENT, after=4)))
-        macro_data = [
-            [P("MACRO", S("mh",size=7,color=MUTED,bold=True)), P("GRAMS", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("KCAL", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("RATIO", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("KEY ROLE", S("mh",size=7,color=MUTED,bold=True))],
-            [P("Protein", S("pr",size=9,bold=True,color=BLUE)), P(f"{protein_g} g", S("pv",size=9,align=TA_CENTER)), P(f"{protein_g*4}", S("pv",size=9,align=TA_CENTER)), P("~30%", S("pv",size=9,align=TA_CENTER)), P("Muscle repair, satiety, metabolic rate", S("pw",size=8,color=MUTED))],
-            [P("Fat", S("fr",size=9,bold=True,color=WARN)), P(f"{fat_g} g", S("fv",size=9,align=TA_CENTER)), P(f"{fat_g*9}", S("fv",size=9,align=TA_CENTER)), P("~28%", S("fv",size=9,align=TA_CENTER)), P("Hormones, brain, fat-soluble vitamins", S("fw",size=8,color=MUTED))],
-            [P("Carbs", S("cr",size=9,bold=True,color=GOOD)), P(f"{carb_g} g", S("cv",size=9,align=TA_CENTER)), P(f"{carb_g*4}", S("cv",size=9,align=TA_CENTER)), P("~42%", S("cv",size=9,align=TA_CENTER)), P("Training energy, recovery, cognition", S("cw",size=8,color=MUTED))],
-        ]
-        mac_t = Table(macro_data, colWidths=[40*mm,25*mm,22*mm,20*mm,None])
-        mac_t.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 7), ("BOTTOMPADDING", (0,0), (-1,-1), 7), ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP")]))
-        story.append(mac_t); story.append(VGap(8))
-        story.append(P("Macros estimated using Mifflin-St Jeor + standard ratios. Adjust every 2–3 weeks based on actual progress.", S("dn", size=7.5, color=MUTED, italic=True, after=4)))
-    else: story.append(P("Calorie plan not generated.", S("ncp", size=9, color=MUTED, after=8)))
-
-    if exlog and ex_act:
-        story.append(VGap(6)); story.append(SecHeader("Exercise Log Summary", accent=BLUE)); story.append(VGap(6))
-        ex_metrics = [("Activity", ex_act[:18], ex_int, "#0EA5A3"), ("Kcal / session", f"{ex_kcal_s:.0f}", "kcal", "#3B82F6"), ("Kcal / week", f"{ex_kcal_w:.0f}", f"{ex_sess}x/week", "#22C55E"), ("Weekly volume", f"{ex_total_min} min", f"{ex_min}min × {ex_sess}", "#F59E0B")]
-        story.append(MetricCard(ex_metrics, card_h=66)); story.append(VGap(4))
-        who_txt = "✓ Meets WHO 150 min/week guidelines" if ex_total_min >= 150 else f"⚠ {150-ex_total_min} min below WHO 150 min/week target"
-        story.append(P(who_txt, S("who", size=8.5, color=HexColor("#22C55E" if ex_total_min >= 150 else "#F59E0B"), after=4)))
-# ── Nutrition Expert Insight ──
-    if cur_kcal and rec_kcal:
-        _d_kcal_e = int(rec_kcal - cur_kcal)
-        if _d_kcal_e < -600:
-            _nut_insight = (
-                f"A deficit exceeding 600 kcal/day activates adaptive thermogenesis — your metabolic rate "
-                "down-regulates by 20–30% within 2–3 weeks to compensate (Leibel et al., NEJM, 1995). "
-                "Additionally, deficits above 500 kcal/day substantially increase muscle catabolism. "
-                "The evidence-based recommendation: reduce to a 400–500 kcal/day deficit and prioritise "
-                "high protein (1.8–2.2 g/kg) to protect every kilogram of lean mass."
-            )
-            _nut_steps = [
-                "Recalibrate to a 400–500 kcal/day deficit — the sustainable zone for fat loss without metabolic slowdown",
-                "Protein target: 1.8 g per kg bodyweight daily — distribute across 3–4 meals with 30–40g per serving",
-                "Reweigh weekly at identical conditions — adjust calories every 2 weeks based on the observed trend",
-                "Minimum fat intake: 0.8 g/kg/day — below this threshold, hormonal health and fat-soluble vitamins suffer",
-            ]
-        elif _d_kcal_e < 0:
-            _nut_insight = (
-                f"Your deficit of {abs(_d_kcal_e)} kcal/day aligns with evidence-based fat loss guidelines "
-                "(ACSM Position Stand). At this rate, lean mass preservation is maximised while producing "
-                "consistent fat loss. Protein at 1.8 g/kg/day combined with resistance training ensures "
-                "the weight lost is predominantly fat — the critical distinction for long-term body composition."
-            )
-            _nut_steps = [
-                "Protein first: Build every meal around a 30–40g protein source before adding carbohydrates or fats",
-                "Calorie cycling: +500 kcal on resistance training days, −300 kcal on rest days — same weekly average",
-                "Satiety protocol: Target 25–35g fibre/day and 35 ml water/kg bodyweight to reduce adherence friction",
-                "Stall protocol: If weight loss stops for 10+ days, reduce by 150 kcal only — avoid dramatic adjustments",
-            ]
-        elif _d_kcal_e > 0:
-            _nut_insight = (
-                f"A controlled surplus of {_d_kcal_e} kcal/day is the evidence-based approach for lean muscle "
-                "accretion (Barakat et al., Strength and Conditioning Journal, 2020). Aggressive surpluses "
-                "(>500 kcal/day) result in disproportionate fat gain rather than additional muscle tissue. "
-                "The 1.8–2.2 g/kg protein target is non-negotiable — muscle protein synthesis requires adequate "
-                "substrate independent of total calorie intake."
-            )
-            _nut_steps = [
-                "Protein timing: Consume 30–40g protein within 90 minutes post-resistance training session",
-                "Carbohydrate strategy: Prioritise carbs around training windows — they fuel the performance that drives growth",
-                "Monthly audit: If gaining >0.4 kg/week, reduce surplus by 150 kcal — excess gain is fat, not muscle",
-                "Sleep 7–9h nightly — 70% of growth hormone (the primary muscle repair signal) is secreted during deep sleep",
-            ]
-        else:
-            _nut_insight = (
-                "Maintenance calories optimally support body recomposition — simultaneously losing fat and gaining "
-                "muscle. This is the most underrated strategy in body composition science: slower than aggressive "
-                "cutting or bulking, but producing the most favourable long-term composition change for most "
-                "individuals at an intermediate fitness level (Barakat et al., 2020)."
-            )
-            _nut_steps = [
-                "Resistance training 3×/week is the essential driver of recomposition — nutrition alone is insufficient",
-                "Protein at 2.0 g/kg/day — higher than for deficit or surplus phases due to dual anabolic demand",
-                "Track body fat percentage, not scale weight — the scale is an unreliable proxy during recomposition",
-                "12-week commitment: Body recomposition results require 8–12 weeks before becoming objectively measurable",
-            ]
-        story.append(VGap(6))
-        story.append(ExpertInsightBox("Nutrition & Calorie Strategy", _nut_insight))
-        story.append(VGap(6))
-        story.append(ActionableMilestoneBox(_nut_steps))
-        story.append(VGap(6))
-    story.append(PageBreak())
-
-    # ── PAGE 6: Weight Roadmap + 7-Day Plan ──
-    story.append(SecHeader("Weight Goal Roadmap", subtitle="Projected milestones toward your target"))
-    story.append(VGap(6))
-
-    if milestones:
-        try: start_w = float(w_v or 70)
-        except: start_w = 70.0
-        try: end_w = float(milestones[-1].get("Projected weight (kg)", start_w))
-        except: end_w = start_w
-        total_change = abs(end_w - start_w); m_cols = ["#3B82F6","#6366F1","#0EA5A3","#22C55E"]
-        story.append(P(f"Starting weight: {start_w:.1f} kg → Target: {end_w:.1f} kg", S("mrt", size=9.5, bold=True, color=TEXT, after=6)))
-        for i, m in enumerate(milestones):
-            pw = float(m.get("Projected weight (kg)", start_w))
-            prog = min(100, max(0, int(abs(pw-start_w)/total_change*100))) if total_change > 0.01 else 100
-            story.append(MilestoneRow(m.get("Week", i+1), pw, str(m.get("Focus","")), prog, m_cols[i % len(m_cols)], (i == len(milestones)-1)))
-        story.append(VGap(10))
-    else: story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
-
-    story.append(SecHeader("7-Day Kickstart Training Plan", subtitle="A practical starting week — adapt to your schedule", accent=BLUE))
-    story.append(VGap(6))
-
-    day_cols_list = ["#3B82F6","#22C55E","#94A3B8","#F59E0B","#22C55E","#0EA5A3","#6366F1"]
-    plan_data = [[P("DAY", S("ph",size=7,bold=True,color=MUTED)), P("SESSION", S("ph",size=7,bold=True,color=MUTED)), P("DURATION", S("ph",size=7,bold=True,color=MUTED)), P("PURPOSE", S("ph",size=7,bold=True,color=MUTED))]]
-    for j, (day, sess, dur, why) in enumerate(plan_7):
-        dc = day_cols_list[j % len(day_cols_list)]
-        plan_data.append([P(day, S(f"pd{j}",size=8.5,bold=True,color=HexColor(dc))), P(sess, S(f"ps{j}",size=8.5,color=TEXT)), P(dur, S(f"pr{j}",size=8.5,color=MUTED,align=TA_CENTER)), P(why, S(f"pw{j}",size=8, color=MUTED))])
-    pt = Table(plan_data, colWidths=[20*mm, 65*mm, 28*mm, None])
-    pt.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 7), ("BOTTOMPADDING", (0,0), (-1,-1), 7), ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP")]))
-    story.append(pt); story.append(VGap(6))
-    story.append(P("Consistency over 12+ weeks beats perfect 2-week blocks every time.", S("prg", size=8, color=MUTED, italic=True, after=4)))
-    story.append(PageBreak())
-
     # ── PAGE 7: Insights + Conditions + Safety ──
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
     story.append(VGap(6))
