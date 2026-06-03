@@ -1446,17 +1446,17 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
         
         # ── Goal overview box ──
-        story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  "
-                       f"Calorie adjustment: {_gp['deficit']:+d} kcal/day  ·  Target protein: {_gp['protein']}",
-                       S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
-        story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
-        story.append(VGap(4))
+    story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  "
+                    f"Calorie adjustment: {_gp['deficit']:+d} kcal/day  ·  Target protein: {_gp['protein']}",
+                    S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
+    story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
+    story.append(VGap(4))
         
         # ── Phase Timeline Bar ──
-        story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
-        _phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
-        _phase_rows = [
+    _phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
+    _phase_rows = [
             [P("PHASE 1", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
              P("PHASE 2", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
              P("PHASE 3", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True))],
@@ -1467,8 +1467,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
              P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
              P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
         ]
-        _pt = Table(_phase_rows, colWidths=_phase_cols)
-        _pt.setStyle(TableStyle([
+    _pt = Table(_phase_rows, colWidths=_phase_cols)
+    _pt.setStyle(TableStyle([
             ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
             ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
             ("BACKGROUND",    (2,0), (2,-1), _PHASE3_BG),
@@ -1482,8 +1482,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             ("LEFTPADDING",   (0,0), (-1,-1), 6),
             ("RIGHTPADDING",  (0,0), (-1,-1), 6),
         ]))
-        story.append(_pt)
-        story.append(VGap(10))
+    story.append(_pt)
+    story.append(VGap(10))
         
         # ── Weekly Schedule Table ──
         story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
