@@ -1379,7 +1379,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(VGap(6))
     story.append(PageBreak())
 
-# ── PAGE 6: Weight Roadmap + 7-Day Plan ──
+    # ── PAGE 6: Weight Roadmap ──
     story.append(SecHeader("Weight Goal Roadmap", subtitle="Projected milestones toward your target"))
     story.append(VGap(6))
     if milestones:
@@ -1387,12 +1387,13 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         except: start_w = 70.0
         try: end_w = float(milestones[-1].get("Projected weight (kg)", start_w))
         except: end_w = start_w
-        total_change = abs(end_w - start_w); m_cols = ["#3B82F6","#6366F1","#0EA5A3","#22C55E"]
+        total_change = abs(end_w - start_w)
+        m_cols = ["#3B82F6", "#6366F1", "#0EA5A3", "#22C55E"]
         story.append(P(f"Starting weight: {start_w:.1f} kg → Target: {end_w:.1f} kg", S("mrt", size=9.5, bold=True, color=TEXT, after=6)))
         for i, m in enumerate(milestones):
             pw = float(m.get("Projected weight (kg)", start_w))
-            prog = min(100, max(0, int(abs(pw-start_w)/total_change*100))) if total_change > 0.01 else 100
-            story.append(MilestoneRow(m.get("Week", i+1), pw, str(m.get("Focus","")), prog, m_cols[i % len(m_cols)], (i == len(milestones)-1)))
+            prog = min(100, max(0, int(abs(pw - start_w) / total_change * 100))) if total_change > 0.01 else 100
+            story.append(MilestoneRow(m.get("Week", i + 1), pw, str(m.get("Focus", "")), prog, m_cols[i % len(m_cols)], (i == len(milestones) - 1)))
         story.append(VGap(10))
     else:
         story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
@@ -1408,27 +1409,27 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _activities = st.session_state.get("selected_activities", [])
     _weeks      = st.session_state.get("plan_weeks", 12)
     _protein_on = st.session_state.get("protein_focus", True)
-        
-        # ── Activity → category map ──
-    _strength_acts  = {"Strength training (weights)", "Boxing / Martial arts",
-                        "Rock climbing / Bouldering", "Hiking (incline)"}
-    _cardio_acts    = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)",
-                        "Swimming", "Rowing (moderate/vigorous)", "HIIT",
-                         "Elliptical", "Stair climbing / Stairmaster"}
-    _sport_acts     = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
-                         "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
-    _low_acts       = {"Walking (casual)", "Brisk walking", "Yoga / Pilates",
-                        "Housework / Light chores", "Gardening / Heavy yard work"}
-        
-        _has_strength = bool(_activities and _strength_acts & set(_activities))
-        _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
-        _has_sport    = bool(_activities and _sport_acts    & set(_activities))
-        _has_low      = bool(_activities and _low_acts      & set(_activities))
-        
-        _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
-        _sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
-        _sel_sport    = [a for a in _activities if a in _sport_acts]
-        _sel_low      = [a for a in _activities if a in _low_acts]
+
+    # ── Activity → category map ──
+    _strength_acts = {"Strength training (weights)", "Boxing / Martial arts",
+                      "Rock climbing / Bouldering", "Hiking (incline)"}
+    _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)",
+                      "Swimming", "Rowing (moderate/vigorous)", "HIIT",
+                      "Elliptical", "Stair climbing / Stairmaster"}
+    _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
+                      "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
+    _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates",
+                      "Housework / Light chores", "Gardening / Heavy yard work"}
+
+    _has_strength = bool(_activities and _strength_acts & set(_activities))
+    _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
+    _has_sport    = bool(_activities and _sport_acts    & set(_activities))
+    _has_low      = bool(_activities and _low_acts      & set(_activities))
+
+    _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
+    _sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
+    _sel_sport    = [a for a in _activities if a in _sport_acts]
+    _sel_low      = [a for a in _activities if a in _low_acts]
         
         # ── Goal-based parameter table ──
         _goal_params = {
