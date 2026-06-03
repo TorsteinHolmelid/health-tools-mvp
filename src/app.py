@@ -1486,9 +1486,9 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(VGap(10))
         
         # ── Weekly Schedule Table ──
-    story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
+        story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
-    _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         
         def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                             sel_strength, sel_cardio, sel_sport, sel_low):
