@@ -1410,15 +1410,15 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _protein_on = st.session_state.get("protein_focus", True)
         
         # ── Activity → category map ──
-        _strength_acts  = {"Strength training (weights)", "Boxing / Martial arts",
-                           "Rock climbing / Bouldering", "Hiking (incline)"}
-        _cardio_acts    = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)",
-                           "Swimming", "Rowing (moderate/vigorous)", "HIIT",
-                           "Elliptical", "Stair climbing / Stairmaster"}
-        _sport_acts     = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
-                           "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
-        _low_acts       = {"Walking (casual)", "Brisk walking", "Yoga / Pilates",
-                           "Housework / Light chores", "Gardening / Heavy yard work"}
+    _strength_acts  = {"Strength training (weights)", "Boxing / Martial arts",
+                        "Rock climbing / Bouldering", "Hiking (incline)"}
+    _cardio_acts    = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)",
+                        "Swimming", "Rowing (moderate/vigorous)", "HIIT",
+                         "Elliptical", "Stair climbing / Stairmaster"}
+    _sport_acts     = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
+                         "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
+    _low_acts       = {"Walking (casual)", "Brisk walking", "Yoga / Pilates",
+                        "Housework / Light chores", "Gardening / Heavy yard work"}
         
         _has_strength = bool(_activities and _strength_acts & set(_activities))
         _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
