@@ -1432,7 +1432,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _sel_low      = [a for a in _activities if a in _low_acts]
         
         # ── Goal-based parameter table ──
-        _goal_params = {
+    _goal_params = {
             "Lose fat":               {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
                                        "phase1": "Metabolic Reset (Wk 1–3)", "phase2": "Progressive Overload (Wk 4–8)",
                                        "phase3": "Intensification (Wk 9–12)", "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass."},
@@ -1443,7 +1443,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                                        "phase1": "Foundation (Wk 1–3)", "phase2": "Recomposition Block (Wk 4–8)",
                                        "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
         }
-        _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
+    _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
         
         # ── Goal overview box ──
         story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  "
