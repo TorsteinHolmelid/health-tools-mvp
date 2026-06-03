@@ -1273,7 +1273,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
              P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
              P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
         ]
-_pt = Table(_phase_rows, colWidths=_phase_cols)
+        _pt = Table(_phase_rows, colWidths=_phase_cols)
         _pt.setStyle(TableStyle([
             ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
             ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
