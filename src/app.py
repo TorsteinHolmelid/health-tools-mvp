@@ -1180,6 +1180,31 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         # ══════════════════════════════════════════════════════════════════════
         # ── PAGE X: Personalised Training Programme ──
         # ══════════════════════════════════════════════════════════════════════
+       # ── Legg til desse konstantane øvst i training-seksjonen ──
+        _WHITE      = HexColor("#FFFFFF")
+        _ROW_A      = HexColor("#1E2A3A")   # mørk blå-grå rad A
+        _ROW_B      = HexColor("#162030")   # endå mørkare rad B
+        _HEADER_BG  = HexColor("#0F1923")   # kolonneheader
+        _PHASE1_BG  = HexColor("#0F2A1E")   # grøn fase
+        _PHASE2_BG  = HexColor("#0F1F3A")   # blå fase
+        _PHASE3_BG  = HexColor("#1A0F3A")   # lilla fase
+        _TEXT_LIGHT = HexColor("#E2E8F0")
+        _TEXT_DIM   = HexColor("#94A3B8")
+        _ACCENT_G   = HexColor("#22C55E")   # grøn verdi
+        _ACCENT_B   = HexColor("#38BDF8")   # blå verdi
+        _ACCENT_P   = HexColor("#A78BFA")   # lilla verdi
+        _ACCENT_R   = HexColor("#F87171")   # raud/negativ
+        _DELOAD_BG  = HexColor("#2A2510")   # deload-rad gul-mørk
+        
+        # ── Intensitetsfargar — klare mot mørk bakgrunn ──
+        _intensity_colors = {
+            "Light":          HexColor("#14532D"),   # mørk grøn
+            "Light–Moderate": HexColor("#166534"),
+            "Moderate":       HexColor("#1E3A5F"),   # mørk blå
+            "Moderate–Hard":  HexColor("#3B1F6E"),   # mørk lilla
+            "Hard":           HexColor("#7F1D1D"),   # mørk raud
+            "—":              _ROW_B,
+        }
         story.append(PageBreak())
         story.append(SecHeader("Personalised Training Programme",
             subtitle="Evidence-based weekly plan built around your selected activities and goal"))
@@ -1248,13 +1273,16 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
              P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
              P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
         ]
-        _pt = Table(_phase_rows, colWidths=_phase_cols)
-        _pt.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0), (0,-1), HexColor("#EFF6FF")),
-            ("BACKGROUND",    (1,0), (1,-1), HexColor("#DBEAFE")),
-            ("BACKGROUND",    (2,0), (2,-1), HexColor("#BFDBFE")),
-            ("BOX",           (0,0), (-1,-1), 0.5, STROKE),
-            ("INNERGRID",     (0,0), (-1,-1), 0.5, STROKE),
+         _pt = Table(_phase_rows, colWidths=_phase_cols)
+         _pt.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
+            ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
+            ("BACKGROUND",    (2,0), (2,-1), _PHASE3_BG),
+            ("TEXTCOLOR",     (0,0), (-1,0), _TEXT_DIM),
+            ("TEXTCOLOR",     (0,1), (-1,1), _TEXT_LIGHT),
+            ("TEXTCOLOR",     (0,2), (-1,2), _TEXT_DIM),
+            ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+            ("INNERGRID",     (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
             ("TOPPADDING",    (0,0), (-1,-1), 7),
             ("BOTTOMPADDING", (0,0), (-1,-1), 7),
             ("LEFTPADDING",   (0,0), (-1,-1), 6),
@@ -1344,25 +1372,29 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         _col_w = [CONTENT_W*w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
         _st = Table(_sched_rows, colWidths=_col_w)
         
-        _ts = [
-            ("BACKGROUND",    (0,0), (-1,0),  CARD2),
-            ("BOX",           (0,0), (-1,-1), 0.5, STROKE),
-            ("INNERGRID",     (0,0), (-1,-1), 0.3, STROKE),
-            ("TOPPADDING",    (0,0), (-1,-1), 6),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-            ("LEFTPADDING",   (0,0), (-1,-1), 5),
-            ("RIGHTPADDING",  (0,0), (-1,-1), 5),
-            ("VALIGN",        (0,0), (-1,-1), "TOP"),
+                _ts = [
+            ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+            ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+            ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+            ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+            ("TOPPADDING",    (0,0),  (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
+            ("LEFTPADDING",   (0,0),  (-1,-1), 5),
+            ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
+            ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+            ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),   # dag-kolonne
+            ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_B),     # session-kolonne
+            ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_LIGHT),   # aktivitet
+            ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # varighet
+            ("TEXTCOLOR",     (4,1),  (4,-1),  _WHITE),        # intensitet — alltid kvit tekst
+            ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # notat
         ]
         for i, (_, _, _, _, inten, _) in enumerate(_plan):
-            _bg = _intensity_colors.get(inten, HexColor("#FFFFFF"))
+            _bg = _intensity_colors.get(inten, _ROW_B)
+            row_bg = _ROW_A if i % 2 == 0 else _ROW_B
+            _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
             _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
-            if i % 2 == 0:
-                _ts.append(("BACKGROUND", (0, i+1), (3, i+1), CARD))
-                _ts.append(("BACKGROUND", (5, i+1), (5, i+1), CARD))
-            else:
-                _ts.append(("BACKGROUND", (0, i+1), (3, i+1), HexColor("#FFFFFF")))
-                _ts.append(("BACKGROUND", (5, i+1), (5, i+1), HexColor("#FFFFFF")))
+            _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
         
         _st.setStyle(TableStyle(_ts))
         story.append(_st)
@@ -1380,12 +1412,18 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]
         ]]
         _leg_t = Table(_leg_rows, colWidths=[CONTENT_W*0.16] + [CONTENT_W*0.21]*4)
-        _leg_style = [("BOX",(0,0),(-1,-1),0.5,STROKE),("INNERGRID",(0,0),(-1,-1),0.3,STROKE),
-                      ("TOPPADDING",(0,0),(-1,-1),4),("BOTTOMPADDING",(0,0),(-1,-1),4),
-                      ("LEFTPADDING",(0,0),(-1,-1),5),("BACKGROUND",(0,0),(-1,-1),CARD2)]
+        _leg_style = [
+            ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+            ("INNERGRID",     (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
+            ("TOPPADDING",    (0,0), (-1,-1), 5),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("LEFTPADDING",   (0,0), (-1,-1), 5),
+            ("BACKGROUND",    (0,0), (0,0),   _HEADER_BG),
+            ("TEXTCOLOR",     (0,0), (-1,-1), _TEXT_LIGHT),
+        ]
         for j, (_, col, _) in enumerate(_legend_items):
-            _leg_style.append(("BACKGROUND", (j+1,0),(j+1,0), HexColor(col)))
-        _leg_t.setStyle(TableStyle(_leg_style))
+            _leg_style.append(("BACKGROUND", (j+1,0), (j+1,0),
+                                _intensity_colors.get(["Light","Moderate","Moderate–Hard","Hard"][j], _ROW_B)))
         story.append(_leg_t)
         story.append(VGap(10))
         
@@ -1452,16 +1490,23 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         _prog_cw = [CONTENT_W*w for w in [0.07, 0.14, 0.11, 0.13, 0.11, 0.44]]
         _pt2 = Table(_prog_rows, colWidths=_prog_cw)
         _pt2.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0), (-1,0), CARD2),
-            ("ROWBACKGROUNDS",(0,1), (-1,-1), [CARD, HexColor("#FFFFFF")]),
-            ("BOX",           (0,0), (-1,-1), 0.5, STROKE),
-            ("INNERGRID",     (0,0), (-1,-1), 0.3, STROKE),
-            ("TOPPADDING",    (0,0), (-1,-1), 6),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-            ("LEFTPADDING",   (0,0), (-1,-1), 5),
-            ("RIGHTPADDING",  (0,0), (-1,-1), 5),
-            ("VALIGN",        (0,0), (-1,-1), "TOP"),
-            ("BACKGROUND",    (0, len(_prog_data)), (-1, len(_prog_data)), HexColor("#FEF9C3")),
+            ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+            ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+            ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
+            ("BACKGROUND",    (0, len(_prog_data)), (-1, len(_prog_data)), _DELOAD_BG),
+            ("TEXTCOLOR",     (0,1),  (0,-1),  _ACCENT_B),     # veke-kolonne
+            ("TEXTCOLOR",     (1,1),  (1,-1),  _TEXT_LIGHT),   # fase
+            ("TEXTCOLOR",     (2,1),  (2,-1),  _ACCENT_B),     # sett×reps
+            ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # intensitet
+            ("TEXTCOLOR",     (4,1),  (4,-1),  _ACCENT_G),     # volum
+            ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # fokus
+            ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+            ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+            ("TOPPADDING",    (0,0),  (-1,-1), 6),
+            ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
+            ("LEFTPADDING",   (0,0),  (-1,-1), 5),
+            ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
+            ("VALIGN",        (0,0),  (-1,-1), "TOP"),
         ]))
         story.append(_pt2)
         story.append(VGap(10))
@@ -1502,15 +1547,19 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         ]
         _nt = Table(_nutrition_rows, colWidths=[CONTENT_W*0.22, CONTENT_W*0.26, CONTENT_W*0.52])
         _nt.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0), (-1,0), CARD2),
-            ("ROWBACKGROUNDS",(0,1), (-1,-1), [CARD, HexColor("#FFFFFF")]),
-            ("BOX",           (0,0), (-1,-1), 0.5, STROKE),
-            ("INNERGRID",     (0,0), (-1,-1), 0.3, STROKE),
-            ("TOPPADDING",    (0,0), (-1,-1), 7),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 7),
-            ("LEFTPADDING",   (0,0), (-1,-1), 6),
-            ("RIGHTPADDING",  (0,0), (-1,-1), 6),
-            ("VALIGN",        (0,0), (-1,-1), "TOP"),
+            ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+            ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+            ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
+            ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),
+            ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_G),
+            ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_DIM),
+            ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+            ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+            ("TOPPADDING",    (0,0),  (-1,-1), 7),
+            ("BOTTOMPADDING", (0,0),  (-1,-1), 7),
+            ("LEFTPADDING",   (0,0),  (-1,-1), 6),
+            ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
+            ("VALIGN",        (0,0),  (-1,-1), "TOP"),
         ]))
         story.append(_nt)
         story.append(VGap(8))
