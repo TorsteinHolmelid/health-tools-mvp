@@ -1486,9 +1486,9 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(VGap(10))
         
         # ── Weekly Schedule Table ──
-        story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
-        _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         
         def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                             sel_strength, sel_cardio, sel_sport, sel_low):
@@ -1531,10 +1531,10 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 ]
             return plan
         
-        _plan = _build_day_plan(_goal, _has_strength, _has_cardio, _has_sport, _has_low,
+    _plan = _build_day_plan(_goal, _has_strength, _has_cardio, _has_sport, _has_low,
                                 _sel_strength, _sel_cardio, _sel_sport, _sel_low)
         
-        _sched_header = [
+    _sched_header = [
             P("DAY",       S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
             P("SESSION",   S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
             P("ACTIVITY",  S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
@@ -1543,7 +1543,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             P("COACHING NOTE",S("th", size=7.5, bold=True, color=MUTED)),
         ]
         
-        _intensity_colors = {
+     _intensity_colors = {
             "Light":          HexColor("#14532D"),
             "Light–Moderate": HexColor("#166534"),
             "Moderate":       HexColor("#1E3A5F"),
@@ -1552,7 +1552,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             "—":              _ROW_B,
         }
         
-        _sched_rows = [_sched_header]
+    _sched_rows = [_sched_header]
         for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
             _sched_rows.append([
                 P(day,   S(f"td{i}", size=8.5, bold=True, color=TEXT)),
@@ -1563,9 +1563,9 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 P(note,  S(f"tn{i}",  size=7.5, lead=11, color=MUTED)),
             ])
         
-        _col_w = [CONTENT_W*w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
-        _st = Table(_sched_rows, colWidths=_col_w)
-        _ts = [
+    _col_w = [CONTENT_W*w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
+    _st = Table(_sched_rows, colWidths=_col_w)
+    _ts = [
             ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
             ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
             ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
