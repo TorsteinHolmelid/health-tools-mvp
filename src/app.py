@@ -1371,8 +1371,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         
         _col_w = [CONTENT_W*w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
         _st = Table(_sched_rows, colWidths=_col_w)
-        
-                _ts = [
+        _ts = [
             ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
             ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
             ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
