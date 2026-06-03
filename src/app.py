@@ -1198,11 +1198,11 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         
         # ── Intensitetsfargar — klare mot mørk bakgrunn ──
         _intensity_colors = {
-            "Light":          HexColor("#14532D"),   # mørk grøn
-            "Light–Moderate": HexColor("#166534"),
-            "Moderate":       HexColor("#1E3A5F"),   # mørk blå
-            "Moderate–Hard":  HexColor("#3B1F6E"),   # mørk lilla
-            "Hard":           HexColor("#7F1D1D"),   # mørk raud
+            "Light":          HexColor("#14532D"),
+            "Light–Moderate": HexColor("#166534"),   # ← denne må vera –  (endash), ikkje - (bindestrek)
+            "Moderate":       HexColor("#1E3A5F"),
+            "Moderate–Hard":  HexColor("#3B1F6E"),   # ← same her
+            "Hard":           HexColor("#7F1D1D"),
             "—":              _ROW_B,
         }
         story.append(PageBreak())
@@ -1394,7 +1394,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
             _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
             _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
-        
+            _ts.append(("TEXTCOLOR",  (4, i+1), (4, i+1), _WHITE))
         _st.setStyle(TableStyle(_ts))
         story.append(_st)
         story.append(VGap(8))
