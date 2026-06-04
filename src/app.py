@@ -1638,8 +1638,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             P("KEY FOCUS",   S("th2", size=7.5, bold=True, color=MUTED)),
         ]
         
-        if _goal == "Build muscle (bulk)":
-            _prog_data = [
+    if _goal == "Build muscle (bulk)":
+        _prog_data = [
                 ("1–2",  "Neural Adapt.",  "3×12",   "60–65% 1RM", "~12 sets",  "Form mastery · establish movement patterns"),
                 ("3–4",  "Hypertrophy A",  "4×10",   "67–72% 1RM", "~16 sets",  "Add 2.5 kg when all reps clean"),
                 ("5–6",  "Hypertrophy B",  "4×8",    "72–77% 1RM", "~16 sets",  "Track RPE — stay 7–8 each set"),
@@ -1648,8 +1648,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 ("11",   "Intensification","4×6–8",  "80–85% 1RM", "~16 sets",  "Personal bests on key lifts"),
                 ("12",   "Deload",         "3×8",    "55–60% 1RM", "~10 sets",  "Reduce volume 40% — supercompensation"),
             ]
-        elif _goal == "Lose fat":
-            _prog_data = [
+    elif _goal == "Lose fat":
+        _prog_data = [
                 ("1–2",  "Metabolic Reset","3×12–15", "55–65% 1RM", "~9 sets",   "Short rests 45–60 s · elevate metabolic rate"),
                 ("3–4",  "Density A",      "3×12",    "65–70% 1RM", "~12 sets",  "Circuit format — 2 exercises alternated"),
                 ("5–6",  "Density B",      "4×10",    "67–72% 1RM", "~12 sets",  "Add HIIT finisher 15 min post-strength"),
@@ -1658,8 +1658,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 ("11",   "Conditioning",   "3×15",    "60–65% 1RM", "~9 sets",   "Higher rep — metabolic stress + muscle endurance"),
                 ("12",   "Deload",         "2×12",    "55% 1RM",    "~6 sets",   "Active recovery — body composition check-in"),
             ]
-        else:
-            _prog_data = [
+    else:
+        _prog_data = [
                 ("1–2",  "Foundation",     "3×10–12", "60–67% 1RM", "~10 sets",  "Movement quality · establish baseline performance"),
                 ("3–4",  "Recomp A",       "3×10",    "67–72% 1RM", "~12 sets",  "Alternate heavy/volume sessions"),
                 ("5–6",  "Recomp B",       "4×8–10",  "72–77% 1RM", "~14 sets",  "Add progressive overload on 2 key lifts"),
@@ -1669,9 +1669,9 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 ("12",   "Deload",         "3×8",     "55–60% 1RM", "~9 sets",   "Reduce load and volume — consolidation week"),
             ]
         
-        _prog_rows = [_prog_header]
-        for i, (wk, phase, sets, inten, vol, focus) in enumerate(_prog_data):
-            _prog_rows.append([
+    _prog_rows = [_prog_header]
+    for i, (wk, phase, sets, inten, vol, focus) in enumerate(_prog_data):
+        _prog_rows.append([
                 P(wk,    S(f"pw{i}", size=8.5, bold=True, align=TA_CENTER, color=ACCENT)),
                 P(phase, S(f"pp{i}", size=8,   bold=True,  color=TEXT)),
                 P(sets,  S(f"ps{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#1D4ED8"))),
@@ -1680,9 +1680,9 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 P(focus, S(f"pf{i}", size=8,   lead=11, color=MUTED)),
             ])
         
-        _prog_cw = [CONTENT_W*w for w in [0.07, 0.14, 0.11, 0.13, 0.11, 0.44]]
-        _pt2 = Table(_prog_rows, colWidths=_prog_cw)
-        _pt2.setStyle(TableStyle([
+    _prog_cw = [CONTENT_W*w for w in [0.07, 0.14, 0.11, 0.13, 0.11, 0.44]]
+    _pt2 = Table(_prog_rows, colWidths=_prog_cw)
+    _pt2.setStyle(TableStyle([
             ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
             ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
             ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
@@ -1701,16 +1701,16 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
             ("VALIGN",        (0,0),  (-1,-1), "TOP"),
         ]))
-        story.append(_pt2)
-        story.append(VGap(10))
+    story.append(_pt2)
+    story.append(VGap(10))
         
         # ── Nutrition & Recovery Panel ──
-        story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
-        if w_v:
-            _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
-        else:
-            _protein_g = 160
+    if w_v:
+        _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
+    else:
+        _protein_g = 160
         
         _nutrition_rows = [
             [P("METRIC",     S("nh", size=7.5, bold=True, color=MUTED)),
@@ -1754,11 +1754,11 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
             ("VALIGN",        (0,0),  (-1,-1), "TOP"),
         ]))
-        story.append(_nt)
-        story.append(VGap(8))
+    story.append(_nt)
+    story.append(VGap(8))
         
         # ── Expert Insight ──
-        _training_insight = (
+    _training_insight = (
             f"This programme follows the principle of progressive overload — the most robustly evidenced "
             f"stimulus for both strength and hypertrophy gains (Schoenfeld, 2010; Kraemer & Ratamess, 2004). "
             f"For your goal of '{_goal}', the optimal weekly volume sits between 10–20 sets per muscle group "
@@ -1767,42 +1767,42 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             f"— are integrated to maximise caloric expenditure and recovery without compromising strength sessions. "
             f"Deload in week {_weeks} is mandatory: supercompensation occurs during recovery, not during the training stimulus."
         )
-        story.append(ExpertInsightBox("Training Science", _training_insight))
-        story.append(VGap(6))
+    story.append(ExpertInsightBox("Training Science", _training_insight))
+    story.append(VGap(6))
         
         # ── Actionable milestone steps ──
-        if _goal == "Build muscle (bulk)":
-            _train_steps = [
+    if _goal == "Build muscle (bulk)":
+        _train_steps = [
                 f"Track bodyweight weekly — target gain of 0.25–0.5 kg/week for the first {min(_weeks, 8)} weeks",
                 f"Hit {_protein_g} g protein daily — distribute across 4+ meals with ≥30 g per sitting",
                 "Log your lifts every session — add 2.5 kg when you complete all reps with RPE ≤ 8",
                 "Sleep is your anabolic window — prioritise 8 hrs consistently before adding more training volume",
             ]
-        elif _goal == "Lose fat":
-            _train_steps = [
+    elif _goal == "Lose fat":
+         _train_steps = [
                 f"Weigh yourself every morning (post-toilet) — track the 7-day rolling average, not daily fluctuations",
                 f"Minimum {_protein_g} g protein — non-negotiable for lean mass preservation in a calorie deficit",
                 "Step count ≥ 8,000/day — NEAT (non-exercise activity) contributes 15–30% of total daily expenditure",
                 "Strength sessions take priority over cardio — muscle mass drives resting metabolic rate",
             ]
-        else:
-            _train_steps = [
+    else:
+        _train_steps = [
                 f"Eat at maintenance calories ± 100 kcal — weigh weekly and adjust if trend deviates",
                 f"Protein target: {_protein_g} g/day — the single most important recomposition lever",
                 "Progressive overload on 2–3 key lifts — track squat, press, and row as primary indicators",
                 "Rotate cardio modality every 4 weeks — prevents adaptation and maintains caloric expenditure",
             ]
-        story.append(ActionableMilestoneBox(_train_steps))
-        story.append(VGap(6))
+    story.append(ActionableMilestoneBox(_train_steps))
+    story.append(VGap(6))
         
-        story.append(P(
+    story.append(P(
             "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
             "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc; Dattilo M et al. (2011) Med Hypotheses. "
             "Targets are population-level estimates — individual response varies. Consult a certified trainer or physician before starting.",
             S("disc", size=7.5, lead=11, color=MUTED, italic=True, after=4)
         ))
         
-        story.append(PageBreak())
+    story.append(PageBreak())
     # ── PAGE 7: Insights + Conditions + Safety ──
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
     story.append(VGap(6))
