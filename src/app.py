@@ -1582,16 +1582,16 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             ("TEXTCOLOR",     (4,1),  (4,-1),  _WHITE),        # intensitet — alltid kvit tekst
             ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # notat
         ]
-        for i, (_, _, _, _, inten, _) in enumerate(_plan):
-            _bg = _intensity_colors.get(inten, _ROW_B)
-            row_bg = _ROW_A if i % 2 == 0 else _ROW_B
-            _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
-            _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
-            _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
-            _ts.append(("TEXTCOLOR",  (4, i+1), (4, i+1), _WHITE))
-        _st.setStyle(TableStyle(_ts))
-        story.append(_st)
-        story.append(VGap(8))
+    for i, (_, _, _, _, inten, _) in enumerate(_plan):
+        _bg = _intensity_colors.get(inten, _ROW_B)
+        row_bg = _ROW_A if i % 2 == 0 else _ROW_B
+        _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
+        _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
+        _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
+        _ts.append(("TEXTCOLOR",  (4, i+1), (4, i+1), _WHITE))
+    _st.setStyle(TableStyle(_ts))
+    story.append(_st)
+    story.append(VGap(8))
         
         # ── Intensity Legend ──
         _legend_items = [
