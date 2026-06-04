@@ -1621,15 +1621,15 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(VGap(10))
         
         # ── PAGE BREAK → continue on next page ──
-        story.append(PageBreak())
-        story.append(SecHeader("Training Programme — Detail & Science",
-            subtitle="Progressive overload protocol, set/rep schemes, and evidence base"))
-        story.append(VGap(6))
+    story.append(PageBreak())
+    story.append(SecHeader("Training Programme — Detail & Science",
+        subtitle="Progressive overload protocol, set/rep schemes, and evidence base"))
+    story.append(VGap(6))
         
         # ── Weekly Volume & Load Progression Table ──
-        story.append(P("Progressive Overload — Week-by-Week Load Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    story.append(P("Progressive Overload — Week-by-Week Load Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
-        _prog_header = [
+    _prog_header = [
             P("WEEK",        S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
             P("PHASE",       S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
             P("SETS × REPS", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
