@@ -1594,18 +1594,18 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(VGap(8))
         
         # ── Intensity Legend ──
-        _legend_items = [
+    _legend_items = [
             ("Light",         "#14532D", "Zone 1–2 · <65% HRmax"),
             ("Moderate",      "#1E3A5F", "Zone 2–3 · 65–80% HRmax"),
             ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"),
             ("Hard",          "#7F1D1D", "Zone 4–5 · 87–95% HRmax"),
         ]
-        _leg_rows = [[
+    _leg_rows = [[
             P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)),
             *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]
         ]]
-        _leg_t = Table(_leg_rows, colWidths=[CONTENT_W*0.16] + [CONTENT_W*0.21]*4)
-        _leg_style = [
+    _leg_t = Table(_leg_rows, colWidths=[CONTENT_W*0.16] + [CONTENT_W*0.21]*4)
+    _leg_style = [
             ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
             ("INNERGRID",     (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
             ("TOPPADDING",    (0,0), (-1,-1), 5),
@@ -1614,11 +1614,11 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             ("BACKGROUND",    (0,0), (0,0),   _HEADER_BG),
             ("TEXTCOLOR",     (0,0), (-1,-1), _TEXT_LIGHT),
         ]
-        for j, (_, col, _) in enumerate(_legend_items):
-            _leg_style.append(("BACKGROUND", (j+1,0), (j+1,0),
+    for j, (_, col, _) in enumerate(_legend_items):
+        _leg_style.append(("BACKGROUND", (j+1,0), (j+1,0),
                                 _intensity_colors.get(["Light","Moderate","Moderate–Hard","Hard"][j], _ROW_B)))
-        story.append(_leg_t)
-        story.append(VGap(10))
+    story.append(_leg_t)
+    story.append(VGap(10))
         
         # ── PAGE BREAK → continue on next page ──
         story.append(PageBreak())
