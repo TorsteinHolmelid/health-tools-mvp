@@ -378,7 +378,7 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
     return t
-def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
+    def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                             sel_strength, sel_cardio, sel_sport, sel_low):
             """Returns list of (day, session_type, activity, duration, intensity, notes)"""
             S_ACT = sel_strength[0] if sel_strength else "Strength training (weights)"
