@@ -450,8 +450,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     DIM     = HexColor("#64748B")
 
     # ── Hjelpefunksjonar ──
-_styles = getSampleStyleSheet()
-def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
+	_styles = getSampleStyleSheet()
+	def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
         return ParagraphStyle(
             name,
             parent=_styles["Normal"],
