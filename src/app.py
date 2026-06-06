@@ -118,13 +118,13 @@ class PDFStyles:
     MUTED = HexColor("#94A3B8")
     H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=HexColor("#FFFFFF"))
 
-# 2. Dine Custom Flowables (flytta ut av funksjonen)
 class PremiumRadarChart(Flowable):
-	def __init__(self, scores, width=400):
-   		super().__init__()
-    		self.scores = score
-    		self.w = width
-			self.h = 300
+    def __init__(self, scores, width=400):
+        super().__init__()
+        self.scores = scores  # Her må du bruke 'scores' (argumentet)
+        self.w = width
+        self.h = 300
+
     # ... (her legg du inn Radar-logikken din) ...
 # ── Resting HR sync ──────────────────────────────────────────────────────────
 _HR_KEYS = [
