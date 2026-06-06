@@ -150,13 +150,6 @@ def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                     ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or restorative yoga / stretching"),
                 ]
             return plan
-# 1. Stil-system (Brand-fargar)
-class PDFStyles:
-    PRIMARY = HexColor("#0EA5A3")
-    BG = HexColor("#0B1220")
-    TEXT = HexColor("#E5E7EB")
-    MUTED = HexColor("#94A3B8")
-    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=HexColor("#FFFFFF"))
 
 # 2. Dine Custom Flowables (flytta ut av funksjonen)
 class PremiumRadarChart(Flowable):
@@ -1544,14 +1537,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             P("COACHING NOTE",S("th", size=7.5, bold=True, color=MUTED)),
         ]
         
-    _intensity_colors = {
-            "Light":          HexColor("#14532D"),
-            "Light–Moderate": HexColor("#166534"),
-            "Moderate":       HexColor("#1E3A5F"),
-            "Moderate–Hard":  HexColor("#3B1F6E"),
-            "Hard":           HexColor("#7F1D1D"),
-            "—":              _ROW_B,
-        }
         
     _sched_rows = [_sched_header]
     for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
