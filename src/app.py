@@ -506,6 +506,17 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     ex_kcal_s = _sf(exlog.get("kcal_per_session")) or 0.0
     ex_kcal_w = _sf(exlog.get("kcal_per_week")) or 0.0
     ex_total_min = int(ex_min or 0) * int(ex_sess or 0)
+# Sørg for at disse variablene blir definert før _build_day_plan kalles:
+    _goal         = plan_d.get("goal", "Maintenance") # eller hva standardmålet ditt skal være
+    _has_strength = plan_d.get("has_strength", False)
+    _has_cardio   = plan_d.get("has_cardio", False)
+    _has_sport    = plan_d.get("has_sport", False)
+    _has_low      = plan_d.get("has_low", False)
+
+    _sel_strength = plan_d.get("selected_strength", "—")
+    _sel_cardio   = plan_d.get("selected_cardio", "—")
+    _sel_sport    = plan_d.get("selected_sport", "—")
+    _sel_low      = plan_d.get("selected_low", "—")
 
     # ── Colour helpers ──
     def bmi_color(v):
