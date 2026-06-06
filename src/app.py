@@ -449,26 +449,30 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     STROKE  = HexColor("#334155")
     DIM     = HexColor("#64748B")
 
-    # ── Hjelpefunksjonar ──
-    	_styles = getSampleStyleSheet()
-		def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
-        return ParagraphStyle(
-            name,
-            parent=_styles["Normal"],
-            fontName="Helvetica-Bold" if bold else ("Helvetica-Oblique" if italic else "Helvetica"),
-            fontSize=size,
-            textColor=color,
-            spaceAfter=after,
-            leading=lead or (size + 4),
-            alignment=align
-        )
+# ── Hjelpefunksjonar ──
+_styles = getSampleStyleSheet()
+
+def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
+    return ParagraphStyle(
+        name,
+        parent=_styles["Normal"],
+        fontName="Helvetica-Bold" if bold else ("Helvetica-Oblique" if italic else "Helvetica"),
+        fontSize=size,
+        textColor=color,
+        spaceAfter=after,
+        leading=lead or (size + 4),
+        alignment=align
+    )
 
 def P(txt, style):
-        return Paragraph(str(txt), style)
+    return Paragraph(str(txt), style)
 
 def _sf(x):
-    try: return float(x)
-    except: return None
+    try:
+        return float(x)
+    except:
+        return None
+
 
     # ── Data extraction ──
     inp       = report.get("inputs", {}) or {}
