@@ -1448,22 +1448,23 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             subtitle="Evidence-based weekly plan built around your selected activities and goal"))
         story.append(VGap(6))
 
-    # ── Pull values from session_state ──
-        _goal       = st.session_state.get("goal_mode", "Body Recomposition")
-        _activities = st.session_state.get("selected_activities", [])
-        _weeks      = st.session_state.get("plan_weeks", 12)
-        _protein_on = st.session_state.get("protein_focus", True)
+        # ── Pull values from report data safely (No more session_state bugs) ──
+        plan_d = report.get("plan") or {}
+        _goal       = plan_d.get("goal", "Body Recomposition")
+        _activities = plan_d.get("selected_activities") or report.get("selected_activities", [])
+        _weeks      = plan_d.get("plan_weeks", 12)
+        _protein_on = plan_d.get("protein_focus", True)
 
-    # ── Activity → category map ──
+        # ── Activity → category map ──
         _strength_acts = {"Strength training (weights)", "Boxing / Martial arts",
-                      "Rock climbing / Bouldering", "Hiking (incline)"}
+                          "Rock climbing / Bouldering", "Hiking (incline)"}
         _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)",
-                      "Swimming", "Rowing (moderate/vigorous)", "HIIT",
-                      "Elliptical", "Stair climbing / Stairmaster"}
+                          "Swimming", "Rowing (moderate/vigorous)", "HIIT",
+                          "Elliptical", "Stair climbing / Stairmaster"}
         _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
-                      "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
+                          "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
         _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates",
-                      "Housework / Light chores", "Gardening / Heavy yard work"}
+                          "Housework / Light chores", "Gardening / Heavy yard work"}
 
         _has_strength = bool(_activities and _strength_acts & set(_activities))
         _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
@@ -1487,6 +1488,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                                        "phase1": "Foundation (Wk 1–3)", "phase2": "Recomposition Block (Wk 4–8)",
                                        "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
         }
+        
+        # Hent parametere med en dønn sikker fallback
         _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
         
         # ── Goal overview box ──
@@ -1495,6 +1498,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                     S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
         story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
         story.append(VGap(4))
+
         
         # ── Phase Timeline Bar ──
         story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
