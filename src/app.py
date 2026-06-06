@@ -121,10 +121,10 @@ class PDFStyles:
 # 2. Dine Custom Flowables (flytta ut av funksjonen)
 class PremiumRadarChart(Flowable):
 def __init__(self, scores, width=400):
-        super().__init__()
-        self.scores = scores
-        self.w = width
-        self.h = 300
+    super().__init__()
+    self.scores = scores
+    self.w = width
+    self.h = 300
     # ... (her legg du inn Radar-logikken din) ...
 # ── Resting HR sync ──────────────────────────────────────────────────────────
 _HR_KEYS = [
