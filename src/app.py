@@ -118,13 +118,13 @@ class PDFStyles:
     MUTED = HexColor("#94A3B8")
     H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=HexColor("#FFFFFF"))
 
+# 2. Dine Custom Flowables (flytta ut av funksjonen)
 class PremiumRadarChart(Flowable):
     def __init__(self, scores, width=400):
         super().__init__()
-        self.scores = scores  # Her må du bruke 'scores' (argumentet)
+        self.scores = scores
         self.w = width
         self.h = 300
-
     # ... (her legg du inn Radar-logikken din) ...
 # ── Resting HR sync ──────────────────────────────────────────────────────────
 _HR_KEYS = [
@@ -378,46 +378,7 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
     return t
-def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
-                            sel_strength, sel_cardio, sel_sport, sel_low):
-            """Returns list of (day, session_type, activity, duration, intensity, notes)"""
-            S_ACT = sel_strength[0] if sel_strength else "Strength training (weights)"
-            C_ACT = sel_cardio[0]   if sel_cardio   else "Running/jogging"
-            C2_ACT= sel_cardio[1]   if len(sel_cardio)>1 else C_ACT
-            SP_ACT= sel_sport[0]    if sel_sport    else None
-            L_ACT = sel_low[0]      if sel_low      else "Walking (casual)"
-        
-            if goal == "Build muscle (bulk)":
-                plan = [
-                    ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Push focus: chest, shoulders, triceps · 4×8–10 · RPE 7–8"),
-                    ("Tuesday",   "Active Recovery", L_ACT, "30 min", "Light",       "Keep HR <120 bpm · mobility + foam rolling"),
-                    ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Pull focus: back, biceps · 4×8–10 · RPE 7–8"),
-                    ("Thursday",  "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 (65–75% HRmax) — supports recovery without catabolism"),
-                    ("Friday",    "Strength C",   S_ACT,  "55 min", "Hard",          "Legs + core: squat, hinge, carry · 4×6–10 · RPE 8"),
-                    ("Saturday",  "Sport / Cardio", SP_ACT or C2_ACT, "45 min", "Moderate", "Enjoyment session — keep intensity conversational"),
-                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or gentle 20 min walk"),
-                ]
-            elif goal == "Lose fat":
-                plan = [
-                    ("Monday",    "Strength A",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · superset to maximise calorie burn"),
-                    ("Tuesday",   "Cardio",       C_ACT,  "40 min", "Moderate",      "Zone 2 steady-state — primary fat oxidation zone"),
-                    ("Wednesday", "Strength B",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · short rest intervals (60 s)"),
-                    ("Thursday",  "LISS / Sport", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Low-impact to aid recovery while burning extra calories"),
-                    ("Friday",    "Strength C + HIIT", S_ACT, "50 min", "Hard",     "30 min strength + 20 min HIIT finisher (20s on / 40s off)"),
-                    ("Saturday",  "Cardio",       C2_ACT, "45 min", "Moderate",      "Long aerobic session — builds fat-burning capacity"),
-                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest · prioritise sleep (key for cortisol + fat loss)"),
-                ]
-            else:  # Recomposition
-                plan = [
-                    ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Upper body push · 4×8–12 · progressive overload weekly"),
-                    ("Tuesday",   "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 — 65–75% HRmax · builds aerobic base"),
-                    ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Lower body · 4×8–12 · squat + hinge patterns"),
-                    ("Thursday",  "Sport / Active", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Movement variety — maintains motivation and NEAT"),
-                    ("Friday",    "Strength C",   S_ACT,  "50 min", "Hard",          "Full body · 3×6–8 heavy + 2×15 pump work"),
-                    ("Saturday",  "Cardio / HIIT", C2_ACT, "40 min", "Moderate–Hard", "Alternate: Zone 2 week A / HIIT week B"),
-                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or restorative yoga / stretching"),
-                ]
-            return plan
+
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
     import math
     from io import BytesIO
@@ -449,30 +410,26 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     STROKE  = HexColor("#334155")
     DIM     = HexColor("#64748B")
 
-# ── Hjelpefunksjonar ──
-_styles = getSampleStyleSheet()
+    # ── Hjelpefunksjonar ──
+    _styles = getSampleStyleSheet()
+    def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
+        return ParagraphStyle(
+            name,
+            parent=_styles["Normal"],
+            fontName="Helvetica-Bold" if bold else ("Helvetica-Oblique" if italic else "Helvetica"),
+            fontSize=size,
+            textColor=color,
+            spaceAfter=after,
+            leading=lead or (size + 4),
+            alignment=align
+        )
 
-def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
-    return ParagraphStyle(
-        name,
-        parent=_styles["Normal"],
-        fontName="Helvetica-Bold" if bold else ("Helvetica-Oblique" if italic else "Helvetica"),
-        fontSize=size,
-        textColor=color,
-        spaceAfter=after,
-        leading=lead or (size + 4),
-        alignment=align
-    )
+    def P(txt, style):
+        return Paragraph(str(txt), style)
 
-def P(txt, style):
-    return Paragraph(str(txt), style)
-
-def _sf(x):
-    try:
-        return float(x)
-    except:
-        return None
-
+    def _sf(x):
+        try: return float(x)
+        except: return None
 
     # ── Data extraction ──
     inp       = report.get("inputs", {}) or {}
@@ -1533,6 +1490,46 @@ def _sf(x):
         
         _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         
+        def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
+                            sel_strength, sel_cardio, sel_sport, sel_low):
+            """Returns list of (day, session_type, activity, duration, intensity, notes)"""
+            S_ACT = sel_strength[0] if sel_strength else "Strength training (weights)"
+            C_ACT = sel_cardio[0]   if sel_cardio   else "Running/jogging"
+            C2_ACT= sel_cardio[1]   if len(sel_cardio)>1 else C_ACT
+            SP_ACT= sel_sport[0]    if sel_sport    else None
+            L_ACT = sel_low[0]      if sel_low      else "Walking (casual)"
+        
+            if goal == "Build muscle (bulk)":
+                plan = [
+                    ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Push focus: chest, shoulders, triceps · 4×8–10 · RPE 7–8"),
+                    ("Tuesday",   "Active Recovery", L_ACT, "30 min", "Light",       "Keep HR <120 bpm · mobility + foam rolling"),
+                    ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Pull focus: back, biceps · 4×8–10 · RPE 7–8"),
+                    ("Thursday",  "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 (65–75% HRmax) — supports recovery without catabolism"),
+                    ("Friday",    "Strength C",   S_ACT,  "55 min", "Hard",          "Legs + core: squat, hinge, carry · 4×6–10 · RPE 8"),
+                    ("Saturday",  "Sport / Cardio", SP_ACT or C2_ACT, "45 min", "Moderate", "Enjoyment session — keep intensity conversational"),
+                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or gentle 20 min walk"),
+                ]
+            elif goal == "Lose fat":
+                plan = [
+                    ("Monday",    "Strength A",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · superset to maximise calorie burn"),
+                    ("Tuesday",   "Cardio",       C_ACT,  "40 min", "Moderate",      "Zone 2 steady-state — primary fat oxidation zone"),
+                    ("Wednesday", "Strength B",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · short rest intervals (60 s)"),
+                    ("Thursday",  "LISS / Sport", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Low-impact to aid recovery while burning extra calories"),
+                    ("Friday",    "Strength C + HIIT", S_ACT, "50 min", "Hard",     "30 min strength + 20 min HIIT finisher (20s on / 40s off)"),
+                    ("Saturday",  "Cardio",       C2_ACT, "45 min", "Moderate",      "Long aerobic session — builds fat-burning capacity"),
+                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest · prioritise sleep (key for cortisol + fat loss)"),
+                ]
+            else:  # Recomposition
+                plan = [
+                    ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Upper body push · 4×8–12 · progressive overload weekly"),
+                    ("Tuesday",   "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 — 65–75% HRmax · builds aerobic base"),
+                    ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Lower body · 4×8–12 · squat + hinge patterns"),
+                    ("Thursday",  "Sport / Active", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Movement variety — maintains motivation and NEAT"),
+                    ("Friday",    "Strength C",   S_ACT,  "50 min", "Hard",          "Full body · 3×6–8 heavy + 2×15 pump work"),
+                    ("Saturday",  "Cardio / HIIT", C2_ACT, "40 min", "Moderate–Hard", "Alternate: Zone 2 week A / HIIT week B"),
+                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or restorative yoga / stretching"),
+                ]
+            return plan
         
     _plan = _build_day_plan(_goal, _has_strength, _has_cardio, _has_sport, _has_low,
                                 _sel_strength, _sel_cardio, _sel_sport, _sel_low)
