@@ -510,493 +510,494 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _sel_sport    = plan_d.get("selected_sport", "—")
     _sel_low      = plan_d.get("selected_low", "—")
 
-    # Farge-helpers
-    def bmi_color(v):
-        if v is None: return MUTED
-        if v < 18.5:  return BLUE
-        if v < 25:    return GOOD
-        if v < 30:    return WARN
-        return BAD
+# Farge-helpers
+def bmi_color(v):
+    if v is None: return MUTED
+    if v < 18.5:  return BLUE
+    if v < 25:    return GOOD
+    if v < 30:    return WARN
+    return BAD
 
-    def vo2_color(pct):
-        if pct >= 80: return GOOD
-        if pct >= 60: return BLUE
-        if pct >= 40: return WARN
-        return BAD
+def vo2_color(pct):
+    if pct >= 80: return GOOD
+    if pct >= 60: return BLUE
+    if pct >= 40: return WARN
+    return BAD
 
-    def bio_color(diff):
-        if diff is None: return MUTED
-        if diff <= -1:   return GOOD
-        if diff <= 2:    return WARN
-        return BAD
+def bio_color(diff):
+    if diff is None: return MUTED
+    if diff <= -1:   return GOOD
+    if diff <= 2:    return WARN
+    return BAD
 
-    bmi_col  = bmi_color(bmi_v)
-    vo2_col  = vo2_color(vo2_pct)
-    bio_diff = (bio_v - age_f) if (bio_v is not None and age_f is not None) else None
-    bio_col  = bio_color(bio_diff)
+bmi_col  = bmi_color(bmi_v)
+vo2_col  = vo2_color(vo2_pct)
+bio_diff = (bio_v - age_f) if (bio_v is not None and age_f is not None) else None
+bio_col  = bio_color(bio_diff)
 
-    # Health score kalkulering
-    score_parts = []
-    if bmi_v is not None:
-        if 18.5 <= bmi_v < 25:   score_parts.append(100)
-        elif 17 <= bmi_v < 27:   score_parts.append(75)
-        elif 15 <= bmi_v < 30:   score_parts.append(50)
-        else:                     score_parts.append(25)
-    if vo2_v is not None:
-        score_parts.append(min(100, int(vo2_pct)))
-    if bio_diff is not None:
-        score_parts.append(max(0, min(100, int(70 - bio_diff * 10))))
-    if ex_total_min:
-        score_parts.append(min(100, int(ex_total_min / 300 * 100)))
-    health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
-    score_col    = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
-    score_label  = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
+# Health score kalkulering
+score_parts = []
+if bmi_v is not None:
+    if 18.5 <= bmi_v < 25:   score_parts.append(100)
+    elif 17 <= bmi_v < 27:   score_parts.append(75)
+    elif 15 <= bmi_v < 30:   score_parts.append(50)
+    else:                     score_parts.append(25)
+if vo2_v is not None:
+    score_parts.append(min(100, int(vo2_pct)))
+if bio_diff is not None:
+    score_parts.append(max(0, min(100, int(70 - bio_diff * 10))))
+if ex_total_min:
+    score_parts.append(min(100, int(ex_total_min / 300 * 100)))
+health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
+score_col    = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
+score_label  = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
 
-    # Radar scores mapping
-    radar = {}
-    radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75  if (bmi_v and 17 <= bmi_v < 27) else 50  if (bmi_v and 15 <= bmi_v < 30) else 25  if bmi_v else 50)
-    radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
-    radar["Bio Age"]   = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
-    radar["Activity"]  = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
-    life = 60
-    for f in factors:
-        try:
-            d = float(f.get("delta", 0))
-            if d < 0: life = min(100, life + 8)
-            elif d > 1: life = max(10, life - 8)
-        except: pass
-    radar["Lifestyle"] = max(0, min(100, life))
+# Radar scores mapping
+radar = {}
+radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75  if (bmi_v and 17 <= bmi_v < 27) else 50  if (bmi_v and 15 <= bmi_v < 30) else 25  if bmi_v else 50)
+radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
+radar["Bio Age"]   = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
+radar["Activity"]  = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
+life = 60
+for f in factors:
+    try:
+        d = float(f.get("delta", 0))
+        if d < 0: life = min(100, life + 8)
+        elif d > 1: life = max(10, life - 8)
+    except: pass
+radar["Lifestyle"] = max(0, min(100, life))
 
-    # Health Levers logikk
-    if vo2_v is not None and vo2_pct < 40:
-        biggest_lever = "Cardio fitness (VO2max)"
-        lever_why = "The single most impactful modifiable longevity factor — and the fastest to improve with training."
-    elif bmi_v is not None and bmi_v >= 30:
-        biggest_lever = "Energy balance + daily movement"
-        lever_why = "A sustainable calorie strategy combined with consistent activity has the highest ROI here."
-    elif bio_diff is not None and bio_diff > 2:
-        biggest_lever = "Sleep + lifestyle fundamentals"
-        lever_why = "Your biological age estimate shows the biggest room for improvement in foundational habits."
-    elif exlog and ex_total_min < 150:
-        biggest_lever = "Exercise volume (reach WHO target)"
-        lever_why = "Even incremental increases from below 150 min/week produce measurable health returns."
-    else:
-        biggest_lever = "Strength training + progressive overload"
-        lever_why = "Your core markers are solid — the next tier of improvement comes from consistent resistance training."
+# Health Levers logikk
+if vo2_v is not None and vo2_pct < 40:
+    biggest_lever = "Cardio fitness (VO2max)"
+    lever_why = "The single most impactful modifiable longevity factor — and the fastest to improve with training."
+elif bmi_v is not None and bmi_v >= 30:
+    biggest_lever = "Energy balance + daily movement"
+    lever_why = "A sustainable calorie strategy combined with consistent activity has the highest ROI here."
+elif bio_diff is not None and bio_diff > 2:
+    biggest_lever = "Sleep + lifestyle fundamentals"
+    lever_why = "Your biological age estimate shows the biggest room for improvement in foundational habits."
+elif exlog and ex_total_min < 150:
+    biggest_lever = "Exercise volume (reach WHO target)"
+    lever_why = "Even incremental increases from below 150 min/week produce measurable health returns."
+else:
+    biggest_lever = "Strength training + progressive overload"
+    lever_why = "Your core markers are solid — the next tier of improvement comes from consistent resistance training."
 
-    # Insights generering
-    insights = []
-    if bmi_v is not None:
-        if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps. Avoid aggressive cuts — they accelerate muscle loss and reduce long-term adherence. Aim for 0.5–0.75 kg/week loss."))
-        elif bmi_v >= 25: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is slightly elevated. Strength training 2–3x/week combined with a modest deficit is more effective than cardio alone. A loss rate of 0.5 kg/week preserves significantly more lean mass than faster approaches."))
-        elif bmi_v < 18.5: insights.append(("Body Composition", BLUE, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is below the typical range. Prioritise progressive strength training and ensure adequate protein (≥1.6 g/kg/day) and total energy intake. Avoid calorie deficits — focus on building lean mass and strength."))
-        else: insights.append(("Body Composition", GOOD, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is in the normal range. The biggest upgrades now come from cardio fitness and strength, not body weight changes. Use resistance training and aerobic capacity as your primary targets."))
+# Insights generering
+insights = []
+if bmi_v is not None:
+    if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps. Avoid aggressive cuts — they accelerate muscle loss and reduce long-term adherence. Aim for 0.5–0.75 kg/week loss."))
+    elif bmi_v >= 25: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is slightly elevated. Strength training 2–3x/week combined with a modest deficit is more effective than cardio alone. A loss rate of 0.5 kg/week preserves significantly more lean mass than faster approaches."))
+    elif bmi_v < 18.5: insights.append(("Body Composition", BLUE, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is below the typical range. Prioritise progressive strength training and ensure adequate protein (≥1.6 g/kg/day) and total energy intake. Avoid calorie deficits — focus on building lean mass and strength."))
+    else: insights.append(("Body Composition", GOOD, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is in the normal range. The biggest upgrades now come from cardio fitness and strength, not body weight changes. Use resistance training and aerobic capacity as your primary targets."))
 
-    if vo2_v is not None:
-        if vo2_pct < 30: insights.append(("Cardio Fitness", BAD, f"Your VO2max of {vo2_v:.1f} ml/kg/min ({vo2_pct:.0f}th percentile) is in the lowest tier. VO2max is the strongest predictor of all-cause mortality. The good news: it responds quickly. Start with 3–4x 30-min easy aerobic sessions per week. Expect noticeable improvement in 4–6 weeks."))
-        elif vo2_pct < 50: insights.append(("Cardio Fitness", WARN, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is below average. Adding one structured interval session weekly (e.g. 4×4 min hard effort) alongside 2 easy sessions typically produces the fastest improvement over 6–12 weeks."))
-        elif vo2_pct < 75: insights.append(("Cardio Fitness", BLUE, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is above average. To push higher, use 80/20 training — 80% easy effort, 20% hard. Most people accidentally do 50/50, which leads to fatigue without meaningful VO2 adaptation."))
-        else: insights.append(("Cardio Fitness", GOOD, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is excellent. Maintain with 2–3 quality sessions/week. Avoid unplanned breaks over 2 weeks — detraining begins quickly."))
+if vo2_v is not None:
+    if vo2_pct < 30: insights.append(("Cardio Fitness", BAD, f"Your VO2max of {vo2_v:.1f} ml/kg/min ({vo2_pct:.0f}th percentile) is in the lowest tier. VO2max is the strongest predictor of all-cause mortality. The good news: it responds quickly. Start with 3–4x 30-min easy aerobic sessions per week. Expect noticeable improvement in 4–6 weeks."))
+    elif vo2_pct < 50: insights.append(("Cardio Fitness", WARN, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is below average. Adding one structured interval session weekly (e.g. 4×4 min hard effort) alongside 2 easy sessions typically produces the fastest improvement over 6–12 weeks."))
+    elif vo2_pct < 75: insights.append(("Cardio Fitness", BLUE, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is above average. To push higher, use 80/20 training — 80% easy effort, 20% hard. Most people accidentally do 50/50, which leads to fatigue without meaningful VO2 adaptation."))
+    else: insights.append(("Cardio Fitness", GOOD, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is excellent. Maintain with 2–3 quality sessions/week. Avoid unplanned breaks over 2 weeks — detraining begins quickly."))
 
-    if bio_diff is not None:
-        if bio_diff > 3: insights.append(("Biological Age", BAD, f"Estimated biological age ({bio_v:.1f} yrs) is {bio_diff:.1f} years above calendar age. This is driven by lifestyle factors — most are reversible. Highest-impact levers: sleep consistency, cardio fitness, blood pressure control, and stress management."))
-        elif bio_diff > 0: insights.append(("Biological Age", WARN, f"Estimated biological age ({bio_v:.1f} yrs) is slightly above calendar age ({bio_diff:.1f} yrs). This gap is small and reversible. Focus on the red/amber factors in your factor breakdown."))
-        else: insights.append(("Biological Age", GOOD, f"Estimated biological age ({bio_v:.1f} yrs) is {abs(bio_diff):.1f} yrs below calendar age. This reflects well on your current habits. Maintain them — consistency is what sustains this."))
+if bio_diff is not None:
+    if bio_diff > 3: insights.append(("Biological Age", BAD, f"Estimated biological age ({bio_v:.1f} yrs) is {bio_diff:.1f} years above calendar age. This is driven by lifestyle factors — most are reversible. Highest-impact levers: sleep consistency, cardio fitness, blood pressure control, and stress management."))
+    elif bio_diff > 0: insights.append(("Biological Age", WARN, f"Estimated biological age ({bio_v:.1f} yrs) is slightly above calendar age ({bio_diff:.1f} yrs). This gap is small and reversible. Focus on the red/amber factors in your factor breakdown."))
+    else: insights.append(("Biological Age", GOOD, f"Estimated biological age ({bio_v:.1f} yrs) is {abs(bio_diff):.1f} yrs below calendar age. This reflects well on your current habits. Maintain them — consistency is what sustains this."))
 
-    if exlog:
-        if ex_total_min < 150: insights.append(("Exercise Volume", WARN, f"You're logging {ex_total_min} min/week — {150 - ex_total_min} min short of the WHO 150 min/week guideline. Even small increases (+20 min/week) measurably reduce all-cause mortality and metabolic disease risk."))
-        else: insights.append(("Exercise Volume", GOOD, f"You're meeting WHO guidelines with {ex_total_min} min/week ({ex_kcal_w:.0f} kcal/week). Consider adding strength training if not already included — it's the most underutilised tool for metabolic health and longevity."))
+if exlog:
+    if ex_total_min < 150: insights.append(("Exercise Volume", WARN, f"You're logging {ex_total_min} min/week — {150 - ex_total_min} min short of the WHO 150 min/week guideline. Even small increases (+20 min/week) measurably reduce all-cause mortality and metabolic disease risk."))
+    else: insights.append(("Exercise Volume", GOOD, f"You're meeting WHO guidelines with {ex_total_min} min/week ({ex_kcal_w:.0f} kcal/week). Consider adding strength training if not already included — it's the most underutilised tool for metabolic health and longevity."))
 
-    interval_t = "Short intervals (4×4 min hard)" if vo2_pct < 60 else "Tempo run / threshold (25 min)"
-    plan_7 = [
-        ("Mon", "Easy cardio (Zone 2)", "35–45 min", "Aerobic base — can hold a conversation"),
-        ("Tue", "Full-body strength", "30–40 min", "Muscle, metabolism, bone density"),
-        ("Wed", "Mobility + light walk", "20–30 min", "Recovery, reduce stiffness"),
-        ("Thu", interval_t, "25–35 min", "Raise VO2max + cardio ceiling"),
-        ("Fri", "Full-body strength", "30–40 min", "Progressive overload + posture"),
-        ("Sat", "Long easy walk / cycle", "50–75 min", "Weekly aerobic volume (easy)"),
-        ("Sun", "Review + plan next week", "10–15 min", "Make progress sustainable"),
-    ]
-    if has_plan and kg_pw is not None:
-        plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Align food plan with weekly goal")
+interval_t = "Short intervals (4×4 min hard)" if vo2_pct < 60 else "Tempo run / threshold (25 min)"
+plan_7 = [
+    ("Mon", "Easy cardio (Zone 2)", "35–45 min", "Aerobic base — can hold a conversation"),
+    ("Tue", "Full-body strength", "30–40 min", "Muscle, metabolism, bone density"),
+    ("Wed", "Mobility + light walk", "20–30 min", "Recovery, reduce stiffness"),
+    ("Thu", interval_t, "25–35 min", "Raise VO2max + cardio ceiling"),
+    ("Fri", "Full-body strength", "30–40 min", "Progressive overload + posture"),
+    ("Sat", "Long easy walk / cycle", "50–75 min", "Weekly aerobic volume (easy)"),
+    ("Sun", "Review + plan next week", "10–15 min", "Make progress sustainable"),
+]
+if has_plan and kg_pw is not None:
+    plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Align food plan with weekly goal")
 
-    # ── Lokale Custom Flowables (Inni create_pdf_bytes_ultimate) ────────────────
-    class VGap(Flowable):
-        def __init__(self, h=8):
-            super().__init__(); self._h = h
-        def wrap(self, aw, ah): return aw, self._h
-        def draw(self): pass
+# ── Lokale Custom Flowables ────────────────
+class VGap(Flowable):
+    def __init__(self, h=8):
+        super().__init__(); self._h = h
+    def wrap(self, aw, ah): return aw, self._h
+    def draw(self): pass
 
-    class SecHeader(Flowable):
-        def __init__(self, title, subtitle="", accent=None, width=CONTENT_W):
-            super().__init__()
-            self.title = title; self.subtitle = subtitle; self.accent = accent or ACCENT
-            self.w = width; self.h = 46 if subtitle else 36
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv
-            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-            c.setFillColor(self.accent); c.roundRect(0, 0, 5, self.h, 2, fill=1, stroke=0)
-            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 13)
-            c.drawString(16, self.h - 22, self.title)
-            if self.subtitle:
-                c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
-                c.drawString(16, 8, self.subtitle[:90])
-
-    class MetricCard(Flowable):
-        def __init__(self, metrics, width=CONTENT_W, card_h=66):
-            super().__init__()
-            self.metrics = metrics; self.w = width; self.h = card_h
-            n = max(1, len(metrics))
-            self.card_w = (width - (n - 1) * 6) / n
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; cw = self.card_w; ch = self.h
-            for i, (lbl, val, sub, col_s) in enumerate(self.metrics):
-                col = HexColor(col_s) if isinstance(col_s, str) else col_s
-                x = i * (cw + 6)
-                c.setFillColor(CARD); c.roundRect(x, 0, cw, ch, 8, fill=1, stroke=0)
-                c.setFillColor(col); c.roundRect(x, ch - 4, cw, 4, 2, fill=1, stroke=0)
-                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
-                c.drawString(x + 10, ch - 16, str(lbl).upper()[:22])
-                c.setFillColor(col); c.setFont("Helvetica-Bold", 16)
-                c.drawString(x + 10, ch - 34, str(val)[:18])
-                if sub:
-                    c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
-                    c.drawString(x + 10, ch - 47, str(sub)[:26])
-
-    class HealthScoreRing(Flowable):
-        def __init__(self, score, label, color, width=CONTENT_W):
-            super().__init__()
-            self.score = score; self.label = label; self.color = color; self.w = width; self.h = 130
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; cx = self.w / 2; cy = self.h / 2 + 14; R = 46
-            c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
-            frac = self.score / 100.0; steps = max(2, int(frac * 72))
-            for i in range(steps):
-                a1 = math.pi / 2 - (i / 72) * 2 * math.pi
-                a2 = math.pi / 2 - ((i + 1) / 72) * 2 * math.pi
-                c.setStrokeColor(self.color); c.setLineWidth(13)
-                c.line(cx + R * math.cos(a1), cy + R * math.sin(a1), cx + R * math.cos(a2), cy + R * math.sin(a2))
-            c.setFillColor(self.color); c.setFont("Helvetica-Bold", 28)
-            c.drawCentredString(cx, cy + 6, str(self.score))
-            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
-            c.drawCentredString(cx, cy - 8, "/ 100")
-            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 10)
-            c.drawCentredString(cx, cy - 22, self.label)
-            dims = list(radar.items()); dw = self.w / len(dims)
-            for j, (dim, sc) in enumerate(dims):
-                dx = j * dw + dw / 2; dy = 10
-                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
-                c.setFillColor(CARD2); c.roundRect(j * dw + 2, 2, dw - 4, 24, 4, fill=1, stroke=0)
-                c.setFillColor(dc); c.setFont("Helvetica-Bold", 9); c.drawCentredString(dx, dy + 8, str(sc))
-                c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawCentredString(dx, dy, dim)
-
-    class BMIScale(Flowable):
-        def __init__(self, bmi_val, width=CONTENT_W):
-            super().__init__()
-            self.bmi = bmi_val; self.w = width; self.h = 100
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; bmi = self.bmi; w = self.w
-            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-            col = bmi_color(bmi)
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 62, f"{bmi:.1f}")
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 52, "BMI")
-            cat = ("Underweight" if bmi < 18.5 else "Normal weight" if bmi < 25 else "Overweight" if bmi < 30 else "Obese")
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 9); c.drawString(14, 39, cat)
-            SMAX = 45.0; bx = 14; by = 18; bh = 13; bw = w - 28
-            segs = [(0,18.5,"#3B82F6","Underweight"),(18.5,25,"#22C55E","Normal"),(25,30,"#F59E0B","Overweight"),(30,45,"#EF4444","Obese")]
-            for i, (s, e, cl, lbl) in enumerate(segs):
-                sx = bx + (s/SMAX)*bw; sw = ((e-s)/SMAX)*bw
-                c.setFillColor(HexColor(cl))
-                if i == 0: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx+3,by,sw-3,bh,fill=1,stroke=0)
-                elif i == len(segs)-1: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx,by,sw-3,bh,fill=1,stroke=0)
-                else: c.rect(sx,by,sw,bh,fill=1,stroke=0)
-                c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
-                c.drawCentredString(sx+sw/2, by+4, lbl)
-            mx = bx + min(1.0, bmi/SMAX)*bw
-            c.setStrokeColor(white); c.setLineWidth(1.5); c.line(mx, by-2, mx, by+bh+2)
-            c.setFillColor(white); path = c.beginPath(); path.moveTo(mx, by+bh+9); path.lineTo(mx-5, by+bh+2); path.lineTo(mx+5, by+bh+2); path.close()
-            c.drawPath(path, fill=1, stroke=0)
-            for lbl, pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
-                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + (pos/SMAX)*bw, by-8, lbl)
-
-    class VO2Visual(Flowable):
-        def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
-            super().__init__()
-            self.vo2 = vo2_val; self.pct = float(percentile or 0); self.rat = rating; self.w = width; self.h = 90
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; w = self.w; pct = self.pct
-            col = vo2_color(pct)
-            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 56, f"{self.vo2:.1f}")
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 46, "ml / kg / min")
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 10); c.drawString(14, 32, str(self.rat or "—"))
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 20, "Rating")
-            bx = w*0.44; bw2 = w*0.51; bh = 13; by = 48
-            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(bx, by+bh+6, "POPULATION PERCENTILE")
-            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
-            c.setFillColor(col); c.roundRect(bx, by, max(8, (pct/100)*bw2), bh, 4, fill=1, stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 12); c.drawRightString(bx+bw2, by-14, f"{pct:.0f}th percentile")
-            zones = [(0,20,"#EF4444"),(20,40,"#F59E0B"),(40,60,"#3B82F6"),(60,80,"#22C55E"),(80,100,"#10B981")]
-            sz_y = 18; sz_h = 7
-            for zs, ze, zc in zones:
-                c.setFillColor(HexColor(zc)); c.rect(bx + (zs/100)*bw2, sz_y, ((ze-zs)/100)*bw2, sz_h, fill=1, stroke=0)
-            c.setStrokeColor(white); c.setLineWidth(1.5); nx = bx + (pct/100)*bw2; c.line(nx, sz_y-2, nx, sz_y+sz_h+2)
-            zlabels = ["Low","Below avg","Average","Good","Excellent"]
-            for j, (zl, (zs, ze, _)) in enumerate(zip(zlabels, zones)):
-                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + ((zs+ze)/200)*bw2, sz_y-8, zl)
-
-    class RadarChart(Flowable):
-        def __init__(self, scores_dict, width=CONTENT_W):
-            super().__init__()
-            self.scores = scores_dict; self.w = width; self.h = 165
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; cx = self.w/2; cy = self.h/2 + 10; R = 58
-            labels = list(self.scores.keys()); vals = [self.scores[k]/100.0 for k in labels]; n = len(labels)
-            def pt(i, r): ang = math.pi/2 + 2*math.pi*i/n; return cx + r*math.cos(ang), cy + r*math.sin(ang)
-            for ring in [0.25, 0.5, 0.75, 1.0]:
-                pts = [pt(i, ring*R) for i in range(n)]
-                c.setStrokeColor(STROKE); c.setLineWidth(0.5); path = c.beginPath(); path.moveTo(*pts[0])
-                for p in pts[1:]: path.lineTo(*p)
-                path.close(); c.drawPath(path, fill=0, stroke=1)
-            for i in range(n):
-                ox, oy = pt(i, R); c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(cx, cy, ox, oy)
-            poly = [pt(i, vals[i]*R) for i in range(n)]; c.setFillColor(ACCENT); path = c.beginPath(); path.moveTo(*poly[0])
-            for p in poly[1:]: path.lineTo(*p)
-            path.close(); c.setFillAlpha(0.25); c.drawPath(path, fill=1, stroke=0); c.setFillAlpha(1.0)
-            c.setStrokeColor(ACCENT); c.setLineWidth(1.5); c.drawPath(path, fill=0, stroke=1)
-            for i, (lbl, val) in enumerate(zip(labels, vals)):
-                px, py = pt(i, val*R); c.setFillColor(ACCENT); c.circle(px, py, 3.5, fill=1, stroke=0)
-                lx, ly = pt(i, R+15); sc = int(val*100)
-                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
-                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 7.5); c.drawCentredString(lx, ly+4, lbl)
-                c.setFillColor(dc); c.setFont("Helvetica-Bold", 8.5); c.drawCentredString(lx, ly-6, str(sc))
-
-    class BioAgeBar(Flowable):
-        def __init__(self, bio_val, chron_val, width=CONTENT_W):
-            super().__init__()
-            self.bio = bio_val; self.chron = chron_val; self.w = width; self.h = 72
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; w = self.w; diff = self.bio - self.chron; col = bio_color(diff)
-            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 38, f"{self.bio:.1f}")
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 28, "Biological age")
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 8.5); c.drawString(14, 14, f"{abs(diff):.1f} yrs {'younger' if diff<0 else 'older'}")
-            c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(w*0.35, 8, w*0.35, self.h-8)
-            bx = w*0.38; bw2 = w*0.57; max_age = max(self.bio, self.chron)*1.3
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7)
-            c.drawString(bx, self.h-16, f"Calendar age:   {self.chron:.0f} yrs")
-            c.drawString(bx, self.h-28, f"Biological age: {self.bio:.1f} yrs")
-            for j, (val, lbl2, cl) in enumerate([(self.chron, "Calendar", MUTED), (self.bio, "Biological", col)]):
-                bar_y = 14 + j*16; c.setFillColor(STROKE); c.roundRect(bx, bar_y, bw2, 8, 3, fill=1, stroke=0)
-                c.setFillColor(cl); c.roundRect(bx, bar_y, (val/max_age)*bw2, 8, 3, fill=1, stroke=0)
-
-    class FactorBars(Flowable):
-        def __init__(self, factors, width=CONTENT_W):
-            super().__init__()
-            self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta", 0))), reverse=True)[:8]
-            self.w = width; self.h = len(self.factors)*21 + 12
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-            bx = self.w*0.42; bw2 = self.w*0.44; row = 21
-            for i, f in enumerate(self.factors):
-                y = self.h - 14 - i*row; delta = float(f.get("delta", 0))
-                cl = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
-                frac = min(abs(delta)/8.0, 1.0)
-                c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(10, y-4, str(f.get("label", ""))[:30])
-                c.setFillColor(STROKE); c.roundRect(bx, y-4, bw2, 9, 2, fill=1, stroke=0)
-                if frac > 0: c.setFillColor(HexColor(cl)); c.roundRect(bx, y-4, frac*bw2, 9, 2, fill=1, stroke=0)
-                c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 7.5); c.drawRightString(self.w-6, y-4, f"{delta:+.1f} yrs")
-
-    class CalorieBar(Flowable):
-        def __init__(self, maintenance, recommended, kg_per_week, width=CONTENT_W):
-            super().__init__()
-            self.maint = maintenance; self.rec = recommended; self.rate = kg_per_week; self.w = width; self.h = 88
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; delta = self.rec - self.maint
-            col = "#22C55E" if delta < 0 else "#3B82F6" if delta > 0 else "#94A3B8"
-            lbl = "Deficit" if delta < 0 else "Surplus" if delta > 0 else "Maintenance"
-            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 10, fill=1, stroke=0)
-            cw3 = (self.w - 16) / 3
-            for j, (title, val, cl) in enumerate([("MAINTENANCE", f"{self.maint:.0f}", "#94A3B8"), ("RECOMMENDED", f"{self.rec:.0f}", col), (lbl.upper(), f"{delta:+.0f} kcal", col)]):
-                x = 8 + j*cw3; c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 15); c.drawString(x+4, 50, val)
-                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(x+4, 40, "kcal/day" if j < 2 else "per day"); c.drawString(x+4, self.h-14, title)
-                if j < 2: c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(x+cw3+1, 10, x+cw3+1, self.h-6)
-            bx = 8; by = 18; bw2 = self.w-16
-            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, 9, 3, fill=1, stroke=0)
-            c.setFillColor(HexColor(col)); c.roundRect(bx, by, int(min(1.0, abs(delta) / max(1, self.maint) * 5)*bw2), 9, 3, fill=1, stroke=0)
-            if self.rate is not None: c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold", 8); c.drawRightString(self.w-10, 6, f"{self.rate:+.2f} kg/week")
-
-    class MilestoneRow(Flowable):
-        def __init__(self, week, weight, focus, progress_pct, col_s, is_last, width=CONTENT_W):
-            super().__init__()
-            self.week=week; self.weight=weight; self.focus=focus; self.prog=progress_pct; self.col_s=col_s; self.is_last=is_last; self.w=width; self.h=46
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; col = HexColor(self.col_s)
-            if not self.is_last: c.setStrokeColor(STROKE); c.setLineWidth(1); c.line(14,0,14,8)
-            c.setFillColor(col); c.circle(14,34,12,fill=1,stroke=0); c.setFillColor(white); c.setFont("Helvetica-Bold",8); c.drawCentredString(14,30,str(self.week))
-            c.setFillColor(CARD); c.roundRect(32,10,self.w-36,34,6,fill=1,stroke=0); c.setFillColor(col); c.roundRect(32,40,self.w-36,4,2,fill=1,stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold",13); c.drawString(42,27,f"{self.weight:.1f} kg")
-            c.setFillColor(MUTED); c.setFont("Helvetica",7.5); c.drawString(42,16,str(self.focus)[:38])
-            bx=self.w-88; bw2=78
-            c.setFillColor(STROKE); c.roundRect(bx,17,bw2,6,2,fill=1,stroke=0); c.setFillColor(col); c.roundRect(bx,17,self.prog/100*bw2,6,2,fill=1,stroke=0)
-            c.setFillColor(MUTED); c.setFont("Helvetica",6); c.drawRightString(bx+bw2,11,f"{self.prog:.0f}%")
-
-    class InsightBlock(Flowable):
-        def __init__(self, title, text, color, width=CONTENT_W):
-            super().__init__()
-            self.title = title; self.text = text; self.color = color if isinstance(color, colors.Color) else HexColor(str(color)); self.w = width
-            self._para = Paragraph(f"<b>{title}:</b> {text}", S("_ib", size=8.8, lead=13))
-            _, ph = self._para.wrap(width - 20, 9999); self.h = max(36, ph + 16)
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
-            c.setFillColor(self.color); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-            self._para.drawOn(c, 14, 8)
-
-    class ExpertInsightBox(Flowable):
-        def __init__(self, section: str, text: str, width=CONTENT_W):
-            super().__init__()
-            self.w = width
-            self._header = Paragraph(
-                f'<b>🔬 EXPERT INSIGHT — {section.upper()}</b>',
-                S(f"_ei_h_{abs(hash(text))}", size=7.5, lead=11, color=WARN, bold=True)
-            )
-            self._body = Paragraph(text, S(f"_ei_b_{abs(hash(text))}", size=8.8, lead=14, color=TEXT))
-            _, hh = self._header.wrap(width - 24, 9999)
-            _, bh = self._body.wrap(width - 24, 9999)
-            self.h = hh + bh + 30
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv
-            c.setFillColor(HexColor("#120F00"))
-            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-            c.setStrokeColor(WARN); c.setLineWidth(1.0)
-            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
-            c.setFillColor(WARN); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-            self._header.drawOn(c, 14, self.h - 18)
-            self._body.drawOn(c, 14, 8)
-
-    class ActionableMilestoneBox(Flowable):
-        def __init__(self, steps: list, width=CONTENT_W):
-            super().__init__()
-            self.w = width
-            bullet_html = "".join(f"→  {s}<br/>" for s in steps)
-            self._header = Paragraph(
-                '<b>🎯 ACTIONABLE MILESTONE — YOUR NEXT 4 WEEKS</b>',
-                S(f"_am_h_{abs(hash(bullet_html))}", size=7.5, lead=11, color=ACCENT, bold=True)
-            )
-            self._body = Paragraph(bullet_html, S(f"_am_b_{abs(hash(bullet_html))}", size=8.8, lead=15, color=TEXT))
-            _, hh = self._header.wrap(width - 24, 9999)
-            _, bh = self._body.wrap(width - 24, 9999)
-            self.h = hh + bh + 30
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv
-            c.setFillColor(HexColor("#00100E"))
-            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-            c.setStrokeColor(ACCENT); c.setLineWidth(1.0)
-            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
-            c.setFillColor(ACCENT); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-            self._header.drawOn(c, 14, self.h - 18)
-            self._body.drawOn(c, 14, 8)
-
-    class CompoundingEffectBox(Flowable):
-        def __init__(self, width=CONTENT_W):
-            super().__init__()
-            self.w = width
-            body_html = (
-                "<b>Health is compound interest.</b> A 1% weekly improvement in sleep quality, "
-                "training load, or nutrition precision compounds to a <b>52% total gain over one year.</b> "
-                "The habits you establish today are not just today's result — they are the foundation "
-                "every future week builds upon. Small, consistent actions have disproportionate long-term returns. "
-                "This is the defining principle of every intervention recommended in this report."
-            )
-            self._header = Paragraph(
-                '<b>📈  THE COMPOUNDING EFFECT — WHY 1% MATTERS</b>',
-                S("_ce_h", size=7.5, lead=11, color=BLUE, bold=True)
-            )
-            self._body = Paragraph(body_html, S("_ce_b", size=8.8, lead=14, color=TEXT))
-            _, hh = self._header.wrap(width - 24, 9999)
-            _, bh = self._body.wrap(width - 24, 9999)
-            self.h = hh + bh + 30
-        def wrap(self, aw, ah): return self.w, self.h
-        def draw(self):
-            c = self.canv
-            c.setFillColor(HexColor("#020810"))
-            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-            c.setStrokeColor(BLUE); c.setLineWidth(1.0)
-            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
-            c.setFillColor(BLUE); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-            self._header.drawOn(c, 14, self.h - 18)
-            self._body.drawOn(c, 14, 8)
-
-    class ExecutiveSummaryCheatSheet(Flowable):
-        def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
-            super().__init__()
-            self.w = width
-            self.stop = stop_items[:3]
-            self.start = start_items[:3]
-            self.maintain = maintain_items[:3]
-            self.h = 235
-        def wrap(self, aw, ah): return self.w, self.h
-        def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
-            c.setFillColor(HexColor(bg_hex))
-            c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
-            c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(1.2)
-            c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
-            c.setFillColor(HexColor(accent_hex))
-            c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
-            c.setFillColor(HexColor(accent_hex)); c.setFont("Helvetica-Bold", 11)
-            c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
-            c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(0.4)
-            c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
-            c.setFillColor(HexColor("#E5E7EB")); c.setFont("Helvetica", 8.2)
-            for i, item in enumerate(items):
-                ty = y + ph - 46 - i * 26
-                c.drawString(x + 12, ty, f"• {str(item)[:46]}")
-        def draw(self):
-            c = self.canv
-            c.setFillColor(HexColor("#080D1A"))
-            c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
-            c.setStrokeColor(ACCENT); c.setLineWidth(1.2)
-            c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
-            c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 13)
-            c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
+class SecHeader(Flowable):
+    def __init__(self, title, subtitle="", accent=None, width=CONTENT_W):
+        super().__init__()
+        self.title = title; self.subtitle = subtitle; self.accent = accent or ACCENT
+        self.w = width; self.h = 46 if subtitle else 36
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv
+        c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+        c.setFillColor(self.accent); c.roundRect(0, 0, 5, self.h, 2, fill=1, stroke=0)
+        c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 13)
+        c.drawString(16, self.h - 22, self.title)
+        if self.subtitle:
             c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
-            c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
-            gap = 8
-            ph = self.h - 48
-            pw = (self.w - gap * 2) / 3
-            self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
-            self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
-            self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
+            c.drawString(16, 8, self.subtitle[:90])
 
-    # ── Sidetegningsmal (Topp- og botntekst) ──
-    def draw_page(canvas, doc):
-        canvas.saveState()
-        canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
-        canvas.setFillColor(ACCENT); canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
-        canvas.setFillColor(CARD2); canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
-        canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5); canvas.drawString(MARGIN_H, PAGE_H-15, "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL")
-        canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8); canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
-        canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
-        canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5); canvas.drawString(MARGIN_H, 4, "Educational use only — not a medical diagnosis — health-tools.streamlit.app")
-        canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.utcnow().strftime("%Y-%m-%d UTC"))
-        canvas.restoreState()
+class MetricCard(Flowable):
+    def __init__(self, metrics, width=CONTENT_W, card_h=66):
+        super().__init__()
+        self.metrics = metrics; self.w = width; self.h = card_h
+        n = max(1, len(metrics))
+        self.card_w = (width - (n - 1) * 6) / n
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; cw = self.card_w; ch = self.h
+        for i, (lbl, val, sub, col_s) in enumerate(self.metrics):
+            col = HexColor(col_s) if isinstance(col_s, str) else col_s
+            x = i * (cw + 6)
+            c.setFillColor(CARD); c.roundRect(x, 0, cw, ch, 8, fill=1, stroke=0)
+            c.setFillColor(col); c.roundRect(x, ch - 4, cw, 4, 2, fill=1, stroke=0)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(x + 10, ch - 16, str(lbl).upper()[:22])
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 16)
+            c.drawString(x + 10, ch - 34, str(val)[:18])
+            if sub:
+                c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+                c.drawString(x + 10, ch - 47, str(sub)[:26])
 
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN_H, rightMargin=MARGIN_H, topMargin=26*mm, bottomMargin=18*mm)
-    story = []
+class HealthScoreRing(Flowable):
+    def __init__(self, score, label, color, width=CONTENT_W):
+        super().__init__()
+        self.score = score; self.label = label; self.color = color; self.w = width; self.h = 130
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; cx = self.w / 2; cy = self.h / 2 + 14; R = 46
+        c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
+        frac = self.score / 100.0; steps = max(2, int(frac * 72))
+        for i in range(steps):
+            a1 = math.pi / 2 - (i / 72) * 2 * math.pi
+            a2 = math.pi / 2 - ((i + 1) / 72) * 2 * math.pi
+            c.setStrokeColor(self.color); c.setLineWidth(13)
+            c.line(cx + R * math.cos(a1), cy + R * math.sin(a1), cx + R * math.cos(a2), cy + R * math.sin(a2))
+        c.setFillColor(self.color); c.setFont("Helvetica-Bold", 28)
+        c.drawCentredString(cx, cy + 6, str(self.score))
+        c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+        c.drawCentredString(cx, cy - 8, "/ 100")
+        c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 10)
+        c.drawCentredString(cx, cy - 22, self.label)
+        dims = list(radar.items()); dw = self.w / len(dims)
+        for j, (dim, sc) in enumerate(dims):
+            dx = j * dw + dw / 2; dy = 10
+            dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+            c.setFillColor(CARD2); c.roundRect(j * dw + 2, 2, dw - 4, 24, 4, fill=1, stroke=0)
+            c.setFillColor(dc); c.setFont("Helvetica-Bold", 9); c.drawCentredString(dx, dy + 8, str(sc))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawCentredString(dx, dy, dim)
+
+class BMIScale(Flowable):
+    def __init__(self, bmi_val, width=CONTENT_W):
+        super().__init__()
+        self.bmi = bmi_val; self.w = width; self.h = 100
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; bmi = self.bmi; w = self.w
+        c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+        col = bmi_color(bmi)
+        c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 62, f"{bmi:.1f}")
+        c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 52, "BMI")
+        cat = ("Underweight" if bmi < 18.5 else "Normal weight" if bmi < 25 else "Overweight" if bmi < 30 else "Obese")
+        c.setFillColor(col); c.setFont("Helvetica-Bold", 9); c.drawString(14, 39, cat)
+        SMAX = 45.0; bx = 14; by = 18; bh = 13; bw = w - 28
+        segs = [(0,18.5,"#3B82F6","Underweight"),(18.5,25,"#22C55E","Normal"),(25,30,"#F59E0B","Overweight"),(30,45,"#EF4444","Obese")]
+        for i, (s, e, cl, lbl) in enumerate(segs):
+            sx = bx + (s/SMAX)*bw; sw = ((e-s)/SMAX)*bw
+            c.setFillColor(HexColor(cl))
+            if i == 0: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx+3,by,sw-3,bh,fill=1,stroke=0)
+            elif i == len(segs)-1: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx,by,sw-3,bh,fill=1,stroke=0)
+            else: c.rect(sx,by,sw,bh,fill=1,stroke=0)
+            c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
+            c.drawCentredString(sx+sw/2, by+4, lbl)
+        mx = bx + min(1.0, bmi/SMAX)*bw
+        c.setStrokeColor(white); c.setLineWidth(1.5); c.line(mx, by-2, mx, by+bh+2)
+        c.setFillColor(white); path = c.beginPath(); path.moveTo(mx, by+bh+9); path.lineTo(mx-5, by+bh+2); path.lineTo(mx+5, by+bh+2); path.close()
+        c.drawPath(path, fill=1, stroke=0)
+        for lbl, pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
+            c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + (pos/SMAX)*bw, by-8, lbl)
+
+class VO2Visual(Flowable):
+    def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
+        super().__init__()
+        self.vo2 = vo2_val; self.pct = float(percentile or 0); self.rat = rating; self.w = width; self.h = 90
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; w = self.w; pct = self.pct
+        col = vo2_color(pct)
+        c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+        c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 56, f"{self.vo2:.1f}")
+        c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 46, "ml / kg / min")
+        c.setFillColor(col); c.setFont("Helvetica-Bold", 10); c.drawString(14, 32, str(self.rat or "—"))
+        c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 20, "Rating")
+        bx = w*0.44; bw2 = w*0.51; bh = 13; by = 48
+        c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(bx, by+bh+6, "POPULATION PERCENTILE")
+        c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
+        c.setFillColor(col); c.roundRect(bx, by, max(8, (pct/100)*bw2), bh, 4, fill=1, stroke=0)
+        c.setFillColor(col); c.setFont("Helvetica-Bold", 12); c.drawRightString(bx+bw2, by-14, f"{pct:.0f}th percentile")
+        zones = [(0,20,"#EF4444"),(20,40,"#F59E0B"),(40,60,"#3B82F6"),(60,80,"#22C55E"),(80,100,"#10B981")]
+        sz_y = 18; sz_h = 7
+        for zs, ze, zc in zones:
+            c.setFillColor(HexColor(zc)); c.rect(bx + (zs/100)*bw2, sz_y, ((ze-zs)/100)*bw2, sz_h, fill=1, stroke=0)
+        c.setStrokeColor(white); c.setLineWidth(1.5); nx = bx + (pct/100)*bw2; c.line(nx, sz_y-2, nx, sz_y+sz_h+2)
+        zlabels = ["Low","Below avg","Average","Good","Excellent"]
+        for j, (zl, (zs, ze, _)) in enumerate(zip(zlabels, zones)):
+            c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + ((zs+ze)/200)*bw2, sz_y-8, zl)
+
+class RadarChart(Flowable):
+    def __init__(self, scores_dict, width=CONTENT_W):
+        super().__init__()
+        self.scores = scores_dict; self.w = width; self.h = 165
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; cx = self.w/2; cy = self.h/2 + 10; R = 58
+        labels = list(self.scores.keys()); vals = [self.scores[k]/100.0 for k in labels]; n = len(labels)
+        def pt(i, r): ang = math.pi/2 + 2*math.pi*i/n; return cx + r*math.cos(ang), cy + r*math.sin(ang)
+        for ring in [0.25, 0.5, 0.75, 1.0]:
+            pts = [pt(i, ring*R) for i in range(n)]
+            c.setStrokeColor(STROKE); c.setLineWidth(0.5); path = c.beginPath(); path.moveTo(*pts[0])
+            for p in pts[1:]: path.lineTo(*p)
+            path.close(); c.drawPath(path, fill=0, stroke=1)
+        for i in range(n):
+            ox, oy = pt(i, R); c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(cx, cy, ox, oy)
+        poly = [pt(i, vals[i]*R) for i in range(n)]; c.setFillColor(ACCENT); path = c.beginPath(); path.moveTo(*poly[0])
+        for p in poly[1:]: path.lineTo(*p)
+        path.close(); c.setFillAlpha(0.25); c.drawPath(path, fill=1, stroke=0); c.setFillAlpha(1.0)
+        c.setStrokeColor(ACCENT); c.setLineWidth(1.5); c.drawPath(path, fill=0, stroke=1)
+        for i, (lbl, val) in enumerate(zip(labels, vals)):
+            px, py = pt(i, val*R); c.setFillColor(ACCENT); c.circle(px, py, 3.5, fill=1, stroke=0)
+            lx, ly = pt(i, R+15); sc = int(val*100)
+            dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 7.5); c.drawCentredString(lx, ly+4, lbl)
+            c.setFillColor(dc); c.setFont("Helvetica-Bold", 8.5); c.drawCentredString(lx, ly-6, str(sc))
+
+class BioAgeBar(Flowable):
+    def __init__(self, bio_val, chron_val, width=CONTENT_W):
+        super().__init__()
+        self.bio = bio_val; self.chron = chron_val; self.w = width; self.h = 72
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; w = self.w; diff = self.bio - self.chron; col = bio_color(diff)
+        c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+        c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 38, f"{self.bio:.1f}")
+        c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 28, "Biological age")
+        c.setFillColor(col); c.setFont("Helvetica-Bold", 8.5); c.drawString(14, 14, f"{abs(diff):.1f} yrs {'younger' if diff<0 else 'older'}")
+        c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(w*0.35, 8, w*0.35, self.h-8)
+        bx = w*0.38; bw2 = w*0.57; max_age = max(self.bio, self.chron)*1.3
+        c.setFillColor(MUTED); c.setFont("Helvetica", 7)
+        c.drawString(bx, self.h-16, f"Calendar age:   {self.chron:.0f} yrs")
+        c.drawString(bx, self.h-28, f"Biological age: {self.bio:.1f} yrs")
+        for j, (val, lbl2, cl) in enumerate([(self.chron, "Calendar", MUTED), (self.bio, "Biological", col)]):
+            bar_y = 14 + j*16; c.setFillColor(STROKE); c.roundRect(bx, bar_y, bw2, 8, 3, fill=1, stroke=0)
+            c.setFillColor(cl); c.roundRect(bx, bar_y, (val/max_age)*bw2, 8, 3, fill=1, stroke=0)
+
+class FactorBars(Flowable):
+    def __init__(self, factors, width=CONTENT_W):
+        super().__init__()
+        self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta", 0))), reverse=True)[:8]
+        self.w = width; self.h = len(self.factors)*21 + 12
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+        bx = self.w*0.42; bw2 = self.w*0.44; row = 21
+        for i, f in enumerate(self.factors):
+            y = self.h - 14 - i*row; delta = float(f.get("delta", 0))
+            cl = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
+            frac = min(abs(delta)/8.0, 1.0)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(10, y-4, str(f.get("label", ""))[:30])
+            c.setFillColor(STROKE); c.roundRect(bx, y-4, bw2, 9, 2, fill=1, stroke=0)
+            if frac > 0: c.setFillColor(HexColor(cl)); c.roundRect(bx, y-4, frac*bw2, 9, 2, fill=1, stroke=0)
+            c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 7.5); c.drawRightString(self.w-6, y-4, f"{delta:+.1f} yrs")
+
+class CalorieBar(Flowable):
+    def __init__(self, maintenance, recommended, kg_per_week, width=CONTENT_W):
+        super().__init__()
+        self.maint = maintenance; self.rec = recommended; self.rate = kg_per_week; self.w = width; self.h = 88
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; delta = self.rec - self.maint
+        col = "#22C55E" if delta < 0 else "#3B82F6" if delta > 0 else "#94A3B8"
+        lbl = "Deficit" if delta < 0 else "Surplus" if delta > 0 else "Maintenance"
+        c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 10, fill=1, stroke=0)
+        cw3 = (self.w - 16) / 3
+        for j, (title, val, cl) in enumerate([("MAINTENANCE", f"{self.maint:.0f}", "#94A3B8"), ("RECOMMENDED", f"{self.rec:.0f}", col), (lbl.upper(), f"{delta:+.0f} kcal", col)]):
+            x = 8 + j*cw3; c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 15); c.drawString(x+4, 50, val)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(x+4, 40, "kcal/day" if j < 2 else "per day"); c.drawString(x+4, self.h-14, title)
+            if j < 2: c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(x+cw3+1, 10, x+cw3+1, self.h-6)
+        bx = 8; by = 18; bw2 = self.w-16
+        c.setFillColor(STROKE); c.roundRect(bx, by, bw2, 9, 3, fill=1, stroke=0)
+        c.setFillColor(HexColor(col)); c.roundRect(bx, by, int(min(1.0, abs(delta) / max(1, self.maint) * 5)*bw2), 9, 3, fill=1, stroke=0)
+        if self.rate is not None: c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold", 8); c.drawRightString(self.w-10, 6, f"{self.rate:+.2f} kg/week")
+
+class MilestoneRow(Flowable):
+    def __init__(self, week, weight, focus, progress_pct, col_s, is_last, width=CONTENT_W):
+        super().__init__()
+        self.week=week; self.weight=weight; self.focus=focus; self.prog=progress_pct; self.col_s=col_s; self.is_last=is_last; self.w=width; self.h=46
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; col = HexColor(self.col_s)
+        if not self.is_last: c.setStrokeColor(STROKE); c.setLineWidth(1); c.line(14,0,14,8)
+        c.setFillColor(col); c.circle(14,34,12,fill=1,stroke=0); c.setFillColor(white); c.setFont("Helvetica-Bold",8); c.drawCentredString(14,30,str(self.week))
+        c.setFillColor(CARD); c.roundRect(32,10,self.w-36,34,6,fill=1,stroke=0); c.setFillColor(col); c.roundRect(32,40,self.w-36,4,2,fill=1,stroke=0)
+        c.setFillColor(col); c.setFont("Helvetica-Bold",13); c.drawString(42,27,f"{self.weight:.1f} kg")
+        c.setFillColor(MUTED); c.setFont("Helvetica",7.5); c.drawString(42,16,str(self.focus)[:38])
+        bx=self.w-88; bw2=78
+        c.setFillColor(STROKE); c.roundRect(bx,17,bw2,6,2,fill=1,stroke=0); c.setFillColor(col); c.roundRect(bx,17,self.prog/100*bw2,6,2,fill=1,stroke=0)
+        c.setFillColor(MUTED); c.setFont("Helvetica",6); c.drawRightString(bx+bw2,11,f"{self.prog:.0f}%")
+
+class InsightBlock(Flowable):
+    def __init__(self, title, text, color, width=CONTENT_W):
+        super().__init__()
+        self.title = title; self.text = text; self.color = color if isinstance(color, colors.Color) else HexColor(str(color)); self.w = width
+        self._para = Paragraph(f"<b>{title}:</b> {text}", S("_ib", size=8.8, lead=13))
+        _, ph = self._para.wrap(width - 20, 9999); self.h = max(36, ph + 16)
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
+        c.setFillColor(self.color); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+        self._para.drawOn(c, 14, 8)
+
+class ExpertInsightBox(Flowable):
+    def __init__(self, section: str, text: str, width=CONTENT_W):
+        super().__init__()
+        self.w = width
+        self._header = Paragraph(
+            f'<b>🔬 EXPERT INSIGHT — {section.upper()}</b>',
+            S(f"_ei_h_{abs(hash(text))}", size=7.5, lead=11, color=WARN, bold=True)
+        )
+        self._body = Paragraph(text, S(f"_ei_b_{abs(hash(text))}", size=8.8, lead=14, color=TEXT))
+        _, hh = self._header.wrap(width - 24, 9999)
+        _, bh = self._body.wrap(width - 24, 9999)
+        self.h = hh + bh + 30
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv
+        c.setFillColor(HexColor("#120F00"))
+        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+        c.setStrokeColor(WARN); c.setLineWidth(1.0)
+        c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+        c.setFillColor(WARN); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+        self._header.drawOn(c, 14, self.h - 18)
+        self._body.drawOn(c, 14, 8)
+
+class ActionableMilestoneBox(Flowable):
+    def __init__(self, steps: list, width=CONTENT_W):
+        super().__init__()
+        self.w = width
+        bullet_html = "".join(f"→  {s}<br/>" for s in steps)
+        self._header = Paragraph(
+            '<b>🎯 ACTIONABLE MILESTONE — YOUR NEXT 4 WEEKS</b>',
+            S(f"_am_h_{abs(hash(bullet_html))}", size=7.5, lead=11, color=ACCENT, bold=True)
+        )
+        self._body = Paragraph(bullet_html, S(f"_am_b_{abs(hash(bullet_html))}", size=8.8, lead=15, color=TEXT))
+        _, hh = self._header.wrap(width - 24, 9999)
+        _, bh = self._body.wrap(width - 24, 9999)
+        self.h = hh + bh + 30
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv
+        c.setFillColor(HexColor("#00100E"))
+        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+        c.setStrokeColor(ACCENT); c.setLineWidth(1.0)
+        c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+        c.setFillColor(ACCENT); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+        self._header.drawOn(c, 14, self.h - 18)
+        self._body.drawOn(c, 14, 8)
+
+class CompoundingEffectBox(Flowable):
+    def __init__(self, width=CONTENT_W):
+        super().__init__()
+        self.w = width
+        body_html = (
+            "<b>Health is compound interest.</b> A 1% weekly improvement in sleep quality, "
+            "training load, or nutrition precision compounds to a <b>52% total gain over one year.</b> "
+            "The habits you establish today are not just today's result — they are the foundation "
+            "every future week builds upon. Small, consistent actions have disproportionate long-term returns. "
+            "This is the defining principle of every intervention recommended in this report."
+        )
+        self._header = Paragraph(
+            '<b>📈  THE COMPOUNDING EFFECT — WHY 1% MATTERS</b>',
+            S("_ce_h", size=7.5, lead=11, color=BLUE, bold=True)
+        )
+        self._body = Paragraph(body_html, S("_ce_b", size=8.8, lead=14, color=TEXT))
+        _, hh = self._header.wrap(width - 24, 9999)
+        _, bh = self._body.wrap(width - 24, 9999)
+        self.h = hh + bh + 30
+    def wrap(self, aw, ah): return self.w, self.h
+    def draw(self):
+        c = self.canv
+        c.setFillColor(HexColor("#020810"))
+        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+        c.setStrokeColor(BLUE); c.setLineWidth(1.0)
+        c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+        c.setFillColor(BLUE); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+        self._header.drawOn(c, 14, self.h - 18)
+        self._body.drawOn(c, 14, 8)
+
+class ExecutiveSummaryCheatSheet(Flowable):
+    def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
+        super().__init__()
+        self.w = width
+        self.stop = stop_items[:3]
+        self.start = start_items[:3]
+        self.maintain = maintain_items[:3]
+        self.h = 235
+    def wrap(self, aw, ah): return self.w, self.h
+    def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
+        c.setFillColor(HexColor(bg_hex))
+        c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
+        c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(1.2)
+        c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
+        c.setFillColor(HexColor(accent_hex))
+        c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
+        c.setFillColor(HexColor(accent_hex)); c.setFont("Helvetica-Bold", 11)
+        c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
+        c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(0.4)
+        c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
+        c.setFillColor(HexColor("#E5E7EB")); c.setFont("Helvetica", 8.2)
+        for i, item in enumerate(items):
+            ty = y + ph - 46 - i * 26
+            c.drawString(x + 12, ty, f"• {str(item)[:46]}")
+    def draw(self):
+        c = self.canv
+        c.setFillColor(HexColor("#080D1A"))
+        c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
+        c.setStrokeColor(ACCENT); c.setLineWidth(1.2)
+        c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
+        c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 13)
+        c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
+        c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+        c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
+        gap = 8
+        ph = self.h - 48
+        pw = (self.w - gap * 2) / 3
+        self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
+        self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
+        self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
+
+# ── Sidetegningsmal (Topp- og botntekst) ──
+def draw_page(canvas, doc):
+    canvas.saveState()
+    canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+    canvas.setFillColor(ACCENT); canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
+    canvas.setFillColor(CARD2); canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
+    canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5); canvas.drawString(MARGIN_H, PAGE_H-15, "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL")
+    canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8); canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
+    canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
+    canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5); canvas.drawString(MARGIN_H, 4, "Educational use only — not a medical diagnosis — health-tools.streamlit.app")
+    canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.utcnow().strftime("%Y-%m-%d UTC"))
+    canvas.restoreState()
+
+buf = BytesIO()
+doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN_H, rightMargin=MARGIN_H, topMargin=26*mm, bottomMargin=18*mm)
+story = []
+
 
 # ── SIDA 1: Cover + Dashboard ──
 story.append(VGap(16))
