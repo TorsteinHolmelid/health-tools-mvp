@@ -998,51 +998,52 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN_H, rightMargin=MARGIN_H, topMargin=26*mm, bottomMargin=18*mm)
     story = []
 
-    # ── SIDA 1: Cover + Dashboard ──
-    story.append(VGap(16))
-    story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
-    story.append(P("Personalised Precision Health Analysis — Powered by Validated Clinical Formulas", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
-    story.append(P("Premium Individual Health Report", S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
+# ── SIDA 1: Cover + Dashboard ──
+story.append(VGap(16))
+story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
+story.append(P("Personalised Precision Health Analysis — Powered by Validated Clinical Formulas", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
+story.append(P("Premium Individual Health Report", S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
 
-    info_rows = [
-        [P("AGE", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("SEX", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("HEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("WEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("DATE", S("il", size=6.5, color=MUTED, align=TA_CENTER))],
-        [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
-    ]
-    it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
-    it.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,-1), CARD), 
-        ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), 
-        ("BOX", (0,0), (-1,-1), 1, STROKE), 
-        ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), 
-        ("TOPPADDING", (0,0), (-1,-1), 8), 
-        ("BOTTOMPADDING", (0,0), (-1,-1), 8)
-    ]))
-    story.append(it)
+info_rows = [
+    [P("AGE", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("SEX", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("HEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("WEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("DATE", S("il", size=6.5, color=MUTED, align=TA_CENTER))],
+    [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
+]
+it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
+it.setStyle(TableStyle([
+    ("BACKGROUND", (0,0), (-1,-1), CARD), 
+    ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), 
+    ("BOX", (0,0), (-1,-1), 1, STROKE), 
+    ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), 
+    ("TOPPADDING", (0,0), (-1,-1), 8), 
+    ("BOTTOMPADDING", (0,0), (-1,-1), 8)
+]))
+story.append(it)
+story.append(VGap(8))
+
+story.append(SecHeader("Overall Health Dashboard", subtitle="Composite score across 5 dimensions — for directional guidance only"))
+story.append(VGap(6))
+story.append(HealthScoreRing(health_score, score_label, score_col))
+story.append(VGap(8))
+
+kmetrics = []
+if bmi_v is not None: kmetrics.append(("BMI", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
+if vo2_v is not None: kmetrics.append(("VO2max", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th pct", vo2_col.hexval()))
+if bio_diff is not None: kmetrics.append(("Bio Age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} vs calendar", bio_col.hexval()))
+if cur_kcal and rec_kcal:
+    d_k = int(rec_kcal - cur_kcal)
+    kmetrics.append(("Calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day", "#22C55E" if d_k < 0 else "#3B82F6"))
+if kmetrics:
+    story.append(MetricCard(kmetrics[:4]))
     story.append(VGap(8))
 
-    story.append(SecHeader("Overall Health Dashboard", subtitle="Composite score across 5 dimensions — for directional guidance only"))
-    story.append(VGap(6))
-    story.append(HealthScoreRing(health_score, score_label, score_col))
-    story.append(VGap(8))
+story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
+story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
+story.append(PageBreak())
 
-    kmetrics = []
-    if bmi_v is not None: kmetrics.append(("BMI", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
-    if vo2_v is not None: kmetrics.append(("VO2max", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th pct", vo2_col.hexval()))
-    if bio_diff is not None: kmetrics.append(("Bio Age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} vs calendar", bio_col.hexval()))
-    if cur_kcal and rec_kcal:
-        d_k = int(rec_kcal - cur_kcal)
-        kmetrics.append(("Calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day", "#22C55E" if d_k < 0 else "#3B82F6"))
-    if kmetrics:
-        story.append(MetricCard(kmetrics[:4]))
-        story.append(VGap(8))
+# Bygg og returner PDF-bytes
+doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+# return buf.getvalue()  # Fjern kommentaren om denne linja skal brukes utenfor en funksjon
 
-    story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
-    story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
-    story.append(PageBreak())
-    
-    # Bygg og returner PDF-bytes
-    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-    return buf.getvalue()
 
 # ── PAGE 2: Body Composition ──
 story.append(SecHeader("Body Composition", subtitle="BMI, body fat estimate, and waist-to-hip ratio"))
