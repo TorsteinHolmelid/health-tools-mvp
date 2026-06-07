@@ -604,7 +604,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
-
 # Health score kalkulering
 score_parts = []
 if bmi_v is not None:
