@@ -1720,7 +1720,7 @@ _pt2.setStyle(TableStyle([
 story.append(_pt2)
 story.append(VGap(10))
 
-        # ── Nutrition & Recovery Panel ──
+    # ── Nutrition & Recovery Panel ──
     story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
     if w_v:
@@ -1728,119 +1728,127 @@ story.append(VGap(10))
     else:
         _protein_g = 160
         
-        _nutrition_rows = [
-            [P("METRIC",     S("nh", size=7.5, bold=True, color=MUTED)),
-             P("TARGET",     S("nh", size=7.5, bold=True, color=MUTED)),
-             P("WHY IT MATTERS", S("nh", size=7.5, bold=True, color=MUTED))],
-            [P("Daily protein",   S("nk", size=8.5, bold=True, color=TEXT)),
-             P(f"{_protein_g} g  ({_gp['protein']})", S("nv", size=8.5, bold=True, color=ACCENT)),
-             P("Maximises muscle protein synthesis (MPS). Leucine threshold ~2.5 g/meal activates MPS.",
-               S("nd", size=8, lead=11, color=MUTED))],
-            [P("Calorie adjustment", S("nk2", size=8.5, bold=True, color=TEXT)),
-             P(f"{_gp['deficit']:+d} kcal/day", S("nv2", size=8.5, bold=True,
-                color=HexColor("#DC2626") if _gp['deficit'] < 0 else HexColor("#059669"))),
-             P("Based on Mifflin-St Jeor TDEE. Adjust by ±100 kcal every 2 weeks if weight trend deviates.",
-               S("nd2", size=8, lead=11, color=MUTED))],
-            [P("Sleep",           S("nk3", size=8.5, bold=True, color=TEXT)),
-             P("7–9 hours/night", S("nv3", size=8.5, bold=True, color=HexColor("#7C3AED"))),
-             P("Growth hormone peaks in slow-wave sleep. Sleep <6h reduces MPS by ~18% (Dattilo, 2011).",
-               S("nd3", size=8, lead=11, color=MUTED))],
-            [P("Hydration",       S("nk4", size=8.5, bold=True, color=TEXT)),
-             P("35–45 ml/kg/day", S("nv4", size=8.5, bold=True, color=HexColor("#0891B2"))),
-             P("Even 2% dehydration impairs strength output by 5–8% and aerobic capacity by 10%.",
-               S("nd4", size=8, lead=11, color=MUTED))],
-            [P("Rest between sets",S("nk5", size=8.5, bold=True, color=TEXT)),
-             P("90–180 s (strength) · 45–60 s (metabolic)", S("nv5", size=8, bold=True, color=TEXT)),
-             P("Longer rest = greater strength gains. Shorter rest = elevated metabolic cost (EPOC).",
-               S("nd5", size=8, lead=11, color=MUTED))],
-        ]
-        _nt = Table(_nutrition_rows, colWidths=[CONTENT_W*0.22, CONTENT_W*0.26, CONTENT_W*0.52])
-        _nt.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-            ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-            ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
-            ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),
-            ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_G),
-            ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_DIM),
-            ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-            ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-            ("TOPPADDING",    (0,0),  (-1,-1), 7),
-            ("BOTTOMPADDING", (0,0),  (-1,-1), 7),
-            ("LEFTPADDING",   (0,0),  (-1,-1), 6),
-            ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
-            ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-        ]))
+    _nutrition_rows = [
+        [P("METRIC",     S("nh", size=7.5, bold=True, color=MUTED)),
+         P("TARGET",     S("nh", size=7.5, bold=True, color=MUTED)),
+         P("WHY IT MATTERS", S("nh", size=7.5, bold=True, color=MUTED))],
+        [P("Daily protein",   S("nk", size=8.5, bold=True, color=TEXT)),
+         P(f"{_protein_g} g  ({_gp['protein']})", S("nv", size=8.5, bold=True, color=ACCENT)),
+         P("Maximises muscle protein synthesis (MPS). Leucine threshold ~2.5 g/meal activates MPS.",
+           S("nd", size=8, lead=11, color=MUTED))],
+        [P("Calorie adjustment", S("nk2", size=8.5, bold=True, color=TEXT)),
+         P(f"{_gp['deficit']:+d} kcal/day", S("nv2", size=8.5, bold=True,
+            color=HexColor("#DC2626") if _gp['deficit'] < 0 else HexColor("#059669"))),
+         P("Based on Mifflin-St Jeor TDEE. Adjust by ±100 kcal every 2 weeks if weight trend deviates.",
+           S("nd2", size=8, lead=11, color=MUTED))],
+        [P("Sleep",           S("nk3", size=8.5, bold=True, color=TEXT)),
+         P("7–9 hours/night", S("nv3", size=8.5, bold=True, color=HexColor("#7C3AED"))),
+         P("Growth hormone peaks in slow-wave sleep. Sleep <6h reduces MPS by ~18% (Dattilo, 2011).",
+           S("nd3", size=8, lead=11, color=MUTED))],
+        [P("Hydration",       S("nk4", size=8.5, bold=True, color=TEXT)),
+         P("35–45 ml/kg/day", S("nv4", size=8.5, bold=True, color=HexColor("#0891B2"))),
+         P("Even 2% dehydration impairs strength output by 5–8% and aerobic capacity by 10%.",
+           S("nd4", size=8, lead=11, color=MUTED))],
+        [P("Rest between sets", S("nk5", size=8.5, bold=True, color=TEXT)),
+         P("90–180 s (strength) · 45–60 s (metabolic)", S("nv5", size=8, bold=True, color=TEXT)),
+         P("Longer rest = greater strength gains. Shorter rest = elevated metabolic cost (EPOC).",
+           S("nd5", size=8, lead=11, color=MUTED))],
+    ]
+    
+    _nt = Table(_nutrition_rows, colWidths=[CONTENT_W*0.22, CONTENT_W*0.26, CONTENT_W*0.52])
+    _nt.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+        ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+        ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
+        ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),
+        ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_G),
+        ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_DIM),
+        ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+        ("TOPPADDING",    (0,0),  (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0),  (-1,-1), 7),
+        ("LEFTPADDING",   (0,0),  (-1,-1), 6),
+        ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
+        ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+    ]))
     story.append(_nt)
     story.append(VGap(8))
         
-        # ── Expert Insight ──
+    # ── Expert Insight ──
     _training_insight = (
-            f"This programme follows the principle of progressive overload — the most robustly evidenced "
-            f"stimulus for both strength and hypertrophy gains (Schoenfeld, 2010; Kraemer & Ratamess, 2004). "
-            f"For your goal of '{_goal}', the optimal weekly volume sits between 10–20 sets per muscle group "
-            f"(Krieger, 2010), with intensity periodised across the {_weeks}-week block to drive adaptation "
-            f"while managing fatigue. The selected activities — {', '.join(_activities[:3]) if _activities else 'general fitness'} "
-            f"— are integrated to maximise caloric expenditure and recovery without compromising strength sessions. "
-            f"Deload in week {_weeks} is mandatory: supercompensation occurs during recovery, not during the training stimulus."
-        )
+        f"This programme follows the principle of progressive overload — the most robustly evidenced "
+        f"stimulus for both strength and hypertrophy gains (Schoenfeld, 2010; Kraemer & Ratamess, 2004). "
+        f"For your goal of '{_goal}', the optimal weekly volume sits between 10–20 sets per muscle group "
+        f"(Krieger, 2010), with intensity periodised across the {_weeks}-week block to drive adaptation "
+        f"while managing fatigue. The selected activities — {', '.join(_activities[:3]) if _activities else 'general fitness'} "
+        f"— are integrated to maximise caloric expenditure and recovery without compromising strength sessions. "
+        f"Deload in week {_weeks} is mandatory: supercompensation occurs during recovery, not during the training stimulus."
+    )
     story.append(ExpertInsightBox("Training Science", _training_insight))
     story.append(VGap(6))
         
-        # ── Actionable milestone steps ──
+    # ── Actionable milestone steps ──
     if _goal == "Build muscle (bulk)":
         _train_steps = [
-                f"Track bodyweight weekly — target gain of 0.25–0.5 kg/week for the first {min(_weeks, 8)} weeks",
-                f"Hit {_protein_g} g protein daily — distribute across 4+ meals with ≥30 g per sitting",
-                "Log your lifts every session — add 2.5 kg when you complete all reps with RPE ≤ 8",
-                "Sleep is your anabolic window — prioritise 8 hrs consistently before adding more training volume",
-            ]
+            f"Track bodyweight weekly — target gain of 0.25–0.5 kg/week for the first {min(_weeks, 8)} weeks",
+            f"Hit {_protein_g} g protein daily — distribute across 4+ meals with ≥30 g per sitting",
+            "Log your lifts every session — add 2.5 kg when you complete all reps with RPE ≤ 8",
+            "Sleep is your anabolic window — prioritise 8 hrs consistently before adding more training volume",
+        ]
     elif _goal == "Lose fat":
-         _train_steps = [
-                f"Weigh yourself every morning (post-toilet) — track the 7-day rolling average, not daily fluctuations",
-                f"Minimum {_protein_g} g protein — non-negotiable for lean mass preservation in a calorie deficit",
-                "Step count ≥ 8,000/day — NEAT (non-exercise activity) contributes 15–30% of total daily expenditure",
-                "Strength sessions take priority over cardio — muscle mass drives resting metabolic rate",
-            ]
+        _train_steps = [
+            f"Weigh yourself every morning (post-toilet) — track the 7-day rolling average, not daily fluctuations",
+            f"Minimum {_protein_g} g protein — non-negotiable for lean mass preservation in a calorie deficit",
+            "Step count ≥ 8,000/day — NEAT (non-exercise activity) contributes 15–30% of total daily expenditure",
+            "Strength sessions take priority over cardio — muscle mass drives resting metabolic rate",
+        ]
     else:
         _train_steps = [
-                f"Eat at maintenance calories ± 100 kcal — weigh weekly and adjust if trend deviates",
-                f"Protein target: {_protein_g} g/day — the single most important recomposition lever",
-                "Progressive overload on 2–3 key lifts — track squat, press, and row as primary indicators",
-                "Rotate cardio modality every 4 weeks — prevents adaptation and maintains caloric expenditure",
-            ]
+            f"Eat at maintenance calories ± 100 kcal — weigh weekly and adjust if trend deviates",
+            f"Protein target: {_protein_g} g/day — the single most important recomposition lever",
+            "Progressive overload on 2–3 key lifts — track squat, press, and row as primary indicators",
+            "Rotate cardio modality every 4 weeks — prevents adaptation and maintains caloric expenditure",
+        ]
     story.append(ActionableMilestoneBox(_train_steps))
     story.append(VGap(6))
         
     story.append(P(
-            "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
-            "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc; Dattilo M et al. (2011) Med Hypotheses. "
-            "Targets are population-level estimates — individual response varies. Consult a certified trainer or physician before starting.",
-            S("disc", size=7.5, lead=11, color=MUTED, italic=True, after=4)
-        ))
+        "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
+        "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc; Dattilo M et al. (2011) Med Hypotheses. "
+        "Targets are population-level estimates — individual response varies. Consult a certified trainer or physician before starting.",
+        S("disc", size=7.5, lead=11, color=MUTED, italic=True, after=4)
+    ))
         
     story.append(PageBreak())
+    
     # ── PAGE 7: Insights + Conditions + Safety ──
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
     story.append(VGap(6))
     for title, color, text in insights:
-        story.append(InsightBlock(title, text, color)); story.append(VGap(6))
+        story.append(InsightBlock(title, text, color))
+        story.append(VGap(6))
         
     if triage_r:
-        story.append(SecHeader("Condition-Aware Recommendations", accent=WARN)); story.append(VGap(6))
-        for r in triage_r[:12]: story.append(P(f"→  {r}", S(f"tr{id(r)}", size=8.5, lead=13, color=TEXT, after=3)))
+        story.append(SecHeader("Condition-Aware Recommendations", accent=WARN))
+        story.append(VGap(6))
+        for r in triage_r[:12]: 
+            story.append(P(f"→  {r}", S(f"tr{id(r)}", size=8.5, lead=13, color=TEXT, after=3)))
         story.append(VGap(8))
 
-    story.append(SecHeader("Safety & Important Notices", accent=BAD)); story.append(VGap(6))
+    story.append(SecHeader("Safety & Important Notices", accent=BAD))
+    story.append(VGap(6))
     for title, col, text in [
         ("Seek urgent care immediately if you experience", WARN, "Chest pain or pressure, severe shortness of breath at rest, fainting or near-fainting, sudden neurological symptoms."),
         ("Before starting a new exercise programme", ACCENT, "If you have known cardiovascular disease, diabetes, or have been inactive, consult a physician before vigorous training."),
         ("About the estimates in this report", BLUE, "VO2max, biological age, and calorie values are estimates from validated formulas, not clinical measurements."),
     ]:
-        story.append(InsightBlock(title, text, col)); story.append(VGap(4))
+        story.append(InsightBlock(title, text, col))
+        story.append(VGap(4))
 
     story.append(VGap(10))
     story.append(P("This report was generated by Health Tools (health-tools.streamlit.app) for educational purposes only. It is not a medical diagnosis.", S("df", size=7.5, lead=11, color=DIM, italic=True, align=TA_CENTER, after=4)))
- # ════════════════════════════════════════════════════════════
+
+    # ════════════════════════════════════════════════════════════
     # EXECUTIVE SUMMARY — FINAL PAGE (Stop / Start / Maintain)
     # ════════════════════════════════════════════════════════════
     story.append(PageBreak())
@@ -1913,319 +1921,321 @@ story.append(VGap(10))
         "Share the full report with your physician or performance coach at your next consultation.",
         S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
     ))   
+    
     # ── BYGG ──
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     return buf.getvalue()
 
-    # ── Custom Flowables ──────────────────────────────────────────
 
-    class Gap(Flowable):
-        def __init__(self, h=8):
-            super().__init__()
-            self._h = h
-        def wrap(self, aw, ah):
-            return aw, self._h
-        def draw(self):
-            pass
+# ── Custom Flowables ──────────────────────────────────────────
 
-    class SectionHeader(Flowable):
-        def __init__(self, title, width=CONTENT_W, accent=None):
-            super().__init__()
-            self.title  = title
-            self.w      = width
-            self.accent = accent or C_ACCENT
-            self.h      = 38
+class Gap(Flowable):
+    def __init__(self, h=8):
+        super().__init__()
+        self._h = h
+    def wrap(self, aw, ah):
+        return aw, self._h
+    def draw(self):
+        pass
 
-        def wrap(self, aw, ah):
-            return self.w, self.h
+class SectionHeader(Flowable):
+    def __init__(self, title, width=CONTENT_W, accent=None):
+        super().__init__()
+        self.title  = title
+        self.w      = width
+        self.accent = accent or C_ACCENT
+        self.h      = 38
 
-        def draw(self):
-            c = self.canv
+    def wrap(self, aw, ah):
+        return self.w, self.h
+
+    def draw(self):
+        c = self.canv
+        c.setFillColor(C_CARD)
+        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+        c.setFillColor(self.accent)
+        c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+        c.setFillColor(C_TEXT)
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(14, 13, self.title)
+
+class MetricRow(Flowable):
+    def __init__(self, metrics, width=CONTENT_W):
+        # metrics = list of (label, value, sub, color_hex_str)
+        super().__init__()
+        self.metrics = metrics
+        self.w       = width
+        self.h       = 62
+        n            = len(metrics)
+        self.card_w  = (width - (n - 1) * 8) / n if n > 0 else width
+
+    def wrap(self, aw, ah):
+        return self.w, self.h
+
+    def draw(self):
+        c = self.canv
+        cw = self.card_w
+        for i, (label, value, sub, col_str) in enumerate(self.metrics):
+            col = HexColor(col_str) if isinstance(col_str, str) else col_str
+            x   = i * (cw + 8)
             c.setFillColor(C_CARD)
-            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-            c.setFillColor(self.accent)
-            c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-            c.setFillColor(C_TEXT)
-            c.setFont("Helvetica-Bold", 12)
-            c.drawString(14, 13, self.title)
-
-    class MetricRow(Flowable):
-        def __init__(self, metrics, width=CONTENT_W):
-            # metrics = list of (label, value, sub, color_hex_str)
-            super().__init__()
-            self.metrics = metrics
-            self.w       = width
-            self.h       = 62
-            n            = len(metrics)
-            self.card_w  = (width - (n - 1) * 8) / n if n > 0 else width
-
-        def wrap(self, aw, ah):
-            return self.w, self.h
-
-        def draw(self):
-            c = self.canv
-            cw = self.card_w
-            for i, (label, value, sub, col_str) in enumerate(self.metrics):
-                col = HexColor(col_str) if isinstance(col_str, str) else col_str
-                x   = i * (cw + 8)
-                c.setFillColor(C_CARD)
-                c.roundRect(x, 0, cw, 58, 8, fill=1, stroke=0)
-                c.setFillColor(col)
-                c.roundRect(x, 55, cw, 3, 1, fill=1, stroke=0)
+            c.roundRect(x, 0, cw, 58, 8, fill=1, stroke=0)
+            c.setFillColor(col)
+            c.roundRect(x, 55, cw, 3, 1, fill=1, stroke=0)
+            c.setFillColor(C_MUTED)
+            c.setFont("Helvetica", 7)
+            c.drawString(x + 8, 43, str(label).upper()[:22])
+            c.setFillColor(col)
+            c.setFont("Helvetica-Bold", 15)
+            c.drawString(x + 8, 25, str(value)[:18])
+            if sub:
                 c.setFillColor(C_MUTED)
                 c.setFont("Helvetica", 7)
-                c.drawString(x + 8, 43, str(label).upper()[:22])
-                c.setFillColor(col)
-                c.setFont("Helvetica-Bold", 15)
-                c.drawString(x + 8, 25, str(value)[:18])
-                if sub:
-                    c.setFillColor(C_MUTED)
-                    c.setFont("Helvetica", 7)
-                    c.drawString(x + 8, 10, str(sub)[:24])
+                c.drawString(x + 8, 10, str(sub)[:24])
 
-    class BMIBar(Flowable):
-        def __init__(self, bmi_val, width=CONTENT_W):
-            super().__init__()
-            self.bmi = bmi_val
-            self.w   = width
-            self.h   = 96
+class BMIBar(Flowable):
+    def __init__(self, bmi_val, width=CONTENT_W):
+        super().__init__()
+        self.bmi = bmi_val
+        self.w   = width
+        self.h   = 96
 
-        def wrap(self, aw, ah):
-            return self.w, self.h
+    def wrap(self, aw, ah):
+        return self.w, self.h
 
-        def draw(self):
-            c   = self.canv
-            bmi = self.bmi
-            w   = self.w
+    def draw(self):
+        c   = self.canv
+        bmi = self.bmi
+        w   = self.w
 
-            c.setFillColor(C_CARD)
-            c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+        c.setFillColor(C_CARD)
+        c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
 
-            if bmi < 18.5:   bmi_col = "#3B82F6"
-            elif bmi < 25.0: bmi_col = "#22C55E"
-            elif bmi < 30.0: bmi_col = "#F59E0B"
-            else:            bmi_col = "#EF4444"
+        if bmi < 18.5:   bmi_col = "#3B82F6"
+        elif bmi < 25.0: bmi_col = "#22C55E"
+        elif bmi < 30.0: bmi_col = "#F59E0B"
+        else:            bmi_col = "#EF4444"
 
-            c.setFillColor(HexColor(bmi_col))
-            c.setFont("Helvetica-Bold", 26)
-            c.drawString(12, 62, f"{bmi:.1f}")
-            c.setFillColor(C_MUTED)
-            c.setFont("Helvetica", 8)
-            c.drawString(12, 52, "BMI Score")
+        c.setFillColor(HexColor(bmi_col))
+        c.setFont("Helvetica-Bold", 26)
+        c.drawString(12, 62, f"{bmi:.1f}")
+        c.setFillColor(C_MUTED)
+        c.setFont("Helvetica", 8)
+        c.drawString(12, 52, "BMI Score")
 
-            scale_max = 45.0
-            bar_x = 12
-            bar_y = 28
-            bar_h = 14
-            bar_w = w - 24
+        scale_max = 45.0
+        bar_x = 12
+        bar_y = 28
+        bar_h = 14
+        bar_w = w - 24
 
-            segs = [
-                (0, 18.5, "#3B82F6",  "Underweight"),
-                (18.5, 25.0, "#22C55E", "Normal"),
-                (25.0, 30.0, "#F59E0B", "Overweight"),
-                (30.0, 45.0, "#EF4444", "Obese"),
-            ]
+        segs = [
+            (0, 18.5, "#3B82F6",  "Underweight"),
+            (18.5, 25.0, "#22C55E", "Normal"),
+            (25.0, 30.0, "#F59E0B", "Overweight"),
+            (30.0, 45.0, "#EF4444", "Obese"),
+        ]
 
-            for i, (s, e, col, lbl) in enumerate(segs):
-                sx = bar_x + (s / scale_max) * bar_w
-                sw = ((e - s) / scale_max) * bar_w
-                c.setFillColor(HexColor(col))
-                if i == 0:
-                    c.roundRect(sx, bar_y, sw, bar_h, 3, fill=1, stroke=0)
-                    c.rect(sx + 3, bar_y, sw - 3, bar_h, fill=1, stroke=0)
-                elif i == len(segs) - 1:
-                    c.roundRect(sx, bar_y, sw, bar_h, 3, fill=1, stroke=0)
-                    c.rect(sx, bar_y, sw - 3, bar_h, fill=1, stroke=0)
-                else:
-                    c.rect(sx, bar_y, sw, bar_h, fill=1, stroke=0)
-                c.setFillColor(HexColor("#0F172A"))
-                c.setFont("Helvetica-Bold", 6)
-                c.drawCentredString(sx + sw / 2, bar_y + 4, lbl)
-
-            mx = bar_x + min(1.0, bmi / scale_max) * bar_w
-            c.setStrokeColor(colors.white)
-            c.setLineWidth(1.5)
-            c.line(mx, bar_y - 2, mx, bar_y + bar_h + 2)
-            c.setFillColor(colors.white)
-            path = c.beginPath()
-            path.moveTo(mx,     bar_y + bar_h + 9)
-            path.lineTo(mx - 5, bar_y + bar_h + 2)
-            path.lineTo(mx + 5, bar_y + bar_h + 2)
-            path.close()
-            c.drawPath(path, fill=1, stroke=0)
-
-            for lbl, pos in [("0", 0), ("18.5", 18.5), ("25", 25), ("30", 30), ("45", 45)]:
-                lx = bar_x + (pos / scale_max) * bar_w
-                c.setFillColor(C_MUTED)
-                c.setFont("Helvetica", 6)
-                c.drawCentredString(lx, bar_y - 9, lbl)
-
-    class VO2Visual(Flowable):
-        def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
-            super().__init__()
-            self.vo2  = vo2_val
-            self.pct  = float(percentile or 0)
-            self.rating = rating
-            self.w    = width
-            self.h    = 86
-
-        def wrap(self, aw, ah):
-            return self.w, self.h
-
-        def draw(self):
-            c   = self.canv
-            w   = self.w
-            pct = self.pct
-
-            if pct >= 80:   col = "#22C55E"
-            elif pct >= 60: col = "#3B82F6"
-            elif pct >= 40: col = "#F59E0B"
-            else:           col = "#EF4444"
-
-            c.setFillColor(C_CARD)
-            c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-
+        for i, (s, e, col, lbl) in enumerate(segs):
+            sx = bar_x + (s / scale_max) * bar_w
+            sw = ((e - s) / scale_max) * bar_w
             c.setFillColor(HexColor(col))
-            c.setFont("Helvetica-Bold", 26)
-            c.drawString(12, 54, f"{self.vo2:.1f}")
+            if i == 0:
+                c.roundRect(sx, bar_y, sw, bar_h, 3, fill=1, stroke=0)
+                c.rect(sx + 3, bar_y, sw - 3, bar_h, fill=1, stroke=0)
+            elif i == len(segs) - 1:
+                c.roundRect(sx, bar_y, sw, bar_h, 3, fill=1, stroke=0)
+                c.rect(sx, bar_y, sw - 3, bar_h, fill=1, stroke=0)
+            else:
+                c.rect(sx, bar_y, sw, bar_h, fill=1, stroke=0)
+            c.setFillColor(HexColor("#0F172A"))
+            c.setFont("Helvetica-Bold", 6)
+            c.drawCentredString(sx + sw / 2, bar_y + 4, lbl)
+
+        mx = bar_x + min(1.0, bmi / scale_max) * bar_w
+        c.setStrokeColor(colors.white)
+        c.setLineWidth(1.5)
+        c.line(mx, bar_y - 2, mx, bar_y + bar_h + 2)
+        c.setFillColor(colors.white)
+        path = c.beginPath()
+        path.moveTo(mx,     bar_y + bar_h + 9)
+        path.lineTo(mx - 5, bar_y + bar_h + 2)
+        path.lineTo(mx + 5, bar_y + bar_h + 2)
+        path.close()
+        c.drawPath(path, fill=1, stroke=0)
+
+        for lbl, pos in [("0", 0), ("18.5", 18.5), ("25", 25), ("30", 30), ("45", 45)]:
+            lx = bar_x + (pos / scale_max) * bar_w
             c.setFillColor(C_MUTED)
-            c.setFont("Helvetica", 8)
-            c.drawString(12, 44, "ml / kg / min")
-            c.setFillColor(HexColor(col))
-            c.setFont("Helvetica-Bold", 10)
-            c.drawString(12, 28, str(self.rating or "—"))
-            c.setFillColor(C_MUTED)
-            c.setFont("Helvetica", 7)
-            c.drawString(12, 16, "Rating")
+            c.setFont("Helvetica", 6)
+            c.drawCentredString(lx, bar_y - 9, lbl)
 
-            bx  = w * 0.44
-            bw  = w * 0.52
-            bh  = 12
-            by  = 40
-            c.setFillColor(C_STROKE)
-            c.roundRect(bx, by, bw, bh, 4, fill=1, stroke=0)
-            fill_w = max(8, (pct / 100.0) * bw)
-            c.setFillColor(HexColor(col))
-            c.roundRect(bx, by, fill_w, bh, 4, fill=1, stroke=0)
-            c.setFillColor(C_MUTED)
-            c.setFont("Helvetica", 7)
-            c.drawString(bx, by + bh + 5, "POPULATION PERCENTILE")
-            c.setFillColor(HexColor(col))
-            c.setFont("Helvetica-Bold", 11)
-            c.drawRightString(bx + bw, by - 11, f"{pct:.0f}th percentile")
+class VO2Visual(Flowable):
+    def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
+        super().__init__()
+        self.vo2  = vo2_val
+        self.pct  = float(percentile or 0)
+        self.rating = rating
+        self.w    = width
+        self.h    = 86
 
-            # 5-zone mini scale
-            zones = [
-                (0,  20,  "#EF4444"),
-                (20, 40,  "#F59E0B"),
-                (40, 60,  "#3B82F6"),
-                (60, 80,  "#22C55E"),
-                (80, 100, "#10B981"),
-            ]
-            sz_y = 16
-            sz_h = 7
-            for zs, ze, zc in zones:
-                zx = bx + (zs / 100) * bw
-                zw = ((ze - zs) / 100) * bw
-                c.setFillColor(HexColor(zc))
-                c.rect(zx, sz_y, zw, sz_h, fill=1, stroke=0)
-            c.setStrokeColor(colors.white)
-            c.setLineWidth(1.5)
-            mx2 = bx + (pct / 100) * bw
-            c.line(mx2, sz_y - 1, mx2, sz_y + sz_h + 1)
+    def wrap(self, aw, ah):
+        return self.w, self.h
 
-    class BioFactorBars(Flowable):
-        def __init__(self, factors, width=CONTENT_W):
-            super().__init__()
-            self.factors = factors[:8]
-            self.w       = width
-            self.h       = len(self.factors) * 22 + 8
+    def draw(self):
+        c   = self.canv
+        w   = self.w
+        pct = self.pct
 
-        def wrap(self, aw, ah):
-            return self.w, self.h
+        if pct >= 80:   col = "#22C55E"
+        elif pct >= 60: col = "#3B82F6"
+        elif pct >= 40: col = "#F59E0B"
+        else:           col = "#EF4444"
 
-        def draw(self):
-            c = self.canv
-            c.setFillColor(C_CARD)
-            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+        c.setFillColor(C_CARD)
+        c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
 
-            row_h = 22
-            bar_x = self.w * 0.42
-            bar_w = self.w * 0.45
-            label_max = self.w * 0.40
+        c.setFillColor(HexColor(col))
+        c.setFont("Helvetica-Bold", 26)
+        c.drawString(12, 54, f"{self.vo2:.1f}")
+        c.setFillColor(C_MUTED)
+        c.setFont("Helvetica", 8)
+        c.drawString(12, 44, "ml / kg / min")
+        c.setFillColor(HexColor(col))
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(12, 28, str(self.rating or "—"))
+        c.setFillColor(C_MUTED)
+        c.setFont("Helvetica", 7)
+        c.drawString(12, 16, "Rating")
 
-            for i, f in enumerate(self.factors):
-                y       = self.h - 14 - i * row_h
-                delta   = float(f.get("delta", 0))
-                col_str = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
-                bar_pct = min(abs(delta) / 10.0, 1.0)
+        bx  = w * 0.44
+        bw  = w * 0.52
+        bh  = 12
+        by  = 40
+        c.setFillColor(C_STROKE)
+        c.roundRect(bx, by, bw, bh, 4, fill=1, stroke=0)
+        fill_w = max(8, (pct / 100.0) * bw)
+        c.setFillColor(HexColor(col))
+        c.roundRect(bx, by, fill_w, bh, 4, fill=1, stroke=0)
+        c.setFillColor(C_MUTED)
+        c.setFont("Helvetica", 7)
+        c.drawString(bx, by + bh + 5, "POPULATION PERCENTILE")
+        c.setFillColor(HexColor(col))
+        c.setFont("Helvetica-Bold", 11)
+        c.drawRightString(bx + bw, by - 11, f"{pct:.0f}th percentile")
 
-                c.setFillColor(C_MUTED)
-                c.setFont("Helvetica", 7.5)
-                lbl = str(f.get("label", ""))[:32]
-                c.drawString(10, y - 4, lbl)
+        # 5-zone mini scale
+        zones = [
+            (0,  20,  "#EF4444"),
+            (20, 40,  "#F59E0B"),
+            (40, 60,  "#3B82F6"),
+            (60, 80,  "#22C55E"),
+            (80, 100, "#10B981"),
+        ]
+        sz_y = 16
+        sz_h = 7
+        for zs, ze, zc in zones:
+            zx = bx + (zs / 100) * bw
+            zw = ((ze - zs) / 100) * bw
+            c.setFillColor(HexColor(zc))
+            c.rect(zx, sz_y, zw, sz_h, fill=1, stroke=0)
+        c.setStrokeColor(colors.white)
+        c.setLineWidth(1.5)
+        mx2 = bx + (pct / 100) * bw
+        c.line(mx2, sz_y - 1, mx2, sz_y + sz_h + 1)
 
-                c.setFillColor(C_STROKE)
-                c.roundRect(bar_x, y - 4, bar_w, 8, 2, fill=1, stroke=0)
-                if bar_pct > 0:
-                    c.setFillColor(HexColor(col_str))
-                    c.roundRect(bar_x, y - 4, bar_pct * bar_w, 8, 2, fill=1, stroke=0)
+class BioFactorBars(Flowable):
+    def __init__(self, factors, width=CONTENT_W):
+        super().__init__()
+        self.factors = factors[:8]
+        self.w       = width
+        self.h       = len(self.factors) * 22 + 8
 
-                c.setFillColor(HexColor(col_str))
-                c.setFont("Helvetica-Bold", 7.5)
-                c.drawRightString(self.w - 4, y - 4, f"{delta:+.1f} yrs")
+    def wrap(self, aw, ah):
+        return self.w, self.h
 
-    class MilestoneLine(Flowable):
-        def __init__(self, week, weight, focus, progress_pct, col_str, is_last, width=CONTENT_W):
-            super().__init__()
-            self.week         = week
-            self.weight       = weight
-            self.focus        = focus
-            self.progress_pct = progress_pct
-            self.col_str      = col_str
-            self.is_last      = is_last
-            self.w            = width
-            self.h            = 48
+    def draw(self):
+        c = self.canv
+        c.setFillColor(C_CARD)
+        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
 
-        def wrap(self, aw, ah):
-            return self.w, self.h
+        row_h = 22
+        bar_x = self.w * 0.42
+        bar_w = self.w * 0.45
 
-        def draw(self):
-            c   = self.canv
-            col = HexColor(self.col_str)
+        for i, f in enumerate(self.factors):
+            y       = self.h - 14 - i * row_h
+            delta   = float(f.get("delta", 0))
+            col_str = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
+            bar_pct = min(abs(delta) / 10.0, 1.0)
 
-            if not self.is_last:
-                c.setStrokeColor(C_STROKE)
-                c.setLineWidth(1)
-                c.line(13, 0, 13, 10)
-
-            c.setFillColor(col)
-            c.circle(13, 36, 11, fill=1, stroke=0)
-            c.setFillColor(colors.white)
-            c.setFont("Helvetica-Bold", 8)
-            c.drawCentredString(13, 32, str(self.week))
-
-            c.setFillColor(C_CARD)
-            c.roundRect(32, 14, self.w - 36, 34, 6, fill=1, stroke=0)
-            c.setFillColor(col)
-            c.roundRect(32, 44, self.w - 36, 4, 2, fill=1, stroke=0)
-
-            c.setFillColor(col)
-            c.setFont("Helvetica-Bold", 12)
-            c.drawString(42, 32, f"{self.weight:.1f} kg")
             c.setFillColor(C_MUTED)
             c.setFont("Helvetica", 7.5)
-            c.drawString(42, 20, str(self.focus)[:40])
+            lbl = str(f.get("label", ""))[:32]
+            c.drawString(10, y - 4, lbl)
 
-            bx = self.w - 90
-            bw = 80
             c.setFillColor(C_STROKE)
-            c.roundRect(bx, 20, bw, 6, 2, fill=1, stroke=0)
-            c.setFillColor(col)
-            c.roundRect(bx, 20, self.progress_pct / 100 * bw, 6, 2, fill=1, stroke=0)
-            c.setFillColor(C_MUTED)
-            c.setFont("Helvetica", 6.5)
-            c.drawRightString(bx + bw, 13, f"{self.progress_pct:.0f}%")
+            c.roundRect(bar_x, y - 4, bar_w, 8, 2, fill=1, stroke=0)
+            if bar_pct > 0:
+                c.setFillColor(HexColor(col_str))
+                c.roundRect(bar_x, y - 4, bar_pct * bar_w, 8, 2, fill=1, stroke=0)
+
+            c.setFillColor(HexColor(col_str))
+            c.setFont("Helvetica-Bold", 7.5)
+            c.drawRightString(self.w - 4, y - 4, f"{delta:+.1f} yrs")
+
+class MilestoneLine(Flowable):
+    def __init__(self, week, weight, focus, progress_pct, col_str, is_last, width=CONTENT_W):
+        super().__init__()
+        self.week         = week
+        self.weight       = weight
+        self.focus        = focus
+        self.progress_pct = progress_pct
+        self.col_str      = col_str
+        self.is_last      = is_last
+        self.w            = width
+        self.h            = 48
+
+    def wrap(self, aw, ah):
+        return self.w, self.h
+
+    def draw(self):
+        c   = self.canv
+        col = HexColor(self.col_str)
+
+        if not self.is_last:
+            c.setStrokeColor(C_STROKE)
+            c.setLineWidth(1)
+            c.line(13, 0, 13, 10)
+
+        c.setFillColor(col)
+        c.circle(13, 36, 11, fill=1, stroke=0)
+        c.setFillColor(colors.white)
+        c.setFont("Helvetica-Bold", 8)
+        c.drawCentredString(13, 32, str(self.week))
+
+        c.setFillColor(C_CARD)
+        c.roundRect(32, 14, self.w - 36, 34, 6, fill=1, stroke=0)
+        c.setFillColor(col)
+        c.roundRect(32, 44, self.w - 36, 4, 2, fill=1, stroke=0)
+
+        c.setFillColor(col)
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(42, 32, f"{self.weight:.1f} kg")
+        c.setFillColor(C_MUTED)
+        c.setFont("Helvetica", 7.5)
+        c.drawString(42, 20, str(self.focus)[:40])
+
+        bx = self.w - 90
+        bw = 80
+        c.setFillColor(C_STROKE)
+        c.roundRect(bx, 20, bw, 6, 2, fill=1, stroke=0)
+        c.setFillColor(col)
+        c.roundRect(bx, 20, self.progress_pct / 100 * bw, 6, 2, fill=1, stroke=0)
+        c.setFillColor(C_MUTED)
+        c.setFont("Helvetica", 6.5)
+        c.drawRightString(bx + bw, 13, f"{self.progress_pct:.0f}%")
+
 
     # ── Page template (dark bg + header/footer) ──────────────────
 
