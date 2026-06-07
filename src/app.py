@@ -1067,7 +1067,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         elif bmi_v < 30: bmi_text = f"Your BMI of {bmi_v:.1f} is in the overweight range. Aim for a modest deficit (−300 to −500 kcal/day), 2–3 strength sessions per week, and increased daily step count."
         else: bmi_text = f"Your BMI of {bmi_v:.1f} is in the obese range. Consistency beats intensity here. Start with achievable habits: daily step target, 2x/week full-body strength, and a sustainable calorie strategy."
         story.append(P(bmi_text, S("bt", size=9, lead=14, after=8)))
-# ── BMI Expert Insight + Actionable Milestone ──
+        
+        # ── BMI Expert Insight + Actionable Milestone ──
         if bmi_v < 18.5:
             _bmi_insight = (
                 "BMI below 18.5 is associated with increased all-cause mortality and reduced immune function "
@@ -1126,6 +1127,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(VGap(6))
         story.append(ActionableMilestoneBox(_bmi_steps))
         story.append(VGap(6))
+        
         extra = []
         if whr_d.get("value"): extra.append(("Waist-to-Hip Ratio", f'{float(whr_d["value"]):.2f} — {whr_d.get("category","")}', "", "#3B82F6"))
         if bf_d.get("value"): extra.append(("Body Fat % (Navy)", f'{float(bf_d["value"]):.1f}%', "", "#8B5CF6"))
@@ -1162,7 +1164,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         if tips:
             story.append(P("Personalised training recommendations:", S("tth", size=9.5, bold=True, color=ACCENT, after=4)))
             for tip in tips[:5]: story.append(P(f"→  {tip}", S(f"t{id(tip)}", size=8.5, lead=13, color=TEXT, after=3)))
-# ── VO2max Expert Insight + 4-week protocol ──
+            
+        # ── VO2max Expert Insight + 4-week protocol ──
         if vo2_pct < 30:
             _vo2_insight = (
                 "VO2max below the 30th percentile is associated with a 2–3× higher risk of all-cause mortality "
@@ -1221,35 +1224,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(ActionableMilestoneBox(_vo2_steps))
         story.append(VGap(6))                
         story.append(PageBreak())
-        # ══════════════════════════════════════════════════════════════════════
-        # ── PAGE X: Personalised Training Programme ──
-        # ══════════════════════════════════════════════════════════════════════
-       # ── Legg til desse konstantane øvst i training-seksjonen ──
-        _WHITE      = HexColor("#FFFFFF")
-        _ROW_A      = HexColor("#1E2A3A")   # mørk blå-grå rad A
-        _ROW_B      = HexColor("#162030")   # endå mørkare rad B
-        _HEADER_BG  = HexColor("#0F1923")   # kolonneheader
-        _PHASE1_BG  = HexColor("#0F2A1E")   # grøn fase
-        _PHASE2_BG  = HexColor("#0F1F3A")   # blå fase
-        _PHASE3_BG  = HexColor("#1A0F3A")   # lilla fase
-        _TEXT_LIGHT = HexColor("#E2E8F0")
-        _TEXT_DIM   = HexColor("#94A3B8")
-        _ACCENT_G   = HexColor("#22C55E")   # grøn verdi
-        _ACCENT_B   = HexColor("#38BDF8")   # blå verdi
-        _ACCENT_P   = HexColor("#A78BFA")   # lilla verdi
-        _ACCENT_R   = HexColor("#F87171")   # raud/negativ
-        _DELOAD_BG  = HexColor("#2A2510")   # deload-rad gul-mørk
-        
-        # ── Intensitetsfargar — klare mot mørk bakgrunn ──
-        _intensity_colors = {
-            "Light":          HexColor("#14532D"),
-            "Light–Moderate": HexColor("#166534"),   # ← denne må vera –  (endash), ikkje - (bindestrek)
-            "Moderate":       HexColor("#1E3A5F"),
-            "Moderate–Hard":  HexColor("#3B1F6E"),   # ← same her
-            "Hard":           HexColor("#7F1D1D"),
-            "—":              _ROW_B,
-        }
-      
+
     # ── PAGE 4: Biological Age + Radar ──
     story.append(SecHeader("Biological Age & 5-Dimension Radar", subtitle="Heuristic estimate — use as directional guide, not clinical measure"))
     story.append(VGap(6))
@@ -1272,7 +1247,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(RadarChart(radar))
     story.append(VGap(4))
     story.append(P("Score 70+ = good. 45–70 = room to improve. Below 45 = priority area.", S("rl", size=7.5, color=MUTED, italic=True, after=4)))
-# ── Bio Age Expert Insight ──
+
+    # ── Bio Age Expert Insight ──
     if bio_v is not None and age_f is not None:
         if bio_diff > 3:
             _bio_insight = (
@@ -1351,7 +1327,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         mac_t.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 7), ("BOTTOMPADDING", (0,0), (-1,-1), 7), ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP")]))
         story.append(mac_t); story.append(VGap(8))
         story.append(P("Macros estimated using Mifflin-St Jeor + standard ratios. Adjust every 2–3 weeks based on actual progress.", S("dn", size=7.5, color=MUTED, italic=True, after=4)))
-    else: story.append(P("Calorie plan not generated.", S("ncp", size=9, color=MUTED, after=8)))
+    else: 
+        story.append(P("Calorie plan not generated.", S("ncp", size=9, color=MUTED, after=8)))
 
     if exlog and ex_act:
         story.append(VGap(6)); story.append(SecHeader("Exercise Log Summary", accent=BLUE)); story.append(VGap(6))
@@ -1359,7 +1336,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(MetricCard(ex_metrics, card_h=66)); story.append(VGap(4))
         who_txt = "✓ Meets WHO 150 min/week guidelines" if ex_total_min >= 150 else f"⚠ {150-ex_total_min} min below WHO 150 min/week target"
         story.append(P(who_txt, S("who", size=8.5, color=HexColor("#22C55E" if ex_total_min >= 150 else "#F59E0B"), after=4)))
-# ── Nutrition Expert Insight ──
+
+    # ── Nutrition Expert Insight ──
     if cur_kcal and rec_kcal:
         _d_kcal_e = int(rec_kcal - cur_kcal)
         if _d_kcal_e < -600:
@@ -1442,98 +1420,113 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     else:
         story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
 
-    # ── Personalised Training Programme ──
-        story.append(PageBreak())    
-        story.append(SecHeader("Personalised Training Programme",
-            subtitle="Evidence-based weekly plan built around your selected activities and goal"))
-        story.append(VGap(6))
+    # ── PAGE 7: Personalised Training Programme ──
+    story.append(PageBreak())    
+    story.append(SecHeader("Personalised Training Programme", subtitle="Evidence-based weekly plan built around your selected activities and goal"))
+    story.append(VGap(6))
 
-        # ── Pull values safely from report data (Stops session_state bugs) ──
-        plan_d = report.get("plan") or {}
-        _goal       = plan_d.get("goal", "Body Recomposition")
-        _activities = plan_d.get("selected_activities") or report.get("selected_activities", [])
-        _weeks      = plan_d.get("plan_weeks", 12)
-        _protein_on = plan_d.get("protein_focus", True)
+    # ── Pull values safely from report data ──
+    plan_d = report.get("plan") or {}
+    _goal       = plan_d.get("goal", "Body Recomposition")
+    _activities = plan_d.get("selected_activities") or report.get("selected_activities", [])
+    _weeks      = plan_d.get("plan_weeks", 12)
+    _protein_on = plan_d.get("protein_focus", True)
 
-        # ── Activity → category map ──
-        _strength_acts = {"Strength training (weights)", "Boxing / Martial arts",
-                          "Rock climbing / Bouldering", "Hiking (incline)"}
-        _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)",
-                          "Swimming", "Rowing (moderate/vigorous)", "HIIT",
-                          "Elliptical", "Stair climbing / Stairmaster"}
-        _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
-                          "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
-        _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates",
-                          "Housework / Light chores", "Gardening / Heavy yard work"}
+    # ── Activity → category map ──
+    _strength_acts = {"Strength training (weights)", "Boxing / Martial arts", "Rock climbing / Bouldering", "Hiking (incline)"}
+    _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)", "Swimming", "Rowing (moderate/vigorous)", "HIIT", "Elliptical", "Stair climbing / Stairmaster"}
+    _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
+    _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates", "Housework / Light chores", "Gardening / Heavy yard work"}
 
-        _has_strength = bool(_activities and _strength_acts & set(_activities))
-        _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
-        _has_sport    = bool(_activities and _sport_acts    & set(_activities))
-        _has_low      = bool(_activities and _low_acts      & set(_activities))
+    _has_strength = bool(_activities and _strength_acts & set(_activities))
+    _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
+    _has_sport    = bool(_activities and _sport_acts    & set(_activities))
+    _has_low      = bool(_activities and _low_acts      & set(_activities))
+
+    _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
+    _sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
+    _sel_sport    = [a for a in _activities if a in _sport_acts]
+    _sel_low      = [a for a in _activities if a in _low_acts]
     
-        _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
-        _sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
-        _sel_sport    = [a for a in _activities if a in _sport_acts]
-        _sel_low      = [a for a in _activities if a in _low_acts]
-        
-        # ── Goal-based parameter table ──
-        _goal_params = {
-            "Lose fat":               {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
-                                       "phase1": "Metabolic Reset (Wk 1–3)", "phase2": "Progressive Overload (Wk 4–8)",
-                                       "phase3": "Intensification (Wk 9–12)", "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass."},
-            "Build muscle (bulk)":    {"deficit": +350, "protein": "2.0 g/kg", "strength_d": 4, "cardio_d": 2, "rest_d": 1,
-                                       "phase1": "Neural Adaptation (Wk 1–3)", "phase2": "Hypertrophy Block (Wk 4–8)",
-                                       "phase3": "Volume Peak (Wk 9–12)", "note": "Aim for 0.25–0.5 kg/week weight gain. Calorie surplus supports muscle protein synthesis."},
-            "Body Recomposition":     {"deficit": 0,    "protein": "2.4 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
-                                       "phase1": "Foundation (Wk 1–3)", "phase2": "Recomposition Block (Wk 4–8)",
-                                       "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
-        }
-        
-        # Fallback-sikker sjekk slik at _gp ALDRI kan bli tom eller kaste feil
-        _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
-        
-        # ── Goal overview box ──
-        story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  "
-                    f"Calorie adjustment: {_gp['deficit']:+d} kcal/day  ·  Target protein: {_gp['protein']}",
-                    S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
-        story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
-        story.append(VGap(4))
+    # ── Legg til desse konstantane øvst i training-seksjonen ──
+    _WHITE      = HexColor("#FFFFFF")
+    _ROW_A      = HexColor("#1E2A3A")   # mørk blå-grå rad A
+    _ROW_B      = HexColor("#162030")   # endå mørkare rad B
+    _HEADER_BG  = HexColor("#0F1923")   # kolonneheader
+    _PHASE1_BG  = HexColor("#0F2A1E")   # grøn fase
+    _PHASE2_BG  = HexColor("#0F1F3A")   # blå fase
+    _PHASE3_BG  = HexColor("#1A0F3A")   # lilla fase
+    _TEXT_LIGHT = HexColor("#E2E8F0")
+    _TEXT_DIM   = HexColor("#94A3B8")
+    _ACCENT_G   = HexColor("#22C55E")   # grøn verdi
+    _ACCENT_B   = HexColor("#38BDF8")   # blå verdi
+    _ACCENT_P   = HexColor("#A78BFA")   # lilla verdi
+    _ACCENT_R   = HexColor("#F87171")   # raud/negativ
+    _DELOAD_BG  = HexColor("#2A2510")   # deload-rad gul-mørk
+    
+    # ── Intensitetsfargar — klare mot mørk bakgrunn ──
+    _intensity_colors = {
+        "Light":          HexColor("#14532D"),
+        "Light–Moderate": HexColor("#166534"),
+        "Moderate":       HexColor("#1E3A5F"),
+        "Moderate–Hard":  HexColor("#3B1F6E"),
+        "Hard":           HexColor("#7F1D1D"),
+        "—":              _ROW_B,
+    }
+    
+    # ── Goal-based parameter table ──
+    _goal_params = {
+        "Lose fat":               {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
+                                   "phase1": "Metabolic Reset (Wk 1–3)", "phase2": "Progressive Overload (Wk 4–8)",
+                                   "phase3": "Intensification (Wk 9–12)", "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass."},
+        "Build muscle (bulk)":    {"deficit": +350, "protein": "2.0 g/kg", "strength_d": 4, "cardio_d": 2, "rest_d": 1,
+                                   "phase1": "Neural Adaptation (Wk 1–3)", "phase2": "Hypertrophy Block (Wk 4–8)",
+                                   "phase3": "Volume Peak (Wk 9–12)", "note": "Aim for 0.25–0.5 kg/week weight gain. Calorie surplus supports muscle protein synthesis."},
+        "Body Recomposition":     {"deficit": 0,    "protein": "2.4 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
+                                   "phase1": "Foundation (Wk 1–3)", "phase2": "Recomposition Block (Wk 4–8)",
+                                   "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
+    }
+    
+    _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
+    
+    # ── Goal overview box ──
+    story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  Calorie adjustment: {_gp['deficit']:+d} kcal/day  ·  Target protein: {_gp['protein']}", S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
+    story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
+    story.append(VGap(4))
+    
+    # ── Phase Timeline Bar ──
+    story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    
+    _phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
+    _phase_rows = [
+        [P("PHASE 1", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
+         P("PHASE 2", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
+         P("PHASE 3", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True))],
+        [P(_gp["phase1"], S("pv", size=9, bold=True, align=TA_CENTER)),
+         P(_gp["phase2"], S("pv", size=9, bold=True, align=TA_CENTER)),
+         P(_gp["phase3"], S("pv", size=9, bold=True, align=TA_CENTER))],
+        [P("Foundation, habit formation\nand movement quality",  S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
+         P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
+         P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
+    ]
+    _pt = Table(_phase_rows, colWidths=_phase_cols)
+    _pt.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
+        ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
+        ("BACKGROUND",    (2,0), (2,-1), _PHASE3_BG),
+        ("TEXTCOLOR",     (0,0), (-1,0), _TEXT_DIM),
+        ("TEXTCOLOR",     (0,1), (-1,1), _TEXT_LIGHT),
+        ("TEXTCOLOR",     (0,2), (-1,2), _TEXT_DIM),
+        ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID",     (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("TOPPADDING",    (0,0), (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 6),
+    ]))
+    story.append(_pt)
+    story.append(VGap(10))
 
-
-        
-        # ── Phase Timeline Bar ──
-        story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
-        
-        _phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
-        _phase_rows = [
-            [P("PHASE 1", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
-             P("PHASE 2", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
-             P("PHASE 3", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True))],
-            [P(_gp["phase1"], S("pv", size=9, bold=True, align=TA_CENTER)),
-             P(_gp["phase2"], S("pv", size=9, bold=True, align=TA_CENTER)),
-             P(_gp["phase3"], S("pv", size=9, bold=True, align=TA_CENTER))],
-            [P("Foundation, habit formation\nand movement quality",  S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
-             P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
-             P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
-        ]
-        _pt = Table(_phase_rows, colWidths=_phase_cols)
-        _pt.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
-            ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
-            ("BACKGROUND",    (2,0), (2,-1), _PHASE3_BG),
-            ("TEXTCOLOR",     (0,0), (-1,0), _TEXT_DIM),
-            ("TEXTCOLOR",     (0,1), (-1,1), _TEXT_LIGHT),
-            ("TEXTCOLOR",     (0,2), (-1,2), _TEXT_DIM),
-            ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-            ("INNERGRID",     (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-            ("TOPPADDING",    (0,0), (-1,-1), 7),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 7),
-            ("LEFTPADDING",   (0,0), (-1,-1), 6),
-            ("RIGHTPADDING",  (0,0), (-1,-1), 6),
-        ]))
-        story.append(_pt)
-        story.append(VGap(10))
-        
 # ── Weekly Schedule Table ──
 story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
 
