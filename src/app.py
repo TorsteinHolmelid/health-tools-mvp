@@ -1923,7 +1923,7 @@ story.append(P(
 ))   
 
 # ── BYGG ──
-doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     return buf.getvalue()
 
 
