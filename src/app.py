@@ -385,9 +385,11 @@ def render_premium_download_gate(pdf_bytes):
         
         st.caption("Your purchase is secured with 100% encryption.")
 
+
 # ── PDF Hjelpefunksjonar ───────────────────────────────────────────────────────
 def para(text: str, style) -> Paragraph:
     return Paragraph(escape(str(text)).replace("\n", "<br/>"), style)
+
 
 def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
     styles = getSampleStyleSheet()
@@ -413,6 +415,7 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
     return t
+
 
 # ── Hovedfunksjon for Ultimate PDF Generering ─────────────────────────────────
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
@@ -602,7 +605,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
-
 # Health score kalkulering
 score_parts = []
 if bmi_v is not None:
