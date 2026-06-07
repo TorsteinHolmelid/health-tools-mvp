@@ -356,7 +356,6 @@ if not st.session_state.consent_given:
             pass
     if cols[1].button("Exit", key="consent_exit"):
         st.stop()
-
 # ── Premium Download Gate Komponent ───────────────────────────────────────────
 def render_premium_download_gate(pdf_bytes):
     """
@@ -605,6 +604,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()
+
 # Health score kalkulering
 score_parts = []
 if bmi_v is not None:
