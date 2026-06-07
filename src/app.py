@@ -1,165 +1,55 @@
 from __future__ import annotations
-from db import get_db_client
-# ... ein stad i koden når du treng å bruke databasen:
-db = get_db_client()
-
-
+import math
+import uuid
+from io import BytesIO
 from datetime import datetime
 from html import escape
-from io import BytesIO
+import matplotlib.pyplot as plt
+import streamlit as st
+import streamlit.components.v1 as components
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.lib import colors
+from reportlab.lib.colors import HexColor, white, black
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer, 
+    Table, TableStyle, HRFlowable, Image as RLImage
+)
+
+import calculators
+from calculators import (
+    bmr_mifflin,
+    tdee_including_weekly_exercise,
+)
+from db import get_db_client, save_health_metrics
+
+# ── Databaseoppsett ───────────────────────────────────────────────────────────
+db = get_db_client()
+
+# ── Globale konstantar for PDF ────────────────────────────────────────────────
 PAGE_W, PAGE_H = A4
 MARGIN_H = 18 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN_H
 
 def P(txt, style):
     return Paragraph(str(txt), style)
-from reportlab.platypus import Spacer as VGap
-import streamlit as st
+
+# ── Streamlit Session State & Config ──────────────────────────────────────────
 if "generated" not in st.session_state:
     st.session_state.generated = False
 
-def render_premium_download_gate(pdf_bytes):
-    """
-    Renders the premium download section in a clean, professional container.
-    """
-    with st.container(border=True):
-        st.subheader("✅ Your Premium Health Report is ready")
-        st.markdown("""
-        We have analyzed your biomarkers and generated a tailored 30-day protocol.
-        This report includes:
-        * 🎯 **Top 3 health priorities**
-        * 📊 **Radar analysis of your biomarkers**
-        * 📝 **Actionable 30-day health plan**
-        """)
-        
-        st.write("") 
-        
-        st.download_button(
-            label="📥 Download your PDF Report (4.99 USD)",
-            data=pdf_bytes,
-            file_name="Health_Audit_Report.pdf",
-            mime="application/pdf",
-            type="primary",
-            use_container_width=True
-        )
-        
-        st.caption("Your purchase is secured with 100% encryption.")
-import streamlit.components.v1 as components
-import calculators
-import matplotlib.pyplot as plt
-import uuid
-from db import get_db_client, save_health_metrics # Hugs å importere save-funksjonen
-
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = str(uuid.uuid4())
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.lib import colors
 
-class PDFStyles:
-    # Fargepalett
-    PRIMARY = colors.HexColor("#0EA5A3")
-    BG = colors.HexColor("#0B1220")
-    TEXT = colors.HexColor("#E5E7EB")
-    MUTED = colors.HexColor("#94A3B8")
-    
-    # Styles
-    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=colors.white)
-    H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=colors.white)
-    Body = ParagraphStyle("Body", fontName="Helvetica", fontSize=10, leading=14, spaceAfter=10, textColor=colors.lightgrey)
-    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=colors.HexColor("#64748B"), uppercase=True)
-
-# Bruk denne i koden din slik:
-# doc.build([Paragraph("Health Audit", PDFStyles.H1), ...])
-# --- Stripe return — Nivå 2 (session_id) ---
-_session_id = None
-try:
-    _session_id = st.query_params.get("session_id")
-except Exception:
-    try:
-        _raw = st.experimental_get_query_params().get("session_id")
-        _session_id = _raw[0] if isinstance(_raw, list) else _raw
-    except Exception:
-        _session_id = None
-
-if isinstance(_session_id, list):
-    _session_id = _session_id[0] if _session_id else None
-
-# Godta alle ekte Stripe session IDs (cs_live_ eller cs_test_)
-if _session_id and (
-    str(_session_id).startswith("cs_live_") or
-    str(_session_id).startswith("cs_test_")
-):
-    st.session_state["report_unlocked"] = True
-    st.session_state["stripe_session_id"] = _session_id
-# --- Verified badge ---
-if st.session_state.get("stripe_session_id"):
-    _sid = st.session_state["stripe_session_id"]
-    st.sidebar.success(f"✅ Betaling verifisert  •  ID: ...{_sid[-6:]}")
-    
-from reportlab.lib import colors
-from reportlab.lib.colors import HexColor
-from reportlab.lib.enums import TA_CENTER
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, HRFlowable, Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-
-from calculators import (
-    bmr_mifflin,
-    tdee_including_weekly_exercise,
+st.set_page_config(
+    page_title="Health Tools MVP",
+    layout="centered",
+    initial_sidebar_state="collapsed",
 )
-def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
-                            sel_strength, sel_cardio, sel_sport, sel_low):
-            """Returns list of (day, session_type, activity, duration, intensity, notes)"""
-            S_ACT = sel_strength[0] if sel_strength else "Strength training (weights)"
-            C_ACT = sel_cardio[0]   if sel_cardio   else "Running/jogging"
-            C2_ACT= sel_cardio[1]   if len(sel_cardio)>1 else C_ACT
-            SP_ACT= sel_sport[0]    if sel_sport    else None
-            L_ACT = sel_low[0]      if sel_low      else "Walking (casual)"
-        
-            if goal == "Build muscle (bulk)":
-                plan = [
-                    ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Push focus: chest, shoulders, triceps · 4×8–10 · RPE 7–8"),
-                    ("Tuesday",   "Active Recovery", L_ACT, "30 min", "Light",       "Keep HR <120 bpm · mobility + foam rolling"),
-                    ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Pull focus: back, biceps · 4×8–10 · RPE 7–8"),
-                    ("Thursday",  "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 (65–75% HRmax) — supports recovery without catabolism"),
-                    ("Friday",    "Strength C",   S_ACT,  "55 min", "Hard",          "Legs + core: squat, hinge, carry · 4×6–10 · RPE 8"),
-                    ("Saturday",  "Sport / Cardio", SP_ACT or C2_ACT, "45 min", "Moderate", "Enjoyment session — keep intensity conversational"),
-                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or gentle 20 min walk"),
-                ]
-            elif goal == "Lose fat":
-                plan = [
-                    ("Monday",    "Strength A",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · superset to maximise calorie burn"),
-                    ("Tuesday",   "Cardio",       C_ACT,  "40 min", "Moderate",      "Zone 2 steady-state — primary fat oxidation zone"),
-                    ("Wednesday", "Strength B",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · short rest intervals (60 s)"),
-                    ("Thursday",  "LISS / Sport", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Low-impact to aid recovery while burning extra calories"),
-                    ("Friday",    "Strength C + HIIT", S_ACT, "50 min", "Hard",     "30 min strength + 20 min HIIT finisher (20s on / 40s off)"),
-                    ("Saturday",  "Cardio",       C2_ACT, "45 min", "Moderate",      "Long aerobic session — builds fat-burning capacity"),
-                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest · prioritise sleep (key for cortisol + fat loss)"),
-                ]
-            else:  # Recomposition
-                plan = [
-                    ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Upper body push · 4×8–12 · progressive overload weekly"),
-                    ("Tuesday",   "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 — 65–75% HRmax · builds aerobic base"),
-                    ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Lower body · 4×8–12 · squat + hinge patterns"),
-                    ("Thursday",  "Sport / Active", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Movement variety — maintains motivation and NEAT"),
-                    ("Friday",    "Strength C",   S_ACT,  "50 min", "Hard",          "Full body · 3×6–8 heavy + 2×15 pump work"),
-                    ("Saturday",  "Cardio / HIIT", C2_ACT, "40 min", "Moderate–Hard", "Alternate: Zone 2 week A / HIIT week B"),
-                    ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or restorative yoga / stretching"),
-                ]
-            return plan
 
-# 2. Dine Custom Flowables (flytta ut av funksjonen)
-class PremiumRadarChart(Flowable):
-    def __init__(self, scores, width=400):
-        super().__init__()
-        self.scores = scores
-        self.w = width
-        self.h = 300
-    # ... (her legg du inn Radar-logikken din) ...
-# ── Resting HR sync ──────────────────────────────────────────────────────────
+# ── Resting HR Sync funksjonar ────────────────────────────────────────────────
 _HR_KEYS = [
     "resting_hr", "global_resting_hr", "basic_resting_hr",
     "ui_resting_hr", "vo2_rhr_value", "bio_rhr_val",
@@ -189,13 +79,98 @@ def sync_from_vo2():
 def sync_from_bio():
     _sync_hr("bio_rhr_val")
 
-# ── Page config ───────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Health Tools MVP",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
+# ── PDF Styles Klasse ─────────────────────────────────────────────────────────
+class PDFStyles:
+    PRIMARY = colors.HexColor("#0EA5A3")
+    BG = colors.HexColor("#0B1220")
+    TEXT = colors.HexColor("#E5E7EB")
+    MUTED = colors.HexColor("#94A3B8")
+    
+    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=colors.white)
+    H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=colors.white)
+    Body = ParagraphStyle("Body", fontName="Helvetica", fontSize=10, leading=14, spaceAfter=10, textColor=colors.lightgrey)
+    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=colors.HexColor("#64748B"), uppercase=True)
 
+# ── Treningsplan Builder ──────────────────────────────────────────────────────
+def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
+                    sel_strength, sel_cardio, sel_sport, sel_low):
+    """Returns list of (day, session_type, activity, duration, intensity, notes)"""
+    S_ACT = sel_strength[0] if sel_strength else "Strength training (weights)"
+    C_ACT = sel_cardio[0]   if sel_cardio   else "Running/jogging"
+    C2_ACT= sel_cardio[1]   if len(sel_cardio)>1 else C_ACT
+    SP_ACT= sel_sport[0]    if sel_sport    else None
+    L_ACT = sel_low[0]      if sel_low      else "Walking (casual)"
+
+    if goal == "Build muscle (bulk)":
+        plan = [
+            ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Push focus: chest, shoulders, triceps · 4×8–10 · RPE 7–8"),
+            ("Tuesday",   "Active Recovery", L_ACT, "30 min", "Light",       "Keep HR <120 bpm · mobility + foam rolling"),
+            ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Pull focus: back, biceps · 4×8–10 · RPE 7–8"),
+            ("Thursday",  "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 (65–75% HRmax) — supports recovery without catabolism"),
+            ("Friday",    "Strength C",   S_ACT,  "55 min", "Hard",          "Legs + core: squat, hinge, carry · 4×6–10 · RPE 8"),
+            ("Saturday",  "Sport / Cardio", SP_ACT or C2_ACT, "45 min", "Moderate", "Enjoyment session — keep intensity conversational"),
+            ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or gentle 20 min walk"),
+        ]
+    elif goal == "Lose fat":
+        plan = [
+            ("Monday",    "Strength A",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · superset to maximise calorie burn"),
+            ("Tuesday",   "Cardio",       C_ACT,  "40 min", "Moderate",      "Zone 2 steady-state — primary fat oxidation zone"),
+            ("Wednesday", "Strength B",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · short rest intervals (60 s)"),
+            ("Thursday",  "LISS / Sport", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Low-impact to aid recovery while burning extra calories"),
+            ("Friday",    "Strength C + HIIT", S_ACT, "50 min", "Hard",     "30 min strength + 20 min HIIT finisher (20s on / 40s off)"),
+            ("Saturday",  "Cardio",       C2_ACT, "45 min", "Moderate",      "Long aerobic session — builds fat-burning capacity"),
+            ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest · prioritise sleep (key for cortisol + fat loss)"),
+        ]
+    else:  # Recomposition
+        plan = [
+            ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Upper body push · 4×8–12 · progressive overload weekly"),
+            ("Tuesday",   "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 — 65–75% HRmax · builds aerobic base"),
+            ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Lower body · 4×8–12 · squat + hinge patterns"),
+            ("Thursday",  "Sport / Active", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Movement variety — maintains motivation and NEAT"),
+            ("Friday",    "Strength C",   S_ACT,  "50 min", "Hard",          "Full body · 3×6–8 heavy + 2×15 pump work"),
+            ("Saturday",  "Cardio / HIIT", C2_ACT, "40 min", "Moderate–Hard", "Alternate: Zone 2 week A / HIIT week B"),
+            ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or restorative yoga / stretching"),
+        ]
+    return plan
+
+# ── Custom Flowables ──────────────────────────────────────────────────────────
+class PremiumRadarChart(Flowable):
+    def __init__(self, scores, width=400):
+        super().__init__()
+        self.scores = scores
+        self.w = width
+        self.h = 300
+    def wrap(self, aw, ah):
+        return self.w, self.h
+    def draw(self):
+        pass # Legg inn din radar-logikk her dersom denne skal teiknast custom
+
+# ── Stripe Query Param Sjekk ──────────────────────────────────────────────────
+_session_id = None
+try:
+    _session_id = st.query_params.get("session_id")
+except Exception:
+    try:
+        _raw = st.experimental_get_query_params().get("session_id")
+        _session_id = _raw[0] if isinstance(_raw, list) else _raw
+    except Exception:
+        _session_id = None
+
+if isinstance(_session_id, list):
+    _session_id = _session_id[0] if _session_id else None
+
+if _session_id and (
+    str(_session_id).startswith("cs_live_") or
+    str(_session_id).startswith("cs_test_")
+):
+    st.session_state["report_unlocked"] = True
+    st.session_state["stripe_session_id"] = _session_id
+
+if st.session_state.get("stripe_session_id"):
+    _sid = st.session_state["stripe_session_id"]
+    st.sidebar.success(f"✅ Betaling verifisert  •  ID: ...{_sid[-6:]}")
+
+# ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
 st.markdown(
     """
 <style>
@@ -347,6 +322,7 @@ small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !imp
     unsafe_allow_html=True,
 )
 
+# ── Render Hero ───────────────────────────────────────────────────────────────
 st.markdown(
     """
 <div class="ht-hero">
@@ -362,7 +338,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ── Consent ───────────────────────────────────────────────────────────────────
+# ── Consent & Privacy Sjekk ───────────────────────────────────────────────────
 if "consent_given" not in st.session_state:
     st.session_state.consent_given = False
 
@@ -381,11 +357,37 @@ if not st.session_state.consent_given:
     if cols[1].button("Exit", key="consent_exit"):
         st.stop()
 
+# ── Premium Download Gate Komponent ───────────────────────────────────────────
+def render_premium_download_gate(pdf_bytes):
+    """
+    Renders the premium download section in a clean, professional container.
+    """
+    with st.container(border=True):
+        st.subheader("✅ Your Premium Health Report is ready")
+        st.markdown("""
+        We have analyzed your biomarkers and generated a tailored 30-day protocol.
+        This report includes:
+        * 🎯 **Top 3 health priorities**
+        * 📊 **Radar analysis of your biomarkers**
+        * 📝 **Actionable 30-day health plan**
+        """)
+        
+        st.write("") 
+        
+        st.download_button(
+            label="📥 Download your PDF Report (4.99 USD)",
+            data=pdf_bytes,
+            file_name="Health_Audit_Report.pdf",
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True
+        )
+        
+        st.caption("Your purchase is secured with 100% encryption.")
 
-# ── PDF helpers ───────────────────────────────────────────────────────────────
+# ── PDF Hjelpefunksjonar ───────────────────────────────────────────────────────
 def para(text: str, style) -> Paragraph:
     return Paragraph(escape(str(text)).replace("\n", "<br/>"), style)
-
 
 def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
     styles = getSampleStyleSheet()
@@ -412,24 +414,14 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
     ]))
     return t
 
+# ── Hovedfunksjon for Ultimate PDF Generering ─────────────────────────────────
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
-    import math
-    from io import BytesIO
-    from datetime import datetime
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.lib import colors
-    from reportlab.lib.colors import HexColor, white, black
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer, Table, TableStyle
-
-    # ── Oppsett av dimensjonar ──
+    # Dimensjonar
     PAGE_W, PAGE_H = A4
     MARGIN_H = 18 * mm
     CONTENT_W = PAGE_W - 2 * MARGIN_H
 
-    # ── Theme og Fargar ──
+    # Theme og Fargar
     BG      = HexColor("#0B1220")
     CARD    = HexColor("#111C33")
     CARD2   = HexColor("#0F172A")
@@ -443,7 +435,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     STROKE  = HexColor("#334155")
     DIM     = HexColor("#64748B")
 
-    # ── Hjelpefunksjonar ──
+    # Hjelpefunksjonar for tekst
     _styles = getSampleStyleSheet()
     def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
         return ParagraphStyle(
@@ -464,7 +456,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         try: return float(x)
         except: return None
 
-    # ── Data extraction ──
+    # Data extraction
     inp       = report.get("inputs", {}) or {}
     age_v     = inp.get("age", "—")
     sex_v     = inp.get("sex", "—")
@@ -506,8 +498,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     ex_kcal_s = _sf(exlog.get("kcal_per_session")) or 0.0
     ex_kcal_w = _sf(exlog.get("kcal_per_week")) or 0.0
     ex_total_min = int(ex_min or 0) * int(ex_sess or 0)
-# Sørg for at disse variablene blir definert før _build_day_plan kalles:
-    _goal         = plan_d.get("goal", "Maintenance") # eller hva standardmålet ditt skal være
+
+    _goal         = plan_d.get("goal", "Maintenance")
     _has_strength = plan_d.get("has_strength", False)
     _has_cardio   = plan_d.get("has_cardio", False)
     _has_sport    = plan_d.get("has_sport", False)
@@ -518,7 +510,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _sel_sport    = plan_d.get("selected_sport", "—")
     _sel_low      = plan_d.get("selected_low", "—")
 
-    # ── Colour helpers ──
+    # Farge-helpers
     def bmi_color(v):
         if v is None: return MUTED
         if v < 18.5:  return BLUE
@@ -543,7 +535,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     bio_diff = (bio_v - age_f) if (bio_v is not None and age_f is not None) else None
     bio_col  = bio_color(bio_diff)
 
-    # ── Health score (0–100) ──
+    # Health score kalkulering
     score_parts = []
     if bmi_v is not None:
         if 18.5 <= bmi_v < 25:   score_parts.append(100)
@@ -560,7 +552,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     score_col    = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
     score_label  = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
 
-    # ── Radar scores ──
+    # Radar scores mapping
     radar = {}
     radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75  if (bmi_v and 17 <= bmi_v < 27) else 50  if (bmi_v and 15 <= bmi_v < 30) else 25  if bmi_v else 50)
     radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
@@ -575,7 +567,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         except: pass
     radar["Lifestyle"] = max(0, min(100, life))
 
-    # ── Biggest lever ──
+    # Health Levers logikk
     if vo2_v is not None and vo2_pct < 40:
         biggest_lever = "Cardio fitness (VO2max)"
         lever_why = "The single most impactful modifiable longevity factor — and the fastest to improve with training."
@@ -592,7 +584,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         biggest_lever = "Strength training + progressive overload"
         lever_why = "Your core markers are solid — the next tier of improvement comes from consistent resistance training."
 
-    # ── Personalised insights ──
+    # Insights generering
     insights = []
     if bmi_v is not None:
         if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps. Avoid aggressive cuts — they accelerate muscle loss and reduce long-term adherence. Aim for 0.5–0.75 kg/week loss."))
@@ -628,9 +620,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     if has_plan and kg_pw is not None:
         plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Align food plan with weekly goal")
 
-    # ════════════════════════════════════════════════════════════════════
-    # CUSTOM FLOWABLES
-    # ════════════════════════════════════════════════════════════════════
+    # ── Lokale Custom Flowables (Inni create_pdf_bytes_ultimate) ────────────────
     class VGap(Flowable):
         def __init__(self, h=8):
             super().__init__(); self._h = h
@@ -872,8 +862,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
             c.setFillColor(self.color); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
             self._para.drawOn(c, 14, 8)
+
     class ExpertInsightBox(Flowable):
-        """Gold-accented Expert Insight box — scientific rationale for each section."""
         def __init__(self, section: str, text: str, width=CONTENT_W):
             super().__init__()
             self.w = width
@@ -885,9 +875,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             _, hh = self._header.wrap(width - 24, 9999)
             _, bh = self._body.wrap(width - 24, 9999)
             self.h = hh + bh + 30
-
         def wrap(self, aw, ah): return self.w, self.h
-
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#120F00"))
@@ -899,7 +887,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self._body.drawOn(c, 14, 8)
 
     class ActionableMilestoneBox(Flowable):
-        """Teal-accented Actionable Milestone box — specific 4-week protocol."""
         def __init__(self, steps: list, width=CONTENT_W):
             super().__init__()
             self.w = width
@@ -912,9 +899,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             _, hh = self._header.wrap(width - 24, 9999)
             _, bh = self._body.wrap(width - 24, 9999)
             self.h = hh + bh + 30
-
         def wrap(self, aw, ah): return self.w, self.h
-
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#00100E"))
@@ -926,7 +911,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self._body.drawOn(c, 14, 8)
 
     class CompoundingEffectBox(Flowable):
-        """Blue 'Compounding Effect' — the 1% rule explained."""
         def __init__(self, width=CONTENT_W):
             super().__init__()
             self.w = width
@@ -945,9 +929,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             _, hh = self._header.wrap(width - 24, 9999)
             _, bh = self._body.wrap(width - 24, 9999)
             self.h = hh + bh + 30
-
         def wrap(self, aw, ah): return self.w, self.h
-
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#020810"))
@@ -959,7 +941,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self._body.drawOn(c, 14, 8)
 
     class ExecutiveSummaryCheatSheet(Flowable):
-        """Full-width Stop / Start / Maintain executive cheat sheet."""
         def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
             super().__init__()
             self.w = width
@@ -967,9 +948,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self.start = start_items[:3]
             self.maintain = maintain_items[:3]
             self.h = 235
-
         def wrap(self, aw, ah): return self.w, self.h
-
         def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
             c.setFillColor(HexColor(bg_hex))
             c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
@@ -985,7 +964,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             for i, item in enumerate(items):
                 ty = y + ph - 46 - i * 26
                 c.drawString(x + 12, ty, f"• {str(item)[:46]}")
-
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#080D1A"))
@@ -995,15 +973,15 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 13)
             c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
             c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
-            c.drawCentredString(self.w / 2, self.h - 36,
-                                "Review quarterly · Share with your physician · Act on the top priority daily")
+            c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
             gap = 8
             ph = self.h - 48
             pw = (self.w - gap * 2) / 3
             self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
             self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
             self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
-    # ── Page Template (Sidetall og bakgrunn) ──
+
+    # ── Sidetegningsmal (Topp- og botntekst) ──
     def draw_page(canvas, doc):
         canvas.saveState()
         canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
@@ -1020,7 +998,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN_H, rightMargin=MARGIN_H, topMargin=26*mm, bottomMargin=18*mm)
     story = []
 
-    # ── PAGE 1: Cover + Executive Dashboard ──
+    # ── SIDA 1: Cover + Dashboard ──
     story.append(VGap(16))
     story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
     story.append(P("Personalised Precision Health Analysis — Powered by Validated Clinical Formulas", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
@@ -1031,7 +1009,14 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
     ]
     it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
-    it.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,-1), CARD), ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 8), ("BOTTOMPADDING", (0,0), (-1,-1), 8)]))
+    it.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,-1), CARD), 
+        ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), 
+        ("BOX", (0,0), (-1,-1), 1, STROKE), 
+        ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), 
+        ("TOPPADDING", (0,0), (-1,-1), 8), 
+        ("BOTTOMPADDING", (0,0), (-1,-1), 8)
+    ]))
     story.append(it)
     story.append(VGap(8))
 
@@ -1054,6 +1039,10 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
     story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
     story.append(PageBreak())
+    
+    # Bygg og returner PDF-bytes
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    return buf.getvalue()
 
 # ── PAGE 2: Body Composition ──
 story.append(SecHeader("Body Composition", subtitle="BMI, body fat estimate, and waist-to-hip ratio"))
