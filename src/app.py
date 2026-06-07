@@ -600,10 +600,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         t_plan.setStyle(table_style)
         story.append(t_plan)
 
-    # Bygg dokumentet og returner bytes
-    doc.build(story)
-    buffer.seek(0)
-    return buffer.getvalue()
 # Health score kalkulering
 score_parts = []
 if bmi_v is not None:
@@ -1911,6 +1907,12 @@ story.append(SecHeader(
     subtitle="Executive summary — review weekly, share with your physician, act on daily"
 ))
 story.append(VGap(10))
+
+    # Bygg dokumentet og returner bytes
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
 
 # ── Build Stop / Start / Maintain dynamically from user data ──
 _stop_items  = []
