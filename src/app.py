@@ -1535,196 +1535,191 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(VGap(10))
         
 # ── Weekly Schedule Table ──
-
 story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
 
 _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 _plan = _build_day_plan(
-
     _goal,
-
     _has_strength,
-
     _has_cardio,
-
     _has_sport,
-
     _has_low,
-
     _sel_strength,
-
     _sel_cardio,
-
     _sel_sport,
-
     _sel_low
-
 )
 
+_sched_header = [
+    P("DAY",          S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("SESSION",      S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("ACTIVITY",     S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("DURATION",     S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("INTENSITY",    S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("COACHING NOTE", S("th", size=7.5, bold=True, color=MUTED)),
+]
 
-    _sched_header = [
-            P("DAY",       S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("SESSION",   S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("ACTIVITY",  S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("DURATION",  S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("INTENSITY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("COACHING NOTE",S("th", size=7.5, bold=True, color=MUTED)),
-        ]
-        
-        
-    _sched_rows = [_sched_header]
-    for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
-            _sched_rows.append([
-                P(day,   S(f"td{i}", size=8.5, bold=True, color=TEXT)),
-                P(stype, S(f"ts{i}", size=8,   color=HexColor("#1D4ED8"))),
-                P(act if act != "—" else "Rest", S(f"ta{i}", size=8, color=TEXT)),
-                P(dur,   S(f"tdu{i}", size=8,  align=TA_CENTER, color=MUTED)),
-                P(inten, S(f"ti{i}",  size=7.5, bold=True, align=TA_CENTER, color=TEXT)),
-                P(note,  S(f"tn{i}",  size=7.5, lead=11, color=MUTED)),
-            ])
-        
-    _col_w = [CONTENT_W*w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
-    _st = Table(_sched_rows, colWidths=_col_w)
-    _ts = [
-            ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-            ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-            ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-            ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-            ("TOPPADDING",    (0,0),  (-1,-1), 6),
-            ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
-            ("LEFTPADDING",   (0,0),  (-1,-1), 5),
-            ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
-            ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-            ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),   # dag-kolonne
-            ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_B),     # session-kolonne
-            ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_LIGHT),   # aktivitet
-            ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # varighet
-            ("TEXTCOLOR",     (4,1),  (4,-1),  _WHITE),        # intensitet — alltid kvit tekst
-            ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # notat
-        ]
-    for i, (_, _, _, _, inten, _) in enumerate(_plan):
-        _bg = _intensity_colors.get(inten, _ROW_B)
-        row_bg = _ROW_A if i % 2 == 0 else _ROW_B
-        _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
-        _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
-        _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
-        _ts.append(("TEXTCOLOR",  (4, i+1), (4, i+1), _WHITE))
-    _st.setStyle(TableStyle(_ts))
-    story.append(_st)
-    story.append(VGap(8))
-        
-        # ── Intensity Legend ──
-    _legend_items = [
-            ("Light",         "#14532D", "Zone 1–2 · <65% HRmax"),
-            ("Moderate",      "#1E3A5F", "Zone 2–3 · 65–80% HRmax"),
-            ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"),
-            ("Hard",          "#7F1D1D", "Zone 4–5 · 87–95% HRmax"),
-        ]
-    _leg_rows = [[
-            P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)),
-            *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]
-        ]]
-    _leg_t = Table(_leg_rows, colWidths=[CONTENT_W*0.16] + [CONTENT_W*0.21]*4)
-    _leg_style = [
-            ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-            ("INNERGRID",     (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
-            ("TOPPADDING",    (0,0), (-1,-1), 5),
-            ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-            ("LEFTPADDING",   (0,0), (-1,-1), 5),
-            ("BACKGROUND",    (0,0), (0,0),   _HEADER_BG),
-            ("TEXTCOLOR",     (0,0), (-1,-1), _TEXT_LIGHT),
-        ]
-    for j, (_, col, _) in enumerate(_legend_items):
-        _leg_style.append(("BACKGROUND", (j+1,0), (j+1,0),
-                                _intensity_colors.get(["Light","Moderate","Moderate–Hard","Hard"][j], _ROW_B)))
-    story.append(_leg_t)
-    story.append(VGap(10))
-        
-        # ── PAGE BREAK → continue on next page ──
-    story.append(PageBreak())
-    story.append(SecHeader("Training Programme — Detail & Science",
-        subtitle="Progressive overload protocol, set/rep schemes, and evidence base"))
-    story.append(VGap(6))
-        
-        # ── Weekly Volume & Load Progression Table ──
-    story.append(P("Progressive Overload — Week-by-Week Load Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
-        
-    _prog_header = [
-            P("WEEK",        S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("PHASE",       S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("SETS × REPS", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("INTENSITY",   S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("WEEKLY VOL.", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-            P("KEY FOCUS",   S("th2", size=7.5, bold=True, color=MUTED)),
-        ]
-        
-    if _goal == "Build muscle (bulk)":
-        _prog_data = [
-                ("1–2",  "Neural Adapt.",  "3×12",   "60–65% 1RM", "~12 sets",  "Form mastery · establish movement patterns"),
-                ("3–4",  "Hypertrophy A",  "4×10",   "67–72% 1RM", "~16 sets",  "Add 2.5 kg when all reps clean"),
-                ("5–6",  "Hypertrophy B",  "4×8",    "72–77% 1RM", "~16 sets",  "Track RPE — stay 7–8 each set"),
-                ("7–8",  "Strength Blend", "5×6",    "77–82% 1RM", "~15 sets",  "Introduce heavier compounds"),
-                ("9–10", "Volume Peak",    "4×10–12","70–75% 1RM", "~20 sets",  "Max volume block — prioritise sleep & nutrition"),
-                ("11",   "Intensification","4×6–8",  "80–85% 1RM", "~16 sets",  "Personal bests on key lifts"),
-                ("12",   "Deload",         "3×8",    "55–60% 1RM", "~10 sets",  "Reduce volume 40% — supercompensation"),
-            ]
-    elif _goal == "Lose fat":
-        _prog_data = [
-                ("1–2",  "Metabolic Reset","3×12–15", "55–65% 1RM", "~9 sets",   "Short rests 45–60 s · elevate metabolic rate"),
-                ("3–4",  "Density A",      "3×12",    "65–70% 1RM", "~12 sets",  "Circuit format — 2 exercises alternated"),
-                ("5–6",  "Density B",      "4×10",    "67–72% 1RM", "~12 sets",  "Add HIIT finisher 15 min post-strength"),
-                ("7–8",  "Strength Bias",  "4×8",     "72–78% 1RM", "~12 sets",  "Heavier work preserves lean mass in deficit"),
-                ("9–10", "Intensity Peak", "4×6–8",   "78–83% 1RM", "~12 sets",  "Prioritise compound lifts for maximal caloric cost"),
-                ("11",   "Conditioning",   "3×15",    "60–65% 1RM", "~9 sets",   "Higher rep — metabolic stress + muscle endurance"),
-                ("12",   "Deload",         "2×12",    "55% 1RM",    "~6 sets",   "Active recovery — body composition check-in"),
-            ]
-    else:
-        _prog_data = [
-                ("1–2",  "Foundation",     "3×10–12", "60–67% 1RM", "~10 sets",  "Movement quality · establish baseline performance"),
-                ("3–4",  "Recomp A",       "3×10",    "67–72% 1RM", "~12 sets",  "Alternate heavy/volume sessions"),
-                ("5–6",  "Recomp B",       "4×8–10",  "72–77% 1RM", "~14 sets",  "Add progressive overload on 2 key lifts"),
-                ("7–8",  "Strength + Vol", "4×8",     "75–80% 1RM", "~14 sets",  "Combination block: strength AM / pump PM"),
-                ("9–10", "Volume Peak",    "4×10–12", "70–75% 1RM", "~18 sets",  "Highest total weekly volume — nutrition critical"),
-                ("11",   "Intensification","4×6",     "82–87% 1RM", "~12 sets",  "Max strength stimulus — minimal volume"),
-                ("12",   "Deload",         "3×8",     "55–60% 1RM", "~9 sets",   "Reduce load and volume — consolidation week"),
-            ]
-        
-    _prog_rows = [_prog_header]
-    for i, (wk, phase, sets, inten, vol, focus) in enumerate(_prog_data):
-        _prog_rows.append([
-                P(wk,    S(f"pw{i}", size=8.5, bold=True, align=TA_CENTER, color=ACCENT)),
-                P(phase, S(f"pp{i}", size=8,   bold=True,  color=TEXT)),
-                P(sets,  S(f"ps{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#1D4ED8"))),
-                P(inten, S(f"pi{i}", size=8,   align=TA_CENTER, color=MUTED)),
-                P(vol,   S(f"pv{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#059669"))),
-                P(focus, S(f"pf{i}", size=8,   lead=11, color=MUTED)),
-            ])
-        
-    _prog_cw = [CONTENT_W*w for w in [0.07, 0.14, 0.11, 0.13, 0.11, 0.44]]
-    _pt2 = Table(_prog_rows, colWidths=_prog_cw)
-    _pt2.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-            ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-            ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
-            ("BACKGROUND",    (0, len(_prog_data)), (-1, len(_prog_data)), _DELOAD_BG),
-            ("TEXTCOLOR",     (0,1),  (0,-1),  _ACCENT_B),     # veke-kolonne
-            ("TEXTCOLOR",     (1,1),  (1,-1),  _TEXT_LIGHT),   # fase
-            ("TEXTCOLOR",     (2,1),  (2,-1),  _ACCENT_B),     # sett×reps
-            ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # intensitet
-            ("TEXTCOLOR",     (4,1),  (4,-1),  _ACCENT_G),     # volum
-            ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # fokus
-            ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-            ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-            ("TOPPADDING",    (0,0),  (-1,-1), 6),
-            ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
-            ("LEFTPADDING",   (0,0),  (-1,-1), 5),
-            ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
-            ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-        ]))
-    story.append(_pt2)
-    story.append(VGap(10))
-        
+_sched_rows = [_sched_header]
+for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
+    _sched_rows.append([
+        P(day,   S(f"td{i}", size=8.5, bold=True, color=TEXT)),
+        P(stype, S(f"ts{i}", size=8,   color=HexColor("#1D4ED8"))),
+        P(act if act != "—" else "Rest", S(f"ta{i}", size=8, color=TEXT)),
+        P(dur,   S(f"tdu{i}", size=8,  align=TA_CENTER, color=MUTED)),
+        P(inten, S(f"ti{i}",  size=7.5, bold=True, align=TA_CENTER, color=TEXT)),
+        P(note,  S(f"tn{i}",  size=7.5, lead=11, color=MUTED)),
+    ])
+
+_col_w = [CONTENT_W * w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
+_st = Table(_sched_rows, colWidths=_col_w)
+_ts = [
+    ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+    ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+    ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+    ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+    ("TOPPADDING",    (0,0),  (-1,-1), 6),
+    ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
+    ("LEFTPADDING",   (0,0),  (-1,-1), 5),
+    ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
+    ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+    ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),   # dag-kolonne
+    ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_B),     # session-kolonne
+    ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_LIGHT),   # aktivitet
+    ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # varighet
+    ("TEXTCOLOR",     (4,1),  (4,-1),  _WHITE),        # intensitet — alltid kvit tekst
+    ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # notat
+]
+
+for i, (_, _, _, _, inten, _) in enumerate(_plan):
+    _bg = _intensity_colors.get(inten, _ROW_B)
+    row_bg = _ROW_A if i % 2 == 0 else _ROW_B
+    _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
+    _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
+    _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
+    _ts.append(("TEXTCOLOR",  (4, i+1), (4, i+1), _WHITE))
+
+_st.setStyle(TableStyle(_ts))
+story.append(_st)
+story.append(VGap(8))
+
+# ── Intensity Legend ──
+_legend_items = [
+    ("Light",         "#14532D", "Zone 1–2 · <65% HRmax"),
+    ("Moderate",      "#1E3A5F", "Zone 2–3 · 65–80% HRmax"),
+    ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"),
+    ("Hard",          "#7F1D1D", "Zone 4–5 · 87–95% HRmax"),
+]
+
+_leg_rows = [[
+    P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)),
+    *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]
+]]
+
+_leg_t = Table(_leg_rows, colWidths=[CONTENT_W * 0.16] + [CONTENT_W * 0.21] * 4)
+_leg_style = [
+    ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+    ("INNERGRID",     (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
+    ("TOPPADDING",    (0,0), (-1,-1), 5),
+    ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+    ("LEFTPADDING",   (0,0), (-1,-1), 5),
+    ("BACKGROUND",    (0,0), (0,0),   _HEADER_BG),
+    ("TEXTCOLOR",     (0,0), (-1,-1), _TEXT_LIGHT),
+]
+
+for j, (lbl, _, _) in enumerate(_legend_items):
+    _bg_color = _intensity_colors.get(lbl, _ROW_B)
+    _leg_style.append(("BACKGROUND", (j+1, 0), (j+1, 0), _bg_color))
+
+_leg_t.setStyle(TableStyle(_leg_style))
+story.append(_leg_t)
+story.append(VGap(10))
+
+# ── PAGE BREAK → continue on next page ──
+story.append(PageBreak())
+story.append(SecHeader("Training Programme — Detail & Science",
+    subtitle="Progressive overload protocol, set/rep schemes, and evidence base"))
+story.append(VGap(6))
+
+# ── Weekly Volume & Load Progression Table ──
+story.append(P("Progressive Overload — Week-by-Week Load Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
+
+_prog_header = [
+    P("WEEK",        S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("PHASE",       S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("SETS × REPS", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("INTENSITY",   S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("WEEKLY VOL.", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+    P("KEY FOCUS",   S("th2", size=7.5, bold=True, color=MUTED)),
+]
+
+if _goal == "Build muscle (bulk)":
+    _prog_data = [
+        ("1–2",  "Neural Adapt.",  "3×12",   "60–65% 1RM", "~12 sets",  "Form mastery · establish movement patterns"),
+        ("3–4",  "Hypertrophy A",  "4×10",   "67–72% 1RM", "~16 sets",  "Add 2.5 kg when all reps clean"),
+        ("5–6",  "Hypertrophy B",  "4×8",    "72–77% 1RM", "~16 sets",  "Track RPE — stay 7–8 each set"),
+        ("7–8",  "Strength Blend", "5×6",    "77–82% 1RM", "~15 sets",  "Introduce heavier compounds"),
+        ("9–10", "Volume Peak",    "4×10–12","70–75% 1RM", "~20 sets",  "Max volume block — prioritise sleep & nutrition"),
+        ("11",   "Intensification","4×6–8",  "80–85% 1RM", "~16 sets",  "Personal bests on key lifts"),
+        ("12",   "Deload",         "3×8",    "55–60% 1RM", "~10 sets",  "Reduce volume 40% — supercompensation"),
+    ]
+elif _goal == "Lose fat":
+    _prog_data = [
+        ("1–2",  "Metabolic Reset","3×12–15", "55–65% 1RM", "~9 sets",   "Short rests 45–60 s · elevate metabolic rate"),
+        ("3–4",  "Density A",      "3×12",    "65–70% 1RM", "~12 sets",  "Circuit format — 2 exercises alternated"),
+        ("5–6",  "Density B",      "4×10",    "67–72% 1RM", "~12 sets",  "Add HIIT finisher 15 min post-strength"),
+        ("7–8",  "Strength Bias",  "4×8",     "72–78% 1RM", "~12 sets",  "Heavier work preserves lean mass in deficit"),
+        ("9–10", "Intensity Peak", "4×6–8",   "78–83% 1RM", "~12 sets",  "Prioritise compound lifts for maximal caloric cost"),
+        ("11",   "Conditioning",   "3×15",    "60–65% 1RM", "~9 sets",   "Higher rep — metabolic stress + muscle endurance"),
+        ("12",   "Deload",         "2×12",    "55% 1RM",    "~6 sets",   "Active recovery — body composition check-in"),
+    ]
+else:
+    _prog_data = [
+        ("1–2",  "Foundation",     "3×10–12", "60–67% 1RM", "~10 sets",  "Movement quality · establish baseline performance"),
+        ("3–4",  "Recomp A",       "3×10",    "67–72% 1RM", "~12 sets",  "Alternate heavy/volume sessions"),
+        ("5–6",  "Recomp B",       "4×8–10",  "72–77% 1RM", "~14 sets",  "Add progressive overload on 2 key lifts"),
+        ("7–8",  "Strength + Vol", "4×8",     "75–80% 1RM", "~14 sets",  "Combination block: strength AM / pump PM"),
+        ("9–10", "Volume Peak",    "4×10–12", "70–75% 1RM", "~18 sets",  "Highest total weekly volume — nutrition critical"),
+        ("11",   "Intensification","4×6",     "82–87% 1RM", "~12 sets",  "Max strength stimulus — minimal volume"),
+        ("12",   "Deload",         "3×8",     "55–60% 1RM", "~9 sets",   "Reduce load and volume — consolidation week"),
+    ]
+
+_prog_rows = [_prog_header]
+for i, (wk, phase, sets, inten, vol, focus) in enumerate(_prog_data):
+    _prog_rows.append([
+        P(wk,    S(f"pw{i}", size=8.5, bold=True, align=TA_CENTER, color=ACCENT)),
+        P(phase, S(f"pp{i}", size=8,   bold=True,  color=TEXT)),
+        P(sets,  S(f"ps{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#1D4ED8"))),
+        P(inten, S(f"pi{i}", size=8,   align=TA_CENTER, color=MUTED)),
+        P(vol,   S(f"pv{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#059669"))),
+        P(focus, S(f"pf{i}", size=8,   lead=11, color=MUTED)),
+    ])
+
+_prog_cw = [CONTENT_W * w for w in [0.07, 0.14, 0.11, 0.13, 0.11, 0.44]]
+_pt2 = Table(_prog_rows, colWidths=_prog_cw)
+_pt2.setStyle(TableStyle([
+    ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+    ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+    ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
+    ("BACKGROUND",    (0, len(_prog_data)), (-1, len(_prog_data)), _DELOAD_BG),
+    ("TEXTCOLOR",     (0,1),  (0,-1),  _ACCENT_B),     # veke-kolonne
+    ("TEXTCOLOR",     (1,1),  (1,-1),  _TEXT_LIGHT),   # fase
+    ("TEXTCOLOR",     (2,1),  (2,-1),  _ACCENT_B),     # sett×reps
+    ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # intensitet
+    ("TEXTCOLOR",     (4,1),  (4,-1),  _ACCENT_G),     # volum
+    ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # fokus
+    ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+    ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+    ("TOPPADDING",    (0,0),  (-1,-1), 6),
+    ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
+    ("LEFTPADDING",   (0,0),  (-1,-1), 5),
+    ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
+    ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+]))
+
+story.append(_pt2)
+story.append(VGap(10))
+
         # ── Nutrition & Recovery Panel ──
     story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
         
