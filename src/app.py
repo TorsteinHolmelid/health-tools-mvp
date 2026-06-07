@@ -1534,16 +1534,35 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(_pt)
         story.append(VGap(10))
         
-        # ── Weekly Schedule Table ──
-        story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
-        
-        _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        
-        
-        
-    _plan = _build_day_plan(_goal, _has_strength, _has_cardio, _has_sport, _has_low,
-                                _sel_strength, _sel_cardio, _sel_sport, _sel_low)
-        
+# ── Weekly Schedule Table ──
+
+story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
+
+_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+_plan = _build_day_plan(
+
+    _goal,
+
+    _has_strength,
+
+    _has_cardio,
+
+    _has_sport,
+
+    _has_low,
+
+    _sel_strength,
+
+    _sel_cardio,
+
+    _sel_sport,
+
+    _sel_low
+
+)
+
+
     _sched_header = [
             P("DAY",       S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
             P("SESSION",   S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
