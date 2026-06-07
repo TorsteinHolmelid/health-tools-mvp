@@ -1922,8 +1922,8 @@ story.append(P(
     S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
 ))   
 
-# ── BYGG ──
-    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+# ── BYGG ─-
+doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     return buf.getvalue()
 
 
