@@ -1924,7 +1924,7 @@ story.append(P(
 
 # ── BYGG ──
 doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-return buf.getvalue()
+    return buf.getvalue()
 
 
 # ── Custom Flowables ──────────────────────────────────────────
