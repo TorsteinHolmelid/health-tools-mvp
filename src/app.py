@@ -1448,7 +1448,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             subtitle="Evidence-based weekly plan built around your selected activities and goal"))
         story.append(VGap(6))
 
-        # ── Pull values from report data safely (No more session_state bugs) ──
+        # ── Pull values safely from report data (Stops session_state bugs) ──
         plan_d = report.get("plan") or {}
         _goal       = plan_d.get("goal", "Body Recomposition")
         _activities = plan_d.get("selected_activities") or report.get("selected_activities", [])
@@ -1489,7 +1489,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                                        "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
         }
         
-        # Hent parametere med en dønn sikker fallback
+        # Fallback-sikker sjekk slik at _gp ALDRI kan bli tom eller kaste feil
         _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
         
         # ── Goal overview box ──
@@ -1498,6 +1498,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                     S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
         story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
         story.append(VGap(4))
+
 
         
         # ── Phase Timeline Bar ──
