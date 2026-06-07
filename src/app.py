@@ -1922,10 +1922,15 @@ story.append(P(
     S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
 ))   
 
-# ── BYGG ─-
-doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-    return buf.getvalue()
+import datetime
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, PageBreak, Flowable
+from reportlab.lib.colors import HexColor, white
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import mm
+from html import escape
 
+# (Husk å sørge for at C_BG, C_ACCENT, C_CARD, C_TEXT, C_MUTED, C_STROKE, C_CARD2, 
+#  PAGE_W, PAGE_H, CONTENT_W, TA_CENTER, P, ps, og buffer er definert over funksjonen)
 
 # ── Custom Flowables ──────────────────────────────────────────
 
@@ -2052,10 +2057,10 @@ class BMIBar(Flowable):
             c.drawCentredString(sx + sw / 2, bar_y + 4, lbl)
 
         mx = bar_x + min(1.0, bmi / scale_max) * bar_w
-        c.setStrokeColor(colors.white)
+        c.setStrokeColor(white)
         c.setLineWidth(1.5)
         c.line(mx, bar_y - 2, mx, bar_y + bar_h + 2)
-        c.setFillColor(colors.white)
+        c.setFillColor(white)
         path = c.beginPath()
         path.moveTo(mx,     bar_y + bar_h + 9)
         path.lineTo(mx - 5, bar_y + bar_h + 2)
@@ -2137,7 +2142,7 @@ class VO2Visual(Flowable):
             zw = ((ze - zs) / 100) * bw
             c.setFillColor(HexColor(zc))
             c.rect(zx, sz_y, zw, sz_h, fill=1, stroke=0)
-        c.setStrokeColor(colors.white)
+        c.setStrokeColor(white)
         c.setLineWidth(1.5)
         mx2 = bx + (pct / 100) * bw
         c.line(mx2, sz_y - 1, mx2, sz_y + sz_h + 1)
@@ -2208,7 +2213,7 @@ class MilestoneLine(Flowable):
 
         c.setFillColor(col)
         c.circle(13, 36, 11, fill=1, stroke=0)
-        c.setFillColor(colors.white)
+        c.setFillColor(white)
         c.setFont("Helvetica-Bold", 8)
         c.drawCentredString(13, 32, str(self.week))
 
@@ -2234,34 +2239,34 @@ class MilestoneLine(Flowable):
         c.setFont("Helvetica", 6.5)
         c.drawRightString(bx + bw, 13, f"{self.progress_pct:.0f}%")
 
-    # ── Page template (dark bg + header/footer) ──────────────────
 
-    def draw_page(canvas, doc):
-        canvas.saveState()
-        canvas.setFillColor(C_BG)
-        canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
-        canvas.setFillColor(C_ACCENT)
-        canvas.rect(0, PAGE_H - 3, PAGE_W, 3, fill=1, stroke=0)
-        canvas.setFillColor(C_CARD)
-        canvas.rect(0, PAGE_H - 22, PAGE_W, 19, fill=1, stroke=0)
-        canvas.setFillColor(C_TEXT)
-        canvas.setFont("Helvetica-Bold", 8.5)
-        canvas.drawString(18 * mm, PAGE_H - 15, "HEALTH TOOLS — PREMIUM REPORT")
-        canvas.setFillColor(C_MUTED)
-        canvas.setFont("Helvetica", 8)
-        canvas.drawRightString(PAGE_W - 18 * mm, PAGE_H - 15,
-                               f"Page {canvas.getPageNumber()}")
-        canvas.setFillColor(C_STROKE)
-        canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
-        canvas.setFillColor(HexColor("#64748B"))
-        canvas.setFont("Helvetica", 6.5)
-        canvas.drawString(18 * mm, 4,
-                          "Educational use only — not medical advice — health-tools.streamlit.app")
-        canvas.drawRightString(PAGE_W - 18 * mm, 4,
-                               datetime.utcnow().strftime("%Y-%m-%d UTC"))
-        canvas.restoreState()
+# ── Page template (dark bg + header/footer) ──────────────────
 
-    # ── Build story ───────────────────────────────────────────────
+def draw_page(canvas, doc):
+    canvas.saveState()
+    canvas.setFillColor(C_BG)
+    canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+    canvas.setFillColor(C_ACCENT)
+    canvas.rect(0, PAGE_H - 3, PAGE_W, 3, fill=1, stroke=0)
+    canvas.setFillColor(C_CARD)
+    canvas.rect(0, PAGE_H - 22, PAGE_W, 19, fill=1, stroke=0)
+    canvas.setFillColor(C_TEXT)
+    canvas.setFont("Helvetica-Bold", 8.5)
+    canvas.drawString(18 * mm, PAGE_H - 15, "HEALTH TOOLS — PREMIUM REPORT")
+    canvas.setFillColor(C_MUTED)
+    canvas.setFont("Helvetica", 8)
+    canvas.drawRightString(PAGE_W - 18 * mm, PAGE_H - 15, f"Page {canvas.getPageNumber()}")
+    canvas.setFillColor(C_STROKE)
+    canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
+    canvas.setFillColor(HexColor("#64748B"))
+    canvas.setFont("Helvetica", 6.5)
+    canvas.drawString(18 * mm, 4, "Educational use only — not medical advice — health-tools.streamlit.app")
+    canvas.drawRightString(PAGE_W - 18 * mm, 4, datetime.datetime.utcnow().strftime("%Y-%m-%d UTC"))
+    canvas.restoreState()
+
+
+# ── Definer funksjonen din her (f.eks. def generate_report_pdf(report):) ──
+def generate_report_pdf(report):
 
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
@@ -2274,12 +2279,8 @@ class MilestoneLine(Flowable):
 
     # Cover
     story.append(Gap(6))
-    story.append(P("HEALTH TOOLS",
-                   ps("cvt", fontSize=30, leading=34, textColor=C_ACCENT,
-                      bold=True, alignment=TA_CENTER)))
-    story.append(P("Premium Health Report",
-                   ps("cvs", fontSize=15, leading=19, textColor=C_TEXT,
-                      alignment=TA_CENTER, spaceAfter=6)))
+    story.append(P("HEALTH TOOLS", ps("cvt", fontSize=30, leading=34, textColor=C_ACCENT, bold=True, alignment=TA_CENTER)))
+    story.append(P("Premium Health Report", ps("cvs", fontSize=15, leading=19, textColor=C_TEXT, alignment=TA_CENTER, spaceAfter=6)))
 
     # Info row
     age_v  = inp.get("age", "—")
@@ -2289,10 +2290,10 @@ class MilestoneLine(Flowable):
     gen_v  = report.get("generated", "—")
 
     info_data = [
-        [P("AGE",     ps("il", fontSize=7, textColor=C_MUTED)),
-         P("SEX",     ps("il", fontSize=7, textColor=C_MUTED)),
-         P("HEIGHT",  ps("il", fontSize=7, textColor=C_MUTED)),
-         P("WEIGHT",  ps("il", fontSize=7, textColor=C_MUTED)),
+        [P("AGE", ps("il", fontSize=7, textColor=C_MUTED)),
+         P("SEX", ps("il", fontSize=7, textColor=C_MUTED)),
+         P("HEIGHT", ps("il", fontSize=7, textColor=C_MUTED)),
+         P("WEIGHT", ps("il", fontSize=7, textColor=C_MUTED)),
          P("GENERATED", ps("il", fontSize=7, textColor=C_MUTED))],
         [P(f"{age_v} yrs", ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
          P(str(sex_v),     ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
@@ -2317,7 +2318,6 @@ class MilestoneLine(Flowable):
     # ── BMI ──
     if report.get("bmi"):
         bmi_v   = float(report["bmi"]["value"])
-        bmi_cat = report["bmi"]["category"]
         story.append(SectionHeader("Body Mass Index"))
         story.append(Gap(5))
         story.append(BMIBar(bmi_v))
@@ -2325,17 +2325,11 @@ class MilestoneLine(Flowable):
             story.append(Gap(4))
             extra = []
             if report.get("whr"):
-                extra.append(("Waist-to-hip ratio",
-                               f'{report["whr"]["value"]:.2f} — {report["whr"]["category"]}'))
+                extra.append(("Waist-to-hip ratio", f'{report["whr"]["value"]:.2f} — {report["whr"]["category"]}'))
             if report.get("bodyfat"):
-                extra.append(("Body fat (Navy method)",
-                               f'{report["bodyfat"]["value"]:.1f}%'))
+                extra.append(("Body fat (Navy method)", f'{report["bodyfat"]["value"]:.1f}%'))
             for lbl, val in extra:
-                story.append(P(
-                    f'<font color="#94A3B8">{lbl}:</font>  '
-                    f'<font color="#E5E7EB"><b>{val}</b></font>',
-                    ps("be", fontSize=9, leading=14),
-                ))
+                story.append(P(f'<font color="#94A3B8">{lbl}:</font>  <font color="#E5E7EB"><b>{val}</b></font>', ps("be", fontSize=9, leading=14)))
         story.append(Gap(10))
 
     # ── VO2 ──
@@ -2343,22 +2337,15 @@ class MilestoneLine(Flowable):
         v = report["vo2"]
         story.append(SectionHeader("VO2max & Cardio Fitness"))
         story.append(Gap(5))
-        story.append(VO2Visual(
-            float(v["value"]),
-            float(v.get("percentile") or 0),
-            v.get("rating", "—"),
-        ))
+        story.append(VO2Visual(float(v["value"]), float(v.get("percentile") or 0), v.get("rating", "—")))
         story.append(Gap(5))
         meta_data = [
             [P("METHOD",          ps("ml", fontSize=7, textColor=C_MUTED)),
              P("AGE BAND",        ps("ml", fontSize=7, textColor=C_MUTED)),
              P("POPULATION MEAN", ps("ml", fontSize=7, textColor=C_MUTED))],
-            [P(str(v.get("method", "—")),
-               ps("mv", fontSize=9, bold=True, textColor=C_TEXT)),
-             P(str(v.get("age_band", "—")),
-               ps("mv", fontSize=9, bold=True, textColor=C_TEXT)),
-             P(f'{v.get("mean", "—")} ml/kg/min',
-               ps("mv", fontSize=9, bold=True, textColor=C_TEXT))],
+            [P(str(v.get("method", "—")), ps("mv", fontSize=9, bold=True, textColor=C_TEXT)),
+             P(str(v.get("age_band", "—")), ps("mv", fontSize=9, bold=True, textColor=C_TEXT)),
+             P(f'{v.get("mean", "—")} ml/kg/min', ps("mv", fontSize=9, bold=True, textColor=C_TEXT))],
         ]
         meta_t = Table(meta_data, colWidths=[CONTENT_W / 3] * 3)
         meta_t.setStyle(TableStyle([
@@ -2373,14 +2360,9 @@ class MilestoneLine(Flowable):
         tips = v.get("tips", [])
         if tips:
             story.append(Gap(6))
-            story.append(P("Training Recommendations",
-                           ps("trh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
+            story.append(P("Training Recommendations", ps("trh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
             for tip in tips[:5]:
-                story.append(P(
-                    f"→  {escape(str(tip))}",
-                    ps(f"tip{id(tip)}", fontSize=8.5, leading=12,
-                       textColor=HexColor("#CBD5E1"), spaceAfter=3),
-                ))
+                story.append(P(f"→  {escape(str(tip))}", ps(f"tip{id(tip)}", fontSize=8.5, leading=12, textColor=HexColor("#CBD5E1"), spaceAfter=3)))
         story.append(Gap(10))
 
     # ── Biological age ──
@@ -2400,8 +2382,7 @@ class MilestoneLine(Flowable):
         ]))
         if report.get("bio_factors"):
             story.append(Gap(6))
-            story.append(P("Factor Breakdown",
-                           ps("bfh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
+            story.append(P("Factor Breakdown", ps("bfh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
             story.append(BioFactorBars(report["bio_factors"]))
         story.append(Gap(10))
 
@@ -2413,23 +2394,16 @@ class MilestoneLine(Flowable):
         kcal_pw   = float(ex.get("kcal_per_week", 0))
         total_min = int(ex.get("minutes", 0)) * int(ex.get("sessions_per_week", 0))
         story.append(MetricRow([
-            ("ACTIVITY",    str(ex.get("activity", "—"))[:18],
-             str(ex.get("intensity", "—")),                    "#0EA5A3"),
-            ("KCAL / SESSION", f'{ex.get("kcal_per_session", 0):.0f}',
-             "kcal",                                           "#3B82F6"),
-            ("KCAL / WEEK", f'{kcal_pw:.0f}',
-             f'{ex.get("sessions_per_week", 0)}× per week',   "#22C55E"),
-            ("VOLUME",      f'{total_min} min/wk',
-             f'{ex.get("minutes", 0)} min × {ex.get("sessions_per_week", 0)}', "#F59E0B"),
+            ("ACTIVITY",    str(ex.get("activity", "—"))[:18], str(ex.get("intensity", "—")), "#0EA5A3"),
+            ("KCAL / SESSION", f'{ex.get("kcal_per_session", 0):.0f}', "kcal", "#3B82F6"),
+            ("KCAL / WEEK", f'{kcal_pw:.0f}', f'{ex.get("sessions_per_week", 0)}× per week', "#22C55E"),
+            ("VOLUME",      f'{total_min} min/wk', f'{ex.get("minutes", 0)} min × {ex.get("sessions_per_week", 0)}', "#F59E0B"),
         ]))
         story.append(Gap(4))
         who_met = total_min >= 150
         who_col = "#22C55E" if who_met else "#F59E0B"
-        who_txt = ("✓  Meets WHO 150 min/week guidelines"
-                   if who_met else
-                   f"⚠  {150 - total_min} min/week below WHO 150 min target")
-        story.append(P(who_txt,
-                       ps("who", fontSize=8.5, textColor=HexColor(who_col), spaceAfter=2)))
+        who_txt = "✓  Meets WHO 150 min/week guidelines" if who_met else f"⚠  {150 - total_min} min/week below WHO 150 min target"
+        story.append(P(who_txt, ps("who", fontSize=8.5, textColor=HexColor(who_col), spaceAfter=2)))
         story.append(Gap(10))
 
     # ── Conditions ──
@@ -2437,11 +2411,7 @@ class MilestoneLine(Flowable):
         story.append(SectionHeader("Conditions & Recommendations"))
         story.append(Gap(5))
         for r in report["triage_recommendations"]:
-            story.append(P(
-                f"→  {escape(str(r))}",
-                ps(f"rec{id(r)}", fontSize=8.5, leading=13,
-                   textColor=HexColor("#CBD5E1"), spaceAfter=3),
-            ))
+            story.append(P(f"→  {escape(str(r))}", ps(f"rec{id(r)}", fontSize=8.5, leading=13, textColor=HexColor("#CBD5E1"), spaceAfter=3)))
         story.append(Gap(10))
 
     # ── Plan ──
@@ -2450,19 +2420,14 @@ class MilestoneLine(Flowable):
         story.append(SectionHeader("Weight Goal Plan"))
         story.append(Gap(5))
         story.append(MetricRow([
-            ("MAINTENANCE",  f'{plan.get("current_needs_kcal", "—")} kcal',
-             "per day",                                  "#94A3B8"),
-            ("RECOMMENDED",  f'{plan.get("recommended_daily_kcal", "—")} kcal',
-             "per day",                                  "#0EA5A3"),
-            ("WEEKLY CHANGE", f'{float(plan.get("kg_per_week", 0)):+.2f} kg',
-             "per week",                                 "#3B82F6"),
+            ("MAINTENANCE",  f'{plan.get("current_needs_kcal", "—")} kcal', "per day", "#94A3B8"),
+            ("RECOMMENDED",  f'{plan.get("recommended_daily_kcal", "—")} kcal', "per day", "#0EA5A3"),
+            ("WEEKLY CHANGE", f'{float(plan.get("kg_per_week", 0)):+.2f} kg', "per week", "#3B82F6"),
         ]))
         milestones = plan.get("milestones", [])
         if milestones:
             story.append(Gap(6))
-            story.append(P("Milestone Roadmap",
-                           ps("mrh", fontSize=10, bold=True,
-                              textColor=C_ACCENT, spaceAfter=3)))
+            story.append(P("Milestone Roadmap", ps("mrh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
             try:
                 start_w = float(inp.get("weight_kg", 70) or 70)
             except Exception:
@@ -2478,8 +2443,7 @@ class MilestoneLine(Flowable):
                     pw = float(m.get("Projected weight (kg)", start_w))
                 except Exception:
                     pw = start_w
-                prog = (min(100, max(0, int(abs(pw - start_w) / total_change * 100)))
-                        if total_change > 0.01 else 100)
+                prog = (min(100, max(0, int(abs(pw - start_w) / total_change * 100))) if total_change > 0.01 else 100)
                 story.append(MilestoneLine(
                     week=m.get("Week", i + 1),
                     weight=pw,
@@ -2499,10 +2463,10 @@ class MilestoneLine(Flowable):
         ps("disc", fontSize=7.5, leading=10, textColor=HexColor("#64748B")),
     ))
 
+    # ── BYGG ──
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
-    return buffer.read()
-
+    return buffer.read() # Lagt til riktig innrykk for å avslutte funksjonen ordentlig!
 
 # ── Modules (main) ────
 with st.expander("⚙️ Choose modules", expanded=False):
