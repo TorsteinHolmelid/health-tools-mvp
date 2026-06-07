@@ -1720,211 +1720,211 @@ _pt2.setStyle(TableStyle([
 story.append(_pt2)
 story.append(VGap(10))
 
-    # ── Nutrition & Recovery Panel ──
-    story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
-        
-    if w_v:
-        _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
-    else:
-        _protein_g = 160
-        
-    _nutrition_rows = [
-        [P("METRIC",     S("nh", size=7.5, bold=True, color=MUTED)),
-         P("TARGET",     S("nh", size=7.5, bold=True, color=MUTED)),
-         P("WHY IT MATTERS", S("nh", size=7.5, bold=True, color=MUTED))],
-        [P("Daily protein",   S("nk", size=8.5, bold=True, color=TEXT)),
-         P(f"{_protein_g} g  ({_gp['protein']})", S("nv", size=8.5, bold=True, color=ACCENT)),
-         P("Maximises muscle protein synthesis (MPS). Leucine threshold ~2.5 g/meal activates MPS.",
-           S("nd", size=8, lead=11, color=MUTED))],
-        [P("Calorie adjustment", S("nk2", size=8.5, bold=True, color=TEXT)),
-         P(f"{_gp['deficit']:+d} kcal/day", S("nv2", size=8.5, bold=True,
-            color=HexColor("#DC2626") if _gp['deficit'] < 0 else HexColor("#059669"))),
-         P("Based on Mifflin-St Jeor TDEE. Adjust by ±100 kcal every 2 weeks if weight trend deviates.",
-           S("nd2", size=8, lead=11, color=MUTED))],
-        [P("Sleep",           S("nk3", size=8.5, bold=True, color=TEXT)),
-         P("7–9 hours/night", S("nv3", size=8.5, bold=True, color=HexColor("#7C3AED"))),
-         P("Growth hormone peaks in slow-wave sleep. Sleep <6h reduces MPS by ~18% (Dattilo, 2011).",
-           S("nd3", size=8, lead=11, color=MUTED))],
-        [P("Hydration",       S("nk4", size=8.5, bold=True, color=TEXT)),
-         P("35–45 ml/kg/day", S("nv4", size=8.5, bold=True, color=HexColor("#0891B2"))),
-         P("Even 2% dehydration impairs strength output by 5–8% and aerobic capacity by 10%.",
-           S("nd4", size=8, lead=11, color=MUTED))],
-        [P("Rest between sets", S("nk5", size=8.5, bold=True, color=TEXT)),
-         P("90–180 s (strength) · 45–60 s (metabolic)", S("nv5", size=8, bold=True, color=TEXT)),
-         P("Longer rest = greater strength gains. Shorter rest = elevated metabolic cost (EPOC).",
-           S("nd5", size=8, lead=11, color=MUTED))],
+# ── Nutrition & Recovery Panel ──
+story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    
+if w_v:
+    _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
+else:
+    _protein_g = 160
+    
+_nutrition_rows = [
+    [P("METRIC",     S("nh", size=7.5, bold=True, color=MUTED)),
+     P("TARGET",     S("nh", size=7.5, bold=True, color=MUTED)),
+     P("WHY IT MATTERS", S("nh", size=7.5, bold=True, color=MUTED))],
+    [P("Daily protein",   S("nk", size=8.5, bold=True, color=TEXT)),
+     P(f"{_protein_g} g  ({_gp['protein']})", S("nv", size=8.5, bold=True, color=ACCENT)),
+     P("Maximises muscle protein synthesis (MPS). Leucine threshold ~2.5 g/meal activates MPS.",
+       S("nd", size=8, lead=11, color=MUTED))],
+    [P("Calorie adjustment", S("nk2", size=8.5, bold=True, color=TEXT)),
+     P(f"{_gp['deficit']:+d} kcal/day", S("nv2", size=8.5, bold=True,
+        color=HexColor("#DC2626") if _gp['deficit'] < 0 else HexColor("#059669"))),
+     P("Based on Mifflin-St Jeor TDEE. Adjust by ±100 kcal every 2 weeks if weight trend deviates.",
+       S("nd2", size=8, lead=11, color=MUTED))],
+    [P("Sleep",           S("nk3", size=8.5, bold=True, color=TEXT)),
+     P("7–9 hours/night", S("nv3", size=8.5, bold=True, color=HexColor("#7C3AED"))),
+     P("Growth hormone peaks in slow-wave sleep. Sleep <6h reduces MPS by ~18% (Dattilo, 2011).",
+       S("nd3", size=8, lead=11, color=MUTED))],
+    [P("Hydration",       S("nk4", size=8.5, bold=True, color=TEXT)),
+     P("35–45 ml/kg/day", S("nv4", size=8.5, bold=True, color=HexColor("#0891B2"))),
+     P("Even 2% dehydration impairs strength output by 5–8% and aerobic capacity by 10%.",
+       S("nd4", size=8, lead=11, color=MUTED))],
+    [P("Rest between sets", S("nk5", size=8.5, bold=True, color=TEXT)),
+     P("90–180 s (strength) · 45–60 s (metabolic)", S("nv5", size=8, bold=True, color=TEXT)),
+     P("Longer rest = greater strength gains. Shorter rest = elevated metabolic cost (EPOC).",
+       S("nd5", size=8, lead=11, color=MUTED))],
+]
+
+_nt = Table(_nutrition_rows, colWidths=[CONTENT_W*0.22, CONTENT_W*0.26, CONTENT_W*0.52])
+_nt.setStyle(TableStyle([
+    ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+    ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+    ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
+    ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),
+    ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_G),
+    ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_DIM),
+    ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+    ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+    ("TOPPADDING",    (0,0),  (-1,-1), 7),
+    ("BOTTOMPADDING", (0,0),  (-1,-1), 7),
+    ("LEFTPADDING",   (0,0),  (-1,-1), 6),
+    ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
+    ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+]))
+story.append(_nt)
+story.append(VGap(8))
+    
+# ── Expert Insight ──
+_training_insight = (
+    f"This programme follows the principle of progressive overload — the most robustly evidenced "
+    f"stimulus for both strength and hypertrophy gains (Schoenfeld, 2010; Kraemer & Ratamess, 2004). "
+    f"For your goal of '{_goal}', the optimal weekly volume sits between 10–20 sets per muscle group "
+    f"(Krieger, 2010), with intensity periodised across the {_weeks}-week block to drive adaptation "
+    f"while managing fatigue. The selected activities — {', '.join(_activities[:3]) if _activities else 'general fitness'} "
+    f"— are integrated to maximise caloric expenditure and recovery without compromising strength sessions. "
+    f"Deload in week {_weeks} is mandatory: supercompensation occurs during recovery, not during the training stimulus."
+)
+story.append(ExpertInsightBox("Training Science", _training_insight))
+story.append(VGap(6))
+    
+# ── Actionable milestone steps ──
+if _goal == "Build muscle (bulk)":
+    _train_steps = [
+        f"Track bodyweight weekly — target gain of 0.25–0.5 kg/week for the first {min(_weeks, 8)} weeks",
+        f"Hit {_protein_g} g protein daily — distribute across 4+ meals with ≥30 g per sitting",
+        "Log your lifts every session — add 2.5 kg when you complete all reps with RPE ≤ 8",
+        "Sleep is your anabolic window — prioritise 8 hrs consistently before adding more training volume",
     ]
+elif _goal == "Lose fat":
+    _train_steps = [
+        f"Weigh yourself every morning (post-toilet) — track the 7-day rolling average, not daily fluctuations",
+        f"Minimum {_protein_g} g protein — non-negotiable for lean mass preservation in a calorie deficit",
+        "Step count ≥ 8,000/day — NEAT (non-exercise activity) contributes 15–30% of total daily expenditure",
+        "Strength sessions take priority over cardio — muscle mass drives resting metabolic rate",
+    ]
+else:
+    _train_steps = [
+        f"Eat at maintenance calories ± 100 kcal — weigh weekly and adjust if trend deviates",
+        f"Protein target: {_protein_g} g/day — the single most important recomposition lever",
+        "Progressive overload on 2–3 key lifts — track squat, press, and row as primary indicators",
+        "Rotate cardio modality every 4 weeks — prevents adaptation and maintains caloric expenditure",
+    ]
+story.append(ActionableMilestoneBox(_train_steps))
+story.append(VGap(6))
     
-    _nt = Table(_nutrition_rows, colWidths=[CONTENT_W*0.22, CONTENT_W*0.26, CONTENT_W*0.52])
-    _nt.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-        ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-        ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
-        ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),
-        ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_G),
-        ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_DIM),
-        ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-        ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-        ("TOPPADDING",    (0,0),  (-1,-1), 7),
-        ("BOTTOMPADDING", (0,0),  (-1,-1), 7),
-        ("LEFTPADDING",   (0,0),  (-1,-1), 6),
-        ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
-        ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-    ]))
-    story.append(_nt)
+story.append(P(
+    "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
+    "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc; Dattilo M et al. (2011) Med Hypotheses. "
+    "Targets are population-level estimates — individual response varies. Consult a certified trainer or physician before starting.",
+    S("disc", size=7.5, lead=11, color=MUTED, italic=True, after=4)
+))
+    
+story.append(PageBreak())
+
+# ── PAGE 7: Insights + Conditions + Safety ──
+story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
+story.append(VGap(6))
+for title, color, text in insights:
+    story.append(InsightBlock(title, text, color))
+    story.append(VGap(6))
+    
+if triage_r:
+    story.append(SecHeader("Condition-Aware Recommendations", accent=WARN))
+    story.append(VGap(6))
+    for r in triage_r[:12]: 
+        story.append(P(f"→  {r}", S(f"tr{id(r)}", size=8.5, lead=13, color=TEXT, after=3)))
     story.append(VGap(8))
-        
-    # ── Expert Insight ──
-    _training_insight = (
-        f"This programme follows the principle of progressive overload — the most robustly evidenced "
-        f"stimulus for both strength and hypertrophy gains (Schoenfeld, 2010; Kraemer & Ratamess, 2004). "
-        f"For your goal of '{_goal}', the optimal weekly volume sits between 10–20 sets per muscle group "
-        f"(Krieger, 2010), with intensity periodised across the {_weeks}-week block to drive adaptation "
-        f"while managing fatigue. The selected activities — {', '.join(_activities[:3]) if _activities else 'general fitness'} "
-        f"— are integrated to maximise caloric expenditure and recovery without compromising strength sessions. "
-        f"Deload in week {_weeks} is mandatory: supercompensation occurs during recovery, not during the training stimulus."
-    )
-    story.append(ExpertInsightBox("Training Science", _training_insight))
-    story.append(VGap(6))
-        
-    # ── Actionable milestone steps ──
-    if _goal == "Build muscle (bulk)":
-        _train_steps = [
-            f"Track bodyweight weekly — target gain of 0.25–0.5 kg/week for the first {min(_weeks, 8)} weeks",
-            f"Hit {_protein_g} g protein daily — distribute across 4+ meals with ≥30 g per sitting",
-            "Log your lifts every session — add 2.5 kg when you complete all reps with RPE ≤ 8",
-            "Sleep is your anabolic window — prioritise 8 hrs consistently before adding more training volume",
-        ]
-    elif _goal == "Lose fat":
-        _train_steps = [
-            f"Weigh yourself every morning (post-toilet) — track the 7-day rolling average, not daily fluctuations",
-            f"Minimum {_protein_g} g protein — non-negotiable for lean mass preservation in a calorie deficit",
-            "Step count ≥ 8,000/day — NEAT (non-exercise activity) contributes 15–30% of total daily expenditure",
-            "Strength sessions take priority over cardio — muscle mass drives resting metabolic rate",
-        ]
-    else:
-        _train_steps = [
-            f"Eat at maintenance calories ± 100 kcal — weigh weekly and adjust if trend deviates",
-            f"Protein target: {_protein_g} g/day — the single most important recomposition lever",
-            "Progressive overload on 2–3 key lifts — track squat, press, and row as primary indicators",
-            "Rotate cardio modality every 4 weeks — prevents adaptation and maintains caloric expenditure",
-        ]
-    story.append(ActionableMilestoneBox(_train_steps))
-    story.append(VGap(6))
-        
-    story.append(P(
-        "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
-        "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc; Dattilo M et al. (2011) Med Hypotheses. "
-        "Targets are population-level estimates — individual response varies. Consult a certified trainer or physician before starting.",
-        S("disc", size=7.5, lead=11, color=MUTED, italic=True, after=4)
-    ))
-        
-    story.append(PageBreak())
-    
-    # ── PAGE 7: Insights + Conditions + Safety ──
-    story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
-    story.append(VGap(6))
-    for title, color, text in insights:
-        story.append(InsightBlock(title, text, color))
-        story.append(VGap(6))
-        
-    if triage_r:
-        story.append(SecHeader("Condition-Aware Recommendations", accent=WARN))
-        story.append(VGap(6))
-        for r in triage_r[:12]: 
-            story.append(P(f"→  {r}", S(f"tr{id(r)}", size=8.5, lead=13, color=TEXT, after=3)))
-        story.append(VGap(8))
 
-    story.append(SecHeader("Safety & Important Notices", accent=BAD))
-    story.append(VGap(6))
-    for title, col, text in [
-        ("Seek urgent care immediately if you experience", WARN, "Chest pain or pressure, severe shortness of breath at rest, fainting or near-fainting, sudden neurological symptoms."),
-        ("Before starting a new exercise programme", ACCENT, "If you have known cardiovascular disease, diabetes, or have been inactive, consult a physician before vigorous training."),
-        ("About the estimates in this report", BLUE, "VO2max, biological age, and calorie values are estimates from validated formulas, not clinical measurements."),
-    ]:
-        story.append(InsightBlock(title, text, col))
-        story.append(VGap(4))
+story.append(SecHeader("Safety & Important Notices", accent=BAD))
+story.append(VGap(6))
+for title, col, text in [
+    ("Seek urgent care immediately if you experience", WARN, "Chest pain or pressure, severe shortness of breath at rest, fainting or near-fainting, sudden neurological symptoms."),
+    ("Before starting a new exercise programme", ACCENT, "If you have known cardiovascular disease, diabetes, or have been inactive, consult a physician before vigorous training."),
+    ("About the estimates in this report", BLUE, "VO2max, biological age, and calorie values are estimates from validated formulas, not clinical measurements."),
+]:
+    story.append(InsightBlock(title, text, col))
+    story.append(VGap(4))
 
-    story.append(VGap(10))
-    story.append(P("This report was generated by Health Tools (health-tools.streamlit.app) for educational purposes only. It is not a medical diagnosis.", S("df", size=7.5, lead=11, color=DIM, italic=True, align=TA_CENTER, after=4)))
+story.append(VGap(10))
+story.append(P("This report was generated by Health Tools (health-tools.streamlit.app) for educational purposes only. It is not a medical diagnosis.", S("df", size=7.5, lead=11, color=DIM, italic=True, align=TA_CENTER, after=4)))
 
-    # ════════════════════════════════════════════════════════════
-    # EXECUTIVE SUMMARY — FINAL PAGE (Stop / Start / Maintain)
-    # ════════════════════════════════════════════════════════════
-    story.append(PageBreak())
-    story.append(SecHeader(
-        "Your Personal Action Plan",
-        subtitle="Executive summary — review weekly, share with your physician, act on daily"
-    ))
-    story.append(VGap(10))
+# ════════════════════════════════════════════════════════════
+# EXECUTIVE SUMMARY — FINAL PAGE (Stop / Start / Maintain)
+# ════════════════════════════════════════════════════════════
+story.append(PageBreak())
+story.append(SecHeader(
+    "Your Personal Action Plan",
+    subtitle="Executive summary — review weekly, share with your physician, act on daily"
+))
+story.append(VGap(10))
 
-    # ── Build Stop / Start / Maintain dynamically from user data ──
-    _stop_items  = []
-    _start_items = []
-    _keep_items  = []
+# ── Build Stop / Start / Maintain dynamically from user data ──
+_stop_items  = []
+_start_items = []
+_keep_items  = []
 
-    # STOP
-    if bmi_v is not None and bmi_v >= 30:
-        _stop_items.append("Eating in an untracked caloric surplus — awareness is the prerequisite for change")
-    if bmi_v is not None and bmi_v >= 25:
-        _stop_items.append("Relying on cardio alone — resistance training is what changes body composition")
-    if vo2_pct < 40:
-        _stop_items.append("Extended sedentary blocks >4 hours — set an hourly 5-min movement reminder")
-    if bio_diff is not None and bio_diff > 2:
-        _stop_items.append("Variable sleep timing — inconsistent schedule is a primary biological age accelerator")
-    if exlog and ex_total_min < 150:
-        _stop_items.append("Treating 1–2 short sessions/week as adequate — you are below WHO minimum guidelines")
-    if len(_stop_items) < 3:
-        _stop_items += [
-            "Comparing week-to-week fluctuations — health change operates on 6–12 week timescales",
-            "Treating nutrition and exercise as separate strategies — they compound when integrated",
-            "Skipping annual health markers — your current position requires monitoring to maintain",
-        ]
+# STOP
+if bmi_v is not None and bmi_v >= 30:
+    _stop_items.append("Eating in an untracked caloric surplus — awareness is the prerequisite for change")
+if bmi_v is not None and bmi_v >= 25:
+    _stop_items.append("Relying on cardio alone — resistance training is what changes body composition")
+if vo2_pct < 40:
+    _stop_items.append("Extended sedentary blocks >4 hours — set an hourly 5-min movement reminder")
+if bio_diff is not None and bio_diff > 2:
+    _stop_items.append("Variable sleep timing — inconsistent schedule is a primary biological age accelerator")
+if exlog and ex_total_min < 150:
+    _stop_items.append("Treating 1–2 short sessions/week as adequate — you are below WHO minimum guidelines")
+if len(_stop_items) < 3:
+    _stop_items += [
+        "Comparing week-to-week fluctuations — health change operates on 6–12 week timescales",
+        "Treating nutrition and exercise as separate strategies — they compound when integrated",
+        "Skipping annual health markers — your current position requires monitoring to maintain",
+    ]
 
-    # START
-    if vo2_pct < 50:
-        _start_items.append("Zone 2 aerobic training 3× weekly — your single highest-leverage longevity investment")
-    if bmi_v is not None and bmi_v >= 25:
-        _start_items.append("Daily protein tracking — target 1.8 g per kg bodyweight without exception")
-    if bio_diff is not None and bio_diff > 1:
-        _start_items.append("Fixed sleep/wake schedule (±30 min) — the highest-impact biological age intervention")
-    if exlog and ex_total_min < 150:
-        _start_items.append("10,000 steps/day habit — NEAT accounts for up to 25% of total daily energy expenditure")
-    _start_items.append("Monthly biometric tracking: weight, waist circumference, resting HR — your three proxy longevity markers")
-    if len(_start_items) < 2:
-        _start_items.insert(0, "Progressive overload in strength training — the only mechanism that continues driving adaptation")
+# START
+if vo2_pct < 50:
+    _start_items.append("Zone 2 aerobic training 3× weekly — your single highest-leverage longevity investment")
+if bmi_v is not None and bmi_v >= 25:
+    _start_items.append("Daily protein tracking — target 1.8 g per kg bodyweight without exception")
+if bio_diff is not None and bio_diff > 1:
+    _start_items.append("Fixed sleep/wake schedule (±30 min) — the highest-impact biological age intervention")
+if exlog and ex_total_min < 150:
+    _start_items.append("10,000 steps/day habit — NEAT accounts for up to 25% of total daily energy expenditure")
+_start_items.append("Monthly biometric tracking: weight, waist circumference, resting HR — your three proxy longevity markers")
+if len(_start_items) < 2:
+    _start_items.insert(0, "Progressive overload in strength training — the only mechanism that continues driving adaptation")
 
-    # MAINTAIN
-    if bmi_v is not None and 18.5 <= bmi_v < 25:
-        _keep_items.append(f"Current body weight (BMI {bmi_v:.1f}) — you are within the optimal longevity range")
-    if vo2_pct >= 50:
-        _keep_items.append(f"Cardiorespiratory fitness — your VO2max is above the {int(vo2_pct)}th percentile for your age")
-    if bio_diff is not None and bio_diff <= 0:
-        _keep_items.append(f"Current lifestyle habits — your biological age is {abs(bio_diff):.1f} years below calendar age")
-    if exlog and ex_total_min >= 150:
-        _keep_items.append(f"Weekly exercise volume ({ex_total_min} min/week) — you meet or exceed WHO guidelines")
-    if len(_keep_items) < 2:
-        _keep_items += [
-            "Commitment to data-driven health optimisation — you are measurably ahead of your demographic peers",
-            "Regular health monitoring frequency — prevention produces the highest return on health investment",
-            "The habit of measuring — you cannot compound what you do not track",
-        ]
+# MAINTAIN
+if bmi_v is not None and 18.5 <= bmi_v < 25:
+    _keep_items.append(f"Current body weight (BMI {bmi_v:.1f}) — you are within the optimal longevity range")
+if vo2_pct >= 50:
+    _keep_items.append(f"Cardiorespiratory fitness — your VO2max is above the {int(vo2_pct)}th percentile for your age")
+if bio_diff is not None and bio_diff <= 0:
+    _keep_items.append(f"Current lifestyle habits — your biological age is {abs(bio_diff):.1f} years below calendar age")
+if exlog and ex_total_min >= 150:
+    _keep_items.append(f"Weekly exercise volume ({ex_total_min} min/week) — you meet or exceed WHO guidelines")
+if len(_keep_items) < 2:
+    _keep_items += [
+        "Commitment to data-driven health optimisation — you are measurably ahead of your demographic peers",
+        "Regular health monitoring frequency — prevention produces the highest return on health investment",
+        "The habit of measuring — you cannot compound what you do not track",
+    ]
 
-    story.append(ExecutiveSummaryCheatSheet(_stop_items[:3], _start_items[:3], _keep_items[:3]))
-    story.append(VGap(12))
-    story.append(CompoundingEffectBox())
-    story.append(VGap(10))
-    story.append(P(
-        "This personalised executive summary is derived from your individual physiological data using validated clinical "
-        "formulas: Mifflin-St Jeor (energy expenditure), WHO BMI classifications, Uth VO2max estimation, and "
-        "ACSM/WHO training volume guidelines. Review this summary every 4–12 weeks as your data evolves. "
-        "Share the full report with your physician or performance coach at your next consultation.",
-        S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
-    ))   
-    
-    # ── BYGG ──
-    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-    return buf.getvalue()
+story.append(ExecutiveSummaryCheatSheet(_stop_items[:3], _start_items[:3], _keep_items[:3]))
+story.append(VGap(12))
+story.append(CompoundingEffectBox())
+story.append(VGap(10))
+story.append(P(
+    "This personalised executive summary is derived from your individual physiological data using validated clinical "
+    "formulas: Mifflin-St Jeor (energy expenditure), WHO BMI classifications, Uth VO2max estimation, and "
+    "ACSM/WHO training volume guidelines. Review this summary every 4–12 weeks as your data evolves. "
+    "Share the full report with your physician or performance coach at your next consultation.",
+    S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
+))   
+
+# ── BYGG ──
+doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+return buf.getvalue()
 
 
 # ── Custom Flowables ──────────────────────────────────────────
@@ -1961,7 +1961,6 @@ class SectionHeader(Flowable):
 
 class MetricRow(Flowable):
     def __init__(self, metrics, width=CONTENT_W):
-        # metrics = list of (label, value, sub, color_hex_str)
         super().__init__()
         self.metrics = metrics
         self.w       = width
@@ -2124,7 +2123,6 @@ class VO2Visual(Flowable):
         c.setFont("Helvetica-Bold", 11)
         c.drawRightString(bx + bw, by - 11, f"{pct:.0f}th percentile")
 
-        # 5-zone mini scale
         zones = [
             (0,  20,  "#EF4444"),
             (20, 40,  "#F59E0B"),
@@ -2235,7 +2233,6 @@ class MilestoneLine(Flowable):
         c.setFillColor(C_MUTED)
         c.setFont("Helvetica", 6.5)
         c.drawRightString(bx + bw, 13, f"{self.progress_pct:.0f}%")
-
 
     # ── Page template (dark bg + header/footer) ──────────────────
 
