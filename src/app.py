@@ -1967,7 +1967,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     ))
 
     # Bygg dokumentet og returner bytes
-    print("FØR FØRSTE build")
+    print("KØYRER FØRSTE PDF-FUNKSJON")
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     print("ETTER FØRSTE build")
     buffer.seek(0)
@@ -2519,7 +2519,7 @@ def generate_report_pdf(report):
     ))
 
     # ── BYGG ──
-    print("FØR ANDRE build")
+    print("KØYRER ANDRE PDF-FUNKSJON")
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     print("ETTER ANDRE build")
     buffer.seek(0)
