@@ -89,7 +89,7 @@ class PDFStyles:
     H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=colors.white)
     H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=colors.white)
     Body = ParagraphStyle("Body", fontName="Helvetica", fontSize=10, leading=14, spaceAfter=10, textColor=colors.lightgrey)
-    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=colors.HexColor("#64748B"), uppercase=True)
+    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=colors.HexColor("#64748B"))
 
 # ── Treningsplan Builder ──────────────────────────────────────────────────────
 def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
@@ -142,8 +142,7 @@ class PremiumRadarChart(Flowable):
         self.h = 300
     def wrap(self, aw, ah):
         return self.w, self.h
-    def draw(self):
-        pass # Legg inn din radar-logikk her dersom denne skal teiknast custom
+
 
 # ── Stripe Query Param Sjekk ──────────────────────────────────────────────────
 _session_id = None
@@ -351,7 +350,7 @@ if not st.session_state.consent_given:
         try:
             if not st.session_state.get("_consent_rerun_done"):
                 st.session_state["_consent_rerun_done"] = True
-                st.experimental_rerun()
+                st.rerun()
         except Exception:
             pass
     if cols[1].button("Exit", key="consent_exit"):
@@ -537,17 +536,21 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     bio_diff = (bio_v - age_f) if (bio_v is not None and age_f is not None) else None
     bio_col  = bio_color(bio_diff)
 
-    # ── Bygging av PDF Story ──────────────────────────────────────────────────
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(
-        buffer,
-        pagesize=A4,
-        leftMargin=MARGIN_H,
-        rightMargin=MARGIN_H,
-        topMargin=MARGIN_H,
-        bottomMargin=MARGIN_H
-    )
-    
+# ── Bygging av PDF Story ──────────────────────────────────────────────────
+    def draw_page(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+        canvas.setFillColor(ACCENT); canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
+        canvas.setFillColor(CARD2); canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
+        canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5); canvas.drawString(MARGIN_H, PAGE_H-15, "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL")
+        canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8); canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
+        canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
+        canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5); canvas.drawString(MARGIN_H, 4, "Educational use only — not a medical diagnosis — health-tools.streamlit.app")
+        canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.utcnow().strftime("%Y-%m-%d UTC"))
+        canvas.restoreState()
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN_H, rightMargin=MARGIN_H, topMargin=26*mm, bottomMargin=18*mm)
     story = []
     
     # Header / Tittel
@@ -600,1319 +603,1300 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         t_plan.setStyle(table_style)
         story.append(t_plan)
 
-# Health score kalkulering
-score_parts = []
-if bmi_v is not None:
-    if 18.5 <= bmi_v < 25:   score_parts.append(100)
-    elif 17 <= bmi_v < 27:   score_parts.append(75)
-    elif 15 <= bmi_v < 30:   score_parts.append(50)
-    else:                     score_parts.append(25)
-if vo2_v is not None:
-    score_parts.append(min(100, int(vo2_pct)))
-if bio_diff is not None:
-    score_parts.append(max(0, min(100, int(70 - bio_diff * 10))))
-if ex_total_min:
-    score_parts.append(min(100, int(ex_total_min / 300 * 100)))
-health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
-score_col    = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
-score_label  = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
-
-# Radar scores mapping
-radar = {}
-radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75  if (bmi_v and 17 <= bmi_v < 27) else 50  if (bmi_v and 15 <= bmi_v < 30) else 25  if bmi_v else 50)
-radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
-radar["Bio Age"]   = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
-radar["Activity"]  = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
-life = 60
-for f in factors:
-    try:
-        d = float(f.get("delta", 0))
-        if d < 0: life = min(100, life + 8)
-        elif d > 1: life = max(10, life - 8)
-    except: pass
-radar["Lifestyle"] = max(0, min(100, life))
-
-# Health Levers logikk
-if vo2_v is not None and vo2_pct < 40:
-    biggest_lever = "Cardio fitness (VO2max)"
-    lever_why = "The single most impactful modifiable longevity factor — and the fastest to improve with training."
-elif bmi_v is not None and bmi_v >= 30:
-    biggest_lever = "Energy balance + daily movement"
-    lever_why = "A sustainable calorie strategy combined with consistent activity has the highest ROI here."
-elif bio_diff is not None and bio_diff > 2:
-    biggest_lever = "Sleep + lifestyle fundamentals"
-    lever_why = "Your biological age estimate shows the biggest room for improvement in foundational habits."
-elif exlog and ex_total_min < 150:
-    biggest_lever = "Exercise volume (reach WHO target)"
-    lever_why = "Even incremental increases from below 150 min/week produce measurable health returns."
-else:
-    biggest_lever = "Strength training + progressive overload"
-    lever_why = "Your core markers are solid — the next tier of improvement comes from consistent resistance training."
-
-# Insights generering
-insights = []
-if bmi_v is not None:
-    if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps. Avoid aggressive cuts — they accelerate muscle loss and reduce long-term adherence. Aim for 0.5–0.75 kg/week loss."))
-    elif bmi_v >= 25: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is slightly elevated. Strength training 2–3x/week combined with a modest deficit is more effective than cardio alone. A loss rate of 0.5 kg/week preserves significantly more lean mass than faster approaches."))
-    elif bmi_v < 18.5: insights.append(("Body Composition", BLUE, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is below the typical range. Prioritise progressive strength training and ensure adequate protein (≥1.6 g/kg/day) and total energy intake. Avoid calorie deficits — focus on building lean mass and strength."))
-    else: insights.append(("Body Composition", GOOD, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is in the normal range. The biggest upgrades now come from cardio fitness and strength, not body weight changes. Use resistance training and aerobic capacity as your primary targets."))
-
-if vo2_v is not None:
-    if vo2_pct < 30: insights.append(("Cardio Fitness", BAD, f"Your VO2max of {vo2_v:.1f} ml/kg/min ({vo2_pct:.0f}th percentile) is in the lowest tier. VO2max is the strongest predictor of all-cause mortality. The good news: it responds quickly. Start with 3–4x 30-min easy aerobic sessions per week. Expect noticeable improvement in 4–6 weeks."))
-    elif vo2_pct < 50: insights.append(("Cardio Fitness", WARN, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is below average. Adding one structured interval session weekly (e.g. 4×4 min hard effort) alongside 2 easy sessions typically produces the fastest improvement over 6–12 weeks."))
-    elif vo2_pct < 75: insights.append(("Cardio Fitness", BLUE, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is above average. To push higher, use 80/20 training — 80% easy effort, 20% hard. Most people accidentally do 50/50, which leads to fatigue without meaningful VO2 adaptation."))
-    else: insights.append(("Cardio Fitness", GOOD, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is excellent. Maintain with 2–3 quality sessions/week. Avoid unplanned breaks over 2 weeks — detraining begins quickly."))
-
-if bio_diff is not None:
-    if bio_diff > 3: insights.append(("Biological Age", BAD, f"Estimated biological age ({bio_v:.1f} yrs) is {bio_diff:.1f} years above calendar age. This is driven by lifestyle factors — most are reversible. Highest-impact levers: sleep consistency, cardio fitness, blood pressure control, and stress management."))
-    elif bio_diff > 0: insights.append(("Biological Age", WARN, f"Estimated biological age ({bio_v:.1f} yrs) is slightly above calendar age ({bio_diff:.1f} yrs). This gap is small and reversible. Focus on the red/amber factors in your factor breakdown."))
-    else: insights.append(("Biological Age", GOOD, f"Estimated biological age ({bio_v:.1f} yrs) is {abs(bio_diff):.1f} yrs below calendar age. This reflects well on your current habits. Maintain them — consistency is what sustains this."))
-
-if exlog:
-    if ex_total_min < 150: insights.append(("Exercise Volume", WARN, f"You're logging {ex_total_min} min/week — {150 - ex_total_min} min short of the WHO 150 min/week guideline. Even small increases (+20 min/week) measurably reduce all-cause mortality and metabolic disease risk."))
-    else: insights.append(("Exercise Volume", GOOD, f"You're meeting WHO guidelines with {ex_total_min} min/week ({ex_kcal_w:.0f} kcal/week). Consider adding strength training if not already included — it's the most underutilised tool for metabolic health and longevity."))
-
-interval_t = "Short intervals (4×4 min hard)" if vo2_pct < 60 else "Tempo run / threshold (25 min)"
-plan_7 = [
-    ("Mon", "Easy cardio (Zone 2)", "35–45 min", "Aerobic base — can hold a conversation"),
-    ("Tue", "Full-body strength", "30–40 min", "Muscle, metabolism, bone density"),
-    ("Wed", "Mobility + light walk", "20–30 min", "Recovery, reduce stiffness"),
-    ("Thu", interval_t, "25–35 min", "Raise VO2max + cardio ceiling"),
-    ("Fri", "Full-body strength", "30–40 min", "Progressive overload + posture"),
-    ("Sat", "Long easy walk / cycle", "50–75 min", "Weekly aerobic volume (easy)"),
-    ("Sun", "Review + plan next week", "10–15 min", "Make progress sustainable"),
-]
-if has_plan and kg_pw is not None:
-    plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Align food plan with weekly goal")
-
-# ── Lokale Custom Flowables ────────────────
-class VGap(Flowable):
-    def __init__(self, h=8):
-        super().__init__(); self._h = h
-    def wrap(self, aw, ah): return aw, self._h
-    def draw(self): pass
-
-class SecHeader(Flowable):
-    def __init__(self, title, subtitle="", accent=None, width=CONTENT_W):
-        super().__init__()
-        self.title = title; self.subtitle = subtitle; self.accent = accent or ACCENT
-        self.w = width; self.h = 46 if subtitle else 36
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv
-        c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-        c.setFillColor(self.accent); c.roundRect(0, 0, 5, self.h, 2, fill=1, stroke=0)
-        c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 13)
-        c.drawString(16, self.h - 22, self.title)
-        if self.subtitle:
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
-            c.drawString(16, 8, self.subtitle[:90])
-
-class MetricCard(Flowable):
-    def __init__(self, metrics, width=CONTENT_W, card_h=66):
-        super().__init__()
-        self.metrics = metrics; self.w = width; self.h = card_h
-        n = max(1, len(metrics))
-        self.card_w = (width - (n - 1) * 6) / n
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; cw = self.card_w; ch = self.h
-        for i, (lbl, val, sub, col_s) in enumerate(self.metrics):
-            col = HexColor(col_s) if isinstance(col_s, str) else col_s
-            x = i * (cw + 6)
-            c.setFillColor(CARD); c.roundRect(x, 0, cw, ch, 8, fill=1, stroke=0)
-            c.setFillColor(col); c.roundRect(x, ch - 4, cw, 4, 2, fill=1, stroke=0)
-            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
-            c.drawString(x + 10, ch - 16, str(lbl).upper()[:22])
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 16)
-            c.drawString(x + 10, ch - 34, str(val)[:18])
-            if sub:
+    # Health score kalkulering
+    score_parts = []
+    if bmi_v is not None:
+        if 18.5 <= bmi_v < 25:   score_parts.append(100)
+        elif 17 <= bmi_v < 27:   score_parts.append(75)
+        elif 15 <= bmi_v < 30:   score_parts.append(50)
+        else:                     score_parts.append(25)
+    if vo2_v is not None:
+        score_parts.append(min(100, int(vo2_pct)))
+    if bio_diff is not None:
+        score_parts.append(max(0, min(100, int(70 - bio_diff * 10))))
+    if ex_total_min:
+        score_parts.append(min(100, int(ex_total_min / 300 * 100)))
+    health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
+    score_col    = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
+    score_label  = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
+    
+    # Radar scores mapping
+    radar = {}
+    radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75  if (bmi_v and 17 <= bmi_v < 27) else 50  if (bmi_v and 15 <= bmi_v < 30) else 25  if bmi_v else 50)
+    radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
+    radar["Bio Age"]   = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
+    radar["Activity"]  = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
+    life = 60
+    for f in factors:
+        try:
+            d = float(f.get("delta", 0))
+            if d < 0: life = min(100, life + 8)
+            elif d > 1: life = max(10, life - 8)
+        except: pass
+    radar["Lifestyle"] = max(0, min(100, life))
+    
+    # Health Levers logikk
+    if vo2_v is not None and vo2_pct < 40:
+        biggest_lever = "Cardio fitness (VO2max)"
+        lever_why = "The single most impactful modifiable longevity factor — and the fastest to improve with training."
+    elif bmi_v is not None and bmi_v >= 30:
+        biggest_lever = "Energy balance + daily movement"
+        lever_why = "A sustainable calorie strategy combined with consistent activity has the highest ROI here."
+    elif bio_diff is not None and bio_diff > 2:
+        biggest_lever = "Sleep + lifestyle fundamentals"
+        lever_why = "Your biological age estimate shows the biggest room for improvement in foundational habits."
+    elif exlog and ex_total_min < 150:
+        biggest_lever = "Exercise volume (reach WHO target)"
+        lever_why = "Even incremental increases from below 150 min/week produce measurable health returns."
+    else:
+        biggest_lever = "Strength training + progressive overload"
+        lever_why = "Your core markers are solid — the next tier of improvement comes from consistent resistance training."
+    
+    # Insights generering
+    insights = []
+    if bmi_v is not None:
+        if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps. Avoid aggressive cuts — they accelerate muscle loss and reduce long-term adherence. Aim for 0.5–0.75 kg/week loss."))
+        elif bmi_v >= 25: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is slightly elevated. Strength training 2–3x/week combined with a modest deficit is more effective than cardio alone. A loss rate of 0.5 kg/week preserves significantly more lean mass than faster approaches."))
+        elif bmi_v < 18.5: insights.append(("Body Composition", BLUE, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is below the typical range. Prioritise progressive strength training and ensure adequate protein (≥1.6 g/kg/day) and total energy intake. Avoid calorie deficits — focus on building lean mass and strength."))
+        else: insights.append(("Body Composition", GOOD, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is in the normal range. The biggest upgrades now come from cardio fitness and strength, not body weight changes. Use resistance training and aerobic capacity as your primary targets."))
+    
+    if vo2_v is not None:
+        if vo2_pct < 30: insights.append(("Cardio Fitness", BAD, f"Your VO2max of {vo2_v:.1f} ml/kg/min ({vo2_pct:.0f}th percentile) is in the lowest tier. VO2max is the strongest predictor of all-cause mortality. The good news: it responds quickly. Start with 3–4x 30-min easy aerobic sessions per week. Expect noticeable improvement in 4–6 weeks."))
+        elif vo2_pct < 50: insights.append(("Cardio Fitness", WARN, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is below average. Adding one structured interval session weekly (e.g. 4×4 min hard effort) alongside 2 easy sessions typically produces the fastest improvement over 6–12 weeks."))
+        elif vo2_pct < 75: insights.append(("Cardio Fitness", BLUE, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is above average. To push higher, use 80/20 training — 80% easy effort, 20% hard. Most people accidentally do 50/50, which leads to fatigue without meaningful VO2 adaptation."))
+        else: insights.append(("Cardio Fitness", GOOD, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is excellent. Maintain with 2–3 quality sessions/week. Avoid unplanned breaks over 2 weeks — detraining begins quickly."))
+    
+    if bio_diff is not None:
+        if bio_diff > 3: insights.append(("Biological Age", BAD, f"Estimated biological age ({bio_v:.1f} yrs) is {bio_diff:.1f} years above calendar age. This is driven by lifestyle factors — most are reversible. Highest-impact levers: sleep consistency, cardio fitness, blood pressure control, and stress management."))
+        elif bio_diff > 0: insights.append(("Biological Age", WARN, f"Estimated biological age ({bio_v:.1f} yrs) is slightly above calendar age ({bio_diff:.1f} yrs). This gap is small and reversible. Focus on the red/amber factors in your factor breakdown."))
+        else: insights.append(("Biological Age", GOOD, f"Estimated biological age ({bio_v:.1f} yrs) is {abs(bio_diff):.1f} yrs below calendar age. This reflects well on your current habits. Maintain them — consistency is what sustains this."))
+    
+    if exlog:
+        if ex_total_min < 150: insights.append(("Exercise Volume", WARN, f"You're logging {ex_total_min} min/week — {150 - ex_total_min} min short of the WHO 150 min/week guideline. Even small increases (+20 min/week) measurably reduce all-cause mortality and metabolic disease risk."))
+        else: insights.append(("Exercise Volume", GOOD, f"You're meeting WHO guidelines with {ex_total_min} min/week ({ex_kcal_w:.0f} kcal/week). Consider adding strength training if not already included — it's the most underutilised tool for metabolic health and longevity."))
+    
+    interval_t = "Short intervals (4×4 min hard)" if vo2_pct < 60 else "Tempo run / threshold (25 min)"
+    plan_7 = [
+        ("Mon", "Easy cardio (Zone 2)", "35–45 min", "Aerobic base — can hold a conversation"),
+        ("Tue", "Full-body strength", "30–40 min", "Muscle, metabolism, bone density"),
+        ("Wed", "Mobility + light walk", "20–30 min", "Recovery, reduce stiffness"),
+        ("Thu", interval_t, "25–35 min", "Raise VO2max + cardio ceiling"),
+        ("Fri", "Full-body strength", "30–40 min", "Progressive overload + posture"),
+        ("Sat", "Long easy walk / cycle", "50–75 min", "Weekly aerobic volume (easy)"),
+        ("Sun", "Review + plan next week", "10–15 min", "Make progress sustainable"),
+    ]
+    if has_plan and kg_pw is not None:
+        plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Align food plan with weekly goal")
+    
+    # ── Lokale Custom Flowables ────────────────
+    class VGap(Flowable):
+        def __init__(self, h=8):
+            super().__init__(); self._h = h
+        def wrap(self, aw, ah): return aw, self._h
+        def draw(self): pass
+    
+    class SecHeader(Flowable):
+        def __init__(self, title, subtitle="", accent=None, width=CONTENT_W):
+            super().__init__()
+            self.title = title; self.subtitle = subtitle; self.accent = accent or ACCENT
+            self.w = width; self.h = 46 if subtitle else 36
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setFillColor(self.accent); c.roundRect(0, 0, 5, self.h, 2, fill=1, stroke=0)
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 13)
+            c.drawString(16, self.h - 22, self.title)
+            if self.subtitle:
                 c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
-                c.drawString(x + 10, ch - 47, str(sub)[:26])
-
-class HealthScoreRing(Flowable):
-    def __init__(self, score, label, color, width=CONTENT_W):
-        super().__init__()
-        self.score = score; self.label = label; self.color = color; self.w = width; self.h = 130
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; cx = self.w / 2; cy = self.h / 2 + 14; R = 46
-        c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
-        frac = self.score / 100.0; steps = max(2, int(frac * 72))
-        for i in range(steps):
-            a1 = math.pi / 2 - (i / 72) * 2 * math.pi
-            a2 = math.pi / 2 - ((i + 1) / 72) * 2 * math.pi
-            c.setStrokeColor(self.color); c.setLineWidth(13)
-            c.line(cx + R * math.cos(a1), cy + R * math.sin(a1), cx + R * math.cos(a2), cy + R * math.sin(a2))
-        c.setFillColor(self.color); c.setFont("Helvetica-Bold", 28)
-        c.drawCentredString(cx, cy + 6, str(self.score))
-        c.setFillColor(MUTED); c.setFont("Helvetica", 8)
-        c.drawCentredString(cx, cy - 8, "/ 100")
-        c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 10)
-        c.drawCentredString(cx, cy - 22, self.label)
-        dims = list(radar.items()); dw = self.w / len(dims)
-        for j, (dim, sc) in enumerate(dims):
-            dx = j * dw + dw / 2; dy = 10
-            dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
-            c.setFillColor(CARD2); c.roundRect(j * dw + 2, 2, dw - 4, 24, 4, fill=1, stroke=0)
-            c.setFillColor(dc); c.setFont("Helvetica-Bold", 9); c.drawCentredString(dx, dy + 8, str(sc))
-            c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawCentredString(dx, dy, dim)
-
-class BMIScale(Flowable):
-    def __init__(self, bmi_val, width=CONTENT_W):
-        super().__init__()
-        self.bmi = bmi_val; self.w = width; self.h = 100
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; bmi = self.bmi; w = self.w
-        c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-        col = bmi_color(bmi)
-        c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 62, f"{bmi:.1f}")
-        c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 52, "BMI")
-        cat = ("Underweight" if bmi < 18.5 else "Normal weight" if bmi < 25 else "Overweight" if bmi < 30 else "Obese")
-        c.setFillColor(col); c.setFont("Helvetica-Bold", 9); c.drawString(14, 39, cat)
-        SMAX = 45.0; bx = 14; by = 18; bh = 13; bw = w - 28
-        segs = [(0,18.5,"#3B82F6","Underweight"),(18.5,25,"#22C55E","Normal"),(25,30,"#F59E0B","Overweight"),(30,45,"#EF4444","Obese")]
-        for i, (s, e, cl, lbl) in enumerate(segs):
-            sx = bx + (s/SMAX)*bw; sw = ((e-s)/SMAX)*bw
-            c.setFillColor(HexColor(cl))
-            if i == 0: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx+3,by,sw-3,bh,fill=1,stroke=0)
-            elif i == len(segs)-1: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx,by,sw-3,bh,fill=1,stroke=0)
-            else: c.rect(sx,by,sw,bh,fill=1,stroke=0)
-            c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
-            c.drawCentredString(sx+sw/2, by+4, lbl)
-        mx = bx + min(1.0, bmi/SMAX)*bw
-        c.setStrokeColor(white); c.setLineWidth(1.5); c.line(mx, by-2, mx, by+bh+2)
-        c.setFillColor(white); path = c.beginPath(); path.moveTo(mx, by+bh+9); path.lineTo(mx-5, by+bh+2); path.lineTo(mx+5, by+bh+2); path.close()
-        c.drawPath(path, fill=1, stroke=0)
-        for lbl, pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
-            c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + (pos/SMAX)*bw, by-8, lbl)
-
-class VO2Visual(Flowable):
-    def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
-        super().__init__()
-        self.vo2 = vo2_val; self.pct = float(percentile or 0); self.rat = rating; self.w = width; self.h = 90
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; w = self.w; pct = self.pct
-        col = vo2_color(pct)
-        c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-        c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 56, f"{self.vo2:.1f}")
-        c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 46, "ml / kg / min")
-        c.setFillColor(col); c.setFont("Helvetica-Bold", 10); c.drawString(14, 32, str(self.rat or "—"))
-        c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 20, "Rating")
-        bx = w*0.44; bw2 = w*0.51; bh = 13; by = 48
-        c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(bx, by+bh+6, "POPULATION PERCENTILE")
-        c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
-        c.setFillColor(col); c.roundRect(bx, by, max(8, (pct/100)*bw2), bh, 4, fill=1, stroke=0)
-        c.setFillColor(col); c.setFont("Helvetica-Bold", 12); c.drawRightString(bx+bw2, by-14, f"{pct:.0f}th percentile")
-        zones = [(0,20,"#EF4444"),(20,40,"#F59E0B"),(40,60,"#3B82F6"),(60,80,"#22C55E"),(80,100,"#10B981")]
-        sz_y = 18; sz_h = 7
-        for zs, ze, zc in zones:
-            c.setFillColor(HexColor(zc)); c.rect(bx + (zs/100)*bw2, sz_y, ((ze-zs)/100)*bw2, sz_h, fill=1, stroke=0)
-        c.setStrokeColor(white); c.setLineWidth(1.5); nx = bx + (pct/100)*bw2; c.line(nx, sz_y-2, nx, sz_y+sz_h+2)
-        zlabels = ["Low","Below avg","Average","Good","Excellent"]
-        for j, (zl, (zs, ze, _)) in enumerate(zip(zlabels, zones)):
-            c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + ((zs+ze)/200)*bw2, sz_y-8, zl)
-
-class RadarChart(Flowable):
-    def __init__(self, scores_dict, width=CONTENT_W):
-        super().__init__()
-        self.scores = scores_dict; self.w = width; self.h = 165
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; cx = self.w/2; cy = self.h/2 + 10; R = 58
-        labels = list(self.scores.keys()); vals = [self.scores[k]/100.0 for k in labels]; n = len(labels)
-        def pt(i, r): ang = math.pi/2 + 2*math.pi*i/n; return cx + r*math.cos(ang), cy + r*math.sin(ang)
-        for ring in [0.25, 0.5, 0.75, 1.0]:
-            pts = [pt(i, ring*R) for i in range(n)]
-            c.setStrokeColor(STROKE); c.setLineWidth(0.5); path = c.beginPath(); path.moveTo(*pts[0])
-            for p in pts[1:]: path.lineTo(*p)
-            path.close(); c.drawPath(path, fill=0, stroke=1)
-        for i in range(n):
-            ox, oy = pt(i, R); c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(cx, cy, ox, oy)
-        poly = [pt(i, vals[i]*R) for i in range(n)]; c.setFillColor(ACCENT); path = c.beginPath(); path.moveTo(*poly[0])
-        for p in poly[1:]: path.lineTo(*p)
-        path.close(); c.setFillAlpha(0.25); c.drawPath(path, fill=1, stroke=0); c.setFillAlpha(1.0)
-        c.setStrokeColor(ACCENT); c.setLineWidth(1.5); c.drawPath(path, fill=0, stroke=1)
-        for i, (lbl, val) in enumerate(zip(labels, vals)):
-            px, py = pt(i, val*R); c.setFillColor(ACCENT); c.circle(px, py, 3.5, fill=1, stroke=0)
-            lx, ly = pt(i, R+15); sc = int(val*100)
-            dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
-            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 7.5); c.drawCentredString(lx, ly+4, lbl)
-            c.setFillColor(dc); c.setFont("Helvetica-Bold", 8.5); c.drawCentredString(lx, ly-6, str(sc))
-
-class BioAgeBar(Flowable):
-    def __init__(self, bio_val, chron_val, width=CONTENT_W):
-        super().__init__()
-        self.bio = bio_val; self.chron = chron_val; self.w = width; self.h = 72
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; w = self.w; diff = self.bio - self.chron; col = bio_color(diff)
-        c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-        c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 38, f"{self.bio:.1f}")
-        c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 28, "Biological age")
-        c.setFillColor(col); c.setFont("Helvetica-Bold", 8.5); c.drawString(14, 14, f"{abs(diff):.1f} yrs {'younger' if diff<0 else 'older'}")
-        c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(w*0.35, 8, w*0.35, self.h-8)
-        bx = w*0.38; bw2 = w*0.57; max_age = max(self.bio, self.chron)*1.3
-        c.setFillColor(MUTED); c.setFont("Helvetica", 7)
-        c.drawString(bx, self.h-16, f"Calendar age:   {self.chron:.0f} yrs")
-        c.drawString(bx, self.h-28, f"Biological age: {self.bio:.1f} yrs")
-        for j, (val, lbl2, cl) in enumerate([(self.chron, "Calendar", MUTED), (self.bio, "Biological", col)]):
-            bar_y = 14 + j*16; c.setFillColor(STROKE); c.roundRect(bx, bar_y, bw2, 8, 3, fill=1, stroke=0)
-            c.setFillColor(cl); c.roundRect(bx, bar_y, (val/max_age)*bw2, 8, 3, fill=1, stroke=0)
-
-class FactorBars(Flowable):
-    def __init__(self, factors, width=CONTENT_W):
-        super().__init__()
-        self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta", 0))), reverse=True)[:8]
-        self.w = width; self.h = len(self.factors)*21 + 12
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-        bx = self.w*0.42; bw2 = self.w*0.44; row = 21
-        for i, f in enumerate(self.factors):
-            y = self.h - 14 - i*row; delta = float(f.get("delta", 0))
-            cl = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
-            frac = min(abs(delta)/8.0, 1.0)
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(10, y-4, str(f.get("label", ""))[:30])
-            c.setFillColor(STROKE); c.roundRect(bx, y-4, bw2, 9, 2, fill=1, stroke=0)
-            if frac > 0: c.setFillColor(HexColor(cl)); c.roundRect(bx, y-4, frac*bw2, 9, 2, fill=1, stroke=0)
-            c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 7.5); c.drawRightString(self.w-6, y-4, f"{delta:+.1f} yrs")
-
-class CalorieBar(Flowable):
-    def __init__(self, maintenance, recommended, kg_per_week, width=CONTENT_W):
-        super().__init__()
-        self.maint = maintenance; self.rec = recommended; self.rate = kg_per_week; self.w = width; self.h = 88
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; delta = self.rec - self.maint
-        col = "#22C55E" if delta < 0 else "#3B82F6" if delta > 0 else "#94A3B8"
-        lbl = "Deficit" if delta < 0 else "Surplus" if delta > 0 else "Maintenance"
-        c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 10, fill=1, stroke=0)
-        cw3 = (self.w - 16) / 3
-        for j, (title, val, cl) in enumerate([("MAINTENANCE", f"{self.maint:.0f}", "#94A3B8"), ("RECOMMENDED", f"{self.rec:.0f}", col), (lbl.upper(), f"{delta:+.0f} kcal", col)]):
-            x = 8 + j*cw3; c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 15); c.drawString(x+4, 50, val)
-            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(x+4, 40, "kcal/day" if j < 2 else "per day"); c.drawString(x+4, self.h-14, title)
-            if j < 2: c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(x+cw3+1, 10, x+cw3+1, self.h-6)
-        bx = 8; by = 18; bw2 = self.w-16
-        c.setFillColor(STROKE); c.roundRect(bx, by, bw2, 9, 3, fill=1, stroke=0)
-        c.setFillColor(HexColor(col)); c.roundRect(bx, by, int(min(1.0, abs(delta) / max(1, self.maint) * 5)*bw2), 9, 3, fill=1, stroke=0)
-        if self.rate is not None: c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold", 8); c.drawRightString(self.w-10, 6, f"{self.rate:+.2f} kg/week")
-
-class MilestoneRow(Flowable):
-    def __init__(self, week, weight, focus, progress_pct, col_s, is_last, width=CONTENT_W):
-        super().__init__()
-        self.week=week; self.weight=weight; self.focus=focus; self.prog=progress_pct; self.col_s=col_s; self.is_last=is_last; self.w=width; self.h=46
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; col = HexColor(self.col_s)
-        if not self.is_last: c.setStrokeColor(STROKE); c.setLineWidth(1); c.line(14,0,14,8)
-        c.setFillColor(col); c.circle(14,34,12,fill=1,stroke=0); c.setFillColor(white); c.setFont("Helvetica-Bold",8); c.drawCentredString(14,30,str(self.week))
-        c.setFillColor(CARD); c.roundRect(32,10,self.w-36,34,6,fill=1,stroke=0); c.setFillColor(col); c.roundRect(32,40,self.w-36,4,2,fill=1,stroke=0)
-        c.setFillColor(col); c.setFont("Helvetica-Bold",13); c.drawString(42,27,f"{self.weight:.1f} kg")
-        c.setFillColor(MUTED); c.setFont("Helvetica",7.5); c.drawString(42,16,str(self.focus)[:38])
-        bx=self.w-88; bw2=78
-        c.setFillColor(STROKE); c.roundRect(bx,17,bw2,6,2,fill=1,stroke=0); c.setFillColor(col); c.roundRect(bx,17,self.prog/100*bw2,6,2,fill=1,stroke=0)
-        c.setFillColor(MUTED); c.setFont("Helvetica",6); c.drawRightString(bx+bw2,11,f"{self.prog:.0f}%")
-
-class InsightBlock(Flowable):
-    def __init__(self, title, text, color, width=CONTENT_W):
-        super().__init__()
-        self.title = title; self.text = text; self.color = color if isinstance(color, colors.Color) else HexColor(str(color)); self.w = width
-        self._para = Paragraph(f"<b>{title}:</b> {text}", S("_ib", size=8.8, lead=13))
-        _, ph = self._para.wrap(width - 20, 9999); self.h = max(36, ph + 16)
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
-        c.setFillColor(self.color); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-        self._para.drawOn(c, 14, 8)
-
-class ExpertInsightBox(Flowable):
-    def __init__(self, section: str, text: str, width=CONTENT_W):
-        super().__init__()
-        self.w = width
-        self._header = Paragraph(
-            f'<b>🔬 EXPERT INSIGHT — {section.upper()}</b>',
-            S(f"_ei_h_{abs(hash(text))}", size=7.5, lead=11, color=WARN, bold=True)
-        )
-        self._body = Paragraph(text, S(f"_ei_b_{abs(hash(text))}", size=8.8, lead=14, color=TEXT))
-        _, hh = self._header.wrap(width - 24, 9999)
-        _, bh = self._body.wrap(width - 24, 9999)
-        self.h = hh + bh + 30
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv
-        c.setFillColor(HexColor("#120F00"))
-        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-        c.setStrokeColor(WARN); c.setLineWidth(1.0)
-        c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
-        c.setFillColor(WARN); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-        self._header.drawOn(c, 14, self.h - 18)
-        self._body.drawOn(c, 14, 8)
-
-class ActionableMilestoneBox(Flowable):
-    def __init__(self, steps: list, width=CONTENT_W):
-        super().__init__()
-        self.w = width
-        bullet_html = "".join(f"→  {s}<br/>" for s in steps)
-        self._header = Paragraph(
-            '<b>🎯 ACTIONABLE MILESTONE — YOUR NEXT 4 WEEKS</b>',
-            S(f"_am_h_{abs(hash(bullet_html))}", size=7.5, lead=11, color=ACCENT, bold=True)
-        )
-        self._body = Paragraph(bullet_html, S(f"_am_b_{abs(hash(bullet_html))}", size=8.8, lead=15, color=TEXT))
-        _, hh = self._header.wrap(width - 24, 9999)
-        _, bh = self._body.wrap(width - 24, 9999)
-        self.h = hh + bh + 30
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv
-        c.setFillColor(HexColor("#00100E"))
-        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-        c.setStrokeColor(ACCENT); c.setLineWidth(1.0)
-        c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
-        c.setFillColor(ACCENT); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-        self._header.drawOn(c, 14, self.h - 18)
-        self._body.drawOn(c, 14, 8)
-
-class CompoundingEffectBox(Flowable):
-    def __init__(self, width=CONTENT_W):
-        super().__init__()
-        self.w = width
-        body_html = (
-            "<b>Health is compound interest.</b> A 1% weekly improvement in sleep quality, "
-            "training load, or nutrition precision compounds to a <b>52% total gain over one year.</b> "
-            "The habits you establish today are not just today's result — they are the foundation "
-            "every future week builds upon. Small, consistent actions have disproportionate long-term returns. "
-            "This is the defining principle of every intervention recommended in this report."
-        )
-        self._header = Paragraph(
-            '<b>📈  THE COMPOUNDING EFFECT — WHY 1% MATTERS</b>',
-            S("_ce_h", size=7.5, lead=11, color=BLUE, bold=True)
-        )
-        self._body = Paragraph(body_html, S("_ce_b", size=8.8, lead=14, color=TEXT))
-        _, hh = self._header.wrap(width - 24, 9999)
-        _, bh = self._body.wrap(width - 24, 9999)
-        self.h = hh + bh + 30
-    def wrap(self, aw, ah): return self.w, self.h
-    def draw(self):
-        c = self.canv
-        c.setFillColor(HexColor("#020810"))
-        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-        c.setStrokeColor(BLUE); c.setLineWidth(1.0)
-        c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
-        c.setFillColor(BLUE); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-        self._header.drawOn(c, 14, self.h - 18)
-        self._body.drawOn(c, 14, 8)
-
-class ExecutiveSummaryCheatSheet(Flowable):
-    def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
-        super().__init__()
-        self.w = width
-        self.stop = stop_items[:3]
-        self.start = start_items[:3]
-        self.maintain = maintain_items[:3]
-        self.h = 235
-    def wrap(self, aw, ah): return self.w, self.h
-    def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
-        c.setFillColor(HexColor(bg_hex))
-        c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
-        c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(1.2)
-        c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
-        c.setFillColor(HexColor(accent_hex))
-        c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
-        c.setFillColor(HexColor(accent_hex)); c.setFont("Helvetica-Bold", 11)
-        c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
-        c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(0.4)
-        c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
-        c.setFillColor(HexColor("#E5E7EB")); c.setFont("Helvetica", 8.2)
-        for i, item in enumerate(items):
-            ty = y + ph - 46 - i * 26
-            c.drawString(x + 12, ty, f"• {str(item)[:46]}")
-    def draw(self):
-        c = self.canv
-        c.setFillColor(HexColor("#080D1A"))
-        c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
-        c.setStrokeColor(ACCENT); c.setLineWidth(1.2)
-        c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
-        c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 13)
-        c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
-        c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
-        c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
-        gap = 8
-        ph = self.h - 48
-        pw = (self.w - gap * 2) / 3
-        self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
-        self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
-        self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
-
-# ── Sidetegningsmal (Topp- og botntekst) ──
-def draw_page(canvas, doc):
-    canvas.saveState()
-    canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
-    canvas.setFillColor(ACCENT); canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
-    canvas.setFillColor(CARD2); canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
-    canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5); canvas.drawString(MARGIN_H, PAGE_H-15, "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL")
-    canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8); canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
-    canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
-    canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5); canvas.drawString(MARGIN_H, 4, "Educational use only — not a medical diagnosis — health-tools.streamlit.app")
-    canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.utcnow().strftime("%Y-%m-%d UTC"))
-    canvas.restoreState()
-
-buf = BytesIO()
-doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN_H, rightMargin=MARGIN_H, topMargin=26*mm, bottomMargin=18*mm)
-story = []
-
-
-# ── SIDA 1: Cover + Dashboard ──
-story.append(VGap(16))
-story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
-story.append(P("Personalised Precision Health Analysis — Powered by Validated Clinical Formulas", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
-story.append(P("Premium Individual Health Report", S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
-
-info_rows = [
-    [P("AGE", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("SEX", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("HEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("WEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("DATE", S("il", size=6.5, color=MUTED, align=TA_CENTER))],
-    [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
-]
-it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
-it.setStyle(TableStyle([
-    ("BACKGROUND", (0,0), (-1,-1), CARD), 
-    ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), 
-    ("BOX", (0,0), (-1,-1), 1, STROKE), 
-    ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), 
-    ("TOPPADDING", (0,0), (-1,-1), 8), 
-    ("BOTTOMPADDING", (0,0), (-1,-1), 8)
-]))
-story.append(it)
-story.append(VGap(8))
-
-story.append(SecHeader("Overall Health Dashboard", subtitle="Composite score across 5 dimensions — for directional guidance only"))
-story.append(VGap(6))
-story.append(HealthScoreRing(health_score, score_label, score_col))
-story.append(VGap(8))
-
-kmetrics = []
-if bmi_v is not None: kmetrics.append(("BMI", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
-if vo2_v is not None: kmetrics.append(("VO2max", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th pct", vo2_col.hexval()))
-if bio_diff is not None: kmetrics.append(("Bio Age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} vs calendar", bio_col.hexval()))
-if cur_kcal and rec_kcal:
-    d_k = int(rec_kcal - cur_kcal)
-    kmetrics.append(("Calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day", "#22C55E" if d_k < 0 else "#3B82F6"))
-if kmetrics:
-    story.append(MetricCard(kmetrics[:4]))
-    story.append(VGap(8))
-
-story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
-story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
-story.append(PageBreak())
-
-# Bygg og returner PDF-bytes
-doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-# return buf.getvalue()  # Fjern kommentaren om denne linja skal brukes utenfor en funksjon
-
-
-# ── PAGE 2: Body Composition ──
-story.append(SecHeader("Body Composition", subtitle="BMI, body fat estimate, and waist-to-hip ratio"))
-story.append(VGap(6))
-
-if bmi_v is not None:
-    story.append(BMIScale(bmi_v))
-    story.append(VGap(8))
-    if bmi_v < 18.5: bmi_text = f"Your BMI of {bmi_v:.1f} is in the underweight range. BMI doesn't distinguish muscle from fat. Prioritise progressive resistance training and ensure adequate calorie and protein intake. Avoid deficits."
-    elif bmi_v < 25: bmi_text = f"Your BMI of {bmi_v:.1f} is in the normal weight range. Focus on building or maintaining strength and cardiovascular capacity."
-    elif bmi_v < 30: bmi_text = f"Your BMI of {bmi_v:.1f} is in the overweight range. Aim for a modest deficit (−300 to −500 kcal/day), 2–3 strength sessions per week, and increased daily step count."
-    else: bmi_text = f"Your BMI of {bmi_v:.1f} is in the obese range. Consistency beats intensity here. Start with achievable habits: daily step target, 2x/week full-body strength, and a sustainable calorie strategy."
-    story.append(P(bmi_text, S("bt", size=9, lead=14, after=8)))
+                c.drawString(16, 8, self.subtitle[:90])
     
-    # ── BMI Expert Insight + Actionable Milestone ──
-    if bmi_v < 18.5:
-        _bmi_insight = (
-            "BMI below 18.5 is associated with increased all-cause mortality and reduced immune function "
-            "(WHO Global Database on Body Mass Index). Priority: achieve positive energy balance and build lean mass "
-            "through progressive resistance training. Evidence supports 1.8–2.2 g protein/kg/day with a 300 kcal/day "
-            "surplus as the optimal starting protocol for underweight individuals."
-        )
-        _bmi_steps = [
-            "Week 1–2: Establish a 300 kcal surplus using your Mifflin-St Jeor TDEE as the baseline",
-            "Week 3–4: Begin 3×/week progressive strength training — compound lifts: squat, press, row",
-            "Monthly target: +0.3 to +0.5 kg/month total weight — this rate strongly favours lean mass gain",
-            "Track: weekly weight + weekly protein intake — both must trend upward simultaneously",
-        ]
-    elif bmi_v < 25:
-        _bmi_insight = (
-            "BMI 18.5–24.9 represents the lowest-risk range for metabolic disease, cardiovascular events, "
-            "and all-cause mortality (Lancet, 2016 meta-analysis of 10.6 million participants). "
-            "Your current body composition is a quantifiable longevity asset. The strategic priority "
-            "now shifts to body recomposition: preserving this BMI while increasing lean-to-fat ratio."
-        )
-        _bmi_steps = [
-            "Week 1–2: Baseline your true TDEE — track calories accurately for 7 days minimum",
-            "Week 3–4: Add 2×/week progressive strength training to shift composition without changing scale weight",
-            "Monthly measure: waist circumference — a superior metabolic risk marker vs. BMI alone",
-            "Annual goal: increase skeletal muscle mass by 0.5–1 kg while maintaining BMI range",
-        ]
-    elif bmi_v < 30:
-        _bmi_insight = (
-            "BMI 25–29.9 is associated with a 20–30% increased risk of type 2 diabetes and cardiovascular "
-            "events vs. normal weight (WHO, 2023). However, a 5–10% body weight reduction substantially "
-            "mitigates this risk. The evidence-based protocol: a modest caloric deficit (−300 to −500 kcal/day) "
-            "combined with resistance training 2–3×/week produces superior fat loss vs. cardio-only approaches."
-        )
-        _bmi_steps = [
-            "Week 1–2: Target a 350–450 kcal/day deficit — produces 0.35–0.45 kg/week loss with minimal muscle loss",
-            "Week 3–4: Add 2 strength sessions/week — resistance training is the primary lean mass preservation tool",
-            "Daily habit: Minimum 8,000 steps — non-exercise activity (NEAT) accounts for up to 25% of your TDEE",
-            "12-week goal: 3–4 kg total loss, waist circumference reduction of 3–5 cm",
-        ]
-    else:
-        _bmi_insight = (
-            "BMI ≥ 30 is a significant modifiable risk factor for 13 cancer types, type 2 diabetes, and "
-            "cardiovascular disease (CDC, 2023). Each sustained 1 kg fat loss is associated with measurable "
-            "improvements in insulin sensitivity, blood pressure, and joint load. The most durable approach "
-            "is a moderate deficit (−400 to −500 kcal/day) combined with increasing daily movement — not "
-            "aggressive restriction, which accelerates muscle loss and reduces long-term adherence."
-        )
-        _bmi_steps = [
-            "Week 1–2: Establish a daily step baseline — target 7,000 steps before adding structured exercise",
-            "Week 3–4: Introduce 2×/week full-body strength training (45 min) — builds metabolic rate long-term",
-            "Nutrition anchor: 400–500 kcal/day deficit targeting 0.5–0.75 kg/week — do not exceed this rate",
-            "Minimum protein: 1.6 g/kg/day — non-negotiable to prevent the fat-free mass loss that slows metabolism",
-        ]
-    story.append(VGap(6))
-    story.append(ExpertInsightBox("Body Composition", _bmi_insight))
-    story.append(VGap(6))
-    story.append(ActionableMilestoneBox(_bmi_steps))
-    story.append(VGap(6))
+    class MetricCard(Flowable):
+        def __init__(self, metrics, width=CONTENT_W, card_h=66):
+            super().__init__()
+            self.metrics = metrics; self.w = width; self.h = card_h
+            n = max(1, len(metrics))
+            self.card_w = (width - (n - 1) * 6) / n
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; cw = self.card_w; ch = self.h
+            for i, (lbl, val, sub, col_s) in enumerate(self.metrics):
+                col = HexColor(col_s) if isinstance(col_s, str) else col_s
+                x = i * (cw + 6)
+                c.setFillColor(CARD); c.roundRect(x, 0, cw, ch, 8, fill=1, stroke=0)
+                c.setFillColor(col); c.roundRect(x, ch - 4, cw, 4, 2, fill=1, stroke=0)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+                c.drawString(x + 10, ch - 16, str(lbl).upper()[:22])
+                c.setFillColor(col); c.setFont("Helvetica-Bold", 16)
+                c.drawString(x + 10, ch - 34, str(val)[:18])
+                if sub:
+                    c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+                    c.drawString(x + 10, ch - 47, str(sub)[:26])
     
-    extra = []
-    if whr_d.get("value"): extra.append(("Waist-to-Hip Ratio", f'{float(whr_d["value"]):.2f} — {whr_d.get("category","")}', "", "#3B82F6"))
-    if bf_d.get("value"): extra.append(("Body Fat % (Navy)", f'{float(bf_d["value"]):.1f}%', "", "#8B5CF6"))
-    if extra:
-        story.append(MetricCard(extra, card_h=56))
-        story.append(VGap(6))
-
-    story.append(P("About BMI: BMI is a population screening tool. It doesn't account for muscle mass, bone density, age, or fat distribution. Use it alongside waist circumference, body fat %, and fitness metrics.", S("bn", size=8, lead=12, color=MUTED, italic=True, after=6)))
-story.append(PageBreak())
-
-# ── PAGE 3: Cardio Fitness ──
-if vo2_v is not None:
-    story.append(SecHeader("Cardio Fitness — VO2max", subtitle="The single strongest predictor of long-term health and all-cause mortality"))
-    story.append(VGap(6))
-    story.append(VO2Visual(vo2_v, vo2_pct, vo2_rat))
-    story.append(VGap(6))
-
-    meta_data = [
-        [P("METHOD", S("ml",size=6.5,color=MUTED,align=TA_CENTER)), P("AGE BAND", S("ml",size=6.5,color=MUTED,align=TA_CENTER)), P("POPULATION MEAN", S("ml",size=6.5,color=MUTED,align=TA_CENTER)), P("YOUR PERCENTILE", S("ml",size=6.5,color=MUTED,align=TA_CENTER))],
-        [P(vo2_meth or "—", S("mv",size=9,bold=True,align=TA_CENTER)), P(vo2_band or "—", S("mv",size=9,bold=True,align=TA_CENTER)), P(f"{vo2_mean:.1f} ml/kg/min" if vo2_mean else "—", S("mv",size=9,bold=True,align=TA_CENTER)), P(f"{vo2_pct:.0f}th", S("mv",size=9,bold=True,color=vo2_col,align=TA_CENTER))],
+    class HealthScoreRing(Flowable):
+        def __init__(self, score, label, color, width=CONTENT_W):
+            super().__init__()
+            self.score = score; self.label = label; self.color = color; self.w = width; self.h = 130
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; cx = self.w / 2; cy = self.h / 2 + 14; R = 46
+            c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
+            frac = self.score / 100.0; steps = max(2, int(frac * 72))
+            for i in range(steps):
+                a1 = math.pi / 2 - (i / 72) * 2 * math.pi
+                a2 = math.pi / 2 - ((i + 1) / 72) * 2 * math.pi
+                c.setStrokeColor(self.color); c.setLineWidth(13)
+                c.line(cx + R * math.cos(a1), cy + R * math.sin(a1), cx + R * math.cos(a2), cy + R * math.sin(a2))
+            c.setFillColor(self.color); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(cx, cy + 6, str(self.score))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+            c.drawCentredString(cx, cy - 8, "/ 100")
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 10)
+            c.drawCentredString(cx, cy - 22, self.label)
+            dims = list(radar.items()); dw = self.w / len(dims)
+            for j, (dim, sc) in enumerate(dims):
+                dx = j * dw + dw / 2; dy = 10
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                c.setFillColor(CARD2); c.roundRect(j * dw + 2, 2, dw - 4, 24, 4, fill=1, stroke=0)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold", 9); c.drawCentredString(dx, dy + 8, str(sc))
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawCentredString(dx, dy, dim)
+    
+    class BMIScale(Flowable):
+        def __init__(self, bmi_val, width=CONTENT_W):
+            super().__init__()
+            self.bmi = bmi_val; self.w = width; self.h = 100
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; bmi = self.bmi; w = self.w
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            col = bmi_color(bmi)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 62, f"{bmi:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 52, "BMI")
+            cat = ("Underweight" if bmi < 18.5 else "Normal weight" if bmi < 25 else "Overweight" if bmi < 30 else "Obese")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 9); c.drawString(14, 39, cat)
+            SMAX = 45.0; bx = 14; by = 18; bh = 13; bw = w - 28
+            segs = [(0,18.5,"#3B82F6","Underweight"),(18.5,25,"#22C55E","Normal"),(25,30,"#F59E0B","Overweight"),(30,45,"#EF4444","Obese")]
+            for i, (s, e, cl, lbl) in enumerate(segs):
+                sx = bx + (s/SMAX)*bw; sw = ((e-s)/SMAX)*bw
+                c.setFillColor(HexColor(cl))
+                if i == 0: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx+3,by,sw-3,bh,fill=1,stroke=0)
+                elif i == len(segs)-1: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx,by,sw-3,bh,fill=1,stroke=0)
+                else: c.rect(sx,by,sw,bh,fill=1,stroke=0)
+                c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
+                c.drawCentredString(sx+sw/2, by+4, lbl)
+            mx = bx + min(1.0, bmi/SMAX)*bw
+            c.setStrokeColor(white); c.setLineWidth(1.5); c.line(mx, by-2, mx, by+bh+2)
+            c.setFillColor(white); path = c.beginPath(); path.moveTo(mx, by+bh+9); path.lineTo(mx-5, by+bh+2); path.lineTo(mx+5, by+bh+2); path.close()
+            c.drawPath(path, fill=1, stroke=0)
+            for lbl, pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
+                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + (pos/SMAX)*bw, by-8, lbl)
+    
+    class VO2Visual(Flowable):
+        def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
+            super().__init__()
+            self.vo2 = vo2_val; self.pct = float(percentile or 0); self.rat = rating; self.w = width; self.h = 90
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; pct = self.pct
+            col = vo2_color(pct)
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 56, f"{self.vo2:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 46, "ml / kg / min")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 10); c.drawString(14, 32, str(self.rat or "—"))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 20, "Rating")
+            bx = w*0.44; bw2 = w*0.51; bh = 13; by = 48
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(bx, by+bh+6, "POPULATION PERCENTILE")
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
+            c.setFillColor(col); c.roundRect(bx, by, max(8, (pct/100)*bw2), bh, 4, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 12); c.drawRightString(bx+bw2, by-14, f"{pct:.0f}th percentile")
+            zones = [(0,20,"#EF4444"),(20,40,"#F59E0B"),(40,60,"#3B82F6"),(60,80,"#22C55E"),(80,100,"#10B981")]
+            sz_y = 18; sz_h = 7
+            for zs, ze, zc in zones:
+                c.setFillColor(HexColor(zc)); c.rect(bx + (zs/100)*bw2, sz_y, ((ze-zs)/100)*bw2, sz_h, fill=1, stroke=0)
+            c.setStrokeColor(white); c.setLineWidth(1.5); nx = bx + (pct/100)*bw2; c.line(nx, sz_y-2, nx, sz_y+sz_h+2)
+            zlabels = ["Low","Below avg","Average","Good","Excellent"]
+            for j, (zl, (zs, ze, _)) in enumerate(zip(zlabels, zones)):
+                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + ((zs+ze)/200)*bw2, sz_y-8, zl)
+    
+    class RadarChart(Flowable):
+        def __init__(self, scores_dict, width=CONTENT_W):
+            super().__init__()
+            self.scores = scores_dict; self.w = width; self.h = 165
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; cx = self.w/2; cy = self.h/2 + 10; R = 58
+            labels = list(self.scores.keys()); vals = [self.scores[k]/100.0 for k in labels]; n = len(labels)
+            def pt(i, r): ang = math.pi/2 + 2*math.pi*i/n; return cx + r*math.cos(ang), cy + r*math.sin(ang)
+            for ring in [0.25, 0.5, 0.75, 1.0]:
+                pts = [pt(i, ring*R) for i in range(n)]
+                c.setStrokeColor(STROKE); c.setLineWidth(0.5); path = c.beginPath(); path.moveTo(*pts[0])
+                for p in pts[1:]: path.lineTo(*p)
+                path.close(); c.drawPath(path, fill=0, stroke=1)
+            for i in range(n):
+                ox, oy = pt(i, R); c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(cx, cy, ox, oy)
+            poly = [pt(i, vals[i]*R) for i in range(n)]; c.setFillColor(ACCENT); path = c.beginPath(); path.moveTo(*poly[0])
+            for p in poly[1:]: path.lineTo(*p)
+            path.close(); c.setFillAlpha(0.25); c.drawPath(path, fill=1, stroke=0); c.setFillAlpha(1.0)
+            c.setStrokeColor(ACCENT); c.setLineWidth(1.5); c.drawPath(path, fill=0, stroke=1)
+            for i, (lbl, val) in enumerate(zip(labels, vals)):
+                px, py = pt(i, val*R); c.setFillColor(ACCENT); c.circle(px, py, 3.5, fill=1, stroke=0)
+                lx, ly = pt(i, R+15); sc = int(val*100)
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 7.5); c.drawCentredString(lx, ly+4, lbl)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold", 8.5); c.drawCentredString(lx, ly-6, str(sc))
+    
+    class BioAgeBar(Flowable):
+        def __init__(self, bio_val, chron_val, width=CONTENT_W):
+            super().__init__()
+            self.bio = bio_val; self.chron = chron_val; self.w = width; self.h = 72
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; diff = self.bio - self.chron; col = bio_color(diff)
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 38, f"{self.bio:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 28, "Biological age")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 8.5); c.drawString(14, 14, f"{abs(diff):.1f} yrs {'younger' if diff<0 else 'older'}")
+            c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(w*0.35, 8, w*0.35, self.h-8)
+            bx = w*0.38; bw2 = w*0.57; max_age = max(self.bio, self.chron)*1.3
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7)
+            c.drawString(bx, self.h-16, f"Calendar age:   {self.chron:.0f} yrs")
+            c.drawString(bx, self.h-28, f"Biological age: {self.bio:.1f} yrs")
+            for j, (val, lbl2, cl) in enumerate([(self.chron, "Calendar", MUTED), (self.bio, "Biological", col)]):
+                bar_y = 14 + j*16; c.setFillColor(STROKE); c.roundRect(bx, bar_y, bw2, 8, 3, fill=1, stroke=0)
+                c.setFillColor(cl); c.roundRect(bx, bar_y, (val/max_age)*bw2, 8, 3, fill=1, stroke=0)
+    
+    class FactorBars(Flowable):
+        def __init__(self, factors, width=CONTENT_W):
+            super().__init__()
+            self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta", 0))), reverse=True)[:8]
+            self.w = width; self.h = len(self.factors)*21 + 12
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            bx = self.w*0.42; bw2 = self.w*0.44; row = 21
+            for i, f in enumerate(self.factors):
+                y = self.h - 14 - i*row; delta = float(f.get("delta", 0))
+                cl = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
+                frac = min(abs(delta)/8.0, 1.0)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(10, y-4, str(f.get("label", ""))[:30])
+                c.setFillColor(STROKE); c.roundRect(bx, y-4, bw2, 9, 2, fill=1, stroke=0)
+                if frac > 0: c.setFillColor(HexColor(cl)); c.roundRect(bx, y-4, frac*bw2, 9, 2, fill=1, stroke=0)
+                c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 7.5); c.drawRightString(self.w-6, y-4, f"{delta:+.1f} yrs")
+    
+    class CalorieBar(Flowable):
+        def __init__(self, maintenance, recommended, kg_per_week, width=CONTENT_W):
+            super().__init__()
+            self.maint = maintenance; self.rec = recommended; self.rate = kg_per_week; self.w = width; self.h = 88
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; delta = self.rec - self.maint
+            col = "#22C55E" if delta < 0 else "#3B82F6" if delta > 0 else "#94A3B8"
+            lbl = "Deficit" if delta < 0 else "Surplus" if delta > 0 else "Maintenance"
+            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 10, fill=1, stroke=0)
+            cw3 = (self.w - 16) / 3
+            for j, (title, val, cl) in enumerate([("MAINTENANCE", f"{self.maint:.0f}", "#94A3B8"), ("RECOMMENDED", f"{self.rec:.0f}", col), (lbl.upper(), f"{delta:+.0f} kcal", col)]):
+                x = 8 + j*cw3; c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 15); c.drawString(x+4, 50, val)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(x+4, 40, "kcal/day" if j < 2 else "per day"); c.drawString(x+4, self.h-14, title)
+                if j < 2: c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(x+cw3+1, 10, x+cw3+1, self.h-6)
+            bx = 8; by = 18; bw2 = self.w-16
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, 9, 3, fill=1, stroke=0)
+            c.setFillColor(HexColor(col)); c.roundRect(bx, by, int(min(1.0, abs(delta) / max(1, self.maint) * 5)*bw2), 9, 3, fill=1, stroke=0)
+            if self.rate is not None: c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold", 8); c.drawRightString(self.w-10, 6, f"{self.rate:+.2f} kg/week")
+    
+    class MilestoneRow(Flowable):
+        def __init__(self, week, weight, focus, progress_pct, col_s, is_last, width=CONTENT_W):
+            super().__init__()
+            self.week=week; self.weight=weight; self.focus=focus; self.prog=progress_pct; self.col_s=col_s; self.is_last=is_last; self.w=width; self.h=46
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; col = HexColor(self.col_s)
+            if not self.is_last: c.setStrokeColor(STROKE); c.setLineWidth(1); c.line(14,0,14,8)
+            c.setFillColor(col); c.circle(14,34,12,fill=1,stroke=0); c.setFillColor(white); c.setFont("Helvetica-Bold",8); c.drawCentredString(14,30,str(self.week))
+            c.setFillColor(CARD); c.roundRect(32,10,self.w-36,34,6,fill=1,stroke=0); c.setFillColor(col); c.roundRect(32,40,self.w-36,4,2,fill=1,stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold",13); c.drawString(42,27,f"{self.weight:.1f} kg")
+            c.setFillColor(MUTED); c.setFont("Helvetica",7.5); c.drawString(42,16,str(self.focus)[:38])
+            bx=self.w-88; bw2=78
+            c.setFillColor(STROKE); c.roundRect(bx,17,bw2,6,2,fill=1,stroke=0); c.setFillColor(col); c.roundRect(bx,17,self.prog/100*bw2,6,2,fill=1,stroke=0)
+            c.setFillColor(MUTED); c.setFont("Helvetica",6); c.drawRightString(bx+bw2,11,f"{self.prog:.0f}%")
+    
+    class InsightBlock(Flowable):
+        def __init__(self, title, text, color, width=CONTENT_W):
+            super().__init__()
+            self.title = title; self.text = text; self.color = color if isinstance(color, colors.Color) else HexColor(str(color)); self.w = width
+            self._para = Paragraph(f"<b>{title}:</b> {text}", S("_ib", size=8.8, lead=13))
+            _, ph = self._para.wrap(width - 20, 9999); self.h = max(36, ph + 16)
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
+            c.setFillColor(self.color); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._para.drawOn(c, 14, 8)
+    
+    class ExpertInsightBox(Flowable):
+        def __init__(self, section: str, text: str, width=CONTENT_W):
+            super().__init__()
+            self.w = width
+            self._header = Paragraph(
+                f'<b>🔬 EXPERT INSIGHT — {section.upper()}</b>',
+                S(f"_ei_h_{abs(hash(text))}", size=7.5, lead=11, color=WARN, bold=True)
+            )
+            self._body = Paragraph(text, S(f"_ei_b_{abs(hash(text))}", size=8.8, lead=14, color=TEXT))
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
+            self.h = hh + bh + 30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#120F00"))
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setStrokeColor(WARN); c.setLineWidth(1.0)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(WARN); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+    
+    class ActionableMilestoneBox(Flowable):
+        def __init__(self, steps: list, width=CONTENT_W):
+            super().__init__()
+            self.w = width
+            bullet_html = "".join(f"→  {s}<br/>" for s in steps)
+            self._header = Paragraph(
+                '<b>🎯 ACTIONABLE MILESTONE — YOUR NEXT 4 WEEKS</b>',
+                S(f"_am_h_{abs(hash(bullet_html))}", size=7.5, lead=11, color=ACCENT, bold=True)
+            )
+            self._body = Paragraph(bullet_html, S(f"_am_b_{abs(hash(bullet_html))}", size=8.8, lead=15, color=TEXT))
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
+            self.h = hh + bh + 30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#00100E"))
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT); c.setLineWidth(1.0)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(ACCENT); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+    
+    class CompoundingEffectBox(Flowable):
+        def __init__(self, width=CONTENT_W):
+            super().__init__()
+            self.w = width
+            body_html = (
+                "<b>Health is compound interest.</b> A 1% weekly improvement in sleep quality, "
+                "training load, or nutrition precision compounds to a <b>52% total gain over one year.</b> "
+                "The habits you establish today are not just today's result — they are the foundation "
+                "every future week builds upon. Small, consistent actions have disproportionate long-term returns. "
+                "This is the defining principle of every intervention recommended in this report."
+            )
+            self._header = Paragraph(
+                '<b>📈  THE COMPOUNDING EFFECT — WHY 1% MATTERS</b>',
+                S("_ce_h", size=7.5, lead=11, color=BLUE, bold=True)
+            )
+            self._body = Paragraph(body_html, S("_ce_b", size=8.8, lead=14, color=TEXT))
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
+            self.h = hh + bh + 30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#020810"))
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setStrokeColor(BLUE); c.setLineWidth(1.0)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(BLUE); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+    
+    class ExecutiveSummaryCheatSheet(Flowable):
+        def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
+            super().__init__()
+            self.w = width
+            self.stop = stop_items[:3]
+            self.start = start_items[:3]
+            self.maintain = maintain_items[:3]
+            self.h = 235
+        def wrap(self, aw, ah): return self.w, self.h
+        def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
+            c.setFillColor(HexColor(bg_hex))
+            c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
+            c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(1.2)
+            c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
+            c.setFillColor(HexColor(accent_hex))
+            c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
+            c.setFillColor(HexColor(accent_hex)); c.setFont("Helvetica-Bold", 11)
+            c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
+            c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(0.4)
+            c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
+            c.setFillColor(HexColor("#E5E7EB")); c.setFont("Helvetica", 8.2)
+            for i, item in enumerate(items):
+                ty = y + ph - 46 - i * 26
+                c.drawString(x + 12, ty, f"• {str(item)[:46]}")
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#080D1A"))
+            c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT); c.setLineWidth(1.2)
+            c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
+            c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 13)
+            c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+            c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
+            gap = 8
+            ph = self.h - 48
+            pw = (self.w - gap * 2) / 3
+            self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
+            self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
+            self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
+    
+    # ── Sidetegningsmal (Topp- og botntekst) ──
+    
+    
+    
+    # ── SIDA 1: Cover + Dashboard ──
+    story.append(VGap(16))
+    story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
+    story.append(P("Personalised Precision Health Analysis — Powered by Validated Clinical Formulas", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
+    story.append(P("Premium Individual Health Report", S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
+    
+    info_rows = [
+        [P("AGE", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("SEX", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("HEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("WEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("DATE", S("il", size=6.5, color=MUTED, align=TA_CENTER))],
+        [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
     ]
-    mt = Table(meta_data, colWidths=[CONTENT_W/4]*4)
-    mt.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,-1), CARD2), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 8), ("BOTTOMPADDING", (0,0), (-1,-1), 8), ("LEFTPADDING", (0,0), (-1,-1), 6)]))
-    story.append(mt)
+    it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
+    it.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,-1), CARD), 
+        ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), 
+        ("BOX", (0,0), (-1,-1), 1, STROKE), 
+        ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), 
+        ("TOPPADDING", (0,0), (-1,-1), 8), 
+        ("BOTTOMPADDING", (0,0), (-1,-1), 8)
+    ]))
+    story.append(it)
     story.append(VGap(8))
-
-    if vo2_pct < 30: vo2_expl = f"A VO2max of {vo2_v:.1f} ml/kg/min places you in the bottom 30% for your age group. Start with 3–4x 30-min easy aerobic sessions per week. Expect noticeable improvement in 4–6 weeks."
-    elif vo2_pct < 50: vo2_expl = f"A VO2max of {vo2_v:.1f} ml/kg/min is below average for your age group. Add one structured interval session weekly (e.g. 4×4 min hard effort) alongside 2 easy sessions."
-    elif vo2_pct < 75: vo2_expl = f"A VO2max of {vo2_v:.1f} ml/kg/min is above average for your age group. Use 80/20 training — 80% easy (conversational) and 20% hard."
-    else: vo2_expl = f"A VO2max of {vo2_v:.1f} ml/kg/min is excellent. Maintain with 2–3 quality sessions per week. Detraining begins after ~10 days of inactivity."
-    story.append(P(vo2_expl, S("ve", size=9, lead=14, after=8)))
-
-    tips = vo2_d.get("tips", [])
-    if tips:
-        story.append(P("Personalised training recommendations:", S("tth", size=9.5, bold=True, color=ACCENT, after=4)))
-        for tip in tips[:5]: story.append(P(f"→  {tip}", S(f"t{id(tip)}", size=8.5, lead=13, color=TEXT, after=3)))
-        
-    # ── VO2max Expert Insight + 4-week protocol ──
-    if vo2_pct < 30:
-        _vo2_insight = (
-            "VO2max below the 30th percentile is associated with a 2–3× higher risk of all-cause mortality "
-            "compared to the top quartile (JAMA, Mandsager et al., 2018). Cardiorespiratory fitness is the "
-            "single strongest modifiable longevity predictor — stronger than smoking cessation in hazard ratio "
-            "terms. Even a modest improvement of 3–5 ml/kg/min reduces mortality risk by 10–15%."
-        )
-        _vo2_steps = [
-            "Week 1: 3×30 min easy aerobic at 60–65% max HR (fully conversational pace) — build the base",
-            "Week 2: Add 1× interval session: 8 rounds of 1 min hard effort / 2 min easy (Norwegian 1-2-1 protocol)",
-            "Week 3: Extend easy sessions to 35 min; maintain interval day unchanged",
-            "Week 4: Reassess resting HR — a 2–4 bpm drop confirms early aerobic adaptation is underway",
-        ]
-    elif vo2_pct < 50:
-        _vo2_insight = (
-            "VO2max in the 30th–50th percentile is the moderate-risk zone where structured interval training "
-            "yields the greatest return. The landmark Wisloff et al. (2009) Norwegian 4×4 protocol study "
-            "demonstrated a 10–15% VO2max increase over 8–12 weeks in individuals at this fitness level. "
-            "This is your single highest-leverage longevity intervention right now."
-        )
-        _vo2_steps = [
-            "Week 1–2: 2 easy aerobic sessions (35 min, Zone 2) + 1 interval session (4×4 min at 85–95% max HR)",
-            "Week 3–4: Increase interval volume to 5×4 min; add a 4th easy Zone 2 session",
-            "Progressive overload rule: Add 5 min to total weekly aerobic volume each week without exception",
-            "Tracking metric: Resting HR — target a 5 bpm reduction over the 8-week block",
-        ]
-    elif vo2_pct < 75:
-        _vo2_insight = (
-            "VO2max in the 50th–75th percentile represents above-average aerobic capacity. Research confirms "
-            "the greatest longevity protection is conferred between the 25th and 75th percentile — meaning "
-            "you have already leveraged a significant proportion of the protective effect. "
-            "The 80/20 polarised training model (Seiler, 2010) is the evidence-based standard at this level."
-        )
-        _vo2_steps = [
-            "Maintain 3–4 aerobic sessions/week — 80% at Zone 2 (120–140 bpm), 20% at threshold or above",
-            "High-quality session: 6×3 min at threshold pace (RPE 7/10) with 2 min active recovery",
-            "Monthly VO2max proxy test: 12-min Cooper Run or sub-max step test — track the trend, not single values",
-            "Detraining prevention: Never exceed 7 consecutive days without aerobic stimulus — losses begin at day 10",
-        ]
-    else:
-        _vo2_insight = (
-            "VO2max above the 75th percentile is associated with a 45% lower all-cause mortality risk vs. "
-            "the bottom quartile (JAMA, 2018). You are already leveraging one of the most powerful longevity "
-            "markers available. Research indicates that maintaining elite cardiorespiratory fitness into your "
-            "60s reduces biological ageing by an estimated 4–8 years vs. sedentary peers."
-        )
-        _vo2_steps = [
-            "Maintain current weekly volume — consistency is the primary driver of retention at elite levels",
-            "Introduce polarised periodisation: alternate high-volume weeks with recovery weeks at 75% normal load",
-            "Annual VO2max test: a decline >1 ml/kg/min/year signals training load adjustment is needed",
-            "Complement with 2×/week strength training — preserves the muscle mass that supports VO2max longevity",
-        ]
+    
+    story.append(SecHeader("Overall Health Dashboard", subtitle="Composite score across 5 dimensions — for directional guidance only"))
     story.append(VGap(6))
-    story.append(ExpertInsightBox("Cardio Fitness — VO2max", _vo2_insight))
-    story.append(VGap(6))
-    story.append(ActionableMilestoneBox(_vo2_steps))
-    story.append(VGap(6))                
+    story.append(HealthScoreRing(health_score, score_label, score_col))
+    story.append(VGap(8))
+    
+    kmetrics = []
+    if bmi_v is not None: kmetrics.append(("BMI", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
+    if vo2_v is not None: kmetrics.append(("VO2max", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th pct", vo2_col.hexval()))
+    if bio_diff is not None: kmetrics.append(("Bio Age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} vs calendar", bio_col.hexval()))
+    if cur_kcal and rec_kcal:
+        d_k = int(rec_kcal - cur_kcal)
+        kmetrics.append(("Calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day", "#22C55E" if d_k < 0 else "#3B82F6"))
+    if kmetrics:
+        story.append(MetricCard(kmetrics[:4]))
+        story.append(VGap(8))
+    
+    story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
+    story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
     story.append(PageBreak())
-
-# ── PAGE 4: Biological Age + Radar ──
-story.append(SecHeader("Biological Age & 5-Dimension Radar", subtitle="Heuristic estimate — use as directional guide, not clinical measure"))
-story.append(VGap(6))
-
-if bio_v is not None and age_f is not None:
-    story.append(BioAgeBar(bio_v, age_f))
-    story.append(VGap(8))
-    if bio_diff > 3: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years above calendar age. Highest-leverage improvements: sleep consistency, cardio fitness, and stress management."
-    elif bio_diff > 0: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years above calendar age. Focus on the red/amber factors in your factor breakdown."
-    else: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {abs(bio_diff):.1f} years below calendar age. This reflects well on your current habits. Maintain the routines that got you here."
-    story.append(P(bio_expl, S("bioe", size=9, lead=14, after=8)))
-
-    if factors:
-        story.append(P("Factor breakdown — what's driving your bio age estimate:", S("fbh", size=9.5, bold=True, color=ACCENT, after=4)))
-        story.append(FactorBars(factors))
-        story.append(VGap(4))
-        story.append(P("Green = factor favourably reducing biological age. Red/amber = factor adding years. Focus on the longest red bars first.", S("fbl", size=7.5, color=MUTED, italic=True, after=8)))
-
-story.append(P("5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)))
-story.append(RadarChart(radar))
-story.append(VGap(4))
-story.append(P("Score 70+ = good. 45–70 = room to improve. Below 45 = priority area.", S("rl", size=7.5, color=MUTED, italic=True, after=4)))
-
-# ── Bio Age Expert Insight ──
-if bio_v is not None and age_f is not None:
-    if bio_diff > 3:
-        _bio_insight = (
-            f"A biological age estimate {bio_diff:.1f} years above calendar age signals that multiple "
-            "lifestyle and physiological factors are accelerating your cellular ageing trajectory. "
-            "The most evidence-supported interventions for biological age reversal: consistent sleep "
-            "(7–9h with fixed schedule), VO2max improvement, and chronic stress reduction. "
-            "Each yields an estimated 1–3 year bio-age reduction over 6–12 months of consistent application."
-        )
-        _bio_steps = [
-            "Sleep protocol: Fixed bed/wake time within ±30 min every day — the single highest-ROI bio-age lever",
-            "Add 1 daily 10-min stress-reduction practice — breathwork or meditation lowers cortisol long-term",
-            "Target VO2max improvement of 5+ ml/kg/min over 12 weeks — see Cardio section for exact protocol",
-            "3-month reassessment: re-measure all input markers to track biological age regression",
-        ]
-    elif bio_diff > 0:
-        _bio_insight = (
-            f"A biological age estimate {bio_diff:.1f} years above calendar age indicates moderate acceleration "
-            "in one or more longevity markers. Research indicates that targeted interventions on 2–3 key "
-            "factors produce faster bio-age regression than attempting broad simultaneous lifestyle change. "
-            "Your factor breakdown above identifies exactly where to focus effort first."
-        )
-        _bio_steps = [
-            "Identify your top 2 red/amber factors from the bar chart above — these are your exclusive focus",
-            "Implement one targeted change per factor this week — compounding begins with single consistent habits",
-            "Track weekly proxies: resting HR, sleep duration, daily step count — the three bio-age proxy markers",
-            "12-week goal: reduce biological age estimate by 1–2 years through targeted factor improvement",
-        ]
-    else:
-        _bio_insight = (
-            f"A biological age estimate {abs(bio_diff):.1f} years below calendar age is a measurable longevity "
-            "advantage. Research indicates individuals with biological age 2+ years below calendar age have "
-            "significantly lower risk of age-related disease onset and maintain higher functional capacity "
-            "later in life. Your current habits represent compound interest working in your favour."
-        )
-        _bio_steps = [
-            "Document your current lifestyle protocols in detail — replicate them consistently to protect this advantage",
-            "Identify the 2 green factors contributing most to your score — safeguard them from lifestyle drift",
-            "Annual re-measurement: biological age is dynamic — monitor annually to detect early regression",
-            "Next tier: target top-quartile VO2max for your age group to further extend this biological advantage",
-        ]
-    story.append(VGap(6))
-    story.append(ExpertInsightBox("Biological Age", _bio_insight))
-    story.append(VGap(6))
-    story.append(ActionableMilestoneBox(_bio_steps))
-    story.append(VGap(8))
-story.append(CompoundingEffectBox())
-story.append(VGap(6))
-story.append(PageBreak())
-
-# ── PAGE 5: Nutrition & Calorie Plan ──
-story.append(SecHeader("Nutrition & Calorie Strategy", subtitle="Energy balance is the foundation of body composition"))
-story.append(VGap(6))
-
-if cur_kcal and rec_kcal:
-    story.append(CalorieBar(cur_kcal, rec_kcal, kg_pw))
-    story.append(VGap(8))
-    d_kcal = int(rec_kcal - cur_kcal)
-    if d_kcal < 0: cal_text = f"A target of {int(rec_kcal)} kcal creates a deficit of {abs(d_kcal)} kcal/day. Expected rate: {abs(kg_pw or 0):.2f} kg/week. Keep protein high to protect muscle."
-    elif d_kcal > 0: cal_text = f"A target of {int(rec_kcal)} kcal creates a surplus of {d_kcal} kcal/day. Expected rate: +{abs(kg_pw or 0):.2f} kg/week. Pair this with progressive strength training."
-    else: cal_text = f"Your target of {int(rec_kcal)} kcal matches estimated maintenance. This supports body recomposition."
-    story.append(P(cal_text, S("ct", size=9, lead=14, after=8)))
-
-    try: wt = float(w_v or 70)
-    except: wt = 70.0
-    protein_g = int(wt * 1.8); fat_g = int(int(rec_kcal) * 0.28 / 9); carb_g = max(0, int((int(rec_kcal) - protein_g*4 - fat_g*9) / 4))
-
-    story.append(P("Suggested daily macro targets", S("mach", size=9.5, bold=True, color=ACCENT, after=4)))
-    macro_data = [
-        [P("MACRO", S("mh",size=7,color=MUTED,bold=True)), P("GRAMS", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("KCAL", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("RATIO", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("KEY ROLE", S("mh",size=7,color=MUTED,bold=True))],
-        [P("Protein", S("pr",size=9,bold=True,color=BLUE)), P(f"{protein_g} g", S("pv",size=9,align=TA_CENTER)), P(f"{protein_g*4}", S("pv",size=9,align=TA_CENTER)), P("~30%", S("pv",size=9,align=TA_CENTER)), P("Muscle repair, satiety, metabolic rate", S("pw",size=8,color=MUTED))],
-        [P("Fat", S("fr",size=9,bold=True,color=WARN)), P(f"{fat_g} g", S("fv",size=9,align=TA_CENTER)), P(f"{fat_g*9}", S("fv",size=9,align=TA_CENTER)), P("~28%", S("fv",size=9,align=TA_CENTER)), P("Hormones, brain, fat-soluble vitamins", S("fw",size=8,color=MUTED))],
-        [P("Carbs", S("cr",size=9,bold=True,color=GOOD)), P(f"{carb_g} g", S("cv",size=9,align=TA_CENTER)), P(f"{carb_g*4}", S("cv",size=9,align=TA_CENTER)), P("~42%", S("cv",size=9,align=TA_CENTER)), P("Training energy, recovery, cognition", S("cw",size=8,color=MUTED))],
-    ]
-    mac_t = Table(macro_data, colWidths=[40*mm,25*mm,22*mm,20*mm,None])
-    mac_t.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 7), ("BOTTOMPADDING", (0,0), (-1,-1), 7), ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP")]))
-    story.append(mac_t); story.append(VGap(8))
-    story.append(P("Macros estimated using Mifflin-St Jeor + standard ratios. Adjust every 2–3 weeks based on actual progress.", S("dn", size=7.5, color=MUTED, italic=True, after=4)))
-else: 
-    story.append(P("Calorie plan not generated.", S("ncp", size=9, color=MUTED, after=8)))
-
-if exlog and ex_act:
-    story.append(VGap(6)); story.append(SecHeader("Exercise Log Summary", accent=BLUE)); story.append(VGap(6))
-    ex_metrics = [("Activity", ex_act[:18], ex_int, "#0EA5A3"), ("Kcal / session", f"{ex_kcal_s:.0f}", "kcal", "#3B82F6"), ("Kcal / week", f"{ex_kcal_w:.0f}", f"{ex_sess}x/week", "#22C55E"), ("Weekly volume", f"{ex_total_min} min", f"{ex_min}min × {ex_sess}", "#F59E0B")]
-    story.append(MetricCard(ex_metrics, card_h=66)); story.append(VGap(4))
-    who_txt = "✓ Meets WHO 150 min/week guidelines" if ex_total_min >= 150 else f"⚠ {150-ex_total_min} min below WHO 150 min/week target"
-    story.append(P(who_txt, S("who", size=8.5, color=HexColor("#22C55E" if ex_total_min >= 150 else "#F59E0B"), after=4)))
-
-# ── Nutrition Expert Insight ──
-if cur_kcal and rec_kcal:
-    _d_kcal_e = int(rec_kcal - cur_kcal)
-    if _d_kcal_e < -600:
-        _nut_insight = (
-            f"A deficit exceeding 600 kcal/day activates adaptive thermogenesis — your metabolic rate "
-            "down-regulates by 20–30% within 2–3 weeks to compensate (Leibel et al., NEJM, 1995). "
-            "Additionally, deficits above 500 kcal/day substantially increase muscle catabolism. "
-            "The evidence-based recommendation: reduce to a 400–500 kcal/day deficit and prioritise "
-            "high protein (1.8–2.2 g/kg) to protect every kilogram of lean mass."
-        )
-        _nut_steps = [
-            "Recalibrate to a 400–500 kcal/day deficit — the sustainable zone for fat loss without metabolic slowdown",
-            "Protein target: 1.8 g per kg bodyweight daily — distribute across 3–4 meals with 30–40g per serving",
-            "Reweigh weekly at identical conditions — adjust calories every 2 weeks based on the observed trend",
-            "Minimum fat intake: 0.8 g/kg/day — below this threshold, hormonal health and fat-soluble vitamins suffer",
-        ]
-    elif _d_kcal_e < 0:
-        _nut_insight = (
-            f"Your deficit of {abs(_d_kcal_e)} kcal/day aligns with evidence-based fat loss guidelines "
-            "(ACSM Position Stand). At this rate, lean mass preservation is maximised while producing "
-            "consistent fat loss. Protein at 1.8 g/kg/day combined with resistance training ensures "
-            "the weight lost is predominantly fat — the critical distinction for long-term body composition."
-        )
-        _nut_steps = [
-            "Protein first: Build every meal around a 30–40g protein source before adding carbohydrates or fats",
-            "Calorie cycling: +500 kcal on resistance training days, −300 kcal on rest days — same weekly average",
-            "Satiety protocol: Target 25–35g fibre/day and 35 ml water/kg bodyweight to reduce adherence friction",
-            "Stall protocol: If weight loss stops for 10+ days, reduce by 150 kcal only — avoid dramatic adjustments",
-        ]
-    elif _d_kcal_e > 0:
-        _nut_insight = (
-            f"A controlled surplus of {_d_kcal_e} kcal/day is the evidence-based approach for lean muscle "
-            "accretion (Barakat et al., Strength and Conditioning Journal, 2020). Aggressive surpluses "
-            "(>500 kcal/day) result in disproportionate fat gain rather than additional muscle tissue. "
-            "The 1.8–2.2 g/kg protein target is non-negotiable — muscle protein synthesis requires adequate "
-            "substrate independent of total calorie intake."
-        )
-        _nut_steps = [
-            "Protein timing: Consume 30–40g protein within 90 minutes post-resistance training session",
-            "Carbohydrate strategy: Prioritise carbs around training windows — they fuel the performance that drives growth",
-            "Monthly audit: If gaining >0.4 kg/week, reduce surplus by 150 kcal — excess gain is fat, not muscle",
-            "Sleep 7–9h nightly — 70% of growth hormone (the primary muscle repair signal) is secreted during deep sleep",
-        ]
-    else:
-        _nut_insight = (
-            "Maintenance calories optimally support body recomposition — simultaneously losing fat and gaining "
-            "muscle. This is the most underrated strategy in body composition science: slower than aggressive "
-            "cutting or bulking, but producing the most favourable long-term composition change for most "
-            "individuals at an intermediate fitness level (Barakat et al., 2020)."
-        )
-        _nut_steps = [
-            "Resistance training 3×/week is the essential driver of recomposition — nutrition alone is insufficient",
-            "Protein at 2.0 g/kg/day — higher than for deficit or surplus phases due to dual anabolic demand",
-            "Track body fat percentage, not scale weight — the scale is an unreliable proxy during recomposition",
-            "12-week commitment: Body recomposition results require 8–12 weeks before becoming objectively measurable",
-        ]
-    story.append(VGap(6))
-    story.append(ExpertInsightBox("Nutrition & Calorie Strategy", _nut_insight))
-    story.append(VGap(6))
-    story.append(ActionableMilestoneBox(_nut_steps))
-    story.append(VGap(6))
-story.append(PageBreak())
-
-# ── PAGE 6: Weight Roadmap ──
-story.append(SecHeader("Weight Goal Roadmap", subtitle="Projected milestones toward your target"))
-story.append(VGap(6))
-if milestones:
-    try: start_w = float(w_v or 70)
-    except: start_w = 70.0
-    try: end_w = float(milestones[-1].get("Projected weight (kg)", start_w))
-    except: end_w = start_w
-    total_change = abs(end_w - start_w)
-    m_cols = ["#3B82F6", "#6366F1", "#0EA5A3", "#22C55E"]
-    story.append(P(f"Starting weight: {start_w:.1f} kg → Target: {end_w:.1f} kg", S("mrt", size=9.5, bold=True, color=TEXT, after=6)))
-    for i, m in enumerate(milestones):
-        pw = float(m.get("Projected weight (kg)", start_w))
-        prog = min(100, max(0, int(abs(pw - start_w) / total_change * 100))) if total_change > 0.01 else 100
-        story.append(MilestoneRow(m.get("Week", i + 1), pw, str(m.get("Focus", "")), prog, m_cols[i % len(m_cols)], (i == len(milestones) - 1)))
-    story.append(VGap(10))
-else:
-    story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
-
-# ── PAGE 7: Personalised Training Programme ──
-story.append(PageBreak())    
-story.append(SecHeader("Personalised Training Programme", subtitle="Evidence-based weekly plan built around your selected activities and goal"))
-story.append(VGap(6))
-
-# ── Pull values safely from report data ──
-plan_d = report.get("plan") or {}
-_goal       = plan_d.get("goal", "Body Recomposition")
-_activities = plan_d.get("selected_activities") or report.get("selected_activities", [])
-_weeks      = plan_d.get("plan_weeks", 12)
-_protein_on = plan_d.get("protein_focus", True)
-
-# ── Activity → category map ──
-_strength_acts = {"Strength training (weights)", "Boxing / Martial arts", "Rock climbing / Bouldering", "Hiking (incline)"}
-_cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)", "Swimming", "Rowing (moderate/vigorous)", "HIIT", "Elliptical", "Stair climbing / Stairmaster"}
-_sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
-_low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates", "Housework / Light chores", "Gardening / Heavy yard work"}
-
-_has_strength = bool(_activities and _strength_acts & set(_activities))
-_has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
-_has_sport    = bool(_activities and _sport_acts    & set(_activities))
-_has_low      = bool(_activities and _low_acts      & set(_activities))
-
-_sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
-_sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
-_sel_sport    = [a for a in _activities if a in _sport_acts]
-_sel_low      = [a for a in _activities if a in _low_acts]
-
-# ── Konstantar for training-seksjonen ──
-_WHITE      = HexColor("#FFFFFF")
-_ROW_A      = HexColor("#1E2A3A")
-_ROW_B      = HexColor("#162030")
-_HEADER_BG  = HexColor("#0F1923")
-_PHASE1_BG  = HexColor("#0F2A1E")
-_PHASE2_BG  = HexColor("#0F1F3A")
-_PHASE3_BG  = HexColor("#1A0F3A")
-_TEXT_LIGHT = HexColor("#E2E8F0")
-_TEXT_DIM   = HexColor("#94A3B8")
-_ACCENT_G   = HexColor("#22C55E")
-_ACCENT_B   = HexColor("#38BDF8")
-_ACCENT_P   = HexColor("#A78BFA")
-_ACCENT_R   = HexColor("#F87171")
-_DELOAD_BG  = HexColor("#2A2510")
-
-# ── Intensitetsfargar ──
-_intensity_colors = {
-    "Light":          HexColor("#14532D"),
-    "Light–Moderate": HexColor("#166534"),
-    "Moderate":       HexColor("#1E3A5F"),
-    "Moderate–Hard":  HexColor("#3B1F6E"),
-    "Hard":           HexColor("#7F1D1D"),
-    "—":              _ROW_B,
-}
-
-# ── Goal-based parameter table ──
-_goal_params = {
-    "Lose fat":               {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
-                               "phase1": "Metabolic Reset (Wk 1–3)", "phase2": "Progressive Overload (Wk 4–8)",
-                               "phase3": "Intensification (Wk 9–12)", "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass."},
-    "Build muscle (bulk)":    {"deficit": +350, "protein": "2.0 g/kg", "strength_d": 4, "cardio_d": 2, "rest_d": 1,
-                               "phase1": "Neural Adaptation (Wk 1–3)", "phase2": "Hypertrophy Block (Wk 4–8)",
-                               "phase3": "Volume Peak (Wk 9–12)", "note": "Aim for 0.25–0.5 kg/week weight gain. Calorie surplus supports muscle protein synthesis."},
-    "Body Recomposition":     {"deficit": 0,    "protein": "2.4 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
-                               "phase1": "Foundation (Wk 1–3)", "phase2": "Recomposition Block (Wk 4–8)",
-                               "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
-}
-
-_gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
-
-# ── Goal overview box ──
-story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  Calorie adjustment: {_gp['deficit']:+d} kcal/day  ·  Target protein: {_gp['protein']}", S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
-story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
-story.append(VGap(4))
-
-# ── Phase Timeline Bar ──
-story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
-
-_phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
-_phase_rows = [
-    [P("PHASE 1", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
-     P("PHASE 2", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
-     P("PHASE 3", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True))],
-    [P(_gp["phase1"], S("pv", size=9, bold=True, align=TA_CENTER)),
-     P(_gp["phase2"], S("pv", size=9, bold=True, align=TA_CENTER)),
-     P(_gp["phase3"], S("pv", size=9, bold=True, align=TA_CENTER))],
-    [P("Foundation, habit formation\nand movement quality",  S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
-     P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
-     P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
-]
-_pt = Table(_phase_rows, colWidths=_phase_cols)
-_pt.setStyle(TableStyle([
-    ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
-    ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
-    ("BACKGROUND",    (2,0), (2,-1), _PHASE3_BG),
-    ("TEXTCOLOR",     (0,0), (-1,0), _TEXT_DIM),
-    ("TEXTCOLOR",     (0,1), (-1,1), _TEXT_LIGHT),
-    ("TEXTCOLOR",     (0,2), (-1,2), _TEXT_DIM),
-    ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-    ("INNERGRID",     (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-    ("TOPPADDING",    (0,0), (-1,-1), 7),
-    ("BOTTOMPADDING", (0,0), (-1,-1), 7),
-    ("LEFTPADDING",   (0,0), (-1,-1), 6),
-    ("RIGHTPADDING",  (0,0), (-1,-1), 6),
-]))
-story.append(_pt)
-story.append(VGap(10))
-
-
-# ── Weekly Schedule Table ──
-story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
-
-_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
-_plan = _build_day_plan(
-    _goal,
-    _has_strength,
-    _has_cardio,
-    _has_sport,
-    _has_low,
-    _sel_strength,
-    _sel_cardio,
-    _sel_sport,
-    _sel_low
-)
-
-_sched_header = [
-    P("DAY",          S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("SESSION",      S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("ACTIVITY",     S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("DURATION",     S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("INTENSITY",    S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("COACHING NOTE", S("th", size=7.5, bold=True, color=MUTED)),
-]
-
-_sched_rows = [_sched_header]
-for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
-    _sched_rows.append([
-        P(day,   S(f"td{i}", size=8.5, bold=True, color=TEXT)),
-        P(stype, S(f"ts{i}", size=8,   color=HexColor("#1D4ED8"))),
-        P(act if act != "—" else "Rest", S(f"ta{i}", size=8, color=TEXT)),
-        P(dur,   S(f"tdu{i}", size=8,  align=TA_CENTER, color=MUTED)),
-        P(inten, S(f"ti{i}",  size=7.5, bold=True, align=TA_CENTER, color=TEXT)),
-        P(note,  S(f"tn{i}",  size=7.5, lead=11, color=MUTED)),
-    ])
-
-_col_w = [CONTENT_W * w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
-_st = Table(_sched_rows, colWidths=_col_w)
-_ts = [
-    ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-    ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-    ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-    ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-    ("TOPPADDING",    (0,0),  (-1,-1), 6),
-    ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
-    ("LEFTPADDING",   (0,0),  (-1,-1), 5),
-    ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
-    ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-    ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),   # dag-kolonne
-    ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_B),     # session-kolonne
-    ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_LIGHT),   # aktivitet
-    ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # varighet
-    ("TEXTCOLOR",     (4,1),  (4,-1),  _WHITE),        # intensitet — alltid kvit tekst
-    ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # notat
-]
-
-for i, (_, _, _, _, inten, _) in enumerate(_plan):
-    _bg = _intensity_colors.get(inten, _ROW_B)
-    row_bg = _ROW_A if i % 2 == 0 else _ROW_B
-    _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
-    _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
-    _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
-    _ts.append(("TEXTCOLOR",  (4, i+1), (4, i+1), _WHITE))
-
-_st.setStyle(TableStyle(_ts))
-story.append(_st)
-story.append(VGap(8))
-
-# ── Intensity Legend ──
-_legend_items = [
-    ("Light",         "#14532D", "Zone 1–2 · <65% HRmax"),
-    ("Moderate",      "#1E3A5F", "Zone 2–3 · 65–80% HRmax"),
-    ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"),
-    ("Hard",          "#7F1D1D", "Zone 4–5 · 87–95% HRmax"),
-]
-
-_leg_rows = [[
-    P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)),
-    *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]
-]]
-
-_leg_t = Table(_leg_rows, colWidths=[CONTENT_W * 0.16] + [CONTENT_W * 0.21] * 4)
-_leg_style = [
-    ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-    ("INNERGRID",     (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
-    ("TOPPADDING",    (0,0), (-1,-1), 5),
-    ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-    ("LEFTPADDING",   (0,0), (-1,-1), 5),
-    ("BACKGROUND",    (0,0), (0,0),   _HEADER_BG),
-    ("TEXTCOLOR",     (0,0), (-1,-1), _TEXT_LIGHT),
-]
-
-for j, (lbl, _, _) in enumerate(_legend_items):
-    _bg_color = _intensity_colors.get(lbl, _ROW_B)
-    _leg_style.append(("BACKGROUND", (j+1, 0), (j+1, 0), _bg_color))
-
-_leg_t.setStyle(TableStyle(_leg_style))
-story.append(_leg_t)
-story.append(VGap(10))
-
-# ── PAGE BREAK → continue on next page ──
-story.append(PageBreak())
-story.append(SecHeader("Training Programme — Detail & Science",
-    subtitle="Progressive overload protocol, set/rep schemes, and evidence base"))
-story.append(VGap(6))
-
-# ── Weekly Volume & Load Progression Table ──
-story.append(P("Progressive Overload — Week-by-Week Load Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
-
-_prog_header = [
-    P("WEEK",        S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("PHASE",       S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("SETS × REPS", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("INTENSITY",   S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("WEEKLY VOL.", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-    P("KEY FOCUS",   S("th2", size=7.5, bold=True, color=MUTED)),
-]
-
-if _goal == "Build muscle (bulk)":
-    _prog_data = [
-        ("1–2",  "Neural Adapt.",  "3×12",   "60–65% 1RM", "~12 sets",  "Form mastery · establish movement patterns"),
-        ("3–4",  "Hypertrophy A",  "4×10",   "67–72% 1RM", "~16 sets",  "Add 2.5 kg when all reps clean"),
-        ("5–6",  "Hypertrophy B",  "4×8",    "72–77% 1RM", "~16 sets",  "Track RPE — stay 7–8 each set"),
-        ("7–8",  "Strength Blend", "5×6",    "77–82% 1RM", "~15 sets",  "Introduce heavier compounds"),
-        ("9–10", "Volume Peak",    "4×10–12","70–75% 1RM", "~20 sets",  "Max volume block — prioritise sleep & nutrition"),
-        ("11",   "Intensification","4×6–8",  "80–85% 1RM", "~16 sets",  "Personal bests on key lifts"),
-        ("12",   "Deload",         "3×8",    "55–60% 1RM", "~10 sets",  "Reduce volume 40% — supercompensation"),
-    ]
-elif _goal == "Lose fat":
-    _prog_data = [
-        ("1–2",  "Metabolic Reset","3×12–15", "55–65% 1RM", "~9 sets",   "Short rests 45–60 s · elevate metabolic rate"),
-        ("3–4",  "Density A",      "3×12",    "65–70% 1RM", "~12 sets",  "Circuit format — 2 exercises alternated"),
-        ("5–6",  "Density B",      "4×10",    "67–72% 1RM", "~12 sets",  "Add HIIT finisher 15 min post-strength"),
-        ("7–8",  "Strength Bias",  "4×8",     "72–78% 1RM", "~12 sets",  "Heavier work preserves lean mass in deficit"),
-        ("9–10", "Intensity Peak", "4×6–8",   "78–83% 1RM", "~12 sets",  "Prioritise compound lifts for maximal caloric cost"),
-        ("11",   "Conditioning",   "3×15",    "60–65% 1RM", "~9 sets",   "Higher rep — metabolic stress + muscle endurance"),
-        ("12",   "Deload",         "2×12",    "55% 1RM",    "~6 sets",   "Active recovery — body composition check-in"),
-    ]
-else:
-    _prog_data = [
-        ("1–2",  "Foundation",     "3×10–12", "60–67% 1RM", "~10 sets",  "Movement quality · establish baseline performance"),
-        ("3–4",  "Recomp A",       "3×10",    "67–72% 1RM", "~12 sets",  "Alternate heavy/volume sessions"),
-        ("5–6",  "Recomp B",       "4×8–10",  "72–77% 1RM", "~14 sets",  "Add progressive overload on 2 key lifts"),
-        ("7–8",  "Strength + Vol", "4×8",     "75–80% 1RM", "~14 sets",  "Combination block: strength AM / pump PM"),
-        ("9–10", "Volume Peak",    "4×10–12", "70–75% 1RM", "~18 sets",  "Highest total weekly volume — nutrition critical"),
-        ("11",   "Intensification","4×6",     "82–87% 1RM", "~12 sets",  "Max strength stimulus — minimal volume"),
-        ("12",   "Deload",         "3×8",     "55–60% 1RM", "~9 sets",   "Reduce load and volume — consolidation week"),
-    ]
-
-_prog_rows = [_prog_header]
-for i, (wk, phase, sets, inten, vol, focus) in enumerate(_prog_data):
-    _prog_rows.append([
-        P(wk,    S(f"pw{i}", size=8.5, bold=True, align=TA_CENTER, color=ACCENT)),
-        P(phase, S(f"pp{i}", size=8,   bold=True,  color=TEXT)),
-        P(sets,  S(f"ps{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#1D4ED8"))),
-        P(inten, S(f"pi{i}", size=8,   align=TA_CENTER, color=MUTED)),
-        P(vol,   S(f"pv{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#059669"))),
-        P(focus, S(f"pf{i}", size=8,   lead=11, color=MUTED)),
-    ])
-
-_prog_cw = [CONTENT_W * w for w in [0.07, 0.14, 0.11, 0.13, 0.11, 0.44]]
-_pt2 = Table(_prog_rows, colWidths=_prog_cw)
-_pt2.setStyle(TableStyle([
-    ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-    ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-    ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
-    ("BACKGROUND",    (0, len(_prog_data)), (-1, len(_prog_data)), _DELOAD_BG),
-    ("TEXTCOLOR",     (0,1),  (0,-1),  _ACCENT_B),     # veke-kolonne
-    ("TEXTCOLOR",     (1,1),  (1,-1),  _TEXT_LIGHT),   # fase
-    ("TEXTCOLOR",     (2,1),  (2,-1),  _ACCENT_B),     # sett×reps
-    ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # intensitet
-    ("TEXTCOLOR",     (4,1),  (4,-1),  _ACCENT_G),     # volum
-    ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # fokus
-    ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-    ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-    ("TOPPADDING",    (0,0),  (-1,-1), 6),
-    ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
-    ("LEFTPADDING",   (0,0),  (-1,-1), 5),
-    ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
-    ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-]))
-
-story.append(_pt2)
-story.append(VGap(10))
-
-# ── Nutrition & Recovery Panel ──
-story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
     
-if w_v:
-    _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
-else:
-    _protein_g = 160
     
-_nutrition_rows = [
-    [P("METRIC",     S("nh", size=7.5, bold=True, color=MUTED)),
-     P("TARGET",     S("nh", size=7.5, bold=True, color=MUTED)),
-     P("WHY IT MATTERS", S("nh", size=7.5, bold=True, color=MUTED))],
-    [P("Daily protein",   S("nk", size=8.5, bold=True, color=TEXT)),
-     P(f"{_protein_g} g  ({_gp['protein']})", S("nv", size=8.5, bold=True, color=ACCENT)),
-     P("Maximises muscle protein synthesis (MPS). Leucine threshold ~2.5 g/meal activates MPS.",
-       S("nd", size=8, lead=11, color=MUTED))],
-    [P("Calorie adjustment", S("nk2", size=8.5, bold=True, color=TEXT)),
-     P(f"{_gp['deficit']:+d} kcal/day", S("nv2", size=8.5, bold=True,
-        color=HexColor("#DC2626") if _gp['deficit'] < 0 else HexColor("#059669"))),
-     P("Based on Mifflin-St Jeor TDEE. Adjust by ±100 kcal every 2 weeks if weight trend deviates.",
-       S("nd2", size=8, lead=11, color=MUTED))],
-    [P("Sleep",           S("nk3", size=8.5, bold=True, color=TEXT)),
-     P("7–9 hours/night", S("nv3", size=8.5, bold=True, color=HexColor("#7C3AED"))),
-     P("Growth hormone peaks in slow-wave sleep. Sleep <6h reduces MPS by ~18% (Dattilo, 2011).",
-       S("nd3", size=8, lead=11, color=MUTED))],
-    [P("Hydration",       S("nk4", size=8.5, bold=True, color=TEXT)),
-     P("35–45 ml/kg/day", S("nv4", size=8.5, bold=True, color=HexColor("#0891B2"))),
-     P("Even 2% dehydration impairs strength output by 5–8% and aerobic capacity by 10%.",
-       S("nd4", size=8, lead=11, color=MUTED))],
-    [P("Rest between sets", S("nk5", size=8.5, bold=True, color=TEXT)),
-     P("90–180 s (strength) · 45–60 s (metabolic)", S("nv5", size=8, bold=True, color=TEXT)),
-     P("Longer rest = greater strength gains. Shorter rest = elevated metabolic cost (EPOC).",
-       S("nd5", size=8, lead=11, color=MUTED))],
-]
-
-_nt = Table(_nutrition_rows, colWidths=[CONTENT_W*0.22, CONTENT_W*0.26, CONTENT_W*0.52])
-_nt.setStyle(TableStyle([
-    ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-    ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-    ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
-    ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),
-    ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_G),
-    ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_DIM),
-    ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-    ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-    ("TOPPADDING",    (0,0),  (-1,-1), 7),
-    ("BOTTOMPADDING", (0,0),  (-1,-1), 7),
-    ("LEFTPADDING",   (0,0),  (-1,-1), 6),
-    ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
-    ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-]))
-story.append(_nt)
-story.append(VGap(8))
-    
-# ── Expert Insight ──
-_training_insight = (
-    f"This programme follows the principle of progressive overload — the most robustly evidenced "
-    f"stimulus for both strength and hypertrophy gains (Schoenfeld, 2010; Kraemer & Ratamess, 2004). "
-    f"For your goal of '{_goal}', the optimal weekly volume sits between 10–20 sets per muscle group "
-    f"(Krieger, 2010), with intensity periodised across the {_weeks}-week block to drive adaptation "
-    f"while managing fatigue. The selected activities — {', '.join(_activities[:3]) if _activities else 'general fitness'} "
-    f"— are integrated to maximise caloric expenditure and recovery without compromising strength sessions. "
-    f"Deload in week {_weeks} is mandatory: supercompensation occurs during recovery, not during the training stimulus."
-)
-story.append(ExpertInsightBox("Training Science", _training_insight))
-story.append(VGap(6))
-    
-# ── Actionable milestone steps ──
-if _goal == "Build muscle (bulk)":
-    _train_steps = [
-        f"Track bodyweight weekly — target gain of 0.25–0.5 kg/week for the first {min(_weeks, 8)} weeks",
-        f"Hit {_protein_g} g protein daily — distribute across 4+ meals with ≥30 g per sitting",
-        "Log your lifts every session — add 2.5 kg when you complete all reps with RPE ≤ 8",
-        "Sleep is your anabolic window — prioritise 8 hrs consistently before adding more training volume",
-    ]
-elif _goal == "Lose fat":
-    _train_steps = [
-        f"Weigh yourself every morning (post-toilet) — track the 7-day rolling average, not daily fluctuations",
-        f"Minimum {_protein_g} g protein — non-negotiable for lean mass preservation in a calorie deficit",
-        "Step count ≥ 8,000/day — NEAT (non-exercise activity) contributes 15–30% of total daily expenditure",
-        "Strength sessions take priority over cardio — muscle mass drives resting metabolic rate",
-    ]
-else:
-    _train_steps = [
-        f"Eat at maintenance calories ± 100 kcal — weigh weekly and adjust if trend deviates",
-        f"Protein target: {_protein_g} g/day — the single most important recomposition lever",
-        "Progressive overload on 2–3 key lifts — track squat, press, and row as primary indicators",
-        "Rotate cardio modality every 4 weeks — prevents adaptation and maintains caloric expenditure",
-    ]
-story.append(ActionableMilestoneBox(_train_steps))
-story.append(VGap(6))
-    
-story.append(P(
-    "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
-    "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc; Dattilo M et al. (2011) Med Hypotheses. "
-    "Targets are population-level estimates — individual response varies. Consult a certified trainer or physician before starting.",
-    S("disc", size=7.5, lead=11, color=MUTED, italic=True, after=4)
-))
-    
-story.append(PageBreak())
-
-# ── PAGE 7: Insights + Conditions + Safety ──
-story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
-story.append(VGap(6))
-for title, color, text in insights:
-    story.append(InsightBlock(title, text, color))
+    # ── PAGE 2: Body Composition ──
+    story.append(SecHeader("Body Composition", subtitle="BMI, body fat estimate, and waist-to-hip ratio"))
     story.append(VGap(6))
     
-if triage_r:
-    story.append(SecHeader("Condition-Aware Recommendations", accent=WARN))
+    if bmi_v is not None:
+        story.append(BMIScale(bmi_v))
+        story.append(VGap(8))
+        if bmi_v < 18.5: bmi_text = f"Your BMI of {bmi_v:.1f} is in the underweight range. BMI doesn't distinguish muscle from fat. Prioritise progressive resistance training and ensure adequate calorie and protein intake. Avoid deficits."
+        elif bmi_v < 25: bmi_text = f"Your BMI of {bmi_v:.1f} is in the normal weight range. Focus on building or maintaining strength and cardiovascular capacity."
+        elif bmi_v < 30: bmi_text = f"Your BMI of {bmi_v:.1f} is in the overweight range. Aim for a modest deficit (−300 to −500 kcal/day), 2–3 strength sessions per week, and increased daily step count."
+        else: bmi_text = f"Your BMI of {bmi_v:.1f} is in the obese range. Consistency beats intensity here. Start with achievable habits: daily step target, 2x/week full-body strength, and a sustainable calorie strategy."
+        story.append(P(bmi_text, S("bt", size=9, lead=14, after=8)))
+        
+        # ── BMI Expert Insight + Actionable Milestone ──
+        if bmi_v < 18.5:
+            _bmi_insight = (
+                "BMI below 18.5 is associated with increased all-cause mortality and reduced immune function "
+                "(WHO Global Database on Body Mass Index). Priority: achieve positive energy balance and build lean mass "
+                "through progressive resistance training. Evidence supports 1.8–2.2 g protein/kg/day with a 300 kcal/day "
+                "surplus as the optimal starting protocol for underweight individuals."
+            )
+            _bmi_steps = [
+                "Week 1–2: Establish a 300 kcal surplus using your Mifflin-St Jeor TDEE as the baseline",
+                "Week 3–4: Begin 3×/week progressive strength training — compound lifts: squat, press, row",
+                "Monthly target: +0.3 to +0.5 kg/month total weight — this rate strongly favours lean mass gain",
+                "Track: weekly weight + weekly protein intake — both must trend upward simultaneously",
+            ]
+        elif bmi_v < 25:
+            _bmi_insight = (
+                "BMI 18.5–24.9 represents the lowest-risk range for metabolic disease, cardiovascular events, "
+                "and all-cause mortality (Lancet, 2016 meta-analysis of 10.6 million participants). "
+                "Your current body composition is a quantifiable longevity asset. The strategic priority "
+                "now shifts to body recomposition: preserving this BMI while increasing lean-to-fat ratio."
+            )
+            _bmi_steps = [
+                "Week 1–2: Baseline your true TDEE — track calories accurately for 7 days minimum",
+                "Week 3–4: Add 2×/week progressive strength training to shift composition without changing scale weight",
+                "Monthly measure: waist circumference — a superior metabolic risk marker vs. BMI alone",
+                "Annual goal: increase skeletal muscle mass by 0.5–1 kg while maintaining BMI range",
+            ]
+        elif bmi_v < 30:
+            _bmi_insight = (
+                "BMI 25–29.9 is associated with a 20–30% increased risk of type 2 diabetes and cardiovascular "
+                "events vs. normal weight (WHO, 2023). However, a 5–10% body weight reduction substantially "
+                "mitigates this risk. The evidence-based protocol: a modest caloric deficit (−300 to −500 kcal/day) "
+                "combined with resistance training 2–3×/week produces superior fat loss vs. cardio-only approaches."
+            )
+            _bmi_steps = [
+                "Week 1–2: Target a 350–450 kcal/day deficit — produces 0.35–0.45 kg/week loss with minimal muscle loss",
+                "Week 3–4: Add 2 strength sessions/week — resistance training is the primary lean mass preservation tool",
+                "Daily habit: Minimum 8,000 steps — non-exercise activity (NEAT) accounts for up to 25% of your TDEE",
+                "12-week goal: 3–4 kg total loss, waist circumference reduction of 3–5 cm",
+            ]
+        else:
+            _bmi_insight = (
+                "BMI ≥ 30 is a significant modifiable risk factor for 13 cancer types, type 2 diabetes, and "
+                "cardiovascular disease (CDC, 2023). Each sustained 1 kg fat loss is associated with measurable "
+                "improvements in insulin sensitivity, blood pressure, and joint load. The most durable approach "
+                "is a moderate deficit (−400 to −500 kcal/day) combined with increasing daily movement — not "
+                "aggressive restriction, which accelerates muscle loss and reduces long-term adherence."
+            )
+            _bmi_steps = [
+                "Week 1–2: Establish a daily step baseline — target 7,000 steps before adding structured exercise",
+                "Week 3–4: Introduce 2×/week full-body strength training (45 min) — builds metabolic rate long-term",
+                "Nutrition anchor: 400–500 kcal/day deficit targeting 0.5–0.75 kg/week — do not exceed this rate",
+                "Minimum protein: 1.6 g/kg/day — non-negotiable to prevent the fat-free mass loss that slows metabolism",
+            ]
+        story.append(VGap(6))
+        story.append(ExpertInsightBox("Body Composition", _bmi_insight))
+        story.append(VGap(6))
+        story.append(ActionableMilestoneBox(_bmi_steps))
+        story.append(VGap(6))
+        
+        extra = []
+        if whr_d.get("value"): extra.append(("Waist-to-Hip Ratio", f'{float(whr_d["value"]):.2f} — {whr_d.get("category","")}', "", "#3B82F6"))
+        if bf_d.get("value"): extra.append(("Body Fat % (Navy)", f'{float(bf_d["value"]):.1f}%', "", "#8B5CF6"))
+        if extra:
+            story.append(MetricCard(extra, card_h=56))
+            story.append(VGap(6))
+    
+        story.append(P("About BMI: BMI is a population screening tool. It doesn't account for muscle mass, bone density, age, or fat distribution. Use it alongside waist circumference, body fat %, and fitness metrics.", S("bn", size=8, lead=12, color=MUTED, italic=True, after=6)))
+    story.append(PageBreak())
+    
+    # ── PAGE 3: Cardio Fitness ──
+    if vo2_v is not None:
+        story.append(SecHeader("Cardio Fitness — VO2max", subtitle="The single strongest predictor of long-term health and all-cause mortality"))
+        story.append(VGap(6))
+        story.append(VO2Visual(vo2_v, vo2_pct, vo2_rat))
+        story.append(VGap(6))
+    
+        meta_data = [
+            [P("METHOD", S("ml",size=6.5,color=MUTED,align=TA_CENTER)), P("AGE BAND", S("ml",size=6.5,color=MUTED,align=TA_CENTER)), P("POPULATION MEAN", S("ml",size=6.5,color=MUTED,align=TA_CENTER)), P("YOUR PERCENTILE", S("ml",size=6.5,color=MUTED,align=TA_CENTER))],
+            [P(vo2_meth or "—", S("mv",size=9,bold=True,align=TA_CENTER)), P(vo2_band or "—", S("mv",size=9,bold=True,align=TA_CENTER)), P(f"{vo2_mean:.1f} ml/kg/min" if vo2_mean else "—", S("mv",size=9,bold=True,align=TA_CENTER)), P(f"{vo2_pct:.0f}th", S("mv",size=9,bold=True,color=vo2_col,align=TA_CENTER))],
+        ]
+        mt = Table(meta_data, colWidths=[CONTENT_W/4]*4)
+        mt.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,-1), CARD2), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 8), ("BOTTOMPADDING", (0,0), (-1,-1), 8), ("LEFTPADDING", (0,0), (-1,-1), 6)]))
+        story.append(mt)
+        story.append(VGap(8))
+    
+        if vo2_pct < 30: vo2_expl = f"A VO2max of {vo2_v:.1f} ml/kg/min places you in the bottom 30% for your age group. Start with 3–4x 30-min easy aerobic sessions per week. Expect noticeable improvement in 4–6 weeks."
+        elif vo2_pct < 50: vo2_expl = f"A VO2max of {vo2_v:.1f} ml/kg/min is below average for your age group. Add one structured interval session weekly (e.g. 4×4 min hard effort) alongside 2 easy sessions."
+        elif vo2_pct < 75: vo2_expl = f"A VO2max of {vo2_v:.1f} ml/kg/min is above average for your age group. Use 80/20 training — 80% easy (conversational) and 20% hard."
+        else: vo2_expl = f"A VO2max of {vo2_v:.1f} ml/kg/min is excellent. Maintain with 2–3 quality sessions per week. Detraining begins after ~10 days of inactivity."
+        story.append(P(vo2_expl, S("ve", size=9, lead=14, after=8)))
+    
+        tips = vo2_d.get("tips", [])
+        if tips:
+            story.append(P("Personalised training recommendations:", S("tth", size=9.5, bold=True, color=ACCENT, after=4)))
+            for tip in tips[:5]: story.append(P(f"→  {tip}", S(f"t{id(tip)}", size=8.5, lead=13, color=TEXT, after=3)))
+            
+        # ── VO2max Expert Insight + 4-week protocol ──
+        if vo2_pct < 30:
+            _vo2_insight = (
+                "VO2max below the 30th percentile is associated with a 2–3× higher risk of all-cause mortality "
+                "compared to the top quartile (JAMA, Mandsager et al., 2018). Cardiorespiratory fitness is the "
+                "single strongest modifiable longevity predictor — stronger than smoking cessation in hazard ratio "
+                "terms. Even a modest improvement of 3–5 ml/kg/min reduces mortality risk by 10–15%."
+            )
+            _vo2_steps = [
+                "Week 1: 3×30 min easy aerobic at 60–65% max HR (fully conversational pace) — build the base",
+                "Week 2: Add 1× interval session: 8 rounds of 1 min hard effort / 2 min easy (Norwegian 1-2-1 protocol)",
+                "Week 3: Extend easy sessions to 35 min; maintain interval day unchanged",
+                "Week 4: Reassess resting HR — a 2–4 bpm drop confirms early aerobic adaptation is underway",
+            ]
+        elif vo2_pct < 50:
+            _vo2_insight = (
+                "VO2max in the 30th–50th percentile is the moderate-risk zone where structured interval training "
+                "yields the greatest return. The landmark Wisloff et al. (2009) Norwegian 4×4 protocol study "
+                "demonstrated a 10–15% VO2max increase over 8–12 weeks in individuals at this fitness level. "
+                "This is your single highest-leverage longevity intervention right now."
+            )
+            _vo2_steps = [
+                "Week 1–2: 2 easy aerobic sessions (35 min, Zone 2) + 1 interval session (4×4 min at 85–95% max HR)",
+                "Week 3–4: Increase interval volume to 5×4 min; add a 4th easy Zone 2 session",
+                "Progressive overload rule: Add 5 min to total weekly aerobic volume each week without exception",
+                "Tracking metric: Resting HR — target a 5 bpm reduction over the 8-week block",
+            ]
+        elif vo2_pct < 75:
+            _vo2_insight = (
+                "VO2max in the 50th–75th percentile represents above-average aerobic capacity. Research confirms "
+                "the greatest longevity protection is conferred between the 25th and 75th percentile — meaning "
+                "you have already leveraged a significant proportion of the protective effect. "
+                "The 80/20 polarised training model (Seiler, 2010) is the evidence-based standard at this level."
+            )
+            _vo2_steps = [
+                "Maintain 3–4 aerobic sessions/week — 80% at Zone 2 (120–140 bpm), 20% at threshold or above",
+                "High-quality session: 6×3 min at threshold pace (RPE 7/10) with 2 min active recovery",
+                "Monthly VO2max proxy test: 12-min Cooper Run or sub-max step test — track the trend, not single values",
+                "Detraining prevention: Never exceed 7 consecutive days without aerobic stimulus — losses begin at day 10",
+            ]
+        else:
+            _vo2_insight = (
+                "VO2max above the 75th percentile is associated with a 45% lower all-cause mortality risk vs. "
+                "the bottom quartile (JAMA, 2018). You are already leveraging one of the most powerful longevity "
+                "markers available. Research indicates that maintaining elite cardiorespiratory fitness into your "
+                "60s reduces biological ageing by an estimated 4–8 years vs. sedentary peers."
+            )
+            _vo2_steps = [
+                "Maintain current weekly volume — consistency is the primary driver of retention at elite levels",
+                "Introduce polarised periodisation: alternate high-volume weeks with recovery weeks at 75% normal load",
+                "Annual VO2max test: a decline >1 ml/kg/min/year signals training load adjustment is needed",
+                "Complement with 2×/week strength training — preserves the muscle mass that supports VO2max longevity",
+            ]
+        story.append(VGap(6))
+        story.append(ExpertInsightBox("Cardio Fitness — VO2max", _vo2_insight))
+        story.append(VGap(6))
+        story.append(ActionableMilestoneBox(_vo2_steps))
+        story.append(VGap(6))                
+        story.append(PageBreak())
+    
+    # ── PAGE 4: Biological Age + Radar ──
+    story.append(SecHeader("Biological Age & 5-Dimension Radar", subtitle="Heuristic estimate — use as directional guide, not clinical measure"))
     story.append(VGap(6))
-    for r in triage_r[:12]: 
-        story.append(P(f"→  {r}", S(f"tr{id(r)}", size=8.5, lead=13, color=TEXT, after=3)))
-    story.append(VGap(8))
-
-story.append(SecHeader("Safety & Important Notices", accent=BAD))
-story.append(VGap(6))
-for title, col, text in [
-    ("Seek urgent care immediately if you experience", WARN, "Chest pain or pressure, severe shortness of breath at rest, fainting or near-fainting, sudden neurological symptoms."),
-    ("Before starting a new exercise programme", ACCENT, "If you have known cardiovascular disease, diabetes, or have been inactive, consult a physician before vigorous training."),
-    ("About the estimates in this report", BLUE, "VO2max, biological age, and calorie values are estimates from validated formulas, not clinical measurements."),
-]:
-    story.append(InsightBlock(title, text, col))
+    
+    if bio_v is not None and age_f is not None:
+        story.append(BioAgeBar(bio_v, age_f))
+        story.append(VGap(8))
+        if bio_diff > 3: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years above calendar age. Highest-leverage improvements: sleep consistency, cardio fitness, and stress management."
+        elif bio_diff > 0: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years above calendar age. Focus on the red/amber factors in your factor breakdown."
+        else: bio_expl = f"Estimated biological age of {bio_v:.1f} years is {abs(bio_diff):.1f} years below calendar age. This reflects well on your current habits. Maintain the routines that got you here."
+        story.append(P(bio_expl, S("bioe", size=9, lead=14, after=8)))
+    
+        if factors:
+            story.append(P("Factor breakdown — what's driving your bio age estimate:", S("fbh", size=9.5, bold=True, color=ACCENT, after=4)))
+            story.append(FactorBars(factors))
+            story.append(VGap(4))
+            story.append(P("Green = factor favourably reducing biological age. Red/amber = factor adding years. Focus on the longest red bars first.", S("fbl", size=7.5, color=MUTED, italic=True, after=8)))
+    
+    story.append(P("5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)))
+    story.append(RadarChart(radar))
     story.append(VGap(4))
-
-story.append(VGap(10))
-story.append(P("This report was generated by Health Tools (health-tools.streamlit.app) for educational purposes only. It is not a medical diagnosis.", S("df", size=7.5, lead=11, color=DIM, italic=True, align=TA_CENTER, after=4)))
-
-# ════════════════════════════════════════════════════════════
-# EXECUTIVE SUMMARY — FINAL PAGE (Stop / Start / Maintain)
-# ════════════════════════════════════════════════════════════
-story.append(PageBreak())
-story.append(SecHeader(
-    "Your Personal Action Plan",
-    subtitle="Executive summary — review weekly, share with your physician, act on daily"
-))
-story.append(VGap(10))
-
-    # Bygg dokumentet og returner bytes
-    doc.build(story)
+    story.append(P("Score 70+ = good. 45–70 = room to improve. Below 45 = priority area.", S("rl", size=7.5, color=MUTED, italic=True, after=4)))
+    
+    # ── Bio Age Expert Insight ──
+    if bio_v is not None and age_f is not None:
+        if bio_diff > 3:
+            _bio_insight = (
+                f"A biological age estimate {bio_diff:.1f} years above calendar age signals that multiple "
+                "lifestyle and physiological factors are accelerating your cellular ageing trajectory. "
+                "The most evidence-supported interventions for biological age reversal: consistent sleep "
+                "(7–9h with fixed schedule), VO2max improvement, and chronic stress reduction. "
+                "Each yields an estimated 1–3 year bio-age reduction over 6–12 months of consistent application."
+            )
+            _bio_steps = [
+                "Sleep protocol: Fixed bed/wake time within ±30 min every day — the single highest-ROI bio-age lever",
+                "Add 1 daily 10-min stress-reduction practice — breathwork or meditation lowers cortisol long-term",
+                "Target VO2max improvement of 5+ ml/kg/min over 12 weeks — see Cardio section for exact protocol",
+                "3-month reassessment: re-measure all input markers to track biological age regression",
+            ]
+        elif bio_diff > 0:
+            _bio_insight = (
+                f"A biological age estimate {bio_diff:.1f} years above calendar age indicates moderate acceleration "
+                "in one or more longevity markers. Research indicates that targeted interventions on 2–3 key "
+                "factors produce faster bio-age regression than attempting broad simultaneous lifestyle change. "
+                "Your factor breakdown above identifies exactly where to focus effort first."
+            )
+            _bio_steps = [
+                "Identify your top 2 red/amber factors from the bar chart above — these are your exclusive focus",
+                "Implement one targeted change per factor this week — compounding begins with single consistent habits",
+                "Track weekly proxies: resting HR, sleep duration, daily step count — the three bio-age proxy markers",
+                "12-week goal: reduce biological age estimate by 1–2 years through targeted factor improvement",
+            ]
+        else:
+            _bio_insight = (
+                f"A biological age estimate {abs(bio_diff):.1f} years below calendar age is a measurable longevity "
+                "advantage. Research indicates individuals with biological age 2+ years below calendar age have "
+                "significantly lower risk of age-related disease onset and maintain higher functional capacity "
+                "later in life. Your current habits represent compound interest working in your favour."
+            )
+            _bio_steps = [
+                "Document your current lifestyle protocols in detail — replicate them consistently to protect this advantage",
+                "Identify the 2 green factors contributing most to your score — safeguard them from lifestyle drift",
+                "Annual re-measurement: biological age is dynamic — monitor annually to detect early regression",
+                "Next tier: target top-quartile VO2max for your age group to further extend this biological advantage",
+            ]
+        story.append(VGap(6))
+        story.append(ExpertInsightBox("Biological Age", _bio_insight))
+        story.append(VGap(6))
+        story.append(ActionableMilestoneBox(_bio_steps))
+        story.append(VGap(8))
+    story.append(CompoundingEffectBox())
+    story.append(VGap(6))
+    story.append(PageBreak())
+    
+    # ── PAGE 5: Nutrition & Calorie Plan ──
+    story.append(SecHeader("Nutrition & Calorie Strategy", subtitle="Energy balance is the foundation of body composition"))
+    story.append(VGap(6))
+    
+    if cur_kcal and rec_kcal:
+        story.append(CalorieBar(cur_kcal, rec_kcal, kg_pw))
+        story.append(VGap(8))
+        d_kcal = int(rec_kcal - cur_kcal)
+        if d_kcal < 0: cal_text = f"A target of {int(rec_kcal)} kcal creates a deficit of {abs(d_kcal)} kcal/day. Expected rate: {abs(kg_pw or 0):.2f} kg/week. Keep protein high to protect muscle."
+        elif d_kcal > 0: cal_text = f"A target of {int(rec_kcal)} kcal creates a surplus of {d_kcal} kcal/day. Expected rate: +{abs(kg_pw or 0):.2f} kg/week. Pair this with progressive strength training."
+        else: cal_text = f"Your target of {int(rec_kcal)} kcal matches estimated maintenance. This supports body recomposition."
+        story.append(P(cal_text, S("ct", size=9, lead=14, after=8)))
+    
+        try: wt = float(w_v or 70)
+        except: wt = 70.0
+        protein_g = int(wt * 1.8); fat_g = int(int(rec_kcal) * 0.28 / 9); carb_g = max(0, int((int(rec_kcal) - protein_g*4 - fat_g*9) / 4))
+    
+        story.append(P("Suggested daily macro targets", S("mach", size=9.5, bold=True, color=ACCENT, after=4)))
+        macro_data = [
+            [P("MACRO", S("mh",size=7,color=MUTED,bold=True)), P("GRAMS", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("KCAL", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("RATIO", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("KEY ROLE", S("mh",size=7,color=MUTED,bold=True))],
+            [P("Protein", S("pr",size=9,bold=True,color=BLUE)), P(f"{protein_g} g", S("pv",size=9,align=TA_CENTER)), P(f"{protein_g*4}", S("pv",size=9,align=TA_CENTER)), P("~30%", S("pv",size=9,align=TA_CENTER)), P("Muscle repair, satiety, metabolic rate", S("pw",size=8,color=MUTED))],
+            [P("Fat", S("fr",size=9,bold=True,color=WARN)), P(f"{fat_g} g", S("fv",size=9,align=TA_CENTER)), P(f"{fat_g*9}", S("fv",size=9,align=TA_CENTER)), P("~28%", S("fv",size=9,align=TA_CENTER)), P("Hormones, brain, fat-soluble vitamins", S("fw",size=8,color=MUTED))],
+            [P("Carbs", S("cr",size=9,bold=True,color=GOOD)), P(f"{carb_g} g", S("cv",size=9,align=TA_CENTER)), P(f"{carb_g*4}", S("cv",size=9,align=TA_CENTER)), P("~42%", S("cv",size=9,align=TA_CENTER)), P("Training energy, recovery, cognition", S("cw",size=8,color=MUTED))],
+        ]
+        mac_t = Table(macro_data, colWidths=[40*mm,25*mm,22*mm,20*mm,None])
+        mac_t.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 7), ("BOTTOMPADDING", (0,0), (-1,-1), 7), ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP")]))
+        story.append(mac_t); story.append(VGap(8))
+        story.append(P("Macros estimated using Mifflin-St Jeor + standard ratios. Adjust every 2–3 weeks based on actual progress.", S("dn", size=7.5, color=MUTED, italic=True, after=4)))
+    else: 
+        story.append(P("Calorie plan not generated.", S("ncp", size=9, color=MUTED, after=8)))
+    
+    if exlog and ex_act:
+        story.append(VGap(6)); story.append(SecHeader("Exercise Log Summary", accent=BLUE)); story.append(VGap(6))
+        ex_metrics = [("Activity", ex_act[:18], ex_int, "#0EA5A3"), ("Kcal / session", f"{ex_kcal_s:.0f}", "kcal", "#3B82F6"), ("Kcal / week", f"{ex_kcal_w:.0f}", f"{ex_sess}x/week", "#22C55E"), ("Weekly volume", f"{ex_total_min} min", f"{ex_min}min × {ex_sess}", "#F59E0B")]
+        story.append(MetricCard(ex_metrics, card_h=66)); story.append(VGap(4))
+        who_txt = "✓ Meets WHO 150 min/week guidelines" if ex_total_min >= 150 else f"⚠ {150-ex_total_min} min below WHO 150 min/week target"
+        story.append(P(who_txt, S("who", size=8.5, color=HexColor("#22C55E" if ex_total_min >= 150 else "#F59E0B"), after=4)))
+    
+    # ── Nutrition Expert Insight ──
+    if cur_kcal and rec_kcal:
+        _d_kcal_e = int(rec_kcal - cur_kcal)
+        if _d_kcal_e < -600:
+            _nut_insight = (
+                f"A deficit exceeding 600 kcal/day activates adaptive thermogenesis — your metabolic rate "
+                "down-regulates by 20–30% within 2–3 weeks to compensate (Leibel et al., NEJM, 1995). "
+                "Additionally, deficits above 500 kcal/day substantially increase muscle catabolism. "
+                "The evidence-based recommendation: reduce to a 400–500 kcal/day deficit and prioritise "
+                "high protein (1.8–2.2 g/kg) to protect every kilogram of lean mass."
+            )
+            _nut_steps = [
+                "Recalibrate to a 400–500 kcal/day deficit — the sustainable zone for fat loss without metabolic slowdown",
+                "Protein target: 1.8 g per kg bodyweight daily — distribute across 3–4 meals with 30–40g per serving",
+                "Reweigh weekly at identical conditions — adjust calories every 2 weeks based on the observed trend",
+                "Minimum fat intake: 0.8 g/kg/day — below this threshold, hormonal health and fat-soluble vitamins suffer",
+            ]
+        elif _d_kcal_e < 0:
+            _nut_insight = (
+                f"Your deficit of {abs(_d_kcal_e)} kcal/day aligns with evidence-based fat loss guidelines "
+                "(ACSM Position Stand). At this rate, lean mass preservation is maximised while producing "
+                "consistent fat loss. Protein at 1.8 g/kg/day combined with resistance training ensures "
+                "the weight lost is predominantly fat — the critical distinction for long-term body composition."
+            )
+            _nut_steps = [
+                "Protein first: Build every meal around a 30–40g protein source before adding carbohydrates or fats",
+                "Calorie cycling: +500 kcal on resistance training days, −300 kcal on rest days — same weekly average",
+                "Satiety protocol: Target 25–35g fibre/day and 35 ml water/kg bodyweight to reduce adherence friction",
+                "Stall protocol: If weight loss stops for 10+ days, reduce by 150 kcal only — avoid dramatic adjustments",
+            ]
+        elif _d_kcal_e > 0:
+            _nut_insight = (
+                f"A controlled surplus of {_d_kcal_e} kcal/day is the evidence-based approach for lean muscle "
+                "accretion (Barakat et al., Strength and Conditioning Journal, 2020). Aggressive surpluses "
+                "(>500 kcal/day) result in disproportionate fat gain rather than additional muscle tissue. "
+                "The 1.8–2.2 g/kg protein target is non-negotiable — muscle protein synthesis requires adequate "
+                "substrate independent of total calorie intake."
+            )
+            _nut_steps = [
+                "Protein timing: Consume 30–40g protein within 90 minutes post-resistance training session",
+                "Carbohydrate strategy: Prioritise carbs around training windows — they fuel the performance that drives growth",
+                "Monthly audit: If gaining >0.4 kg/week, reduce surplus by 150 kcal — excess gain is fat, not muscle",
+                "Sleep 7–9h nightly — 70% of growth hormone (the primary muscle repair signal) is secreted during deep sleep",
+            ]
+        else:
+            _nut_insight = (
+                "Maintenance calories optimally support body recomposition — simultaneously losing fat and gaining "
+                "muscle. This is the most underrated strategy in body composition science: slower than aggressive "
+                "cutting or bulking, but producing the most favourable long-term composition change for most "
+                "individuals at an intermediate fitness level (Barakat et al., 2020)."
+            )
+            _nut_steps = [
+                "Resistance training 3×/week is the essential driver of recomposition — nutrition alone is insufficient",
+                "Protein at 2.0 g/kg/day — higher than for deficit or surplus phases due to dual anabolic demand",
+                "Track body fat percentage, not scale weight — the scale is an unreliable proxy during recomposition",
+                "12-week commitment: Body recomposition results require 8–12 weeks before becoming objectively measurable",
+            ]
+        story.append(VGap(6))
+        story.append(ExpertInsightBox("Nutrition & Calorie Strategy", _nut_insight))
+        story.append(VGap(6))
+        story.append(ActionableMilestoneBox(_nut_steps))
+        story.append(VGap(6))
+    story.append(PageBreak())
+    
+    # ── PAGE 6: Weight Roadmap ──
+    story.append(SecHeader("Weight Goal Roadmap", subtitle="Projected milestones toward your target"))
+    story.append(VGap(6))
+    if milestones:
+        try: start_w = float(w_v or 70)
+        except: start_w = 70.0
+        try: end_w = float(milestones[-1].get("Projected weight (kg)", start_w))
+        except: end_w = start_w
+        total_change = abs(end_w - start_w)
+        m_cols = ["#3B82F6", "#6366F1", "#0EA5A3", "#22C55E"]
+        story.append(P(f"Starting weight: {start_w:.1f} kg → Target: {end_w:.1f} kg", S("mrt", size=9.5, bold=True, color=TEXT, after=6)))
+        for i, m in enumerate(milestones):
+            pw = float(m.get("Projected weight (kg)", start_w))
+            prog = min(100, max(0, int(abs(pw - start_w) / total_change * 100))) if total_change > 0.01 else 100
+            story.append(MilestoneRow(m.get("Week", i + 1), pw, str(m.get("Focus", "")), prog, m_cols[i % len(m_cols)], (i == len(milestones) - 1)))
+        story.append(VGap(10))
+    else:
+        story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
+    
+    # ── PAGE 7: Personalised Training Programme ──
+    story.append(PageBreak())    
+    story.append(SecHeader("Personalised Training Programme", subtitle="Evidence-based weekly plan built around your selected activities and goal"))
+    story.append(VGap(6))
+    
+    # ── Pull values safely from report data ──
+    plan_d = report.get("plan") or {}
+    _goal       = plan_d.get("goal", "Body Recomposition")
+    _activities = plan_d.get("selected_activities") or report.get("selected_activities", [])
+    _weeks      = plan_d.get("plan_weeks", 12)
+    _protein_on = plan_d.get("protein_focus", True)
+    
+    # ── Activity → category map ──
+    _strength_acts = {"Strength training (weights)", "Boxing / Martial arts", "Rock climbing / Bouldering", "Hiking (incline)"}
+    _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)", "Swimming", "Rowing (moderate/vigorous)", "HIIT", "Elliptical", "Stair climbing / Stairmaster"}
+    _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
+    _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates", "Housework / Light chores", "Gardening / Heavy yard work"}
+    
+    _has_strength = bool(_activities and _strength_acts & set(_activities))
+    _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
+    _has_sport    = bool(_activities and _sport_acts    & set(_activities))
+    _has_low      = bool(_activities and _low_acts      & set(_activities))
+    
+    _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
+    _sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
+    _sel_sport    = [a for a in _activities if a in _sport_acts]
+    _sel_low      = [a for a in _activities if a in _low_acts]
+    
+    # ── Konstantar for training-seksjonen ──
+    _WHITE      = HexColor("#FFFFFF")
+    _ROW_A      = HexColor("#1E2A3A")
+    _ROW_B      = HexColor("#162030")
+    _HEADER_BG  = HexColor("#0F1923")
+    _PHASE1_BG  = HexColor("#0F2A1E")
+    _PHASE2_BG  = HexColor("#0F1F3A")
+    _PHASE3_BG  = HexColor("#1A0F3A")
+    _TEXT_LIGHT = HexColor("#E2E8F0")
+    _TEXT_DIM   = HexColor("#94A3B8")
+    _ACCENT_G   = HexColor("#22C55E")
+    _ACCENT_B   = HexColor("#38BDF8")
+    _ACCENT_P   = HexColor("#A78BFA")
+    _ACCENT_R   = HexColor("#F87171")
+    _DELOAD_BG  = HexColor("#2A2510")
+    
+    # ── Intensitetsfargar ──
+    _intensity_colors = {
+        "Light":          HexColor("#14532D"),
+        "Light–Moderate": HexColor("#166534"),
+        "Moderate":       HexColor("#1E3A5F"),
+        "Moderate–Hard":  HexColor("#3B1F6E"),
+        "Hard":           HexColor("#7F1D1D"),
+        "—":              _ROW_B,
+    }
+    
+    # ── Goal-based parameter table ──
+    _goal_params = {
+        "Lose fat":               {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
+                                   "phase1": "Metabolic Reset (Wk 1–3)", "phase2": "Progressive Overload (Wk 4–8)",
+                                   "phase3": "Intensification (Wk 9–12)", "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass."},
+        "Build muscle (bulk)":    {"deficit": +350, "protein": "2.0 g/kg", "strength_d": 4, "cardio_d": 2, "rest_d": 1,
+                                   "phase1": "Neural Adaptation (Wk 1–3)", "phase2": "Hypertrophy Block (Wk 4–8)",
+                                   "phase3": "Volume Peak (Wk 9–12)", "note": "Aim for 0.25–0.5 kg/week weight gain. Calorie surplus supports muscle protein synthesis."},
+        "Body Recomposition":     {"deficit": 0,    "protein": "2.4 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
+                                   "phase1": "Foundation (Wk 1–3)", "phase2": "Recomposition Block (Wk 4–8)",
+                                   "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
+    }
+    
+    _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
+    
+    # ── Goal overview box ──
+    story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  Calorie adjustment: {_gp['deficit']:+d} kcal/day  ·  Target protein: {_gp['protein']}", S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
+    story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
+    story.append(VGap(4))
+    
+    # ── Phase Timeline Bar ──
+    story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    
+    _phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
+    _phase_rows = [
+        [P("PHASE 1", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
+         P("PHASE 2", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
+         P("PHASE 3", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True))],
+        [P(_gp["phase1"], S("pv", size=9, bold=True, align=TA_CENTER)),
+         P(_gp["phase2"], S("pv", size=9, bold=True, align=TA_CENTER)),
+         P(_gp["phase3"], S("pv", size=9, bold=True, align=TA_CENTER))],
+        [P("Foundation, habit formation\nand movement quality",  S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
+         P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
+         P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
+    ]
+    _pt = Table(_phase_rows, colWidths=_phase_cols)
+    _pt.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
+        ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
+        ("BACKGROUND",    (2,0), (2,-1), _PHASE3_BG),
+        ("TEXTCOLOR",     (0,0), (-1,0), _TEXT_DIM),
+        ("TEXTCOLOR",     (0,1), (-1,1), _TEXT_LIGHT),
+        ("TEXTCOLOR",     (0,2), (-1,2), _TEXT_DIM),
+        ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID",     (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("TOPPADDING",    (0,0), (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+        ("LEFTPADDING",   (0,0), (-1,-1), 6),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 6),
+    ]))
+    story.append(_pt)
+    story.append(VGap(10))
+    
+    
+    # ── Weekly Schedule Table ──
+    story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    
+    _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    
+    _plan = _build_day_plan(
+        _goal,
+        _has_strength,
+        _has_cardio,
+        _has_sport,
+        _has_low,
+        _sel_strength,
+        _sel_cardio,
+        _sel_sport,
+        _sel_low
+    )
+    
+    _sched_header = [
+        P("DAY",          S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("SESSION",      S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("ACTIVITY",     S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("DURATION",     S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("INTENSITY",    S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("COACHING NOTE", S("th", size=7.5, bold=True, color=MUTED)),
+    ]
+    
+    _sched_rows = [_sched_header]
+    for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
+        _sched_rows.append([
+            P(day,   S(f"td{i}", size=8.5, bold=True, color=TEXT)),
+            P(stype, S(f"ts{i}", size=8,   color=HexColor("#1D4ED8"))),
+            P(act if act != "—" else "Rest", S(f"ta{i}", size=8, color=TEXT)),
+            P(dur,   S(f"tdu{i}", size=8,  align=TA_CENTER, color=MUTED)),
+            P(inten, S(f"ti{i}",  size=7.5, bold=True, align=TA_CENTER, color=TEXT)),
+            P(note,  S(f"tn{i}",  size=7.5, lead=11, color=MUTED)),
+        ])
+    
+    _col_w = [CONTENT_W * w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
+    _st = Table(_sched_rows, colWidths=_col_w)
+    _ts = [
+        ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+        ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+        ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+        ("TOPPADDING",    (0,0),  (-1,-1), 6),
+        ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
+        ("LEFTPADDING",   (0,0),  (-1,-1), 5),
+        ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
+        ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+        ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),   # dag-kolonne
+        ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_B),     # session-kolonne
+        ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_LIGHT),   # aktivitet
+        ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # varighet
+        ("TEXTCOLOR",     (4,1),  (4,-1),  _WHITE),        # intensitet — alltid kvit tekst
+        ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # notat
+    ]
+    
+    for i, (_, _, _, _, inten, _) in enumerate(_plan):
+        _bg = _intensity_colors.get(inten, _ROW_B)
+        row_bg = _ROW_A if i % 2 == 0 else _ROW_B
+        _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
+        _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
+        _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
+        _ts.append(("TEXTCOLOR",  (4, i+1), (4, i+1), _WHITE))
+    
+    _st.setStyle(TableStyle(_ts))
+    story.append(_st)
+    story.append(VGap(8))
+    
+    # ── Intensity Legend ──
+    _legend_items = [
+        ("Light",         "#14532D", "Zone 1–2 · <65% HRmax"),
+        ("Moderate",      "#1E3A5F", "Zone 2–3 · 65–80% HRmax"),
+        ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"),
+        ("Hard",          "#7F1D1D", "Zone 4–5 · 87–95% HRmax"),
+    ]
+    
+    _leg_rows = [[
+        P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)),
+        *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]
+    ]]
+    
+    _leg_t = Table(_leg_rows, colWidths=[CONTENT_W * 0.16] + [CONTENT_W * 0.21] * 4)
+    _leg_style = [
+        ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID",     (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LEFTPADDING",   (0,0), (-1,-1), 5),
+        ("BACKGROUND",    (0,0), (0,0),   _HEADER_BG),
+        ("TEXTCOLOR",     (0,0), (-1,-1), _TEXT_LIGHT),
+    ]
+    
+    for j, (lbl, _, _) in enumerate(_legend_items):
+        _bg_color = _intensity_colors.get(lbl, _ROW_B)
+        _leg_style.append(("BACKGROUND", (j+1, 0), (j+1, 0), _bg_color))
+    
+    _leg_t.setStyle(TableStyle(_leg_style))
+    story.append(_leg_t)
+    story.append(VGap(10))
+    
+    # ── PAGE BREAK → continue on next page ──
+    story.append(PageBreak())
+    story.append(SecHeader("Training Programme — Detail & Science",
+        subtitle="Progressive overload protocol, set/rep schemes, and evidence base"))
+    story.append(VGap(6))
+    
+    # ── Weekly Volume & Load Progression Table ──
+    story.append(P("Progressive Overload — Week-by-Week Load Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    
+    _prog_header = [
+        P("WEEK",        S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("PHASE",       S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("SETS × REPS", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("INTENSITY",   S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("WEEKLY VOL.", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("KEY FOCUS",   S("th2", size=7.5, bold=True, color=MUTED)),
+    ]
+    
+    if _goal == "Build muscle (bulk)":
+        _prog_data = [
+            ("1–2",  "Neural Adapt.",  "3×12",   "60–65% 1RM", "~12 sets",  "Form mastery · establish movement patterns"),
+            ("3–4",  "Hypertrophy A",  "4×10",   "67–72% 1RM", "~16 sets",  "Add 2.5 kg when all reps clean"),
+            ("5–6",  "Hypertrophy B",  "4×8",    "72–77% 1RM", "~16 sets",  "Track RPE — stay 7–8 each set"),
+            ("7–8",  "Strength Blend", "5×6",    "77–82% 1RM", "~15 sets",  "Introduce heavier compounds"),
+            ("9–10", "Volume Peak",    "4×10–12","70–75% 1RM", "~20 sets",  "Max volume block — prioritise sleep & nutrition"),
+            ("11",   "Intensification","4×6–8",  "80–85% 1RM", "~16 sets",  "Personal bests on key lifts"),
+            ("12",   "Deload",         "3×8",    "55–60% 1RM", "~10 sets",  "Reduce volume 40% — supercompensation"),
+        ]
+    elif _goal == "Lose fat":
+        _prog_data = [
+            ("1–2",  "Metabolic Reset","3×12–15", "55–65% 1RM", "~9 sets",   "Short rests 45–60 s · elevate metabolic rate"),
+            ("3–4",  "Density A",      "3×12",    "65–70% 1RM", "~12 sets",  "Circuit format — 2 exercises alternated"),
+            ("5–6",  "Density B",      "4×10",    "67–72% 1RM", "~12 sets",  "Add HIIT finisher 15 min post-strength"),
+            ("7–8",  "Strength Bias",  "4×8",     "72–78% 1RM", "~12 sets",  "Heavier work preserves lean mass in deficit"),
+            ("9–10", "Intensity Peak", "4×6–8",   "78–83% 1RM", "~12 sets",  "Prioritise compound lifts for maximal caloric cost"),
+            ("11",   "Conditioning",   "3×15",    "60–65% 1RM", "~9 sets",   "Higher rep — metabolic stress + muscle endurance"),
+            ("12",   "Deload",         "2×12",    "55% 1RM",    "~6 sets",   "Active recovery — body composition check-in"),
+        ]
+    else:
+        _prog_data = [
+            ("1–2",  "Foundation",     "3×10–12", "60–67% 1RM", "~10 sets",  "Movement quality · establish baseline performance"),
+            ("3–4",  "Recomp A",       "3×10",    "67–72% 1RM", "~12 sets",  "Alternate heavy/volume sessions"),
+            ("5–6",  "Recomp B",       "4×8–10",  "72–77% 1RM", "~14 sets",  "Add progressive overload on 2 key lifts"),
+            ("7–8",  "Strength + Vol", "4×8",     "75–80% 1RM", "~14 sets",  "Combination block: strength AM / pump PM"),
+            ("9–10", "Volume Peak",    "4×10–12", "70–75% 1RM", "~18 sets",  "Highest total weekly volume — nutrition critical"),
+            ("11",   "Intensification","4×6",     "82–87% 1RM", "~12 sets",  "Max strength stimulus — minimal volume"),
+            ("12",   "Deload",         "3×8",     "55–60% 1RM", "~9 sets",   "Reduce load and volume — consolidation week"),
+        ]
+    
+    _prog_rows = [_prog_header]
+    for i, (wk, phase, sets, inten, vol, focus) in enumerate(_prog_data):
+        _prog_rows.append([
+            P(wk,    S(f"pw{i}", size=8.5, bold=True, align=TA_CENTER, color=ACCENT)),
+            P(phase, S(f"pp{i}", size=8,   bold=True,  color=TEXT)),
+            P(sets,  S(f"ps{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#1D4ED8"))),
+            P(inten, S(f"pi{i}", size=8,   align=TA_CENTER, color=MUTED)),
+            P(vol,   S(f"pv{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#059669"))),
+            P(focus, S(f"pf{i}", size=8,   lead=11, color=MUTED)),
+        ])
+    
+    _prog_cw = [CONTENT_W * w for w in [0.07, 0.14, 0.11, 0.13, 0.11, 0.44]]
+    _pt2 = Table(_prog_rows, colWidths=_prog_cw)
+    _pt2.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+        ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+        ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
+        ("BACKGROUND",    (0, len(_prog_data)), (-1, len(_prog_data)), _DELOAD_BG),
+        ("TEXTCOLOR",     (0,1),  (0,-1),  _ACCENT_B),     # veke-kolonne
+        ("TEXTCOLOR",     (1,1),  (1,-1),  _TEXT_LIGHT),   # fase
+        ("TEXTCOLOR",     (2,1),  (2,-1),  _ACCENT_B),     # sett×reps
+        ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # intensitet
+        ("TEXTCOLOR",     (4,1),  (4,-1),  _ACCENT_G),     # volum
+        ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # fokus
+        ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+        ("TOPPADDING",    (0,0),  (-1,-1), 6),
+        ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
+        ("LEFTPADDING",   (0,0),  (-1,-1), 5),
+        ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
+        ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+    ]))
+    
+    story.append(_pt2)
+    story.append(VGap(10))
+    
+    # ── Nutrition & Recovery Panel ──
+    story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
+        
+    if w_v:
+        _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
+    else:
+        _protein_g = 160
+        
+    _nutrition_rows = [
+        [P("METRIC",     S("nh", size=7.5, bold=True, color=MUTED)),
+         P("TARGET",     S("nh", size=7.5, bold=True, color=MUTED)),
+         P("WHY IT MATTERS", S("nh", size=7.5, bold=True, color=MUTED))],
+        [P("Daily protein",   S("nk", size=8.5, bold=True, color=TEXT)),
+         P(f"{_protein_g} g  ({_gp['protein']})", S("nv", size=8.5, bold=True, color=ACCENT)),
+         P("Maximises muscle protein synthesis (MPS). Leucine threshold ~2.5 g/meal activates MPS.",
+           S("nd", size=8, lead=11, color=MUTED))],
+        [P("Calorie adjustment", S("nk2", size=8.5, bold=True, color=TEXT)),
+         P(f"{_gp['deficit']:+d} kcal/day", S("nv2", size=8.5, bold=True,
+            color=HexColor("#DC2626") if _gp['deficit'] < 0 else HexColor("#059669"))),
+         P("Based on Mifflin-St Jeor TDEE. Adjust by ±100 kcal every 2 weeks if weight trend deviates.",
+           S("nd2", size=8, lead=11, color=MUTED))],
+        [P("Sleep",           S("nk3", size=8.5, bold=True, color=TEXT)),
+         P("7–9 hours/night", S("nv3", size=8.5, bold=True, color=HexColor("#7C3AED"))),
+         P("Growth hormone peaks in slow-wave sleep. Sleep <6h reduces MPS by ~18% (Dattilo, 2011).",
+           S("nd3", size=8, lead=11, color=MUTED))],
+        [P("Hydration",       S("nk4", size=8.5, bold=True, color=TEXT)),
+         P("35–45 ml/kg/day", S("nv4", size=8.5, bold=True, color=HexColor("#0891B2"))),
+         P("Even 2% dehydration impairs strength output by 5–8% and aerobic capacity by 10%.",
+           S("nd4", size=8, lead=11, color=MUTED))],
+        [P("Rest between sets", S("nk5", size=8.5, bold=True, color=TEXT)),
+         P("90–180 s (strength) · 45–60 s (metabolic)", S("nv5", size=8, bold=True, color=TEXT)),
+         P("Longer rest = greater strength gains. Shorter rest = elevated metabolic cost (EPOC).",
+           S("nd5", size=8, lead=11, color=MUTED))],
+    ]
+    
+    _nt = Table(_nutrition_rows, colWidths=[CONTENT_W*0.22, CONTENT_W*0.26, CONTENT_W*0.52])
+    _nt.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
+        ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
+        ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
+        ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),
+        ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_G),
+        ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_DIM),
+        ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
+        ("TOPPADDING",    (0,0),  (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0),  (-1,-1), 7),
+        ("LEFTPADDING",   (0,0),  (-1,-1), 6),
+        ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
+        ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+    ]))
+    story.append(_nt)
+    story.append(VGap(8))
+        
+    # ── Expert Insight ──
+    _training_insight = (
+        f"This programme follows the principle of progressive overload — the most robustly evidenced "
+        f"stimulus for both strength and hypertrophy gains (Schoenfeld, 2010; Kraemer & Ratamess, 2004). "
+        f"For your goal of '{_goal}', the optimal weekly volume sits between 10–20 sets per muscle group "
+        f"(Krieger, 2010), with intensity periodised across the {_weeks}-week block to drive adaptation "
+        f"while managing fatigue. The selected activities — {', '.join(_activities[:3]) if _activities else 'general fitness'} "
+        f"— are integrated to maximise caloric expenditure and recovery without compromising strength sessions. "
+        f"Deload in week {_weeks} is mandatory: supercompensation occurs during recovery, not during the training stimulus."
+    )
+    story.append(ExpertInsightBox("Training Science", _training_insight))
+    story.append(VGap(6))
+        
+    # ── Actionable milestone steps ──
+    if _goal == "Build muscle (bulk)":
+        _train_steps = [
+            f"Track bodyweight weekly — target gain of 0.25–0.5 kg/week for the first {min(_weeks, 8)} weeks",
+            f"Hit {_protein_g} g protein daily — distribute across 4+ meals with ≥30 g per sitting",
+            "Log your lifts every session — add 2.5 kg when you complete all reps with RPE ≤ 8",
+            "Sleep is your anabolic window — prioritise 8 hrs consistently before adding more training volume",
+        ]
+    elif _goal == "Lose fat":
+        _train_steps = [
+            f"Weigh yourself every morning (post-toilet) — track the 7-day rolling average, not daily fluctuations",
+            f"Minimum {_protein_g} g protein — non-negotiable for lean mass preservation in a calorie deficit",
+            "Step count ≥ 8,000/day — NEAT (non-exercise activity) contributes 15–30% of total daily expenditure",
+            "Strength sessions take priority over cardio — muscle mass drives resting metabolic rate",
+        ]
+    else:
+        _train_steps = [
+            f"Eat at maintenance calories ± 100 kcal — weigh weekly and adjust if trend deviates",
+            f"Protein target: {_protein_g} g/day — the single most important recomposition lever",
+            "Progressive overload on 2–3 key lifts — track squat, press, and row as primary indicators",
+            "Rotate cardio modality every 4 weeks — prevents adaptation and maintains caloric expenditure",
+        ]
+    story.append(ActionableMilestoneBox(_train_steps))
+    story.append(VGap(6))
+        
+    story.append(P(
+        "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
+        "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc; Dattilo M et al. (2011) Med Hypotheses. "
+        "Targets are population-level estimates — individual response varies. Consult a certified trainer or physician before starting.",
+        S("disc", size=7.5, lead=11, color=MUTED, italic=True, after=4)
+    ))
+        
+    story.append(PageBreak())
+    
+    # ── PAGE 7: Insights + Conditions + Safety ──
+    story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
+    story.append(VGap(6))
+    for title, color, text in insights:
+        story.append(InsightBlock(title, text, color))
+        story.append(VGap(6))
+        
+    if triage_r:
+        story.append(SecHeader("Condition-Aware Recommendations", accent=WARN))
+        story.append(VGap(6))
+        for r in triage_r[:12]: 
+            story.append(P(f"→  {r}", S(f"tr{id(r)}", size=8.5, lead=13, color=TEXT, after=3)))
+        story.append(VGap(8))
+    
+    story.append(SecHeader("Safety & Important Notices", accent=BAD))
+    story.append(VGap(6))
+    for title, col, text in [
+        ("Seek urgent care immediately if you experience", WARN, "Chest pain or pressure, severe shortness of breath at rest, fainting or near-fainting, sudden neurological symptoms."),
+        ("Before starting a new exercise programme", ACCENT, "If you have known cardiovascular disease, diabetes, or have been inactive, consult a physician before vigorous training."),
+        ("About the estimates in this report", BLUE, "VO2max, biological age, and calorie values are estimates from validated formulas, not clinical measurements."),
+    ]:
+        story.append(InsightBlock(title, text, col))
+        story.append(VGap(4))
+    
+    story.append(VGap(10))
+    story.append(P("This report was generated by Health Tools (health-tools.streamlit.app) for educational purposes only. It is not a medical diagnosis.", S("df", size=7.5, lead=11, color=DIM, italic=True, align=TA_CENTER, after=4)))
+    
+    # ════════════════════════════════════════════════════════════
+    # EXECUTIVE SUMMARY — FINAL PAGE (Stop / Start / Maintain)
+    # ════════════════════════════════════════════════════════════
+    story.append(PageBreak())
+    story.append(SecHeader(
+        "Your Personal Action Plan",
+        subtitle="Executive summary — review weekly, share with your physician, act on daily"
+    ))
+    story.append(VGap(10))
+    
+# Bygg dokumentet og returner bytes
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.getvalue()
-
 
 # ── Build Stop / Start / Maintain dynamically from user data ──
 _stop_items  = []
