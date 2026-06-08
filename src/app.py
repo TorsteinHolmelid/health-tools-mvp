@@ -463,7 +463,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     sex_v     = inp.get("sex", "—")
     h_v       = inp.get("height_cm", "—")
     w_v       = inp.get("weight_kg", "—")
-    gen_v     = report.get("generated", datetime.utcnow().strftime("%Y-%m-%d UTC"))
+    gen_v = report.get("generated", datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
 
     bmi_d     = report.get("bmi") or {}
     vo2_d     = report.get("vo2") or {}
