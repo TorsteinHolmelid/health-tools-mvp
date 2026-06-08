@@ -2,7 +2,7 @@ from __future__ import annotations
 import math
 import uuid
 from io import BytesIO
-from datetime import datetime
+from datetime import datetime, timezone
 from html import escape
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -4226,7 +4226,7 @@ else:
     else:
         # 1. Bygg rapport-data
         report = {
-            "generated": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
             "bmi": _results_for_pdf.get("bmi"),
             "bodyfat": _results_for_pdf.get("bodyfat"),
