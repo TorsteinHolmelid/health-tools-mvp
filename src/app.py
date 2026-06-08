@@ -4256,7 +4256,8 @@ else:
         # 2. Generer PDF og vis rapporten på skjermen
         try:
             pdf_bytes = create_pdf_bytes_ultimate(report)
-            st.write("PDF størrelse:", len(pdf_bytes))
+            st.write(type(pdf_bytes))
+            st.write(repr(pdf_bytes[:50]) if pdf_bytes else "EMPTY")
             # Siden alt gikk bra, viser vi resultat-boksen og nedlastingsknappen her:
             with st.container(border=True):
                 st.subheader("✅ Your Premium Health Report is ready")
