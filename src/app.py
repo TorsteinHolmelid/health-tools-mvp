@@ -4226,7 +4226,7 @@ else:
     else:
         # 1. Bygg rapport-data
         report = {
-            "generated": datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+            "generated": datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
             "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
             "bmi": _results_for_pdf.get("bmi"),
             "bodyfat": _results_for_pdf.get("bodyfat"),
