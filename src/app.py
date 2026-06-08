@@ -1886,81 +1886,81 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     # ════════════════════════════════════════════════════════════
     # EXECUTIVE SUMMARY — FINAL PAGE (Stop / Start / Maintain)
     # ════════════════════════════════════════════════════════════
-    story.append(PageBreak())
+story.append(PageBreak())
     story.append(SecHeader(
         "Your Personal Action Plan",
         subtitle="Executive summary — review weekly, share with your physician, act on daily"
     ))
     story.append(VGap(10))
-    
-# Bygg dokumentet og returner bytes
+
+    # ── Build Stop / Start / Maintain dynamically from user data ──
+    _stop_items  = []
+    _start_items = []
+    _keep_items  = []
+
+    # STOP
+    if bmi_v is not None and bmi_v >= 30:
+        _stop_items.append("Eating in an untracked caloric surplus — awareness is the prerequisite for change")
+    if bmi_v is not None and bmi_v >= 25:
+        _stop_items.append("Relying on cardio alone — resistance training is what changes body composition")
+    if vo2_pct < 40:
+        _stop_items.append("Extended sedentary blocks >4 hours — set an hourly 5-min movement reminder")
+    if bio_diff is not None and bio_diff > 2:
+        _stop_items.append("Variable sleep timing — inconsistent schedule is a primary biological age accelerator")
+    if exlog and ex_total_min < 150:
+        _stop_items.append("Treating 1–2 short sessions/week as adequate — you are below WHO minimum guidelines")
+    if len(_stop_items) < 3:
+        _stop_items += [
+            "Comparing week-to-week fluctuations — health change operates on 6–12 week timescales",
+            "Treating nutrition and exercise as separate strategies — they compound when integrated",
+            "Skipping annual health markers — your current position requires monitoring to maintain",
+        ]
+
+    # START
+    if vo2_pct < 50:
+        _start_items.append("Zone 2 aerobic training 3× weekly — your single highest-leverage longevity investment")
+    if bmi_v is not None and bmi_v >= 25:
+        _start_items.append("Daily protein tracking — target 1.8 g per kg bodyweight without exception")
+    if bio_diff is not None and bio_diff > 1:
+        _start_items.append("Fixed sleep/wake schedule (±30 min) — the highest-impact biological age intervention")
+    if exlog and ex_total_min < 150:
+        _start_items.append("10,000 steps/day habit — NEAT accounts for up to 25% of total daily energy expenditure")
+    _start_items.append("Monthly biometric tracking: weight, waist circumference, resting HR — your three proxy longevity markers")
+    if len(_start_items) < 2:
+        _start_items.insert(0, "Progressive overload in strength training — the only mechanism that continues driving adaptation")
+
+    # MAINTAIN
+    if bmi_v is not None and 18.5 <= bmi_v < 25:
+        _keep_items.append(f"Current body weight (BMI {bmi_v:.1f}) — you are within the optimal longevity range")
+    if vo2_pct >= 50:
+        _keep_items.append(f"Cardiorespiratory fitness — your VO2max is above the {int(vo2_pct)}th percentile for your age")
+    if bio_diff is not None and bio_diff <= 0:
+        _keep_items.append(f"Current lifestyle habits — your biological age is {abs(bio_diff):.1f} years below calendar age")
+    if exlog and ex_total_min >= 150:
+        _keep_items.append(f"Weekly exercise volume ({ex_total_min} min/week) — you meet or exceed WHO guidelines")
+    if len(_keep_items) < 2:
+        _keep_items += [
+            "Commitment to data-driven health optimisation — you are measurably ahead of your demographic peers",
+            "Regular health monitoring frequency — prevention produces the highest return on health investment",
+            "The habit of measuring — you cannot compound what you do not track",
+        ]
+
+    story.append(ExecutiveSummaryCheatSheet(_stop_items[:3], _start_items[:3], _keep_items[:3]))
+    story.append(VGap(12))
+    story.append(CompoundingEffectBox())
+    story.append(VGap(10))
+    story.append(P(
+        "This personalised executive summary is derived from your individual physiological data using validated clinical "
+        "formulas: Mifflin-St Jeor (energy expenditure), WHO BMI classifications, Uth VO2max estimation, and "
+        "ACSM/WHO training volume guidelines. Review this summary every 4–12 weeks as your data evolves. "
+        "Share the full report with your physician or performance coach at your next consultation.",
+        S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
+    ))
+
+    # Bygg dokumentet og returner bytes
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.getvalue()
-
-# ── Build Stop / Start / Maintain dynamically from user data ──
-_stop_items  = []
-_start_items = []
-_keep_items  = []
-
-# STOP
-if bmi_v is not None and bmi_v >= 30:
-    _stop_items.append("Eating in an untracked caloric surplus — awareness is the prerequisite for change")
-if bmi_v is not None and bmi_v >= 25:
-    _stop_items.append("Relying on cardio alone — resistance training is what changes body composition")
-if vo2_pct < 40:
-    _stop_items.append("Extended sedentary blocks >4 hours — set an hourly 5-min movement reminder")
-if bio_diff is not None and bio_diff > 2:
-    _stop_items.append("Variable sleep timing — inconsistent schedule is a primary biological age accelerator")
-if exlog and ex_total_min < 150:
-    _stop_items.append("Treating 1–2 short sessions/week as adequate — you are below WHO minimum guidelines")
-if len(_stop_items) < 3:
-    _stop_items += [
-        "Comparing week-to-week fluctuations — health change operates on 6–12 week timescales",
-        "Treating nutrition and exercise as separate strategies — they compound when integrated",
-        "Skipping annual health markers — your current position requires monitoring to maintain",
-    ]
-
-# START
-if vo2_pct < 50:
-    _start_items.append("Zone 2 aerobic training 3× weekly — your single highest-leverage longevity investment")
-if bmi_v is not None and bmi_v >= 25:
-    _start_items.append("Daily protein tracking — target 1.8 g per kg bodyweight without exception")
-if bio_diff is not None and bio_diff > 1:
-    _start_items.append("Fixed sleep/wake schedule (±30 min) — the highest-impact biological age intervention")
-if exlog and ex_total_min < 150:
-    _start_items.append("10,000 steps/day habit — NEAT accounts for up to 25% of total daily energy expenditure")
-_start_items.append("Monthly biometric tracking: weight, waist circumference, resting HR — your three proxy longevity markers")
-if len(_start_items) < 2:
-    _start_items.insert(0, "Progressive overload in strength training — the only mechanism that continues driving adaptation")
-
-# MAINTAIN
-if bmi_v is not None and 18.5 <= bmi_v < 25:
-    _keep_items.append(f"Current body weight (BMI {bmi_v:.1f}) — you are within the optimal longevity range")
-if vo2_pct >= 50:
-    _keep_items.append(f"Cardiorespiratory fitness — your VO2max is above the {int(vo2_pct)}th percentile for your age")
-if bio_diff is not None and bio_diff <= 0:
-    _keep_items.append(f"Current lifestyle habits — your biological age is {abs(bio_diff):.1f} years below calendar age")
-if exlog and ex_total_min >= 150:
-    _keep_items.append(f"Weekly exercise volume ({ex_total_min} min/week) — you meet or exceed WHO guidelines")
-if len(_keep_items) < 2:
-    _keep_items += [
-        "Commitment to data-driven health optimisation — you are measurably ahead of your demographic peers",
-        "Regular health monitoring frequency — prevention produces the highest return on health investment",
-        "The habit of measuring — you cannot compound what you do not track",
-    ]
-
-story.append(ExecutiveSummaryCheatSheet(_stop_items[:3], _start_items[:3], _keep_items[:3]))
-story.append(VGap(12))
-story.append(CompoundingEffectBox())
-story.append(VGap(10))
-story.append(P(
-    "This personalised executive summary is derived from your individual physiological data using validated clinical "
-    "formulas: Mifflin-St Jeor (energy expenditure), WHO BMI classifications, Uth VO2max estimation, and "
-    "ACSM/WHO training volume guidelines. Review this summary every 4–12 weeks as your data evolves. "
-    "Share the full report with your physician or performance coach at your next consultation.",
-    S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
-))   
 
 import datetime
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, PageBreak, Flowable
