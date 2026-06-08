@@ -546,7 +546,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8); canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
         canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
         canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5); canvas.drawString(MARGIN_H, 4, "Educational use only — not a medical diagnosis — health-tools.streamlit.app")
-        canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.utcnow().strftime("%Y-%m-%d UTC"))
+        canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
         canvas.restoreState()
 
     buf = BytesIO()
@@ -2301,7 +2301,7 @@ def draw_page(canvas, doc):
     canvas.setFillColor(HexColor("#64748B"))
     canvas.setFont("Helvetica", 6.5)
     canvas.drawString(18 * mm, 4, "Educational use only — not medical advice — health-tools.streamlit.app")
-    canvas.drawRightString(PAGE_W - 18 * mm, 4, datetime.datetime.utcnow().strftime("%Y-%m-%d UTC"))
+    canvas.drawRightString(PAGE_W - 18 * mm, 4, datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
     canvas.restoreState()
 
 
