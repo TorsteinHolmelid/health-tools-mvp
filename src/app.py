@@ -418,10 +418,18 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
 
 # ── Hovedfunksjon for Ultimate PDF Generering ─────────────────────────────────
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
+    buffer = io.BytesIO()
     # Dimensjonar
     PAGE_W, PAGE_H = A4
     MARGIN_H = 18 * mm
-    CONTENT_W = PAGE_W - 2 * MARGIN_H
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=A4,
+        leftMargin=MARGIN_H, 
+        rightMargin=MARGIN_H, 
+        topMargin=26 * mm, 
+        bottomMargin=18 * mm
+    )
 
     # Theme og Fargar
     BG      = HexColor("#0B1220")
