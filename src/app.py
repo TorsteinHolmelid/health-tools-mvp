@@ -2308,7 +2308,7 @@ def draw_page(canvas, doc):
 
 # ── Definer funksjonen din her (f.eks. def generate_report_pdf(report):) ──
 def generate_report_pdf(report):
-
+    buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
         leftMargin=18 * mm, rightMargin=18 * mm,
