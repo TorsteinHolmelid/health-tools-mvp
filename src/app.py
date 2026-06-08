@@ -1886,7 +1886,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     # ════════════════════════════════════════════════════════════
     # EXECUTIVE SUMMARY — FINAL PAGE (Stop / Start / Maintain)
     # ════════════════════════════════════════════════════════════
-story.append(PageBreak())
+    story.append(PageBreak())
     story.append(SecHeader(
         "Your Personal Action Plan",
         subtitle="Executive summary — review weekly, share with your physician, act on daily"
