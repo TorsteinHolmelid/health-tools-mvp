@@ -2310,9 +2310,12 @@ def draw_page(canvas, doc):
 def generate_report_pdf(report):
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        leftMargin=18 * mm, rightMargin=18 * mm,
-        topMargin=26 * mm, bottomMargin=18 * mm,
+        buffer, 
+        pagesize=A4,
+        leftMargin=18 * mm, 
+        rightMargin=18 * mm,
+        topMargin=26 * mm, 
+        bottomMargin=18 * mm,
     )
 
     story = []
