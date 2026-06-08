@@ -1962,7 +1962,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     buffer.seek(0)
     return buffer.getvalue()
 
-import datetime
+from datetime import datetime, timezone
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, PageBreak, Flowable
 from reportlab.lib.colors import HexColor, white
 from reportlab.lib.pagesizes import A4
