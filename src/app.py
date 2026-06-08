@@ -1,6 +1,7 @@
 from __future__ import annotations
 import math
 import uuid
+import io
 from io import BytesIO
 from datetime import datetime, timezone
 from html import escape
