@@ -94,7 +94,7 @@ class PDFStyles:
 
 # ── Treningsplan Builder ──────────────────────────────────────────────────────
 def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
-                    sel_strength, sel_cardio, sel_sport, sel_low):
+                    strength_list, cardio_list, sport_list, low_list):
     """Returns list of (day, session_type, activity, duration, intensity, notes)"""
     S_ACT = sel_strength[0] if sel_strength else "Strength training (weights)"
     C_ACT = sel_cardio[0]   if sel_cardio   else "Running/jogging"
@@ -1824,60 +1824,33 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(_pt2)
     story.append(VGap(10))
     
-    # ── Nutrition & Recovery Panel ──
-    story.append(P("Nutrition & Recovery Framework", S("sh", size=10, bold=True, color=TEXT, after=4)))
-        
-    if w_v:
-        _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
-    else:
-        _protein_g = 160
-        
-    _nutrition_rows = [
-        [P("METRIC",     S("nh", size=7.5, bold=True, color=MUTED)),
-         P("TARGET",     S("nh", size=7.5, bold=True, color=MUTED)),
-         P("WHY IT MATTERS", S("nh", size=7.5, bold=True, color=MUTED))],
-        [P("Daily protein",   S("nk", size=8.5, bold=True, color=TEXT)),
-         P(f"{_protein_g} g  ({_gp['protein']})", S("nv", size=8.5, bold=True, color=ACCENT)),
-         P("Maximises muscle protein synthesis (MPS). Leucine threshold ~2.5 g/meal activates MPS.",
-           S("nd", size=8, lead=11, color=MUTED))],
-        [P("Calorie adjustment", S("nk2", size=8.5, bold=True, color=TEXT)),
-         P(f"{_gp['deficit']:+d} kcal/day", S("nv2", size=8.5, bold=True,
-            color=HexColor("#DC2626") if _gp['deficit'] < 0 else HexColor("#059669"))),
-         P("Based on Mifflin-St Jeor TDEE. Adjust by ±100 kcal every 2 weeks if weight trend deviates.",
-           S("nd2", size=8, lead=11, color=MUTED))],
-        [P("Sleep",           S("nk3", size=8.5, bold=True, color=TEXT)),
-         P("7–9 hours/night", S("nv3", size=8.5, bold=True, color=HexColor("#7C3AED"))),
-         P("Growth hormone peaks in slow-wave sleep. Sleep <6h reduces MPS by ~18% (Dattilo, 2011).",
-           S("nd3", size=8, lead=11, color=MUTED))],
-        [P("Hydration",       S("nk4", size=8.5, bold=True, color=TEXT)),
-         P("35–45 ml/kg/day", S("nv4", size=8.5, bold=True, color=HexColor("#0891B2"))),
-         P("Even 2% dehydration impairs strength output by 5–8% and aerobic capacity by 10%.",
-           S("nd4", size=8, lead=11, color=MUTED))],
-        [P("Rest between sets", S("nk5", size=8.5, bold=True, color=TEXT)),
-         P("90–180 s (strength) · 45–60 s (metabolic)", S("nv5", size=8, bold=True, color=TEXT)),
-         P("Longer rest = greater strength gains. Shorter rest = elevated metabolic cost (EPOC).",
-           S("nd5", size=8, lead=11, color=MUTED))],
-    ]
-    
-    _nt = Table(_nutrition_rows, colWidths=[CONTENT_W*0.22, CONTENT_W*0.26, CONTENT_W*0.52])
-    _nt.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-        ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-        ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
-        ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),
-        ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_G),
-        ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_DIM),
-        ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-        ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-        ("TOPPADDING",    (0,0),  (-1,-1), 7),
-        ("BOTTOMPADDING", (0,0),  (-1,-1), 7),
-        ("LEFTPADDING",   (0,0),  (-1,-1), 6),
-        ("RIGHTPADDING",  (0,0),  (-1,-1), 6),
-        ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-    ]))
-    story.append(_nt)
-    story.append(VGap(8))
-        
+    # ── Mini framdriftsgraf for ukentlig volum ──
+    class VolumeSparkline(Flowable):
+        def __init__(self, weekly_volumes, width=CONTENT_W):
+            super().__init__()
+            self.vols = weekly_volumes  # liste med 7 tall (minutter per dag)
+            self.w = width
+            self.h = 40
+        def wrap(self, aw, ah):
+            return self.w, self.h
+        def draw(self):
+            c = self.canv
+            maxv = max(self.vols) if self.vols else 1
+            bar_w = (self.w - 20) / len(self.vols)
+            for i, v in enumerate(self.vols):
+                height = (v / maxv) * 24
+                x = 10 + i * bar_w
+                y = 8
+                c.setFillColor(HexColor("#0EA5A3"))
+                c.rect(x, y, bar_w - 2, height, fill=1, stroke=0)
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 7)
+            c.drawString(10, 0, "Weekly volume distribution (minutes)")
+
+    # Eksempel: hvis du har tilgang til daglige minutter fra planen
+    daily_mins = [50, 35, 50, 40, 50, 40, 0]  # kan hentes dynamisk
+    story.append(VolumeSparkline(daily_mins))
+    story.append(VGap(8))   
     # ── Expert Insight ──
     _training_insight = (
         f"This programme follows the principle of progressive overload — the most robustly evidenced "
