@@ -496,9 +496,7 @@ small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !imp
 </style>
 """,
     unsafe_allow_html=True,
-)
-
-    
+) 
     komponent = f"""
     <style>
     .kpi-grid {{
