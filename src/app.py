@@ -497,10 +497,7 @@ small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !imp
 """,
     unsafe_allow_html=True,
 )
-# ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
-def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
-    """Vis animerte KPI-kort med trender"""
-    from streamlit.components.v1 import html
+
     
     # Sørg for at vi har tall
     bmi_display = f"{bmi_val:.1f}" if bmi_val else "—"
