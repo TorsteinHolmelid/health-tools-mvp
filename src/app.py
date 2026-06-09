@@ -4358,28 +4358,27 @@ if results:
                 unsafe_allow_html=True,
             )
     # --- PREMIUM RADAR OG KPI (NYTT) ---
-    # Hent nødvendige verdier fra results og session_state
-    bmi_viz = results["bmi"]["value"] if "bmi" in results else None
-    vo2_pct_viz = results["vo2"].get("percentile", 50) if "vo2" in results else 50
-    bio_val_viz = age  # default
+    bmi_viz = results.get("bmi", {}).get("value") if "bmi" in results else None
+    vo2_pct_viz = results.get("vo2", {}).get("percentile", 50) if "vo2" in results else 50
+    bio_val_viz = age
     bio_diff_viz = 0
     if "bio_age" in results:
         bio_val_viz = results["bio_age"]["value"]
         bio_diff_viz = bio_val_viz - age
     ex_last = st.session_state.get("exercise_last", {})
     ex_total_min_viz = ex_last.get("minutes", 0) * ex_last.get("sessions_per_week", 0) if ex_last else 0
-    
+
+    # Beregn scores (0-100)
     bmi_score = 100 if (bmi_viz and 18.5 <= bmi_viz < 25) else 70 if (bmi_viz and 17 <= bmi_viz < 27) else 40
     vo2_score = float(vo2_pct_viz)
     activity_score = min(100, int(ex_total_min_viz / 300 * 100)) if ex_total_min_viz else 30
     lifestyle_score = max(0, min(100, 70 - (bio_diff_viz * 10))) if bio_diff_viz else 60
-    
-    st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
-    
-    if bmi_viz and results.get("vo2", {}).get("value"):
-        vo2_val = results["vo2"]["value"]
-        premium_kpi_dashboard(bmi_viz, vo2_val, bio_diff_viz, vo2_pct_viz, bio_val_viz)
 
+    st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
+
+    if bmi_viz and results.get("vo2", {}).get("value"):
+        vo2_val_viz = results["vo2"]["value"]
+        premium_kpi_dashboard(bmi_viz, vo2_val_viz, bio_diff_viz, vo2_pct_viz, bio_val_viz)
 # ── Conditions ────
     if "triage" in results:
         st.markdown("---")
