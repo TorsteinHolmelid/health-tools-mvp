@@ -1933,8 +1933,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
         "Share the full report with your physician or performance coach at your next consultation.",
         S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
     ))
-
-    # Etter at du har bygget hele story, avslutt med:
+    # ... inne i create_pdf_bytes_ultimate, helt på slutten
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.getvalue()
