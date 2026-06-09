@@ -1355,13 +1355,13 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     # ── Nutrition Expert Insight ──
     if cur_kcal and rec_kcal:
         _d_kcal_e = int(rec_kcal - cur_kcal)
-        if _d_kcal_e < -600:
+        if _d_kcal_e < -500:
             _nut_insight = (
-                f"A deficit exceeding 600 kcal/day activates adaptive thermogenesis — your metabolic rate "
-                "down-regulates by 20–30% within 2–3 weeks to compensate (Leibel et al., NEJM, 1995). "
-                "Additionally, deficits above 500 kcal/day substantially increase muscle catabolism. "
-                "The evidence-based recommendation: reduce to a 400–500 kcal/day deficit and prioritise "
-                "high protein (1.8–2.2 g/kg) to protect every kilogram of lean mass."
+                f"⚠️ Your target requires a {abs(_d_kcal_e)} kcal/day deficit — above the evidence-based safe limit of 500 kcal/day. "
+                "Deficits of this size activate adaptive thermogenesis: your metabolic rate down-regulates by 20–30% within 2–3 weeks "
+                "(Leibel et al., NEJM, 1995), and muscle catabolism increases substantially. "
+                "To reach your goal safely, consider extending your timeline. "
+                "If you proceed, high protein intake (2.0–2.4 g/kg/day) is critical to protect lean mass."
             )
             _nut_steps = [
                 "Recalibrate to a 400–500 kcal/day deficit — the sustainable zone for fat loss without metabolic slowdown",
@@ -4033,8 +4033,9 @@ if results:
         daily_change_kcal = kg_per_week * 7700.0 / 7.0
         recommended_daily = int(round(current_maint + daily_change_kcal))
         # Aldri meir enn 500 kcal/dag defiksit
-        min_kcal = int(round(current_maint - 500))
-        recommended_daily = max(recommended_daily, min_kcal)
+       actual_deficit = int(round(current_maint - recommended_daily))
+        if actual_deficit > 500:
+            st.warning(f"⚠️ Your goal requires a {actual_deficit} kcal/day deficit. This exceeds the safe limit of 500 kcal/day and may cause muscle loss and metabolic slowdown. Consider extending your timeline.")
         plan["current_needs_kcal"] = int(round(current_maint))
         plan["recommended_daily_kcal"] = recommended_daily
 
