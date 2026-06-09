@@ -1055,71 +1055,71 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c.setFillColor(BLUE); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
             self._header.drawOn(c, 14, self.h - 18)
             self._body.drawOn(c, 14, 8)
-  class ExecutiveSummaryCheatSheet(Flowable):
-    def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
-        super().__init__()
-        self.stop = stop_items[:3]
-        self.start = start_items[:3]
-        self.maintain = maintain_items[:3]
-        self.w = width
-        max_lines = max(len(self.stop), len(self.start), len(self.maintain))
-        self.h = 210 + max_lines * 18
-        self.bullet_style = ParagraphStyle(
-            "bullet_style",
-            fontName="Helvetica",
-            fontSize=8,
-            leading=11,
-            textColor=TEXT,  # Bruker den globale TEXT (som du har definert inne i create_pdf_bytes_ultimate – vi fikser det)
-            alignment=TA_LEFT,
-            wordWrap="CJK"
-        )
-
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-    def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
-        c.setFillColor(HexColor(bg_hex))
-        c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
-        c.setStrokeColor(HexColor(accent_hex))
-        c.setLineWidth(1.2)
-        c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
-        c.setFillColor(HexColor(accent_hex))
-        c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
-        c.setFillColor(HexColor(accent_hex))
-        c.setFont("Helvetica-Bold", 11)
-        c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
-        c.setStrokeColor(HexColor(accent_hex))
-        c.setLineWidth(0.4)
-        c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
-
-        text_y = y + ph - 46
-        for item in items:
-            p = Paragraph(f"• {item}", self.bullet_style)
-            w_avail = pw - 24
-            _, h_needed = p.wrap(w_avail, 999)
-            p.drawOn(c, x + 12, text_y - h_needed + 6)
-            text_y -= (h_needed + 4)
-
-    def draw(self):
-        c = self.canv
-        c.setFillColor(HexColor("#080D1A"))
-        c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
-        c.setStrokeColor(HexColor("#0EA5A3"))  # ACCENT farge – vi hardkoder midlertidig
-        c.setLineWidth(1.2)
-        c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
-        c.setFillColor(HexColor("#0EA5A3"))
-        c.setFont("Helvetica-Bold", 13)
-        c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
-        c.setFillColor(HexColor("#94A3B8"))  # MUTED
-        c.setFont("Helvetica", 7.5)
-        c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
-
-        gap = 8
-        ph = self.h - 48
-        pw = (self.w - gap * 2) / 3
-        self._draw_panel(c, 0, 8, pw, ph, "🛑", "STOP", self.stop, "#150202", "#EF4444")
-        self._draw_panel(c, pw + gap, 8, pw, ph, "🚀", "START", self.start, "#011008", "#22C55E")
-        self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")  
+      class ExecutiveSummaryCheatSheet(Flowable):
+        def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
+            super().__init__()
+            self.stop = stop_items[:3]
+            self.start = start_items[:3]
+            self.maintain = maintain_items[:3]
+            self.w = width
+            max_lines = max(len(self.stop), len(self.start), len(self.maintain))
+            self.h = 210 + max_lines * 18
+            self.bullet_style = ParagraphStyle(
+                "bullet_style",
+                fontName="Helvetica",
+                fontSize=8,
+                leading=11,
+                textColor=TEXT,  # Bruker den globale TEXT (som du har definert inne i create_pdf_bytes_ultimate – vi fikser det)
+                alignment=TA_LEFT,
+                wordWrap="CJK"
+            )
+    
+        def wrap(self, aw, ah):
+            return self.w, self.h
+    
+        def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
+            c.setFillColor(HexColor(bg_hex))
+            c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
+            c.setStrokeColor(HexColor(accent_hex))
+            c.setLineWidth(1.2)
+            c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
+            c.setFillColor(HexColor(accent_hex))
+            c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
+            c.setFillColor(HexColor(accent_hex))
+            c.setFont("Helvetica-Bold", 11)
+            c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
+            c.setStrokeColor(HexColor(accent_hex))
+            c.setLineWidth(0.4)
+            c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
+    
+            text_y = y + ph - 46
+            for item in items:
+                p = Paragraph(f"• {item}", self.bullet_style)
+                w_avail = pw - 24
+                _, h_needed = p.wrap(w_avail, 999)
+                p.drawOn(c, x + 12, text_y - h_needed + 6)
+                text_y -= (h_needed + 4)
+    
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#080D1A"))
+            c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
+            c.setStrokeColor(HexColor("#0EA5A3"))  # ACCENT farge – vi hardkoder midlertidig
+            c.setLineWidth(1.2)
+            c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
+            c.setFillColor(HexColor("#0EA5A3"))
+            c.setFont("Helvetica-Bold", 13)
+            c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
+            c.setFillColor(HexColor("#94A3B8"))  # MUTED
+            c.setFont("Helvetica", 7.5)
+            c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
+    
+            gap = 8
+            ph = self.h - 48
+            pw = (self.w - gap * 2) / 3
+            self._draw_panel(c, 0, 8, pw, ph, "🛑", "STOP", self.stop, "#150202", "#EF4444")
+            self._draw_panel(c, pw + gap, 8, pw, ph, "🚀", "START", self.start, "#011008", "#22C55E")
+            self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")  
     # SIDE 1: Cover + Dashboard
     story.append(VGap(16))
     story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
