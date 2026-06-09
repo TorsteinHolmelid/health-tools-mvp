@@ -1066,76 +1066,50 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self._header.drawOn(c, 14, self.h - 18)
             self._body.drawOn(c, 14, 8)
     
-class ExecutiveSummaryCheatSheet(Flowable):
-    def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
-        super().__init__()
-        self.stop = stop_items[:3]
-        self.start = start_items[:3]
-        self.maintain = maintain_items[:3]
-        self.w = width
-        # Beregn dynamisk høyde basert på antall linjer (maks 3 per panel, 5 linjer per element)
-        max_lines = max(len(self.stop), len(self.start), len(self.maintain))
-        self.h = 210 + max_lines * 18  # justerbar
-        self._styles = {}
-        for name in ["stop", "start", "maintain"]:
-            self._styles[name] = ParagraphStyle(
-                name + "_style",
-                parent=_styles["Normal"],
-                fontName="Helvetica",
-                fontSize=8,
-                leading=11,
-                textColor=TEXT,
-                alignment=TA_LEFT,
-                wordWrap="CJK"
-            )
-
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-    def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
-        c.setFillColor(HexColor(bg_hex))
-        c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
-        c.setStrokeColor(HexColor(accent_hex))
-        c.setLineWidth(1.2)
-        c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
-        c.setFillColor(HexColor(accent_hex))
-        c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
-        c.setFillColor(HexColor(accent_hex))
-        c.setFont("Helvetica-Bold", 11)
-        c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
-        c.setStrokeColor(HexColor(accent_hex))
-        c.setLineWidth(0.4)
-        c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
-
-        # Bruk Paragraph for hvert element
-        text_y = y + ph - 46
-        for item in items:
-            p = Paragraph(f"• {item}", self._styles["stop"])
-            w_avail = pw - 24
-            _, h_needed = p.wrap(w_avail, 999)
-            p.drawOn(c, x + 12, text_y - h_needed + 6)
-            text_y -= (h_needed + 4)
-
-    def draw(self):
-        c = self.canv
-        c.setFillColor(HexColor("#080D1A"))
-        c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
-        c.setStrokeColor(ACCENT)
-        c.setLineWidth(1.2)
-        c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
-        c.setFillColor(ACCENT)
-        c.setFont("Helvetica-Bold", 13)
-        c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
-        c.setFillColor(MUTED)
-        c.setFont("Helvetica", 7.5)
-        c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
-
-        gap = 8
-        ph = self.h - 48
-        pw = (self.w - gap * 2) / 3
-        self._draw_panel(c, 0,                8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
-        self._draw_panel(c, pw + gap,         8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
-        self._draw_panel(c, (pw + gap) * 2,   8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
+    class ExecutiveSummaryCheatSheet(Flowable):
+        def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
+            super().__init__()
+            self.w = width
+            self.stop = stop_items[:3]
+            self.start = start_items[:3]
+            self.maintain = maintain_items[:3]
+            self.h = 235
+        def wrap(self, aw, ah): return self.w, self.h
+        def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
+            c.setFillColor(HexColor(bg_hex))
+            c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
+            c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(1.2)
+            c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
+            c.setFillColor(HexColor(accent_hex))
+            c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
+            c.setFillColor(HexColor(accent_hex)); c.setFont("Helvetica-Bold", 11)
+            c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
+            c.setStrokeColor(HexColor(accent_hex)); c.setLineWidth(0.4)
+            c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
+            c.setFillColor(HexColor("#E5E7EB")); c.setFont("Helvetica", 8.2)
+            for i, item in enumerate(items):
+                ty = y + ph - 46 - i * 38
+                line1 = f"• {str(item)[:52]}"
+                line2 = str(item)[52:104]
+                c.drawString(x + 12, ty, line1)
+                if line2:
+                    c.drawString(x + 12, ty - 11, line2)
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#080D1A"))
+            c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT); c.setLineWidth(1.2)
+            c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
+            c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 13)
+            c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+            c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
+            gap = 8
+            ph = self.h - 48
+            pw = (self.w - gap * 2) / 3
+            self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
+            self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
+            self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
     
     # ── Sidetegningsmal (Topp- og botntekst) ──
     
@@ -1713,31 +1687,34 @@ class ExecutiveSummaryCheatSheet(Flowable):
 
     _col_w = [CONTENT_W * w for w in [0.12, 0.14, 0.16, 0.09, 0.12, 0.37]]
     _st = Table(_sched_rows, colWidths=_col_w)
+    # Premium stil – linjer, skygger, avrundede hjørner (så godt det går i ReportLab)
     _ts_style = [
-        # Header-bakgrunn med gradient-effekt (solid farge)
-        ("BACKGROUND", (0,0), (-1,0), HexColor("#0A1128")),
-        ("TEXTCOLOR", (0,0), (-1,0), HexColor("#F1F5F9")),
+        ("BACKGROUND", (0,0), (-1,0), HexColor("#0A1120")),  # mørkere header
+        ("TEXTCOLOR", (0,0), (-1,0), HexColor("#94A3B8")),
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,0), 8),
         ("ALIGN", (0,0), (-1,0), "CENTER"),
-        # Grid – både horisontale og vertikale linjer
-        ("GRID", (0,0), (-1,-1), 0.5, HexColor("#334155")),
-        ("BOX", (0,0), (-1,-1), 1, HexColor("#0EA5A3")),
-        # Rader vekselvis
+        ("BOX", (0,0), (-1,-1), 0.8, HexColor("#2D3F55")),
+        ("INNERGRID", (0,0), (-1,-1), 0.4, HexColor("#2D3F55")),
+        ("TOPPADDING", (0,0), (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
         ("ROWBACKGROUNDS", (0,1), (-1,-1), [HexColor("#111C33"), HexColor("#0D1628")]),
-        # Padding
-        ("TOPPADDING", (0,0), (-1,-1), 6),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-        ("LEFTPADDING", (0,0), (-1,-1), 5),
-        ("RIGHTPADDING", (0,0), (-1,-1), 5),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
     ]
-    # Spesifikk farge for intensitetskolonnen
+    # Fargelegg intensitetskolonnen individuelt
+    intensity_colors = {
+        "Light": HexColor("#14532D"),
+        "Light–Moderate": HexColor("#166534"),
+        "Moderate": HexColor("#1E3A5F"),
+        "Moderate–Hard": HexColor("#3B1F6E"),
+        "Hard": HexColor("#7F1D1D"),
+    }
     for i, (_, _, _, _, inten, _) in enumerate(_plan):
-        int_col = {"Light": "#14532D", "Light–Moderate": "#166534", "Moderate": "#1E3A5F",
-                   "Moderate–Hard": "#3B1F6E", "Hard": "#7F1D1D"}.get(inten, "#0D1628")
-        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), HexColor(int_col)))
+        bg = intensity_colors.get(inten, HexColor("#0D1628"))
+        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), bg))
         _ts_style.append(("TEXTCOLOR", (4, i+1), (4, i+1), white))
+    
     _st.setStyle(TableStyle(_ts_style))
     story.append(_st)
     story.append(VGap(10))
