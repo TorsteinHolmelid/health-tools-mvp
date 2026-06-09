@@ -507,7 +507,6 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
 # ── Hovedfunksjon for Ultimate PDF Generering ─────────────────────────────────
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
     buffer = io.BytesIO()
-    # Dimensjonar
     PAGE_W, PAGE_H = A4
     MARGIN_H = 18 * mm
     doc = SimpleDocTemplate(
@@ -533,7 +532,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     STROKE  = HexColor("#334155")
     DIM     = HexColor("#64748B")
 
-    # Hjelpefunksjonar for tekst
     _styles = getSampleStyleSheet()
     def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
         return ParagraphStyle(
@@ -608,7 +606,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _sel_sport    = plan_d.get("selected_sport", "—")
     _sel_low      = plan_d.get("selected_low", "—")
 
-    # Farge-helpers deklarert inni funksjonen
     def bmi_color(v):
         if v is None: return MUTED
         if v < 18.5:  return BLUE
@@ -636,7 +633,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         bio_v = age_f + bio_diff
     bio_col  = bio_color(bio_diff)
 
-# ── Bygging av PDF Story ──────────────────────────────────────────────────
     def draw_page(canvas, doc):
         canvas.saveState()
         canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
@@ -649,19 +645,16 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
         canvas.restoreState()
 
-
     story = []
     
-    # Header / Tittel
+    # Header
     style_title = S("DocTitle", size=24, color=white, bold=True, after=15)
     style_subtitle = S("DocSub", size=10, color=MUTED, after=20)
     story.append(P("Health Audit Report", style_title))
     story.append(P(f"Generated: {gen_v} | Target Goal: {_goal}", style_subtitle))
     story.append(HRFlowable(width="100%", thickness=1, color=STROKE, spaceAfter=20))
-    
-    
-   
-    # Health score kalkulering
+
+    # Health score
     score_parts = []
     if bmi_v is not None:
         if 18.5 <= bmi_v < 25:   score_parts.append(100)
@@ -678,7 +671,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     score_col    = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
     score_label  = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
     
-    # Radar scores mapping
     radar = {}
     radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75  if (bmi_v and 17 <= bmi_v < 27) else 50  if (bmi_v and 15 <= bmi_v < 30) else 25  if bmi_v else 50)
     radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
@@ -693,7 +685,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         except: pass
     radar["Lifestyle"] = max(0, min(100, life))
     
-    # Health Levers logikk
     if vo2_v is not None and vo2_pct < 40:
         biggest_lever = "Cardio fitness (VO2max)"
         lever_why = "The single most impactful modifiable longevity factor — and the fastest to improve with training."
@@ -710,7 +701,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         biggest_lever = "Strength training + progressive overload"
         lever_why = "Your core markers are solid — the next tier of improvement comes from consistent resistance training."
     
-    # Insights generering
     insights = []
     if bmi_v is not None:
         if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps. Avoid aggressive cuts — they accelerate muscle loss and reduce long-term adherence. Aim for 0.5–0.75 kg/week loss."))
@@ -1141,7 +1131,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
     
     
     
-    # ── SIDA 1: Cover + Dashboard ──
+    # SIDE 1: Cover + Dashboard (kort)
     story.append(VGap(16))
     story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
     story.append(P("Personalised Precision Health Analysis — Powered by Validated Clinical Formulas", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
@@ -1152,14 +1142,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
         [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
     ]
     it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
-    it.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,-1), CARD), 
-        ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), 
-        ("BOX", (0,0), (-1,-1), 1, STROKE), 
-        ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), 
-        ("TOPPADDING", (0,0), (-1,-1), 8), 
-        ("BOTTOMPADDING", (0,0), (-1,-1), 8)
-    ]))
+    it.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,-1), CARD), ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 8), ("BOTTOMPADDING", (0,0), (-1,-1), 8)]))
     story.append(it)
     story.append(VGap(8))
     
@@ -1555,10 +1538,9 @@ class ExecutiveSummaryCheatSheet(Flowable):
 
     story.append(PageBreak())
 
-    # Hent aktiviteter direkte fra session_state (fungerer alltid)
+    # Hent aktiviteter direkte fra session_state
     _activities = st.session_state.get("selected_activities", [])
     if not _activities:
-        # Fallback: sjekk om det finnes i report["plan"]
         _activities = report.get("plan", {}).get("selected_activities", [])
     if not _activities:
         _activities = []
@@ -1566,7 +1548,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
     _goal = report.get("plan", {}).get("goal", "Body Recomposition")
     _weeks = report.get("plan", {}).get("plan_weeks", 12)
 
-    # Kategoriser aktivitetene
+    # Kategoriser aktivitetene (samme som før)
     _strength_acts = {"Strength training (weights)", "Boxing / Martial arts", "Rock climbing / Bouldering", "Hiking (incline)"}
     _cardio_acts = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)", "Swimming", "Rowing (moderate/vigorous)", "HIIT", "Elliptical", "Stair climbing / Stairmaster"}
     _sport_acts = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
@@ -1582,7 +1564,6 @@ class ExecutiveSummaryCheatSheet(Flowable):
     _sel_sport = [a for a in _activities if a in _sport_acts]
     _sel_low = [a for a in _activities if a in _low_acts]
 
-    # Hvis ingen aktiviteter i det hele tatt, bruk standard
     if not _activities:
         _has_strength = True
         _has_cardio = True
@@ -1605,7 +1586,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
     else:
         _protein_g = 160
 
-    # ── Bygg ukentlig plan ved hjelp av _build_day_plan ──
+    # Bygg ukentlig plan med den nye _build_day_plan (som du har oppdatert)
     _plan = _build_day_plan(
         _goal,
         _has_strength,
@@ -1953,7 +1934,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
         S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
     ))
 
-# Bygg dokumentet og returner bytes
+    # Etter at du har bygget hele story, avslutt med:
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.getvalue()
