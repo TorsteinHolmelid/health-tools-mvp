@@ -94,44 +94,105 @@ class PDFStyles:
 
 # ── Treningsplan Builder ──────────────────────────────────────────────────────
 def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
-                    sel_strength, sel_cardio, sel_sport, sel_low):
-    """Returns list of (day, session_type, activity, duration, intensity, notes)"""
-    S_ACT = sel_strength[0] if sel_strength else "Strength training (weights)"
-    C_ACT = sel_cardio[0]   if sel_cardio   else "Running/jogging"
-    C2_ACT= sel_cardio[1]   if len(sel_cardio)>1 else C_ACT
-    SP_ACT= sel_sport[0]    if sel_sport    else None
-    L_ACT = sel_low[0]      if sel_low      else "Walking (casual)"
+                    strength_list, cardio_list, sport_list, low_list):
+    """
+    Lager en personlig ukestruktur basert på brukerens faktiske aktiviteter.
+    Rullerer gjennom flere aktiviteter innen hver kategori for variasjon.
+    """
+    # Standardaktiviteter hvis brukeren ikke har valgt noe
+    if not strength_list:
+        strength_list = ["Strength training (weights)"]
+    if not cardio_list:
+        cardio_list = ["Running/jogging"]
+    if not sport_list:
+        sport_list = []
+    if not low_list:
+        low_list = ["Walking (casual)"]
 
-    if goal == "Build muscle (bulk)":
-        plan = [
-            ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Push focus: chest, shoulders, triceps · 4×8–10 · RPE 7–8"),
-            ("Tuesday",   "Active Recovery", L_ACT, "30 min", "Light",       "Keep HR <120 bpm · mobility + foam rolling"),
-            ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Pull focus: back, biceps · 4×8–10 · RPE 7–8"),
-            ("Thursday",  "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 (65–75% HRmax) — supports recovery without catabolism"),
-            ("Friday",    "Strength C",   S_ACT,  "55 min", "Hard",          "Legs + core: squat, hinge, carry · 4×6–10 · RPE 8"),
-            ("Saturday",  "Sport / Cardio", SP_ACT or C2_ACT, "45 min", "Moderate", "Enjoyment session — keep intensity conversational"),
-            ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or gentle 20 min walk"),
-        ]
-    elif goal == "Lose fat":
-        plan = [
-            ("Monday",    "Strength A",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · superset to maximise calorie burn"),
-            ("Tuesday",   "Cardio",       C_ACT,  "40 min", "Moderate",      "Zone 2 steady-state — primary fat oxidation zone"),
-            ("Wednesday", "Strength B",   S_ACT,  "45 min", "Moderate–Hard", "Full-body compound · 3×10–12 · short rest intervals (60 s)"),
-            ("Thursday",  "LISS / Sport", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Low-impact to aid recovery while burning extra calories"),
-            ("Friday",    "Strength C + HIIT", S_ACT, "50 min", "Hard",     "30 min strength + 20 min HIIT finisher (20s on / 40s off)"),
-            ("Saturday",  "Cardio",       C2_ACT, "45 min", "Moderate",      "Long aerobic session — builds fat-burning capacity"),
-            ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest · prioritise sleep (key for cortisol + fat loss)"),
-        ]
-    else:  # Recomposition
-        plan = [
-            ("Monday",    "Strength A",   S_ACT,  "50 min", "Moderate–Hard", "Upper body push · 4×8–12 · progressive overload weekly"),
-            ("Tuesday",   "Cardio",       C_ACT,  "35 min", "Moderate",      "Zone 2 — 65–75% HRmax · builds aerobic base"),
-            ("Wednesday", "Strength B",   S_ACT,  "50 min", "Moderate–Hard", "Lower body · 4×8–12 · squat + hinge patterns"),
-            ("Thursday",  "Sport / Active", SP_ACT or L_ACT, "40 min", "Light–Moderate", "Movement variety — maintains motivation and NEAT"),
-            ("Friday",    "Strength C",   S_ACT,  "50 min", "Hard",          "Full body · 3×6–8 heavy + 2×15 pump work"),
-            ("Saturday",  "Cardio / HIIT", C2_ACT, "40 min", "Moderate–Hard", "Alternate: Zone 2 week A / HIIT week B"),
-            ("Sunday",    "Rest",         "—",    "—",      "—",             "Full rest or restorative yoga / stretching"),
-        ]
+    # Hjelpefunksjon for å velge aktivitet med rullering (basert på ukedag)
+    def _cycle_activity(act_list, day_index, offset=0):
+        if not act_list:
+            return None
+        idx = (day_index + offset) % len(act_list)
+        return act_list[idx]
+
+    # Basisoppsett – dagene som alltid finnes
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    plan = []
+
+    for i, day in enumerate(days):
+        if day == "Sunday":
+            plan.append((day, "Rest", "—", "—", "—", "Full rest or restorative yoga / stretching"))
+            continue
+
+        # Velg aktiviteter dynamisk basert på dag og tilgjengelige lister
+        strength_act = _cycle_activity(strength_list, i, 0) if has_strength else None
+        cardio_act   = _cycle_activity(cardio_list,   i, 1) if has_cardio else None
+        sport_act    = _cycle_activity(sport_list,    i, 2) if has_sport else None
+        low_act      = _cycle_activity(low_list,      i, 3) if has_low else None
+
+        # Prioritering: Styrke > Kardio > Sport > Lav intensitet
+        primary_act = strength_act or cardio_act or sport_act or low_act
+        if not primary_act:
+            primary_act = "Walking (casual)"
+
+        session_type = ""
+        intensity = "Moderate"
+        duration = "45 min"
+        notes = ""
+
+        # Bygg opplegg basert på mål (goal) og aktivitetstype
+        if goal == "Build muscle (bulk)":
+            if strength_act and i in [0, 2, 4]:  # Man, Wed, Fri
+                session_type = "Strength"
+                intensity = "Hard"
+                duration = "50 min"
+                notes = f"Progressive overload – {strength_act} · 4×8–12 · RPE 8"
+            elif cardio_act and i in [1, 5]:    # Tue, Sat
+                session_type = "Cardio"
+                intensity = "Moderate"
+                duration = "40 min"
+                notes = f"Zone 2 – {cardio_act} · builds aerobic base"
+            else:
+                session_type = "Active Recovery"
+                intensity = "Light"
+                duration = "30 min"
+                notes = f"Low-intensity movement – {primary_act} · keep HR <120"
+        elif goal == "Lose fat":
+            if strength_act and i in [0, 2, 4]:
+                session_type = "Strength + HIIT"
+                intensity = "Moderate–Hard"
+                duration = "50 min"
+                notes = f"{strength_act} supersets (3×12) + 15 min HIIT finisher"
+            elif cardio_act and i in [1, 3, 5]:
+                session_type = "Cardio"
+                intensity = "Moderate"
+                duration = "45 min"
+                notes = f"{cardio_act} – steady state fat oxidation zone (65–75% HRmax)"
+            else:
+                session_type = "LISS / Sport"
+                intensity = "Light–Moderate"
+                duration = "40 min"
+                notes = f"{primary_act} – low impact to aid recovery while burning calories"
+        else:  # Body Recomposition (default)
+            if strength_act and i in [0, 2, 4]:
+                session_type = "Strength"
+                intensity = "Moderate–Hard"
+                duration = "50 min"
+                notes = f"{strength_act} · 4×8–12 · progressive overload"
+            elif cardio_act and i in [1, 5]:
+                session_type = "Cardio"
+                intensity = "Moderate"
+                duration = "35 min"
+                notes = f"{cardio_act} – Zone 2 (65–75% HRmax) · aerobic base"
+            else:
+                session_type = "Sport / Active"
+                intensity = "Light–Moderate"
+                duration = "40 min"
+                notes = f"{primary_act} – movement variety, NEAT & enjoyment"
+
+        plan.append((day, session_type, primary_act, duration, intensity, notes))
+
     return plan
 
 # ── Custom Flowables ──────────────────────────────────────────────────────────
