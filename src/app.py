@@ -94,7 +94,7 @@ class PDFStyles:
 
 # ── Treningsplan Builder ──────────────────────────────────────────────────────
 def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
-                    strength_list, cardio_list, sport_list, low_list):
+                    sel_strength, sel_cardio, sel_sport, sel_low):
     """Returns list of (day, session_type, activity, duration, intensity, notes)"""
     S_ACT = sel_strength[0] if sel_strength else "Strength training (weights)"
     C_ACT = sel_cardio[0]   if sel_cardio   else "Running/jogging"
