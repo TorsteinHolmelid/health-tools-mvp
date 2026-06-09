@@ -1712,7 +1712,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
         ])
 
     _col_w = [CONTENT_W * w for w in [0.12, 0.14, 0.16, 0.09, 0.12, 0.37]]
-_st = Table(_sched_rows, colWidths=_col_w)
+    _st = Table(_sched_rows, colWidths=_col_w)
     _ts_style = [
         # Header-bakgrunn med gradient-effekt (solid farge)
         ("BACKGROUND", (0,0), (-1,0), HexColor("#0A1128")),
