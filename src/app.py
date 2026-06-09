@@ -1005,7 +1005,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 line2 = str(item)[52:104]
                 c.drawString(x + 12, ty, line1)
                 if line2:
-                c.drawString(x + 12, ty - 11, line2))
+                    c.drawString(x + 12, ty - 11, line2))
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#080D1A"))
