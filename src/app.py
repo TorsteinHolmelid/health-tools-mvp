@@ -1063,21 +1063,18 @@ class ExecutiveSummaryCheatSheet(Flowable):
         self.start = start_items[:3]
         self.maintain = maintain_items[:3]
         self.w = width
-        # Beregn dynamisk høyde basert på antall linjer (maks 3 per panel, 5 linjer per element)
         max_lines = max(len(self.stop), len(self.start), len(self.maintain))
-        self.h = 210 + max_lines * 18  # justerbar
-        self._styles = {}
-        for name in ["stop", "start", "maintain"]:
-            self._styles[name] = ParagraphStyle(
-                name + "_style",
-                parent=_styles["Normal"],
-                fontName="Helvetica",
-                fontSize=8,
-                leading=11,
-                textColor=TEXT,
-                alignment=TA_LEFT,
-                wordWrap="CJK"
-            )
+        self.h = 210 + max_lines * 18
+        # Opprett egne stiler
+        self.bullet_style = ParagraphStyle(
+            "bullet_style",
+            fontName="Helvetica",
+            fontSize=8,
+            leading=11,
+            textColor=TEXT,
+            alignment=TA_LEFT,
+            wordWrap="CJK"
+        )
 
     def wrap(self, aw, ah):
         return self.w, self.h
@@ -1097,10 +1094,9 @@ class ExecutiveSummaryCheatSheet(Flowable):
         c.setLineWidth(0.4)
         c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
 
-        # Bruk Paragraph for hvert element
         text_y = y + ph - 46
         for item in items:
-            p = Paragraph(f"• {item}", self._styles["stop"])
+            p = Paragraph(f"• {item}", self.bullet_style)
             w_avail = pw - 24
             _, h_needed = p.wrap(w_avail, 999)
             p.drawOn(c, x + 12, text_y - h_needed + 6)
