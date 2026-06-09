@@ -4032,8 +4032,7 @@ if results:
         kg_per_week = float(plan.get("kg_per_week", 0.0) or 0.0)
         daily_change_kcal = kg_per_week * 7700.0 / 7.0
         recommended_daily = int(round(current_maint + daily_change_kcal))
-        # Aldri meir enn 500 kcal/dag defiksit
-       actual_deficit = int(round(current_maint - recommended_daily))
+        actual_deficit = int(round(current_maint - recommended_daily))
         if actual_deficit > 500:
             st.warning(f"⚠️ Your goal requires a {actual_deficit} kcal/day deficit. This exceeds the safe limit of 500 kcal/day and may cause muscle loss and metabolic slowdown. Consider extending your timeline.")
         plan["current_needs_kcal"] = int(round(current_maint))
