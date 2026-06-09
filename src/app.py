@@ -4259,7 +4259,7 @@ else:
         
         # 2. Generer PDF og vis rapporten på skjermen
         try:
-            pdf_bytes = create_pdf_bytes_ultimate(report)
+        
             
             # Siden alt gikk bra, viser vi resultat-boksen og nedlastingsknappen her:
             with st.container(border=True):
