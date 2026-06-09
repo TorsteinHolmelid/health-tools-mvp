@@ -4415,12 +4415,12 @@ if results:
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
     # Beregn scores (0-100)
-bmi_score = 100 if 18.5 <= bmi_v < 25 else 70 if 17 <= bmi_v < 27 else 40
-vo2_score = float(results["vo2"].get("percentile", 50))
-activity_score = min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30
-lifestyle_score = max(0, min(100, 70 - (_diff * 10))) if _diff else 60
+    bmi_score = 100 if 18.5 <= bmi_v < 25 else 70 if 17 <= bmi_v < 27 else 40
+    vo2_score = float(results["vo2"].get("percentile", 50))
+    activity_score = min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30
+    lifestyle_score = max(0, min(100, 70 - (_diff * 10))) if _diff else 60
 
-st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
+    st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
 
     # ── Plan ──────────────────────────────────────────────────────────────────
         # ── Plan ────
