@@ -1687,45 +1687,38 @@ class ExecutiveSummaryCheatSheet(Flowable):
         story.append(P(f"🏅 {act_list}", S("actlist", size=9, color=TEXT, after=8)))
         story.append(VGap(6))
 
-# ── Ukentlig timeplan med premium styling ──
+    # ── Ukentlig timeplan ──
     story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
 
     _sched_header = [
-        P("DAY", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
-        P("SESSION", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
-        P("ACTIVITY", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
-        P("DURATION", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
-        P("INTENSITY", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
-        P("COACHING NOTE", S("th", size=8, bold=True, color=MUTED)),
+        P("DAY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("SESSION", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("ACTIVITY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("DURATION", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("INTENSITY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("COACHING NOTE", S("th", size=7.5, bold=True, color=MUTED)),
     ]
     _sched_rows = [_sched_header]
     for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
-        # Legg til et lite ikon for dagen (valgfritt)
-        day_icon = {"Monday":"🇲", "Tuesday":"🇹", "Wednesday":"🇼", "Thursday":"🇹", "Friday":"🇫", "Saturday":"🇸", "Sunday":"🇸"}.get(day, "")
         _sched_rows.append([
-            P(f"{day_icon} {day}" if day_icon else day, S(f"td{i}", size=9, bold=True, color=TEXT, align=TA_CENTER)),
-            P(stype, S(f"ts{i}", size=8.5, color=ACCENT, bold=True, align=TA_CENTER)),
-            P(act if act != "—" else "Rest", S(f"ta{i}", size=8.5, color=TEXT)),
-            P(dur, S(f"tdu{i}", size=8.5, align=TA_CENTER, color=MUTED)),
-            P(inten, S(f"ti{i}", size=8, bold=True, align=TA_CENTER, color=TEXT)),
-            P(note, S(f"tn{i}", size=8, lead=12, color=MUTED)),
+            P(day, S(f"td{i}", size=8.5, bold=True, color=TEXT)),
+            P(stype, S(f"ts{i}", size=8, color=ACCENT)),
+            P(act if act != "—" else "Rest", S(f"ta{i}", size=8, color=TEXT)),
+            P(dur, S(f"tdu{i}", size=8, align=TA_CENTER, color=MUTED)),
+            P(inten, S(f"ti{i}", size=7.5, bold=True, align=TA_CENTER, color=TEXT)),
+            P(note, S(f"tn{i}", size=7.5, lead=11, color=MUTED)),
         ])
-
     _col_w = [CONTENT_W * w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
     _st = Table(_sched_rows, colWidths=_col_w)
     _ts_style = [
-        # Header-bakgrunn med gradient-effekt (solid farge)
         ("BACKGROUND", (0,0), (-1,0), HexColor("#0A1128")),
         ("TEXTCOLOR", (0,0), (-1,0), HexColor("#F1F5F9")),
         ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
         ("FONTSIZE", (0,0), (-1,0), 8),
         ("ALIGN", (0,0), (-1,0), "CENTER"),
-        # Grid – både horisontale og vertikale linjer
         ("GRID", (0,0), (-1,-1), 0.5, HexColor("#334155")),
         ("BOX", (0,0), (-1,-1), 1, HexColor("#0EA5A3")),
-        # Rader vekselvis
         ("ROWBACKGROUNDS", (0,1), (-1,-1), [HexColor("#111C33"), HexColor("#0D1628")]),
-        # Padding
         ("TOPPADDING", (0,0), (-1,-1), 6),
         ("BOTTOMPADDING", (0,0), (-1,-1), 6),
         ("LEFTPADDING", (0,0), (-1,-1), 5),
@@ -1740,7 +1733,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
         _ts_style.append(("TEXTCOLOR", (4, i+1), (4, i+1), white))
     _st.setStyle(TableStyle(_ts_style))
     story.append(_st)
-    story.append(VGap(10))
+    story.append(VGap(8))
 
     # Intensitetstegnforklaring
     _legend_items = [("Light", "#14532D", "Zone 1–2 · <65% HRmax"), ("Moderate", "#1E3A5F", "Zone 2–3 · 65–80% HRmax"), ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"), ("Hard", "#7F1D1D", "Zone 4–5 · 87–95% HRmax")]
