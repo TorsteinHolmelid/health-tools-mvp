@@ -1242,7 +1242,95 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
             self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
             self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
-    
+class ExecutiveSummaryPanel(Flowable):
+    """Premium 3-spalter executive summary med gradientbakgrunn"""
+    def __init__(self, stop_items, start_items, keep_items, width=CONTENT_W):
+        super().__init__()
+        self.stop = stop_items[:4]
+        self.start = start_items[:4]
+        self.keep = keep_items[:4]
+        self.w = width
+        self.h = 270
+        
+    def wrap(self, aw, ah):
+        return self.w, self.h
+        
+    def draw(self):
+        c = self.canv
+        # Hovedramme med gradient (simulert)
+        c.setFillColor(HexColor("#080D1A"))
+        c.roundRect(0, 0, self.w, self.h, 14, fill=1, stroke=0)
+        c.setStrokeColor(ACCENT)
+        c.setLineWidth(1.2)
+        c.roundRect(0, 0, self.w, self.h, 14, fill=0, stroke=1)
+        
+        # Tittel med linje
+        c.setFillColor(ACCENT)
+        c.setFont("Helvetica-Bold", 14)
+        c.drawCentredString(self.w/2, self.h-20, "EXECUTIVE SUMMARY")
+        c.setStrokeColor(ACCENT)
+        c.setLineWidth(0.8)
+        c.line(self.w/2-50, self.h-28, self.w/2+50, self.h-28)
+        
+        # Undertekst
+        c.setFillColor(MUTED)
+        c.setFont("Helvetica", 7)
+        c.drawCentredString(self.w/2, self.h-38, "Your personal cheat sheet – review quarterly")
+        
+        # Kolonner – bredder
+        gap = 10
+        col_w = (self.w - 2*gap) / 3
+        x_pos = [0, col_w+gap, 2*(col_w+gap)]
+        titles = [("STOP", "#EF4444", "🛑"), ("START", "#22C55E", "🚀"), ("MAINTAIN", "#3B82F6", "✅")]
+        items = [self.stop, self.start, self.keep]
+        
+        for idx, (title, color, emoji) in enumerate(titles):
+            x = x_pos[idx]
+            # Panel-bakgrunn
+            c.setFillColor(HexColor("#0F172A"))
+            c.roundRect(x, 10, col_w, self.h-50, 10, fill=1, stroke=0)
+            c.setStrokeColor(HexColor(color))
+            c.setLineWidth(1)
+            c.roundRect(x, 10, col_w, self.h-50, 10, fill=0, stroke=1)
+            # Farget toppbånd
+            c.setFillColor(HexColor(color))
+            c.roundRect(x, self.h-40, col_w, 5, 2, fill=1, stroke=0)
+            # Tittel
+            c.setFillColor(HexColor(color))
+            c.setFont("Helvetica-Bold", 11)
+            c.drawCentredString(x+col_w/2, self.h-58, f"{emoji}  {title}")
+            # Strek under tittel
+            c.setStrokeColor(HexColor(color))
+            c.setLineWidth(0.4)
+            c.line(x+12, self.h-66, x+col_w-12, self.h-66)
+            # Punkter – manuell linjedeling
+            c.setFillColor(TEXT)
+            c.setFont("Helvetica", 7.5)
+            y_pos = self.h-85
+            for item in items[idx]:
+                lines = self._wrap_text(item, col_w-20, 7.5)
+                for line in lines:
+                    if y_pos < 20: break
+                    c.drawString(x+10, y_pos, f"• {line}")
+                    y_pos -= 12
+                y_pos -= 6
+                
+    def _wrap_text(self, text, max_width, font_size):
+        """Enkel tekstbryter – del opp ved 35 tegn"""
+        if len(text) <= 35:
+            return [text]
+        words = text.split()
+        lines = []
+        current = ""
+        for w in words:
+            if len(current) + len(w) + 1 <= 35:
+                current += (" " if current else "") + w
+            else:
+                lines.append(current)
+                current = w
+        if current:
+            lines.append(current)
+        return lines    
     # ── Sidetegningsmal (Topp- og botntekst) ──
     
     
@@ -4356,6 +4444,8 @@ if results:
                 )
 else:
     st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
+    # Inne i if results: - etter at du har definert b, v_val, _diff
+premium_kpi_dashboard(b, v_val, _diff)
 
 # ── Paywall / PDF ──── (0 innrykk — UTANFOR if results:)
 st.markdown("---")
