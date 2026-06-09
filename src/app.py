@@ -1898,13 +1898,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     # ════════════════════════════════════════════════════════════
     # EXECUTIVE SUMMARY — FINAL PAGE (Stop / Start / Maintain)
     # ════════════════════════════════════════════════════════════
-    story.append(PageBreak())
-    story.append(SecHeader(
-        "Your Personal Action Plan",
-        subtitle="Executive summary — review weekly, share with your physician, act on daily"
-    ))
-    story.append(VGap(10))
-
     # ── Build Stop / Start / Maintain dynamically from user data ──
     _stop_items  = []
     _start_items = []
@@ -1957,8 +1950,12 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             "The habit of measuring — you cannot compound what you do not track",
         ]
 
+    # START NY SIDE for Cheat Sheet
+    story.append(PageBreak())
     story.append(ExecutiveSummaryCheatSheet(_stop_items[:3], _start_items[:3], _keep_items[:3]))
-    story.append(VGap(12))
+    
+    # Start ny side for resten (CompoundingEffectBox + disclaimer)
+    story.append(PageBreak())
     story.append(CompoundingEffectBox())
     story.append(VGap(10))
     story.append(P(
