@@ -73,6 +73,47 @@ def plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score):
     )
     return fig
 
+def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff, vo2_pct, bio_val):
+    from streamlit.components.v1 import html
+    bio_years = f"{abs(bio_diff):.1f}" if bio_diff else "—"
+    bio_text = "yngre" if bio_diff and bio_diff < 0 else "eldre" if bio_diff and bio_diff > 0 else "samme"
+    komponent = f"""
+    <style>
+    .kpi-grid {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }}
+    .kpi-card {{ background: linear-gradient(145deg, rgba(17,28,51,0.9), rgba(11,18,32,0.95)); backdrop-filter: blur(4px); border-radius: 28px; border: 1px solid rgba(14,165,163,0.3); padding: 1.2rem 0.8rem; text-align: center; transition: all 0.2s ease; box-shadow: 0 8px 20px rgba(0,0,0,0.3); }}
+    .kpi-card:hover {{ transform: translateY(-3px); border-color: rgba(14,165,163,0.7); box-shadow: 0 14px 28px rgba(0,0,0,0.4); }}
+    .kpi-label {{ font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #94A3B8; margin-bottom: 8px; }}
+    .kpi-value {{ font-size: 42px; font-weight: 800; background: linear-gradient(135deg, #E5E7EB, #0EA5A3); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1; }}
+    .kpi-trend {{ font-size: 12px; margin-top: 8px; color: #22C55E; }}
+    </style>
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">BMI</div><div class="kpi-value" id="bmi-kpi">0.0</div><div class="kpi-trend">Normalvekt ✓</div></div>
+        <div class="kpi-card"><div class="kpi-label">VO₂max</div><div class="kpi-value" id="vo2-kpi">0.0</div><div class="kpi-trend">Topp {100 - vo2_pct:.0f}%</div></div>
+        <div class="kpi-card"><div class="kpi-label">Biologisk alder</div><div class="kpi-value" id="bio-kpi">0.0</div><div class="kpi-trend">{bio_text} {bio_years} år</div></div>
+    </div>
+    <script>
+    (function() {{
+        function animateNumber(id, target, decimals) {{
+            let el = document.getElementById(id);
+            if(!el) return;
+            let start = 0, duration = 900;
+            let step = (ts) => {{
+                if(!start) start = ts;
+                let p = Math.min((ts-start)/duration,1);
+                let val = target * (1-Math.pow(1-p,3));
+                el.innerText = val.toFixed(decimals);
+                if(p<1) requestAnimationFrame(step);
+                else el.innerText = target.toFixed(decimals);
+            }};
+            requestAnimationFrame(step);
+        }}
+        animateNumber('bmi-kpi', {bmi_val or 0}, 1);
+        animateNumber('vo2-kpi', {vo2_val or 0}, 1);
+        animateNumber('bio-kpi', {bio_val or 0}, 1);
+    }})();
+    </script>
+    """
+    html(komponent, height=200)
 # ── Databaseoppsett ───────────────────────────────────────────────────────────
 db = get_db_client()
 
@@ -455,7 +496,18 @@ small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !imp
 </style>
 """,
     unsafe_allow_html=True,
-) 
+)
+# ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
+def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
+    """Vis animerte KPI-kort med trender"""
+    from streamlit.components.v1 import html
+    
+    # Sørg for at vi har tall
+    bmi_display = f"{bmi_val:.1f}" if bmi_val else "—"
+    vo2_display = f"{vo2_val:.1f}" if vo2_val else "—"
+    bio_years = f"{abs(bio_diff):.1f}" if bio_diff else "—"
+    bio_text = "yngre" if bio_diff and bio_diff < 0 else "eldre" if bio_diff and bio_diff > 0 else "samme"
+    
     komponent = f"""
     <style>
     .kpi-grid {{
@@ -4306,27 +4358,29 @@ if results:
                 unsafe_allow_html=True,
             )
     # --- PREMIUM RADAR OG KPI (NYTT) ---
-    bmi_viz = results.get("bmi", {}).get("value") if "bmi" in results else None
-    vo2_pct_viz = results.get("vo2", {}).get("percentile", 50) if "vo2" in results else 50
-    bio_val_viz = age
-    bio_diff_viz = 0
+    # Hent nødvendige verdier fra results og session_state
+    bmi_viz = results["bmi"]["value"] if "bmi" in results else None
+    vo2_pct_viz = results["vo2"].get("percentile", 50) if "vo2" in results else 50
+    bio_diff_viz = None
     if "bio_age" in results:
         bio_val_viz = results["bio_age"]["value"]
         bio_diff_viz = bio_val_viz - age
+    else:
+        bio_val_viz = age
+        bio_diff_viz = 0
     ex_last = st.session_state.get("exercise_last", {})
     ex_total_min_viz = ex_last.get("minutes", 0) * ex_last.get("sessions_per_week", 0) if ex_last else 0
-
-    # Beregn scores (0-100)
+    
     bmi_score = 100 if (bmi_viz and 18.5 <= bmi_viz < 25) else 70 if (bmi_viz and 17 <= bmi_viz < 27) else 40
     vo2_score = float(vo2_pct_viz)
     activity_score = min(100, int(ex_total_min_viz / 300 * 100)) if ex_total_min_viz else 30
     lifestyle_score = max(0, min(100, 70 - (bio_diff_viz * 10))) if bio_diff_viz else 60
-
+    
     st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
-
+    
     if bmi_viz and results.get("vo2", {}).get("value"):
-        vo2_val_viz = results["vo2"]["value"]
-        premium_kpi_dashboard(bmi_viz, vo2_val_viz, bio_diff_viz, vo2_pct_viz, bio_val_viz)
+        premium_kpi_dashboard(bmi_viz, results["vo2"]["value"], bio_diff_viz, vo2_pct_viz, bio_val_viz)
+
 # ── Conditions ────
     if "triage" in results:
         st.markdown("---")
@@ -4573,7 +4627,7 @@ else:
         
         # 2. Generer PDF og vis rapporten på skjermen
         try:
-            with st.spinner("🧠 Generating your premium report... (this takes a few seconds)"):
+                        with st.spinner("🧠 Generating your premium report... (this takes a few seconds)"):
                 pdf_bytes = create_pdf_bytes_ultimate(report)
             st.balloons()
             with st.container(border=True):
