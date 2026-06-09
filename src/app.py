@@ -1711,7 +1711,7 @@ class ExecutiveSummaryCheatSheet(Flowable):
             P(note, S(f"tn{i}", size=8, lead=12, color=MUTED)),
         ])
 
-    _col_w = [CONTENT_W * w for w in [0.12, 0.14, 0.16, 0.09, 0.12, 0.37]]
+    _col_w = [CONTENT_W * w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
     _st = Table(_sched_rows, colWidths=_col_w)
     _ts_style = [
         # Header-bakgrunn med gradient-effekt (solid farge)
