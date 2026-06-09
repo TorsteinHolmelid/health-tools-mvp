@@ -1075,7 +1075,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self.start = start_items[:3] if start_items else ["None identified"]
             self.maintain = maintain_items[:3] if maintain_items else ["None identified"]
             
-            # Opprett Paragraph-stiler for punktene
+            # Hent stilarkene som allerede er definert i funksjonen (finnes i create_pdf_bytes_ultimate)
+            # Bruk _styles som allerede er definert tidligere i funksjonen
             self.bullet_style = ParagraphStyle(
                 "CheatSheetBullet",
                 parent=_styles["Normal"],
@@ -1084,59 +1085,45 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 leading=11,
                 textColor=HexColor("#E5E7EB"),
                 alignment=TA_LEFT,
-                leftIndent=12,
+                leftIndent=10,
                 rightIndent=6,
                 spaceAfter=4
             )
             
-            # Lag Paragraph-objekter (legger til "• " foran hvert punkt)
+            # Lag Paragraph-objekter (legger til "• " foran)
             self.stop_paras = [Paragraph(f"• {escape(str(item))}", self.bullet_style) for item in self.stop]
             self.start_paras = [Paragraph(f"• {escape(str(item))}", self.bullet_style) for item in self.start]
             self.maintain_paras = [Paragraph(f"• {escape(str(item))}", self.bullet_style) for item in self.maintain]
             
-            # Beregn maks høyde for hver kolonne
             self.h = self._calculate_height()
         
         def _calculate_height(self):
-            """Beregn total høyde basert på innholdet i den høyeste kolonnen."""
             gap = 8
             ph = 0
-            # Finn den høyeste kolonnen
             for paras in [self.stop_paras, self.start_paras, self.maintain_paras]:
                 col_height = 48  # header + separator + padding
                 for p in paras:
-                    w, h = p.wrap(self.w//3 - 20, 9999)  # max width per column minus padding
+                    w, h = p.wrap(self.w//3 - 20, 9999)
                     col_height += h + 4
                 ph = max(ph, col_height)
-            return max(ph + 20, 200)  # minimum 200px høyde
+            return max(ph + 20, 200)
         
         def _draw_panel(self, c, x, y, pw, ph, emoji, title, paras, bg_hex, accent_hex):
-            """Tegn én kolonne med Paragraph-objekter."""
-            # Bakgrunn og ramme
             c.setFillColor(HexColor(bg_hex))
             c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
             c.setStrokeColor(HexColor(accent_hex))
             c.setLineWidth(1.2)
             c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
-            
-            # Toppfargebånd
             c.setFillColor(HexColor(accent_hex))
             c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
-            
-            # Tittel
             c.setFillColor(HexColor(accent_hex))
             c.setFont("Helvetica-Bold", 11)
             c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
-            
-            # Skillestreker
             c.setStrokeColor(HexColor(accent_hex))
             c.setLineWidth(0.4)
             c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
-            
-            # Tegn Paragraph-ene
             current_y = y + ph - 46
             for para in paras:
-                # Plass til å tegne paragraph – må kalkulere høyde på nytt
                 w_avail = pw - 20
                 p_h = para.wrap(w_avail, 9999)[1]
                 para.drawOn(c, x + 10, current_y - p_h)
@@ -1144,26 +1131,20 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         
         def draw(self):
             c = self.canv
-            # Hovedramme
             c.setFillColor(HexColor("#080D1A"))
             c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
             c.setStrokeColor(ACCENT)
             c.setLineWidth(1.2)
             c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
-            
-            # Topptekst
             c.setFillColor(ACCENT)
             c.setFont("Helvetica-Bold", 13)
             c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
             c.setFillColor(MUTED)
             c.setFont("Helvetica", 7.5)
             c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
-            
             gap = 8
             ph = self.h - 48
             pw = (self.w - gap * 2) / 3
-            
-            # Tegn de tre kolonnene
             self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop_paras,     "#150202", "#EF4444")
             self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start_paras,    "#011008", "#22C55E")
             self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain_paras, "#020A18", "#3B82F6")
