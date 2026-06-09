@@ -1067,87 +1067,81 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self._body.drawOn(c, 14, 8)
     
     class ExecutiveSummaryCheatSheet(Flowable):
-        """Premium executive summary with three columns using Paragraph for auto-wrapping."""
-        def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
+        """Premium executive summary with manual text wrapping (safe and simple)."""
+        def __init__(self, stop_items, start_items, maintain_items, width=CONTENT_W):
             super().__init__()
             self.w = width
             self.stop = stop_items[:3] if stop_items else ["None identified"]
             self.start = start_items[:3] if start_items else ["None identified"]
             self.maintain = maintain_items[:3] if maintain_items else ["None identified"]
-            
-            # Hent stilarkene som allerede er definert i funksjonen (finnes i create_pdf_bytes_ultimate)
-            # Bruk _styles som allerede er definert tidligere i funksjonen
-            self.bullet_style = ParagraphStyle(
-                "CheatSheetBullet",
-                parent=_styles["Normal"],
-                fontName="Helvetica",
-                fontSize=7.5,
-                leading=11,
-                textColor=HexColor("#E5E7EB"),
-                alignment=TA_LEFT,
-                leftIndent=10,
-                rightIndent=6,
-                spaceAfter=4
-            )
-            
-            # Lag Paragraph-objekter (legger til "• " foran)
-            self.stop_paras = [Paragraph(f"• {escape(str(item))}", self.bullet_style) for item in self.stop]
-            self.start_paras = [Paragraph(f"• {escape(str(item))}", self.bullet_style) for item in self.start]
-            self.maintain_paras = [Paragraph(f"• {escape(str(item))}", self.bullet_style) for item in self.maintain]
-            
-            self.h = self._calculate_height()
-        
-        def _calculate_height(self):
-            gap = 8
-            ph = 0
-            for paras in [self.stop_paras, self.start_paras, self.maintain_paras]:
-                col_height = 48  # header + separator + padding
-                for p in paras:
-                    w, h = p.wrap(self.w//3 - 20, 9999)
-                    col_height += h + 4
-                ph = max(ph, col_height)
-            return max(ph + 20, 200)
-        
-        def _draw_panel(self, c, x, y, pw, ph, emoji, title, paras, bg_hex, accent_hex):
+            self.h = 260  # fast høyde, justeres ved wrap om nødvendig
+
+        def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
+            # Bakgrunn og ramme
             c.setFillColor(HexColor(bg_hex))
             c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
             c.setStrokeColor(HexColor(accent_hex))
             c.setLineWidth(1.2)
             c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
+            # Toppfargebånd
             c.setFillColor(HexColor(accent_hex))
             c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
+            # Tittel (emoji + tekst)
             c.setFillColor(HexColor(accent_hex))
             c.setFont("Helvetica-Bold", 11)
             c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
+            # Skillestrek
             c.setStrokeColor(HexColor(accent_hex))
             c.setLineWidth(0.4)
             c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
+            # Skriv ut punktene med manuell linjedeling (maks 28 tegn per linje)
+            c.setFillColor(HexColor("#E5E7EB"))
+            c.setFont("Helvetica", 7.5)
+            line_height = 11
             current_y = y + ph - 46
-            for para in paras:
-                w_avail = pw - 20
-                p_h = para.wrap(w_avail, 9999)[1]
-                para.drawOn(c, x + 10, current_y - p_h)
-                current_y -= (p_h + 6)
-        
+            for item in items:
+                text = f"• {item}"
+                # Del opp teksten i biter på maks 28 tegn
+                words = text.split()
+                lines = []
+                current_line = ""
+                for word in words:
+                    if len(current_line) + len(word) + 1 <= 28:
+                        current_line += (" " if current_line else "") + word
+                    else:
+                        if current_line:
+                            lines.append(current_line)
+                        current_line = word
+                if current_line:
+                    lines.append(current_line)
+                # Tegn linjene
+                for line in lines:
+                    c.drawString(x + 10, current_y, line)
+                    current_y -= line_height
+                current_y -= 4  # ekstra mellomrom mellom punkter
+
         def draw(self):
             c = self.canv
+            # Hovedramme
             c.setFillColor(HexColor("#080D1A"))
             c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
             c.setStrokeColor(ACCENT)
             c.setLineWidth(1.2)
             c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
+            # Topptekst
             c.setFillColor(ACCENT)
             c.setFont("Helvetica-Bold", 13)
             c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
             c.setFillColor(MUTED)
             c.setFont("Helvetica", 7.5)
             c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
+            # Kolonner
             gap = 8
             ph = self.h - 48
             pw = (self.w - gap * 2) / 3
-            self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop_paras,     "#150202", "#EF4444")
-            self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start_paras,    "#011008", "#22C55E")
-            self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain_paras, "#020A18", "#3B82F6")
+            self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
+            self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
+            self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
     
     # ── Sidetegningsmal (Topp- og botntekst) ──
     
