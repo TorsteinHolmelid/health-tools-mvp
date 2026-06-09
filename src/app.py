@@ -1966,11 +1966,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     ))
 
     # Bygg dokumentet og returner bytes
-    print("KØYRER FØRSTE PDF-FUNKSJON")
-    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-    print("ETTER FØRSTE build")
-    buffer
-    print("PDF bytes length:", len(buffer.getvalue()))
+    buffer.seek(0)
     return buffer.getvalue()
 
 from datetime import datetime, timezone
