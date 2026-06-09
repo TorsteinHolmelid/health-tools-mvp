@@ -499,12 +499,6 @@ small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !imp
 )
 
     
-    # Sørg for at vi har tall
-    bmi_display = f"{bmi_val:.1f}" if bmi_val else "—"
-    vo2_display = f"{vo2_val:.1f}" if vo2_val else "—"
-    bio_years = f"{abs(bio_diff):.1f}" if bio_diff else "—"
-    bio_text = "yngre" if bio_diff and bio_diff < 0 else "eldre" if bio_diff and bio_diff > 0 else "samme"
-    
     komponent = f"""
     <style>
     .kpi-grid {{
