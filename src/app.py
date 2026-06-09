@@ -25,6 +25,32 @@ from calculators import (
     tdee_including_weekly_exercise,
 )
 from db import get_db_client, save_health_metrics
+def plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score):
+    import plotly.graph_objects as go
+    categories = ['Kroppssammensetning', 'Kondisjon', 'Aktivitet', 'Livsstil']
+    values = [bmi_score, vo2_score, activity_score, lifestyle_score]
+    
+    fig = go.Figure(data=go.Scatterpolar(
+        r=values,
+        theta=categories,
+        fill='toself',
+        marker=dict(color='#0EA5A3', size=6),
+        line=dict(color='#0EA5A3', width=2),
+        opacity=0.7
+    ))
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(visible=True, range=[0, 100], color='#94A3B8', gridcolor='#334155'),
+            angularaxis=dict(tickfont=dict(color='#E5E7EB', size=10), gridcolor='#334155'),
+            bgcolor='rgba(0,0,0,0)'
+        ),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=60, r=60, t=20, b=20),
+        height=350,
+        font=dict(color='#E5E7EB')
+    )
+    return fig
 
 # ── Databaseoppsett ───────────────────────────────────────────────────────────
 db = get_db_client()
@@ -4304,6 +4330,14 @@ if results:
         else:
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
+    # Beregn scores (0-100)
+bmi_score = 100 if 18.5 <= bmi_v < 25 else 70 if 17 <= bmi_v < 27 else 40
+vo2_score = float(results["vo2"].get("percentile", 50))
+activity_score = min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30
+lifestyle_score = max(0, min(100, 70 - (_diff * 10))) if _diff else 60
+
+st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
+
     # ── Plan ──────────────────────────────────────────────────────────────────
         # ── Plan ────
     if "plan" in results:
@@ -4444,9 +4478,7 @@ if results:
                 )
 else:
     st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
-    # Inne i if results: - etter at du har definert b, v_val, _diff
-premium_kpi_dashboard(b, v_val, _diff)
-
+ 
 # ── Paywall / PDF ──── (0 innrykk — UTANFOR if results:)
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
