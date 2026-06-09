@@ -1674,9 +1674,11 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         _ts_style.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
         _ts_style.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
         int_col = {"Light": "#14532D", "Light–Moderate": "#166534", "Moderate": "#1E3A5F", "Moderate–Hard": "#3B1F6E", "Hard": "#7F1D1D"}.get(inten, row_bg)
-        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), HexColor(int_col)))
+        # Sjekk om int_col er en streng (fargekode) eller allerede et fargeobjekt
+        if isinstance(int_col, str):
+            int_col = HexColor(int_col)
+        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), int_col))
         _ts_style.append(("TEXTCOLOR", (4, i+1), (4, i+1), white))
-    _st.setStyle(TableStyle(_ts_style))
     story.append(_st)
     story.append(VGap(8))
 
