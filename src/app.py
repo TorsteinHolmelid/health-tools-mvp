@@ -4361,11 +4361,13 @@ if results:
     # Hent nødvendige verdier fra results og session_state
     bmi_viz = results["bmi"]["value"] if "bmi" in results else None
     vo2_pct_viz = results["vo2"].get("percentile", 50) if "vo2" in results else 50
-    bio_val_viz = age  # default
-    bio_diff_viz = 0
+    bio_diff_viz = None
     if "bio_age" in results:
         bio_val_viz = results["bio_age"]["value"]
         bio_diff_viz = bio_val_viz - age
+    else:
+        bio_val_viz = age
+        bio_diff_viz = 0
     ex_last = st.session_state.get("exercise_last", {})
     ex_total_min_viz = ex_last.get("minutes", 0) * ex_last.get("sessions_per_week", 0) if ex_last else 0
     
@@ -4377,8 +4379,7 @@ if results:
     st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
     
     if bmi_viz and results.get("vo2", {}).get("value"):
-        vo2_val = results["vo2"]["value"]
-        premium_kpi_dashboard(bmi_viz, vo2_val, bio_diff_viz, vo2_pct_viz, bio_val_viz)
+        premium_kpi_dashboard(bmi_viz, results["vo2"]["value"], bio_diff_viz, vo2_pct_viz, bio_val_viz)
 
 # ── Conditions ────
     if "triage" in results:
@@ -4414,12 +4415,12 @@ if results:
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
     # Beregn scores (0-100)
-    bmi_score = 100 if 18.5 <= bmi_v < 25 else 70 if 17 <= bmi_v < 27 else 40
-    vo2_score = float(results["vo2"].get("percentile", 50))
-    activity_score = min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30
-    lifestyle_score = max(0, min(100, 70 - (_diff * 10))) if _diff else 60
+bmi_score = 100 if 18.5 <= bmi_v < 25 else 70 if 17 <= bmi_v < 27 else 40
+vo2_score = float(results["vo2"].get("percentile", 50))
+activity_score = min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30
+lifestyle_score = max(0, min(100, 70 - (_diff * 10))) if _diff else 60
 
-    st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
+st.plotly_chart(plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score), use_container_width=True)
 
     # ── Plan ──────────────────────────────────────────────────────────────────
         # ── Plan ────
@@ -4626,7 +4627,7 @@ else:
         
         # 2. Generer PDF og vis rapporten på skjermen
         try:
-            with st.spinner("🧠 Generating your premium report... (this takes a few seconds)"):
+                        with st.spinner("🧠 Generating your premium report... (this takes a few seconds)"):
                 pdf_bytes = create_pdf_bytes_ultimate(report)
             st.balloons()
             with st.container(border=True):
