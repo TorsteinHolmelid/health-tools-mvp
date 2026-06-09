@@ -1496,214 +1496,199 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     else:
         story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
     
-    # ── PAGE 7: Personalised Training Programme (PREMIUM) ──
+    # ═══════════════════════════════════════════════════════════════════════════
+    # NY PREMIUM TRENINGSSEKSJON – tilpasset brukerens aktiviteter
+    # ═══════════════════════════════════════════════════════════════════════════
+
     story.append(PageBreak())
-
-    # ── Pull values safely from report data ──
+    
+    # ── Datahenting ──
     plan_d = report.get("plan") or {}
-    _goal       = plan_d.get("goal", "Body Recomposition")
+    _goal = plan_d.get("goal", "Body Recomposition")
     _activities = plan_d.get("selected_activities") or report.get("selected_activities", [])
-    _weeks      = plan_d.get("plan_weeks", 12)
-    _protein_on = plan_d.get("protein_focus", True)
+    _weeks = plan_d.get("plan_weeks", 12)
     
-    # ── Activity → category map ──
+    # ── Kategorisering av aktiviteter (samme som før) ──
     _strength_acts = {"Strength training (weights)", "Boxing / Martial arts", "Rock climbing / Bouldering", "Hiking (incline)"}
-    _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)", "Swimming", "Rowing (moderate/vigorous)", "HIIT", "Elliptical", "Stair climbing / Stairmaster"}
-    _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
-    _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates", "Housework / Light chores", "Gardening / Heavy yard work"}
-
+    _cardio_acts = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)", "Swimming", "Rowing (moderate/vigorous)", "HIIT", "Elliptical", "Stair climbing / Stairmaster"}
+    _sport_acts = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
+    _low_acts = {"Walking (casual)", "Brisk walking", "Yoga / Pilates", "Housework / Light chores", "Gardening / Heavy yard work"}
+    
     _has_strength = bool(_activities and _strength_acts & set(_activities))
-    _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
-    _has_sport    = bool(_activities and _sport_acts    & set(_activities))
-    _has_low      = bool(_activities and _low_acts      & set(_activities))
-
+    _has_cardio = bool(_activities and _cardio_acts & set(_activities))
+    _has_sport = bool(_activities and _sport_acts & set(_activities))
+    _has_low = bool(_activities and _low_acts & set(_activities))
+    
     _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
-    _sel_cardio   = [a for a in _activities if a in _cardio_acts] or [a for a in _activities if a in _sport_acts] or ["Running/jogging"]
-    _sel_sport    = [a for a in _activities if a in _sport_acts]
-    _sel_low      = [a for a in _activities if a in _low_acts]
+    _sel_cardio = [a for a in _activities if a in _cardio_acts] or [a for a in _activities if a in _sport_acts] or ["Running/jogging"]
+    _sel_sport = [a for a in _activities if a in _sport_acts]
+    _sel_low = [a for a in _activities if a in _low_acts]
     
-    # ══════════════════════════════════════════════════════════════════
-    # PREMIUM TRAINING SECTION — constants + custom flowables
-    # ══════════════════════════════════════════════════════════════════
-    _WHITE      = HexColor("#FFFFFF")
-    _ROW_A      = HexColor("#111C33")
-    _ROW_B      = HexColor("#0D1628")
-    _HEADER_BG  = HexColor("#080F1E")
-    _PHASE1_BG  = HexColor("#0F2A1E")
-    _PHASE2_BG  = HexColor("#0F1F3A")
-    _PHASE3_BG  = HexColor("#1A0F3A")
-    _TEXT_LIGHT = HexColor("#E2E8F0")
-    _TEXT_DIM   = HexColor("#94A3B8")
-    _ACCENT_G   = HexColor("#22C55E")
-    _ACCENT_B   = HexColor("#38BDF8")
-    _ACCENT_P   = HexColor("#A78BFA")
-    _ACCENT_R   = HexColor("#F87171")
-    _DELOAD_BG  = HexColor("#2A2510")
-    
-    # ── Intensitetsfargar ──
-    _intensity_colors = {
-        "Light":          HexColor("#14532D"),
-        "Light–Moderate": HexColor("#166534"),
-        "Moderate":       HexColor("#1E3A5F"),
-        "Moderate–Hard":  HexColor("#3B1F6E"),
-        "Hard":           HexColor("#7F1D1D"),
-        "—":              _ROW_B,
-    }
-    
-    # ── Goal-based parameter table ──
+    # ── Målspesifikke parametere ──
     _goal_params = {
-        "Lose fat":               {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
-                                   "phase1": "Metabolic Reset", "phase1_wk": "Wk 1–3",
-                                   "phase2": "Progressive Overload", "phase2_wk": "Wk 4–8",
-                                   "phase3": "Peak & Cut", "phase3_wk": "Wk 9–12",
-                                   "phase1_desc": "Restore metabolic health, calibrate deficit, establish movement patterns",
-                                   "phase2_desc": "Progressive load + caloric precision — preserve lean mass while losing fat",
-                                   "phase3_desc": "Peak intensity, HIIT integration, deload in final week",
-                                   "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass.",
-                                   "goal_color": "#EF4444"},
-        "Build muscle (bulk)":    {"deficit": +350, "protein": "2.0 g/kg", "strength_d": 4, "cardio_d": 2, "rest_d": 1,
-                                   "phase1": "Neural Adaptation", "phase1_wk": "Wk 1–3",
-                                   "phase2": "Hypertrophy Block", "phase2_wk": "Wk 4–8",
-                                   "phase3": "Volume Peak", "phase3_wk": "Wk 9–12",
-                                   "phase1_desc": "Form mastery, movement quality, CNS adaptation to new loads",
-                                   "phase2_desc": "Maximum hypertrophy stimulus — 10–20 sets/muscle/week at 67–77% 1RM",
-                                   "phase3_desc": "Highest total volume, personal bests, mandatory deload in Wk 12",
-                                   "note": "Aim for 0.25–0.5 kg/week weight gain. Calorie surplus supports muscle protein synthesis.",
-                                   "goal_color": "#22C55E"},
-        "Body Recomposition":     {"deficit": 0,    "protein": "2.4 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
-                                   "phase1": "Foundation", "phase1_wk": "Wk 1–3",
-                                   "phase2": "Recomposition Block", "phase2_wk": "Wk 4–8",
-                                   "phase3": "Optimisation", "phase3_wk": "Wk 9–12",
-                                   "phase1_desc": "Habit formation, movement quality, baseline aerobic conditioning",
-                                   "phase2_desc": "Progressive overload + varied cardio — simultaneous fat loss & muscle gain",
-                                   "phase3_desc": "Peak compound lifts, deload in final week, composition re-assessment",
-                                   "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain.",
-                                   "goal_color": "#0EA5A3"},
+        "Lose fat": {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
+                     "phase1": "Metabolic Reset", "phase2": "Progressive Overload", "phase3": "Peak & Cut",
+                     "goal_color": "#EF4444"},
+        "Build muscle (bulk)": {"deficit": +350, "protein": "2.0 g/kg", "strength_d": 4, "cardio_d": 2, "rest_d": 1,
+                                "phase1": "Neural Adaptation", "phase2": "Hypertrophy Block", "phase3": "Volume Peak",
+                                "goal_color": "#22C55E"},
+        "Body Recomposition": {"deficit": 0, "protein": "2.4 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
+                               "phase1": "Foundation", "phase2": "Recomposition Block", "phase3": "Optimisation",
+                               "goal_color": "#0EA5A3"},
     }
-
     _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
     _goal_col = HexColor(_gp["goal_color"])
-
+    
     if w_v:
         _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
     else:
         _protein_g = 160
-
-    # ══════════════════════════════════════════════════════════════════
-    # PREMIUM HEADER — title + goal badge + key metrics strip
-    # ══════════════════════════════════════════════════════════════════
-    class TrainingHeaderBlock(Flowable):
-        def __init__(self, goal, goal_col, weeks, protein, protein_g, activities, width):
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 1. PREMIUM HEADER med aktivitetsgraf (Activity Footprint)
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    class ActivityFootprint(Flowable):
+        """Horisontalt stolpediagram som viser ukentlige minutter per aktivitetstype."""
+        def __init__(self, weekly_mins, width=CONTENT_W):
+            super().__init__()
+            self.data = weekly_mins  # dict {aktivitet: minutter}
+            self.w = width
+            self.h = 100
+        def wrap(self, aw, ah):
+            return self.w, self.h
+        def draw(self):
+            c = self.canv
+            if not self.data:
+                return
+            items = list(self.data.items())
+            maxv = max(v for _, v in self.data.values()) if self.data else 1
+            bar_h = 12
+            y = self.h - 12
+            for i, (label, mins) in enumerate(items):
+                bar_w = (mins / maxv) * (self.w - 60)
+                c.setFillColor(HexColor("#0EA5A3"))
+                c.rect(50, y - i*18, bar_w, bar_h, fill=1, stroke=0)
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 7)
+                c.drawString(8, y - i*18 + 3, f"{label[:12]}")
+                c.setFillColor(TEXT)
+                c.setFont("Helvetica-Bold", 8)
+                c.drawRightString(self.w - 8, y - i*18 + 3, f"{mins} min")
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 6.5)
+            c.drawString(8, 4, "Weekly volume distribution (minutes per activity type)")
+    
+    # Bygg dict med ukentlige minutter (foreløpig estimat – kan forbedres)
+    activity_minutes = {}
+    # Standardverdier basert på mål og antall økter per uke
+    if _goal == "Lose fat":
+        if _has_strength: activity_minutes["Strength"] = 150
+        if _has_cardio: activity_minutes["Cardio"] = 180
+        if _has_sport: activity_minutes["Sport"] = 90
+        if _has_low: activity_minutes["Low impact"] = 120
+    elif _goal == "Build muscle (bulk)":
+        if _has_strength: activity_minutes["Strength"] = 200
+        if _has_cardio: activity_minutes["Cardio"] = 100
+        if _has_sport: activity_minutes["Sport"] = 60
+        if _has_low: activity_minutes["Low impact"] = 90
+    else:  # Recomposition
+        if _has_strength: activity_minutes["Strength"] = 150
+        if _has_cardio: activity_minutes["Cardio"] = 140
+        if _has_sport: activity_minutes["Sport"] = 80
+        if _has_low: activity_minutes["Low impact"] = 100
+    
+    # Hvis brukeren har valgt spesifikke aktiviteter, bruk dem som labels
+    if _activities:
+        activity_minutes = {}
+        for act in _activities[:4]:  # maks 4 for å unngå trengsel
+            # tildel fiktive minutter (kan forbedres med faktisk ukentlig tid)
+            if act in _strength_acts:
+                activity_minutes[act] = 150
+            elif act in _cardio_acts:
+                activity_minutes[act] = 140
+            elif act in _sport_acts:
+                activity_minutes[act] = 90
+            else:
+                activity_minutes[act] = 100
+    
+    # Hovedheader
+    class TrainingHero(Flowable):
+        def __init__(self, goal, goal_col, weeks, protein_g, act_count, width=CONTENT_W):
             super().__init__()
             self.goal = goal
             self.goal_col = goal_col
             self.weeks = weeks
-            self.protein = protein
             self.protein_g = protein_g
-            self.activities = activities[:4] if activities else []
+            self.act_count = act_count
             self.w = width
-            self.h = 110
-        def wrap(self, aw, ah): return self.w, self.h
+            self.h = 90
+        def wrap(self, aw, ah):
+            return self.w, self.h
         def draw(self):
             c = self.canv
             w, h = self.w, self.h
-            # Background
-            c.setFillColor(HexColor("#080F1E"))
-            c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setFillColor(CARD)
+            c.roundRect(0, 0, w, h, 12, fill=1, stroke=0)
             c.setStrokeColor(self.goal_col)
             c.setLineWidth(1.5)
-            c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
-            # Top accent bar
+            c.roundRect(0, 0, w, h, 12, fill=0, stroke=1)
             c.setFillColor(self.goal_col)
             c.roundRect(0, h-4, w, 4, 2, fill=1, stroke=0)
-            # Title
-            c.setFillColor(HexColor("#FFFFFF"))
+            c.setFillColor(TEXT)
             c.setFont("Helvetica-Bold", 16)
-            c.drawString(16, h - 28, "Personalised Training Programme")
-            # Subtitle
-            c.setFillColor(HexColor("#94A3B8"))
-            c.setFont("Helvetica", 8.5)
-            c.drawString(16, h - 42, "Evidence-based · Built around your selected activities · Periodised for your goal")
-            # Goal badge
+            c.drawString(16, h-28, "Personalised Training Programme")
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 8)
+            c.drawString(16, h-42, "Built around your selected activities · Periodised for your goal")
+            # Badges
             badge_x = w - 130
             c.setFillColor(self.goal_col)
-            c.roundRect(badge_x, h - 38, 118, 22, 11, fill=1, stroke=0)
-            c.setFillColor(HexColor("#FFFFFF"))
+            c.roundRect(badge_x, h-38, 118, 22, 11, fill=1, stroke=0)
+            c.setFillColor(white)
             c.setFont("Helvetica-Bold", 9)
-            c.drawCentredString(badge_x + 59, h - 30, f"Goal: {self.goal}")
-            # Divider
-            c.setStrokeColor(HexColor("#1E2D45"))
-            c.setLineWidth(0.6)
-            c.line(16, h - 52, w - 16, h - 52)
-            # Metric pills
-            metrics = [
-                ("⏱", f"{self.weeks} Weeks", "#38BDF8"),
-                ("🥩", f"{self.protein_g}g Protein/day", "#22C55E"),
-                ("🏃", f"{len(self.activities)} Activities", "#A78BFA"),
-            ]
-            px = 16
-            for icon, label, col in metrics:
-                pill_w = 110
-                c.setFillColor(HexColor("#111C33"))
-                c.roundRect(px, 10, pill_w, 26, 13, fill=1, stroke=0)
-                c.setStrokeColor(HexColor(col))
-                c.setLineWidth(0.8)
-                c.roundRect(px, 10, pill_w, 26, 13, fill=0, stroke=1)
-                c.setFillColor(HexColor(col))
-                c.setFont("Helvetica-Bold", 8.5)
-                c.drawCentredString(px + pill_w/2, 20, f"{icon}  {label}")
-                px += pill_w + 10
-            # Activities list
-            if self.activities:
-                ax = px + 10
-                c.setFillColor(HexColor("#64748B"))
-                c.setFont("Helvetica", 7.5)
-                c.drawString(ax, 30, "YOUR ACTIVITIES:")
-                c.setFillColor(HexColor("#94A3B8"))
-                c.drawString(ax, 18, " · ".join(self.activities))
-
-    story.append(TrainingHeaderBlock(_goal, _goal_col, _weeks, _gp["protein"], _protein_g, _activities, CONTENT_W))
-    story.append(VGap(12))
+            c.drawCentredString(badge_x+59, h-30, f"Goal: {self.goal}")
+            # Metrics pills
+            pill_w = 105
+            c.setFillColor(CARD2)
+            c.roundRect(16, 12, pill_w, 24, 12, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT)
+            c.setLineWidth(0.8)
+            c.roundRect(16, 12, pill_w, 24, 12, fill=0, stroke=1)
+            c.setFillColor(ACCENT)
+            c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(16+pill_w/2, 20, f"⏱ {self.weeks} weeks")
+            
+            c.setFillColor(CARD2)
+            c.roundRect(16+pill_w+8, 12, pill_w, 24, 12, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT)
+            c.roundRect(16+pill_w+8, 12, pill_w, 24, 12, fill=0, stroke=1)
+            c.setFillColor(ACCENT)
+            c.drawCentredString(16+pill_w+8+pill_w/2, 20, f"🥩 {self.protein_g}g protein")
+            
+            c.setFillColor(CARD2)
+            c.roundRect(16+2*(pill_w+8), 12, pill_w, 24, 12, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT)
+            c.roundRect(16+2*(pill_w+8), 12, pill_w, 24, 12, fill=0, stroke=1)
+            c.setFillColor(ACCENT)
+            c.drawCentredString(16+2*(pill_w+8)+pill_w/2, 20, f"🏃 {self.act_count} activities")
     
-    # ── Phase Timeline Bar ──
-    story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    story.append(TrainingHero(_goal, _goal_col, _weeks, _protein_g, len(_activities) if _activities else 0, CONTENT_W))
+    story.append(VGap(8))
     
-    _phase_cols = [CONTENT_W * 0.32, CONTENT_W * 0.34, CONTENT_W * 0.34]
-    _phase_rows = [
-        [P("PHASE 1", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
-         P("PHASE 2", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True)),
-         P("PHASE 3", S("ph", size=7, color=MUTED, align=TA_CENTER, bold=True))],
-        [P(_gp["phase1"], S("pv", size=9, bold=True, align=TA_CENTER)),
-         P(_gp["phase2"], S("pv", size=9, bold=True, align=TA_CENTER)),
-         P(_gp["phase3"], S("pv", size=9, bold=True, align=TA_CENTER))],
-        [P("Foundation, habit formation\nand movement quality",  S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
-         P("Progressive load increase\nand volume accumulation", S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER)),
-         P("Peak intensity,\ndeload in final week",              S("pd", size=8, lead=11, color=MUTED, align=TA_CENTER))],
-    ]
-    _pt = Table(_phase_rows, colWidths=_phase_cols)
-    _pt.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0), (0,-1), _PHASE1_BG),
-        ("BACKGROUND",    (1,0), (1,-1), _PHASE2_BG),
-        ("BACKGROUND",    (2,0), (2,-1), _PHASE3_BG),
-        ("TEXTCOLOR",     (0,0), (-1,0), _TEXT_DIM),
-        ("TEXTCOLOR",     (0,1), (-1,1), _TEXT_LIGHT),
-        ("TEXTCOLOR",     (0,2), (-1,2), _TEXT_DIM),
-        ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-        ("INNERGRID",     (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-        ("TOPPADDING",    (0,0), (-1,-1), 7),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
-        ("LEFTPADDING",   (0,0), (-1,-1), 6),
-        ("RIGHTPADDING",  (0,0), (-1,-1), 6),
-    ]))
-    story.append(_pt)
-    story.append(VGap(10))
+    # Aktivitetsgraf hvis brukeren har valgt noe
+    if activity_minutes:
+        story.append(P("Your Activity Footprint", S("sh2", size=10, bold=True, color=ACCENT, after=4)))
+        story.append(ActivityFootprint(activity_minutes))
+        story.append(VGap(12))
     
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 2. UKEPLAN – Dynamisk basert på brukerens aktiviteter
+    # ═══════════════════════════════════════════════════════════════════════════
     
-    # ── Weekly Schedule Table ──
     story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
     
-    _days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    
+    # Bygg planen ved hjelp av den forbedrede _build_day_plan (som allerede finnes i koden)
     _plan = _build_day_plan(
         _goal,
         _has_strength,
@@ -1717,248 +1702,196 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     )
     
     _sched_header = [
-        P("DAY",          S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("SESSION",      S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("ACTIVITY",     S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("DURATION",     S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("INTENSITY",    S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("DAY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("SESSION", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("ACTIVITY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("DURATION", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+        P("INTENSITY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
         P("COACHING NOTE", S("th", size=7.5, bold=True, color=MUTED)),
     ]
-    
     _sched_rows = [_sched_header]
     for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
         _sched_rows.append([
-            P(day,   S(f"td{i}", size=8.5, bold=True, color=TEXT)),
-            P(stype, S(f"ts{i}", size=8,   color=HexColor("#1D4ED8"))),
+            P(day, S(f"td{i}", size=8.5, bold=True, color=TEXT)),
+            P(stype, S(f"ts{i}", size=8, color=ACCENT)),
             P(act if act != "—" else "Rest", S(f"ta{i}", size=8, color=TEXT)),
-            P(dur,   S(f"tdu{i}", size=8,  align=TA_CENTER, color=MUTED)),
-            P(inten, S(f"ti{i}",  size=7.5, bold=True, align=TA_CENTER, color=TEXT)),
-            P(note,  S(f"tn{i}",  size=7.5, lead=11, color=MUTED)),
+            P(dur, S(f"tdu{i}", size=8, align=TA_CENTER, color=MUTED)),
+            P(inten, S(f"ti{i}", size=7.5, bold=True, align=TA_CENTER, color=TEXT)),
+            P(note, S(f"tn{i}", size=7.5, lead=11, color=MUTED)),
         ])
-    
     _col_w = [CONTENT_W * w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
     _st = Table(_sched_rows, colWidths=_col_w)
-    _ts = [
-        ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-        ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-        ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-        ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-        ("TOPPADDING",    (0,0),  (-1,-1), 6),
-        ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
-        ("LEFTPADDING",   (0,0),  (-1,-1), 5),
-        ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
-        ("VALIGN",        (0,0),  (-1,-1), "TOP"),
-        ("TEXTCOLOR",     (0,1),  (0,-1),  _TEXT_LIGHT),   # dag-kolonne
-        ("TEXTCOLOR",     (1,1),  (1,-1),  _ACCENT_B),     # session-kolonne
-        ("TEXTCOLOR",     (2,1),  (2,-1),  _TEXT_LIGHT),   # aktivitet
-        ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # varighet
-        ("TEXTCOLOR",     (4,1),  (4,-1),  _WHITE),        # intensitet — alltid kvit tekst
-        ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # notat
+    _ts_style = [
+        ("BACKGROUND", (0,0), (-1,0), HexColor("#080F1E")),
+        ("TEXTCOLOR", (0,0), (-1,0), HexColor("#94A3B8")),
+        ("BOX", (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID", (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
+        ("TOPPADDING", (0,0), (-1,-1), 6),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+        ("LEFTPADDING", (0,0), (-1,-1), 5),
+        ("RIGHTPADDING", (0,0), (-1,-1), 5),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
     ]
-    
+    # Fargelegg rader vekselvis
     for i, (_, _, _, _, inten, _) in enumerate(_plan):
-        _bg = _intensity_colors.get(inten, _ROW_B)
-        row_bg = _ROW_A if i % 2 == 0 else _ROW_B
-        _ts.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
-        _ts.append(("BACKGROUND", (4, i+1), (4, i+1), _bg))
-        _ts.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
-        _ts.append(("TEXTCOLOR",  (4, i+1), (4, i+1), _WHITE))
-    
-    _st.setStyle(TableStyle(_ts))
+        row_bg = HexColor("#111C33") if i % 2 == 0 else HexColor("#0D1628")
+        _ts_style.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
+        _ts_style.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
+        int_col = {"Light": "#14532D", "Light–Moderate": "#166534", "Moderate": "#1E3A5F", "Moderate–Hard": "#3B1F6E", "Hard": "#7F1D1D"}.get(inten, row_bg)
+        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), HexColor(int_col)))
+        _ts_style.append(("TEXTCOLOR", (4, i+1), (4, i+1), white))
+    _st.setStyle(TableStyle(_ts_style))
     story.append(_st)
     story.append(VGap(8))
     
-    # ── Intensity Legend ──
-    _legend_items = [
-        ("Light",         "#14532D", "Zone 1–2 · <65% HRmax"),
-        ("Moderate",      "#1E3A5F", "Zone 2–3 · 65–80% HRmax"),
-        ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"),
-        ("Hard",          "#7F1D1D", "Zone 4–5 · 87–95% HRmax"),
-    ]
-    
-    _leg_rows = [[
-        P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)),
-        *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]
-    ]]
-    
-    _leg_t = Table(_leg_rows, colWidths=[CONTENT_W * 0.16] + [CONTENT_W * 0.21] * 4)
-    _leg_style = [
-        ("BOX",           (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-        ("INNERGRID",     (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
-        ("TOPPADDING",    (0,0), (-1,-1), 5),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
-        ("LEFTPADDING",   (0,0), (-1,-1), 5),
-        ("BACKGROUND",    (0,0), (0,0),   _HEADER_BG),
-        ("TEXTCOLOR",     (0,0), (-1,-1), _TEXT_LIGHT),
-    ]
-    
-    for j, (lbl, _, _) in enumerate(_legend_items):
-        _bg_color = _intensity_colors.get(lbl, _ROW_B)
-        _leg_style.append(("BACKGROUND", (j+1, 0), (j+1, 0), _bg_color))
-    
+    # Intensitetstegnforklaring
+    _legend_items = [("Light", "#14532D", "Zone 1–2 · <65% HRmax"), ("Moderate", "#1E3A5F", "Zone 2–3 · 65–80% HRmax"), ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"), ("Hard", "#7F1D1D", "Zone 4–5 · 87–95% HRmax")]
+    _leg_rows = [[P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)), *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]]]
+    _leg_t = Table(_leg_rows, colWidths=[CONTENT_W*0.16] + [CONTENT_W*0.21]*4)
+    _leg_style = [("BOX", (0,0), (-1,-1), 0.5, HexColor("#2D3F55")), ("INNERGRID", (0,0), (-1,-1), 0.3, HexColor("#2D3F55")), ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5), ("LEFTPADDING", (0,0), (-1,-1), 5), ("BACKGROUND", (0,0), (0,0), HexColor("#080F1E")), ("TEXTCOLOR", (0,0), (-1,-1), TEXT)]
+    for j, (lbl, col, _) in enumerate(_legend_items):
+        _leg_style.append(("BACKGROUND", (j+1, 0), (j+1, 0), HexColor(col)))
     _leg_t.setStyle(TableStyle(_leg_style))
     story.append(_leg_t)
-    story.append(VGap(10))
+    story.append(VGap(12))
     
-    # ── PAGE BREAK → continue on next page ──
-    story.append(PageBreak())
-    story.append(SecHeader("Training Programme — Detail & Science",
-        subtitle="Progressive overload protocol, set/rep schemes, and evidence base"))
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 3. FORSKNINGSBASERT EVIDENS – sitater for hver aktivitetstype
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    story.append(P("Evidence-Based Training Science", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    
+    # Samle unike aktivitetstyper fra brukerens valg
+    unique_categories = set()
+    for act in _activities:
+        if act in _strength_acts: unique_categories.add("Strength Training")
+        elif act in _cardio_acts: unique_categories.add("Cardio / Aerobic")
+        elif act in _sport_acts: unique_categories.add("Sport / Skill-Based")
+        elif act in _low_acts: unique_categories.add("Low-Impact Movement")
+    
+    if not unique_categories and _activities:
+        unique_categories.add("Physical Activity")
+    
+    evidence_text = ""
+    citations = []
+    if "Strength Training" in unique_categories:
+        evidence_text += "• Resistance training stimulates muscle protein synthesis (MPS) and increases resting metabolic rate, directly improving body composition and glucose disposal (Schoenfeld, 2010; J Strength Cond Res).<br/>"
+        citations.append("Schoenfeld BJ (2010) – The mechanisms of muscle hypertrophy and their application to resistance training.")
+    if "Cardio / Aerobic" in unique_categories:
+        evidence_text += "• Aerobic exercise enhances VO2max, the single strongest predictor of all-cause mortality. Even modest increases (3–5 ml/kg/min) reduce mortality risk by 10–15% (Mandsager et al., 2018; JAMA).<br/>"
+        citations.append("Mandsager et al. (2018) – Association of cardiorespiratory fitness with long-term mortality among adults undergoing exercise treadmill testing.")
+    if "Sport / Skill-Based" in unique_categories:
+        evidence_text += "• Skill-based sports (table tennis, badminton, tennis) improve executive function, hand-eye coordination, and provide high-intensity intervals that boost cardiovascular fitness (Zagatto et al., 2016; J Sports Sci Med).<br/>"
+        citations.append("Zagatto AM et al. (2016) – Physiological responses and characteristics of table tennis matches.")
+    if "Low-Impact Movement" in unique_categories:
+        evidence_text += "• Low-impact activities (walking, yoga) reduce systemic inflammation, improve joint mobility, and contribute significantly to daily energy expenditure (NEAT) without taxing recovery (Levine, 2004; Am J Clin Nutr).<br/>"
+        citations.append("Levine JA (2004) – Nonexercise activity thermogenesis (NEAT): environment and biology.")
+    if not evidence_text:
+        evidence_text = "• Regular physical activity reduces all-cause mortality by 30–40% compared to sedentary behaviour (Warburton et al., 2006; CMAJ).<br/>"
+        citations.append("Warburton DER et al. (2006) – Health benefits of physical activity: the evidence.")
+    
+    evidence_para = Paragraph(evidence_text, S("evi", size=8.5, lead=13, color=TEXT))
+    story.append(evidence_para)
     story.append(VGap(6))
     
-    # ── Weekly Volume & Load Progression Table ──
-    story.append(P("Progressive Overload — Week-by-Week Load Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    # Vis sitatene i en liten boks
+    citation_html = "<b>Key references:</b><br/>" + "<br/>".join(f"• {c}" for c in citations[:3])
+    story.append(P(citation_html, S("cit", size=7.5, lead=11, color=MUTED, italic=True)))
+    story.append(VGap(12))
     
-    _prog_header = [
-        P("WEEK",        S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("PHASE",       S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("SETS × REPS", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("INTENSITY",   S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("WEEKLY VOL.", S("th2", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("KEY FOCUS",   S("th2", size=7.5, bold=True, color=MUTED)),
-    ]
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 4. UKENTLIG PROGRESSIVE OVERLOAD – forenklet og elegant
+    # ═══════════════════════════════════════════════════════════════════════════
     
+    story.append(P("Progressive Overload Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
+    
+    # Tabell med ukentlig progresjon (forkortet, men premium)
     if _goal == "Build muscle (bulk)":
-        _prog_data = [
-            ("1–2",  "Neural Adapt.",  "3×12",   "60–65% 1RM", "~12 sets",  "Form mastery · establish movement patterns"),
-            ("3–4",  "Hypertrophy A",  "4×10",   "67–72% 1RM", "~16 sets",  "Add 2.5 kg when all reps clean"),
-            ("5–6",  "Hypertrophy B",  "4×8",    "72–77% 1RM", "~16 sets",  "Track RPE — stay 7–8 each set"),
-            ("7–8",  "Strength Blend", "5×6",    "77–82% 1RM", "~15 sets",  "Introduce heavier compounds"),
-            ("9–10", "Volume Peak",    "4×10–12","70–75% 1RM", "~20 sets",  "Max volume block — prioritise sleep & nutrition"),
-            ("11",   "Intensification","4×6–8",  "80–85% 1RM", "~16 sets",  "Personal bests on key lifts"),
-            ("12",   "Deload",         "3×8",    "55–60% 1RM", "~10 sets",  "Reduce volume 40% — supercompensation"),
-        ]
+        prog_data = [("1–2", "Neural adaptation", "3×12", "60–65%", "Focus on form & mind-muscle connection"),
+                     ("3–4", "Hypertrophy A", "4×10", "67–72%", "Add 2.5 kg when all reps are clean"),
+                     ("5–6", "Hypertrophy B", "4×8", "72–77%", "Track RPE (7–8)"),
+                     ("7–8", "Strength blend", "5×6", "77–82%", "Introduce heavier compounds"),
+                     ("9–10","Volume peak", "4×10–12", "70–75%", "Max volume – prioritise sleep & nutrition"),
+                     ("11", "Intensification", "4×6–8", "80–85%", "Attempt personal bests"),
+                     ("12", "Deload", "3×8", "55–60%", "Reduce volume 40% – supercompensation")]
     elif _goal == "Lose fat":
-        _prog_data = [
-            ("1–2",  "Metabolic Reset","3×12–15", "55–65% 1RM", "~9 sets",   "Short rests 45–60 s · elevate metabolic rate"),
-            ("3–4",  "Density A",      "3×12",    "65–70% 1RM", "~12 sets",  "Circuit format — 2 exercises alternated"),
-            ("5–6",  "Density B",      "4×10",    "67–72% 1RM", "~12 sets",  "Add HIIT finisher 15 min post-strength"),
-            ("7–8",  "Strength Bias",  "4×8",     "72–78% 1RM", "~12 sets",  "Heavier work preserves lean mass in deficit"),
-            ("9–10", "Intensity Peak", "4×6–8",   "78–83% 1RM", "~12 sets",  "Prioritise compound lifts for maximal caloric cost"),
-            ("11",   "Conditioning",   "3×15",    "60–65% 1RM", "~9 sets",   "Higher rep — metabolic stress + muscle endurance"),
-            ("12",   "Deload",         "2×12",    "55% 1RM",    "~6 sets",   "Active recovery — body composition check-in"),
-        ]
-    else:
-        _prog_data = [
-            ("1–2",  "Foundation",     "3×10–12", "60–67% 1RM", "~10 sets",  "Movement quality · establish baseline performance"),
-            ("3–4",  "Recomp A",       "3×10",    "67–72% 1RM", "~12 sets",  "Alternate heavy/volume sessions"),
-            ("5–6",  "Recomp B",       "4×8–10",  "72–77% 1RM", "~14 sets",  "Add progressive overload on 2 key lifts"),
-            ("7–8",  "Strength + Vol", "4×8",     "75–80% 1RM", "~14 sets",  "Combination block: strength AM / pump PM"),
-            ("9–10", "Volume Peak",    "4×10–12", "70–75% 1RM", "~18 sets",  "Highest total weekly volume — nutrition critical"),
-            ("11",   "Intensification","4×6",     "82–87% 1RM", "~12 sets",  "Max strength stimulus — minimal volume"),
-            ("12",   "Deload",         "3×8",     "55–60% 1RM", "~9 sets",   "Reduce load and volume — consolidation week"),
-        ]
+        prog_data = [("1–2", "Metabolic reset", "3×12–15", "55–65%", "Short rests 45–60 s"),
+                     ("3–4", "Density A", "3×12", "65–70%", "Circuit format"),
+                     ("5–6", "Density B", "4×10", "67–72%", "Add HIIT finisher 15 min"),
+                     ("7–8", "Strength bias", "4×8", "72–78%", "Heavier work preserves lean mass"),
+                     ("9–10","Intensity peak", "4×6–8", "78–83%", "Compound lifts for maximal calorie cost"),
+                     ("11", "Conditioning", "3×15", "60–65%", "Metabolic stress + endurance"),
+                     ("12", "Deload", "2×12", "55%", "Active recovery")]
+    else:  # Recomposition
+        prog_data = [("1–2", "Foundation", "3×10–12", "60–67%", "Movement quality · establish baseline"),
+                     ("3–4", "Recomp A", "3×10", "67–72%", "Alternate heavy/volume"),
+                     ("5–6", "Recomp B", "4×8–10", "72–77%", "Progressive overload on 2 key lifts"),
+                     ("7–8", "Strength+Vol", "4×8", "75–80%", "Combination block"),
+                     ("9–10","Volume peak", "4×10–12", "70–75%", "Highest weekly volume – nutrition critical"),
+                     ("11", "Intensification", "4×6", "82–87%", "Max strength stimulus"),
+                     ("12", "Deload", "3×8", "55–60%", "Consolidation week")]
     
-    _prog_rows = [_prog_header]
-    for i, (wk, phase, sets, inten, vol, focus) in enumerate(_prog_data):
-        _prog_rows.append([
-            P(wk,    S(f"pw{i}", size=8.5, bold=True, align=TA_CENTER, color=ACCENT)),
-            P(phase, S(f"pp{i}", size=8,   bold=True,  color=TEXT)),
-            P(sets,  S(f"ps{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#1D4ED8"))),
-            P(inten, S(f"pi{i}", size=8,   align=TA_CENTER, color=MUTED)),
-            P(vol,   S(f"pv{i}", size=8.5, bold=True,  align=TA_CENTER, color=HexColor("#059669"))),
-            P(focus, S(f"pf{i}", size=8,   lead=11, color=MUTED)),
-        ])
-    
-    _prog_cw = [CONTENT_W * w for w in [0.07, 0.14, 0.11, 0.13, 0.11, 0.44]]
-    _pt2 = Table(_prog_rows, colWidths=_prog_cw)
-    _pt2.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),  (-1,0),  _HEADER_BG),
-        ("TEXTCOLOR",     (0,0),  (-1,0),  _TEXT_DIM),
-        ("ROWBACKGROUNDS",(0,1),  (-1,-1), [_ROW_A, _ROW_B]),
-        ("BACKGROUND",    (0, len(_prog_data)), (-1, len(_prog_data)), _DELOAD_BG),
-        ("TEXTCOLOR",     (0,1),  (0,-1),  _ACCENT_B),     # veke-kolonne
-        ("TEXTCOLOR",     (1,1),  (1,-1),  _TEXT_LIGHT),   # fase
-        ("TEXTCOLOR",     (2,1),  (2,-1),  _ACCENT_B),     # sett×reps
-        ("TEXTCOLOR",     (3,1),  (3,-1),  _TEXT_DIM),     # intensitet
-        ("TEXTCOLOR",     (4,1),  (4,-1),  _ACCENT_G),     # volum
-        ("TEXTCOLOR",     (5,1),  (5,-1),  _TEXT_DIM),     # fokus
-        ("BOX",           (0,0),  (-1,-1), 0.5, HexColor("#2D3F55")),
-        ("INNERGRID",     (0,0),  (-1,-1), 0.3, HexColor("#2D3F55")),
-        ("TOPPADDING",    (0,0),  (-1,-1), 6),
-        ("BOTTOMPADDING", (0,0),  (-1,-1), 6),
-        ("LEFTPADDING",   (0,0),  (-1,-1), 5),
-        ("RIGHTPADDING",  (0,0),  (-1,-1), 5),
-        ("VALIGN",        (0,0),  (-1,-1), "TOP"),
+    prog_header = [P("WEEK", S("ph", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+                   P("PHASE", S("ph", size=7.5, bold=True, color=MUTED)),
+                   P("SETS×REPS", S("ph", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+                   P("INTENSITY", S("ph", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
+                   P("KEY FOCUS", S("ph", size=7.5, bold=True, color=MUTED))]
+    prog_rows = [prog_header]
+    for i, (wk, phase, sets, inten, focus) in enumerate(prog_data):
+        prog_rows.append([P(wk, S(f"pw{i}", size=8.5, bold=True, align=TA_CENTER, color=ACCENT)),
+                          P(phase, S(f"pp{i}", size=8, color=TEXT)),
+                          P(sets, S(f"ps{i}", size=8.5, bold=True, align=TA_CENTER, color=BLUE)),
+                          P(inten, S(f"pi{i}", size=8, align=TA_CENTER, color=MUTED)),
+                          P(focus, S(f"pf{i}", size=8, lead=11, color=MUTED))])
+    prog_t = Table(prog_rows, colWidths=[CONTENT_W*0.12, CONTENT_W*0.22, CONTENT_W*0.18, CONTENT_W*0.18, CONTENT_W*0.30])
+    prog_t.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,0), HexColor("#080F1E")),
+        ("TEXTCOLOR", (0,0), (-1,0), HexColor("#94A3B8")),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [HexColor("#111C33"), HexColor("#0D1628")]),
+        ("BOX", (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID", (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
+        ("TOPPADDING", (0,0), (-1,-1), 6),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
     ]))
+    story.append(prog_t)
+    story.append(VGap(12))
     
-    story.append(_pt2)
-    story.append(VGap(10))
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 5. ACTIONABLE MILESTONE – 4 ukers fokus
+    # ═══════════════════════════════════════════════════════════════════════════
     
-    # ── Mini framdriftsgraf for ukentlig volum ──
-    class VolumeSparkline(Flowable):
-        def __init__(self, weekly_volumes, width=CONTENT_W):
-            super().__init__()
-            self.vols = weekly_volumes  # liste med 7 tall (minutter per dag)
-            self.w = width
-            self.h = 40
-        def wrap(self, aw, ah):
-            return self.w, self.h
-        def draw(self):
-            c = self.canv
-            maxv = max(self.vols) if self.vols else 1
-            bar_w = (self.w - 20) / len(self.vols)
-            for i, v in enumerate(self.vols):
-                height = (v / maxv) * 24
-                x = 10 + i * bar_w
-                y = 8
-                c.setFillColor(HexColor("#0EA5A3"))
-                c.rect(x, y, bar_w - 2, height, fill=1, stroke=0)
-            c.setFillColor(MUTED)
-            c.setFont("Helvetica", 7)
-            c.drawString(10, 0, "Weekly volume distribution (minutes)")
-
-    # Eksempel: hvis du har tilgang til daglige minutter fra planen
-    daily_mins = [50, 35, 50, 40, 50, 40, 0]  # kan hentes dynamisk
-    story.append(VolumeSparkline(daily_mins))
-    story.append(VGap(8))   
-    # ── Expert Insight ──
-    _training_insight = (
-        f"This programme follows the principle of progressive overload — the most robustly evidenced "
-        f"stimulus for both strength and hypertrophy gains (Schoenfeld, 2010; Kraemer & Ratamess, 2004). "
-        f"For your goal of '{_goal}', the optimal weekly volume sits between 10–20 sets per muscle group "
-        f"(Krieger, 2010), with intensity periodised across the {_weeks}-week block to drive adaptation "
-        f"while managing fatigue. The selected activities — {', '.join(_activities[:3]) if _activities else 'general fitness'} "
-        f"— are integrated to maximise caloric expenditure and recovery without compromising strength sessions. "
-        f"Deload in week {_weeks} is mandatory: supercompensation occurs during recovery, not during the training stimulus."
-    )
-    story.append(ExpertInsightBox("Training Science", _training_insight))
-    story.append(VGap(6))
-        
-    # ── Actionable milestone steps ──
     if _goal == "Build muscle (bulk)":
-        _train_steps = [
-            f"Track bodyweight weekly — target gain of 0.25–0.5 kg/week for the first {min(_weeks, 8)} weeks",
-            f"Hit {_protein_g} g protein daily — distribute across 4+ meals with ≥30 g per sitting",
-            "Log your lifts every session — add 2.5 kg when you complete all reps with RPE ≤ 8",
-            "Sleep is your anabolic window — prioritise 8 hrs consistently before adding more training volume",
-        ]
+        train_steps = [f"Track bodyweight weekly – target gain 0.25–0.5 kg/week for first {min(_weeks,8)} weeks",
+                       f"Consume {_protein_g} g protein daily across 4+ meals (≥30 g/meal)",
+                       "Log every session – add 2.5 kg when you complete all reps with RPE ≤8",
+                       "Prioritise 8 hours of sleep – anabolic window for muscle repair"]
     elif _goal == "Lose fat":
-        _train_steps = [
-            f"Weigh yourself every morning (post-toilet) — track the 7-day rolling average, not daily fluctuations",
-            f"Minimum {_protein_g} g protein — non-negotiable for lean mass preservation in a calorie deficit",
-            "Step count ≥ 8,000/day — NEAT (non-exercise activity) contributes 15–30% of total daily expenditure",
-            "Strength sessions take priority over cardio — muscle mass drives resting metabolic rate",
-        ]
+        train_steps = [f"Weigh daily (post-toilet) – use 7-day rolling average",
+                       f"Minimum {_protein_g} g protein to preserve lean mass in deficit",
+                       "Step count ≥8,000/day – NEAT contributes 15–30% of TDEE",
+                       "Strength before cardio – muscle drives resting metabolic rate"]
     else:
-        _train_steps = [
-            f"Eat at maintenance calories ± 100 kcal — weigh weekly and adjust if trend deviates",
-            f"Protein target: {_protein_g} g/day — the single most important recomposition lever",
-            "Progressive overload on 2–3 key lifts — track squat, press, and row as primary indicators",
-            "Rotate cardio modality every 4 weeks — prevents adaptation and maintains caloric expenditure",
-        ]
-    story.append(ActionableMilestoneBox(_train_steps))
-    story.append(VGap(6))
-        
+        train_steps = [f"Eat at maintenance ±100 kcal – weigh weekly and adjust if needed",
+                       f"Protein target: {_protein_g} g/day – essential for recomposition",
+                       "Progressive overload on 2–3 key lifts (squat, press, row)",
+                       "Rotate cardio modality every 4 weeks to prevent adaptation"]
+    
+    story.append(ActionableMilestoneBox(train_steps))
+    story.append(VGap(8))
+    
+    # Avsluttende forskningsnotis
     story.append(P(
         "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
-        "Kraemer WJ & Ratamess NA (2004) Med Sci Sports Exerc; Dattilo M et al. (2011) Med Hypotheses. "
-        "Targets are population-level estimates — individual response varies. Consult a certified trainer or physician before starting.",
+        "Mandsager et al. (2018) JAMA; Zagatto et al. (2016) J Sports Sci Med; Warburton et al. (2006) CMAJ. "
+        "Targets are population estimates – individual responses vary. Consult a physician before starting.",
         S("disc", size=7.5, lead=11, color=MUTED, italic=True, after=4)
     ))
-        
-    story.append(PageBreak())
     
+    story.append(PageBreak())
+    # Fortsett med resten av PDF-en (Insights, Conditions, etc.)
     # ── PAGE 7: Insights + Conditions + Safety ──
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
     story.append(VGap(6))
