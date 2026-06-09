@@ -543,6 +543,9 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     bmi_col  = bmi_color(bmi_v)
     vo2_col  = vo2_color(vo2_pct)
     bio_diff = (bio_v - age_f) if (bio_v is not None and age_f is not None) else None
+    if bio_diff is not None:
+        bio_diff = max(-5.0, min(5.0, bio_diff))
+        bio_v = age_f + bio_diff
     bio_col  = bio_color(bio_diff)
 
 # ── Bygging av PDF Story ──────────────────────────────────────────────────
@@ -997,8 +1000,12 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
             c.setFillColor(HexColor("#E5E7EB")); c.setFont("Helvetica", 8.2)
             for i, item in enumerate(items):
-                ty = y + ph - 46 - i * 26
-                c.drawString(x + 12, ty, f"• {str(item)[:46]}")
+                ty = y + ph - 46 - i * 38
+                line1 = f"• {str(item)[:52]}"
+                line2 = str(item)[52:104]
+                c.drawString(x + 12, ty, line1)
+                if line2:
+                    c.drawString(x + 12, ty - 11, line2))
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#080D1A"))
@@ -1452,7 +1459,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _has_low      = bool(_activities and _low_acts      & set(_activities))
     
     _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
-    _sel_cardio   = [a for a in _activities if a in _cardio_acts]   or ["Running/jogging"]
+    _sel_cardio   = [a for a in _activities if a in _cardio_acts] or [a for a in _activities if a in _sport_acts] or ["Running/jogging"]
     _sel_sport    = [a for a in _activities if a in _sport_acts]
     _sel_low      = [a for a in _activities if a in _low_acts]
     
@@ -4025,6 +4032,9 @@ if results:
         kg_per_week = float(plan.get("kg_per_week", 0.0) or 0.0)
         daily_change_kcal = kg_per_week * 7700.0 / 7.0
         recommended_daily = int(round(current_maint + daily_change_kcal))
+        # Aldri meir enn 500 kcal/dag defiksit
+        min_kcal = int(round(current_maint - 500))
+        recommended_daily = max(recommended_daily, min_kcal)
         plan["current_needs_kcal"] = int(round(current_maint))
         plan["recommended_daily_kcal"] = recommended_daily
 
