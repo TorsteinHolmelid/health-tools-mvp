@@ -558,8 +558,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
         canvas.restoreState()
 
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=MARGIN_H, rightMargin=MARGIN_H, topMargin=26*mm, bottomMargin=18*mm)
+
     story = []
     
     # Header / Tittel
@@ -1970,7 +1969,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     print("KØYRER FØRSTE PDF-FUNKSJON")
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     print("ETTER FØRSTE build")
-    buffer.seek(0)
+    buffer
     print("PDF bytes length:", len(buffer.getvalue()))
     return buffer.getvalue()
 
