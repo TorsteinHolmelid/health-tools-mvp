@@ -1055,7 +1055,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c.setFillColor(BLUE); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
             self._header.drawOn(c, 14, self.h - 18)
             self._body.drawOn(c, 14, 8)
-      class ExecutiveSummaryCheatSheet(Flowable):
+            
+    class ExecutiveSummaryCheatSheet(Flowable):
         def __init__(self, stop_items: list, start_items: list, maintain_items: list, width=CONTENT_W):
             super().__init__()
             self.stop = stop_items[:3]
