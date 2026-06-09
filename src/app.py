@@ -125,71 +125,98 @@ def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
             plan.append((day, "Rest", "—", "—", "—", "Full rest or restorative yoga / stretching"))
             continue
 
-        # Velg aktiviteter dynamisk basert på dag og tilgjengelige lister
-        strength_act = _cycle_activity(strength_list, i, 0) if has_strength else None
-        cardio_act   = _cycle_activity(cardio_list,   i, 1) if has_cardio else None
-        sport_act    = _cycle_activity(sport_list,    i, 2) if has_sport else None
-        low_act      = _cycle_activity(low_list,      i, 3) if has_low else None
-
-        # Prioritering: Styrke > Kardio > Sport > Lav intensitet
-        primary_act = strength_act or cardio_act or sport_act or low_act
-        if not primary_act:
-            primary_act = "Walking (casual)"
-
-        session_type = ""
-        intensity = "Moderate"
-        duration = "45 min"
-        notes = ""
-
-        # Bygg opplegg basert på mål (goal) og aktivitetstype
+        # Velg aktiviteter basert på dag og tilgjengelige lister
+        # Vi fordeler dagene slik at alle kategorier får plass
         if goal == "Build muscle (bulk)":
-            if strength_act and i in [0, 2, 4]:  # Man, Wed, Fri
+            # Styrke på man, ons, fre
+            if i in [0, 2, 4] and has_strength:
+                primary_act = _cycle_activity(strength_list, i, 0)
                 session_type = "Strength"
                 intensity = "Hard"
                 duration = "50 min"
-                notes = f"Progressive overload – {strength_act} · 4×8–12 · RPE 8"
-            elif cardio_act and i in [1, 5]:    # Tue, Sat
+                notes = f"Progressive overload – {primary_act} · 4×8–12 · RPE 8"
+            # Kardio på tir, lør
+            elif i in [1, 5] and has_cardio:
+                primary_act = _cycle_activity(cardio_list, i, 1)
                 session_type = "Cardio"
                 intensity = "Moderate"
                 duration = "40 min"
-                notes = f"Zone 2 – {cardio_act} · builds aerobic base"
+                notes = f"Zone 2 – {primary_act} · builds aerobic base"
+            # Sport eller lav intensitet på tor
+            elif i == 3 and (has_sport or has_low):
+                if has_sport:
+                    primary_act = _cycle_activity(sport_list, i, 2)
+                    session_type = "Sport"
+                else:
+                    primary_act = _cycle_activity(low_list, i, 3)
+                    session_type = "Active Recovery"
+                intensity = "Light–Moderate"
+                duration = "35 min"
+                notes = f"{primary_act} – enjoyment & recovery"
             else:
+                # Fallback til lav intensitet
+                primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
                 session_type = "Active Recovery"
                 intensity = "Light"
                 duration = "30 min"
                 notes = f"Low-intensity movement – {primary_act} · keep HR <120"
+
         elif goal == "Lose fat":
-            if strength_act and i in [0, 2, 4]:
+            # Styrke + HIIT på man, ons, fre
+            if i in [0, 2, 4] and has_strength:
+                primary_act = _cycle_activity(strength_list, i, 0)
                 session_type = "Strength + HIIT"
                 intensity = "Moderate–Hard"
                 duration = "50 min"
-                notes = f"{strength_act} supersets (3×12) + 15 min HIIT finisher"
-            elif cardio_act and i in [1, 3, 5]:
+                notes = f"{primary_act} supersets (3×12) + 15 min HIIT finisher"
+            # Kardio på tir, tor, lør
+            elif i in [1, 3, 5] and has_cardio:
+                primary_act = _cycle_activity(cardio_list, i, 1)
                 session_type = "Cardio"
                 intensity = "Moderate"
                 duration = "45 min"
-                notes = f"{cardio_act} – steady state fat oxidation zone (65–75% HRmax)"
+                notes = f"{primary_act} – steady state fat oxidation zone (65–75% HRmax)"
             else:
-                session_type = "LISS / Sport"
+                # Sport eller lav intensitet
+                if has_sport and i in [4]:
+                    primary_act = _cycle_activity(sport_list, i, 2)
+                    session_type = "Sport"
+                else:
+                    primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
+                    session_type = "LISS / Active"
                 intensity = "Light–Moderate"
                 duration = "40 min"
                 notes = f"{primary_act} – low impact to aid recovery while burning calories"
+
         else:  # Body Recomposition (default)
-            if strength_act and i in [0, 2, 4]:
+            # Styrke på man, ons, fre
+            if i in [0, 2, 4] and has_strength:
+                primary_act = _cycle_activity(strength_list, i, 0)
                 session_type = "Strength"
                 intensity = "Moderate–Hard"
                 duration = "50 min"
-                notes = f"{strength_act} · 4×8–12 · progressive overload"
-            elif cardio_act and i in [1, 5]:
+                notes = f"{primary_act} · 4×8–12 · progressive overload"
+            # Kardio på tir, lør
+            elif i in [1, 5] and has_cardio:
+                primary_act = _cycle_activity(cardio_list, i, 1)
                 session_type = "Cardio"
                 intensity = "Moderate"
                 duration = "35 min"
-                notes = f"{cardio_act} – Zone 2 (65–75% HRmax) · aerobic base"
-            else:
-                session_type = "Sport / Active"
-                intensity = "Light–Moderate"
+                notes = f"{primary_act} – Zone 2 (65–75% HRmax) · aerobic base"
+            # Sport på tor
+            elif i == 3 and has_sport:
+                primary_act = _cycle_activity(sport_list, i, 2)
+                session_type = "Sport"
+                intensity = "Moderate"
                 duration = "40 min"
-                notes = f"{primary_act} – movement variety, NEAT & enjoyment"
+                notes = f"{primary_act} – skill practice & enjoyment"
+            else:
+                # Lav intensitet som variasjon
+                primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
+                session_type = "Active Recovery"
+                intensity = "Light"
+                duration = "30 min"
+                notes = f"{primary_act} – movement variety, NEAT & recovery"
 
         plan.append((day, session_type, primary_act, duration, intensity, notes))
 
@@ -1634,53 +1661,63 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(P(f"🏅 {act_list}", S("actlist", size=9, color=TEXT, after=8)))
         story.append(VGap(6))
 
-    # ── Ukentlig timeplan ──
+# ── Ukentlig timeplan med premium styling ──
     story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
 
     _sched_header = [
-        P("DAY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("SESSION", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("ACTIVITY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("DURATION", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("INTENSITY", S("th", size=7.5, bold=True, color=MUTED, align=TA_CENTER)),
-        P("COACHING NOTE", S("th", size=7.5, bold=True, color=MUTED)),
+        P("DAY", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
+        P("SESSION", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
+        P("ACTIVITY", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
+        P("DURATION", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
+        P("INTENSITY", S("th", size=8, bold=True, color=MUTED, align=TA_CENTER)),
+        P("COACHING NOTE", S("th", size=8, bold=True, color=MUTED)),
     ]
     _sched_rows = [_sched_header]
     for i, (day, stype, act, dur, inten, note) in enumerate(_plan):
+        # Legg til et lite ikon for dagen (valgfritt)
+        day_icon = {"Monday":"🇲", "Tuesday":"🇹", "Wednesday":"🇼", "Thursday":"🇹", "Friday":"🇫", "Saturday":"🇸", "Sunday":"🇸"}.get(day, "")
         _sched_rows.append([
-            P(day, S(f"td{i}", size=8.5, bold=True, color=TEXT)),
-            P(stype, S(f"ts{i}", size=8, color=ACCENT)),
-            P(act if act != "—" else "Rest", S(f"ta{i}", size=8, color=TEXT)),
-            P(dur, S(f"tdu{i}", size=8, align=TA_CENTER, color=MUTED)),
-            P(inten, S(f"ti{i}", size=7.5, bold=True, align=TA_CENTER, color=TEXT)),
-            P(note, S(f"tn{i}", size=7.5, lead=11, color=MUTED)),
+            P(f"{day_icon} {day}" if day_icon else day, S(f"td{i}", size=9, bold=True, color=TEXT, align=TA_CENTER)),
+            P(stype, S(f"ts{i}", size=8.5, color=ACCENT, bold=True, align=TA_CENTER)),
+            P(act if act != "—" else "Rest", S(f"ta{i}", size=8.5, color=TEXT)),
+            P(dur, S(f"tdu{i}", size=8.5, align=TA_CENTER, color=MUTED)),
+            P(inten, S(f"ti{i}", size=8, bold=True, align=TA_CENTER, color=TEXT)),
+            P(note, S(f"tn{i}", size=8, lead=12, color=MUTED)),
         ])
-    _col_w = [CONTENT_W * w for w in [0.11, 0.13, 0.14, 0.08, 0.11, 0.43]]
+
+    _col_w = [CONTENT_W * w for w in [0.12, 0.14, 0.16, 0.09, 0.12, 0.37]]
     _st = Table(_sched_rows, colWidths=_col_w)
+    # Premium stil – linjer, skygger, avrundede hjørner (så godt det går i ReportLab)
     _ts_style = [
-        ("BACKGROUND", (0,0), (-1,0), HexColor("#080F1E")),
+        ("BACKGROUND", (0,0), (-1,0), HexColor("#0A1120")),  # mørkere header
         ("TEXTCOLOR", (0,0), (-1,0), HexColor("#94A3B8")),
-        ("BOX", (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
-        ("INNERGRID", (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
-        ("TOPPADDING", (0,0), (-1,-1), 6),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-        ("LEFTPADDING", (0,0), (-1,-1), 5),
-        ("RIGHTPADDING", (0,0), (-1,-1), 5),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("ALIGN", (0,0), (-1,0), "CENTER"),
+        ("BOX", (0,0), (-1,-1), 0.8, HexColor("#2D3F55")),
+        ("INNERGRID", (0,0), (-1,-1), 0.4, HexColor("#2D3F55")),
+        ("TOPPADDING", (0,0), (-1,-1), 7),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [HexColor("#111C33"), HexColor("#0D1628")]),
     ]
-    # Fargelegg rader
+    # Fargelegg intensitetskolonnen individuelt
+    intensity_colors = {
+        "Light": HexColor("#14532D"),
+        "Light–Moderate": HexColor("#166534"),
+        "Moderate": HexColor("#1E3A5F"),
+        "Moderate–Hard": HexColor("#3B1F6E"),
+        "Hard": HexColor("#7F1D1D"),
+    }
     for i, (_, _, _, _, inten, _) in enumerate(_plan):
-        row_bg = HexColor("#111C33") if i % 2 == 0 else HexColor("#0D1628")
-        _ts_style.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
-        _ts_style.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
-        int_col = {"Light": "#14532D", "Light–Moderate": "#166534", "Moderate": "#1E3A5F", "Moderate–Hard": "#3B1F6E", "Hard": "#7F1D1D"}.get(inten, row_bg)
-        # Sjekk om int_col er en streng (fargekode) eller allerede et fargeobjekt
-        if isinstance(int_col, str):
-            int_col = HexColor(int_col)
-        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), int_col))
+        bg = intensity_colors.get(inten, HexColor("#0D1628"))
+        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), bg))
         _ts_style.append(("TEXTCOLOR", (4, i+1), (4, i+1), white))
+    
+    _st.setStyle(TableStyle(_ts_style))
     story.append(_st)
-    story.append(VGap(8))
+    story.append(VGap(10))
 
     # Intensitetstegnforklaring
     _legend_items = [("Light", "#14532D", "Zone 1–2 · <65% HRmax"), ("Moderate", "#1E3A5F", "Zone 2–3 · 65–80% HRmax"), ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"), ("Hard", "#7F1D1D", "Zone 4–5 · 87–95% HRmax")]
