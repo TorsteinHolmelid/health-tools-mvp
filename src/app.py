@@ -4627,7 +4627,7 @@ else:
         
         # 2. Generer PDF og vis rapporten på skjermen
         try:
-                        with st.spinner("🧠 Generating your premium report... (this takes a few seconds)"):
+            with st.spinner("🧠 Generating your premium report... (this takes a few seconds)"):
                 pdf_bytes = create_pdf_bytes_ultimate(report)
             st.balloons()
             with st.container(border=True):
