@@ -1965,7 +1965,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         S("_es_disc", size=8, lead=13, color=MUTED, italic=True, align=TA_CENTER, after=4)
     ))
 
-    # Bygg dokumentet og returner bytes
+# Bygg dokumentet og returner bytes
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.getvalue()
 
