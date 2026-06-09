@@ -1497,7 +1497,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
     
     # ═══════════════════════════════════════════════════════════════════════════
-    # NY PREMIUM TRENINGSSEKSJON – tilpasset brukerens aktiviteter
+    # NY PREMIUM TRENINGSSEKSJON – tilpasset brukerens aktiviteter (KORRIGERT)
     # ═══════════════════════════════════════════════════════════════════════════
 
     story.append(PageBreak())
@@ -1508,7 +1508,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _activities = plan_d.get("selected_activities") or report.get("selected_activities", [])
     _weeks = plan_d.get("plan_weeks", 12)
     
-    # ── Kategorisering av aktiviteter (samme som før) ──
+    # ── Kategorisering av aktiviteter ──
     _strength_acts = {"Strength training (weights)", "Boxing / Martial arts", "Rock climbing / Bouldering", "Hiking (incline)"}
     _cardio_acts = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)", "Swimming", "Rowing (moderate/vigorous)", "HIIT", "Elliptical", "Stair climbing / Stairmaster"}
     _sport_acts = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
@@ -1544,15 +1544,11 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     else:
         _protein_g = 160
     
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 1. PREMIUM HEADER med aktivitetsgraf (Activity Footprint)
-    # ═══════════════════════════════════════════════════════════════════════════
-    
+    # ── Hjelpefunksjon for aktivitetsgraf (forenklet, unngår fargeproblemer) ──
     class ActivityFootprint(Flowable):
-        """Horisontalt stolpediagram som viser ukentlige minutter per aktivitetstype."""
         def __init__(self, weekly_mins, width=CONTENT_W):
             super().__init__()
-            self.data = weekly_mins  # dict {aktivitet: minutter}
+            self.data = weekly_mins
             self.w = width
             self.h = 100
         def wrap(self, aw, ah):
@@ -1579,30 +1575,10 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c.setFont("Helvetica", 6.5)
             c.drawString(8, 4, "Weekly volume distribution (minutes per activity type)")
     
-    # Bygg dict med ukentlige minutter (foreløpig estimat – kan forbedres)
+    # Bygg aktivitetsdata
     activity_minutes = {}
-    # Standardverdier basert på mål og antall økter per uke
-    if _goal == "Lose fat":
-        if _has_strength: activity_minutes["Strength"] = 150
-        if _has_cardio: activity_minutes["Cardio"] = 180
-        if _has_sport: activity_minutes["Sport"] = 90
-        if _has_low: activity_minutes["Low impact"] = 120
-    elif _goal == "Build muscle (bulk)":
-        if _has_strength: activity_minutes["Strength"] = 200
-        if _has_cardio: activity_minutes["Cardio"] = 100
-        if _has_sport: activity_minutes["Sport"] = 60
-        if _has_low: activity_minutes["Low impact"] = 90
-    else:  # Recomposition
-        if _has_strength: activity_minutes["Strength"] = 150
-        if _has_cardio: activity_minutes["Cardio"] = 140
-        if _has_sport: activity_minutes["Sport"] = 80
-        if _has_low: activity_minutes["Low impact"] = 100
-    
-    # Hvis brukeren har valgt spesifikke aktiviteter, bruk dem som labels
     if _activities:
-        activity_minutes = {}
-        for act in _activities[:4]:  # maks 4 for å unngå trengsel
-            # tildel fiktive minutter (kan forbedres med faktisk ukentlig tid)
+        for act in _activities[:4]:
             if act in _strength_acts:
                 activity_minutes[act] = 150
             elif act in _cardio_acts:
@@ -1611,8 +1587,24 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                 activity_minutes[act] = 90
             else:
                 activity_minutes[act] = 100
+    else:
+        # Standardverdier basert på mål
+        if _goal == "Lose fat":
+            if _has_strength: activity_minutes["Strength"] = 150
+            if _has_cardio: activity_minutes["Cardio"] = 180
+            if _has_sport: activity_minutes["Sport"] = 90
+            if _has_low: activity_minutes["Low impact"] = 120
+        elif _goal == "Build muscle (bulk)":
+            if _has_strength: activity_minutes["Strength"] = 200
+            if _has_cardio: activity_minutes["Cardio"] = 100
+            if _has_sport: activity_minutes["Sport"] = 60
+            if _has_low: activity_minutes["Low impact"] = 90
+        else:
+            if _has_strength: activity_minutes["Strength"] = 150
+            if _has_cardio: activity_minutes["Cardio"] = 140
+            if _has_sport: activity_minutes["Sport"] = 80
+            if _has_low: activity_minutes["Low impact"] = 100
     
-    # Hovedheader
     class TrainingHero(Flowable):
         def __init__(self, goal, goal_col, weeks, protein_g, act_count, width=CONTENT_W):
             super().__init__()
@@ -1641,14 +1633,12 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c.setFillColor(MUTED)
             c.setFont("Helvetica", 8)
             c.drawString(16, h-42, "Built around your selected activities · Periodised for your goal")
-            # Badges
             badge_x = w - 130
             c.setFillColor(self.goal_col)
             c.roundRect(badge_x, h-38, 118, 22, 11, fill=1, stroke=0)
             c.setFillColor(white)
             c.setFont("Helvetica-Bold", 9)
             c.drawCentredString(badge_x+59, h-30, f"Goal: {self.goal}")
-            # Metrics pills
             pill_w = 105
             c.setFillColor(CARD2)
             c.roundRect(16, 12, pill_w, 24, 12, fill=1, stroke=0)
@@ -1658,14 +1648,12 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             c.setFillColor(ACCENT)
             c.setFont("Helvetica-Bold", 8)
             c.drawCentredString(16+pill_w/2, 20, f"⏱ {self.weeks} weeks")
-            
             c.setFillColor(CARD2)
             c.roundRect(16+pill_w+8, 12, pill_w, 24, 12, fill=1, stroke=0)
             c.setStrokeColor(ACCENT)
             c.roundRect(16+pill_w+8, 12, pill_w, 24, 12, fill=0, stroke=1)
             c.setFillColor(ACCENT)
             c.drawCentredString(16+pill_w+8+pill_w/2, 20, f"🥩 {self.protein_g}g protein")
-            
             c.setFillColor(CARD2)
             c.roundRect(16+2*(pill_w+8), 12, pill_w, 24, 12, fill=1, stroke=0)
             c.setStrokeColor(ACCENT)
@@ -1676,19 +1664,14 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(TrainingHero(_goal, _goal_col, _weeks, _protein_g, len(_activities) if _activities else 0, CONTENT_W))
     story.append(VGap(8))
     
-    # Aktivitetsgraf hvis brukeren har valgt noe
     if activity_minutes:
         story.append(P("Your Activity Footprint", S("sh2", size=10, bold=True, color=ACCENT, after=4)))
         story.append(ActivityFootprint(activity_minutes))
         story.append(VGap(12))
     
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 2. UKEPLAN – Dynamisk basert på brukerens aktiviteter
-    # ═══════════════════════════════════════════════════════════════════════════
-    
+    # ── Ukentlig timeplan ──
     story.append(P("Weekly Training Schedule", S("sh", size=10, bold=True, color=TEXT, after=4)))
     
-    # Bygg planen ved hjelp av den forbedrede _build_day_plan (som allerede finnes i koden)
     _plan = _build_day_plan(
         _goal,
         _has_strength,
@@ -1732,43 +1715,61 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         ("RIGHTPADDING", (0,0), (-1,-1), 5),
         ("VALIGN", (0,0), (-1,-1), "TOP"),
     ]
-    # Fargelegg rader vekselvis
     for i, (_, _, _, _, inten, _) in enumerate(_plan):
         row_bg = HexColor("#111C33") if i % 2 == 0 else HexColor("#0D1628")
         _ts_style.append(("BACKGROUND", (0, i+1), (3, i+1), row_bg))
         _ts_style.append(("BACKGROUND", (5, i+1), (5, i+1), row_bg))
-        int_col = {"Light": "#14532D", "Light–Moderate": "#166534", "Moderate": "#1E3A5F", "Moderate–Hard": "#3B1F6E", "Hard": "#7F1D1D"}.get(inten, row_bg)
-        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), HexColor(int_col)))
+        # Hent farge basert på intensitet, unngå HexColor på allerede fargeobjekter
+        inten_color_map = {
+            "Light": HexColor("#14532D"),
+            "Light–Moderate": HexColor("#166534"),
+            "Moderate": HexColor("#1E3A5F"),
+            "Moderate–Hard": HexColor("#3B1F6E"),
+            "Hard": HexColor("#7F1D1D"),
+        }
+        int_col = inten_color_map.get(inten, row_bg)
+        _ts_style.append(("BACKGROUND", (4, i+1), (4, i+1), int_col))
         _ts_style.append(("TEXTCOLOR", (4, i+1), (4, i+1), white))
     _st.setStyle(TableStyle(_ts_style))
     story.append(_st)
     story.append(VGap(8))
     
-    # Intensitetstegnforklaring
-    _legend_items = [("Light", "#14532D", "Zone 1–2 · <65% HRmax"), ("Moderate", "#1E3A5F", "Zone 2–3 · 65–80% HRmax"), ("Moderate–Hard", "#3B1F6E", "Zone 3–4 · 80–87% HRmax"), ("Hard", "#7F1D1D", "Zone 4–5 · 87–95% HRmax")]
-    _leg_rows = [[P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)), *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]]]
+    # ── Intensitetstegnforklaring ──
+    _legend_items = [
+        ("Light", HexColor("#14532D"), "Zone 1–2 · <65% HRmax"),
+        ("Moderate", HexColor("#1E3A5F"), "Zone 2–3 · 65–80% HRmax"),
+        ("Moderate–Hard", HexColor("#3B1F6E"), "Zone 3–4 · 80–87% HRmax"),
+        ("Hard", HexColor("#7F1D1D"), "Zone 4–5 · 87–95% HRmax"),
+    ]
+    _leg_rows = [[
+        P("INTENSITY LEGEND", S("lg", size=7, bold=True, color=MUTED)),
+        *[P(f"  {lbl}  {desc}", S(f"l{j}", size=7.5, color=TEXT)) for j, (lbl, _, desc) in enumerate(_legend_items)]
+    ]]
     _leg_t = Table(_leg_rows, colWidths=[CONTENT_W*0.16] + [CONTENT_W*0.21]*4)
-    _leg_style = [("BOX", (0,0), (-1,-1), 0.5, HexColor("#2D3F55")), ("INNERGRID", (0,0), (-1,-1), 0.3, HexColor("#2D3F55")), ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5), ("LEFTPADDING", (0,0), (-1,-1), 5), ("BACKGROUND", (0,0), (0,0), HexColor("#080F1E")), ("TEXTCOLOR", (0,0), (-1,-1), TEXT)]
+    _leg_style = [
+        ("BOX", (0,0), (-1,-1), 0.5, HexColor("#2D3F55")),
+        ("INNERGRID", (0,0), (-1,-1), 0.3, HexColor("#2D3F55")),
+        ("TOPPADDING", (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LEFTPADDING", (0,0), (-1,-1), 5),
+        ("BACKGROUND", (0,0), (0,0), HexColor("#080F1E")),
+        ("TEXTCOLOR", (0,0), (-1,-1), TEXT),
+    ]
     for j, (lbl, col, _) in enumerate(_legend_items):
-        _leg_style.append(("BACKGROUND", (j+1, 0), (j+1, 0), HexColor(col)))
+        _leg_style.append(("BACKGROUND", (j+1, 0), (j+1, 0), col))
     _leg_t.setStyle(TableStyle(_leg_style))
     story.append(_leg_t)
     story.append(VGap(12))
     
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 3. FORSKNINGSBASERT EVIDENS – sitater for hver aktivitetstype
-    # ═══════════════════════════════════════════════════════════════════════════
-    
+    # ── Forskningsbasert evidens ──
     story.append(P("Evidence-Based Training Science", S("sh", size=10, bold=True, color=TEXT, after=4)))
     
-    # Samle unike aktivitetstyper fra brukerens valg
     unique_categories = set()
     for act in _activities:
         if act in _strength_acts: unique_categories.add("Strength Training")
         elif act in _cardio_acts: unique_categories.add("Cardio / Aerobic")
         elif act in _sport_acts: unique_categories.add("Sport / Skill-Based")
         elif act in _low_acts: unique_categories.add("Low-Impact Movement")
-    
     if not unique_categories and _activities:
         unique_categories.add("Physical Activity")
     
@@ -1790,22 +1791,15 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         evidence_text = "• Regular physical activity reduces all-cause mortality by 30–40% compared to sedentary behaviour (Warburton et al., 2006; CMAJ).<br/>"
         citations.append("Warburton DER et al. (2006) – Health benefits of physical activity: the evidence.")
     
-    evidence_para = Paragraph(evidence_text, S("evi", size=8.5, lead=13, color=TEXT))
-    story.append(evidence_para)
+    story.append(Paragraph(evidence_text, S("evi", size=8.5, lead=13, color=TEXT)))
     story.append(VGap(6))
-    
-    # Vis sitatene i en liten boks
     citation_html = "<b>Key references:</b><br/>" + "<br/>".join(f"• {c}" for c in citations[:3])
     story.append(P(citation_html, S("cit", size=7.5, lead=11, color=MUTED, italic=True)))
     story.append(VGap(12))
     
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 4. UKENTLIG PROGRESSIVE OVERLOAD – forenklet og elegant
-    # ═══════════════════════════════════════════════════════════════════════════
-    
+    # ── Progressiv overload tabell (forenklet) ──
     story.append(P("Progressive Overload Plan", S("sh", size=10, bold=True, color=TEXT, after=4)))
     
-    # Tabell med ukentlig progresjon (forkortet, men premium)
     if _goal == "Build muscle (bulk)":
         prog_data = [("1–2", "Neural adaptation", "3×12", "60–65%", "Focus on form & mind-muscle connection"),
                      ("3–4", "Hypertrophy A", "4×10", "67–72%", "Add 2.5 kg when all reps are clean"),
@@ -1822,7 +1816,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                      ("9–10","Intensity peak", "4×6–8", "78–83%", "Compound lifts for maximal calorie cost"),
                      ("11", "Conditioning", "3×15", "60–65%", "Metabolic stress + endurance"),
                      ("12", "Deload", "2×12", "55%", "Active recovery")]
-    else:  # Recomposition
+    else:
         prog_data = [("1–2", "Foundation", "3×10–12", "60–67%", "Movement quality · establish baseline"),
                      ("3–4", "Recomp A", "3×10", "67–72%", "Alternate heavy/volume"),
                      ("5–6", "Recomp B", "4×8–10", "72–77%", "Progressive overload on 2 key lifts"),
@@ -1859,10 +1853,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(prog_t)
     story.append(VGap(12))
     
-    # ═══════════════════════════════════════════════════════════════════════════
-    # 5. ACTIONABLE MILESTONE – 4 ukers fokus
-    # ═══════════════════════════════════════════════════════════════════════════
-    
+    # ── Actionable milestone ──
     if _goal == "Build muscle (bulk)":
         train_steps = [f"Track bodyweight weekly – target gain 0.25–0.5 kg/week for first {min(_weeks,8)} weeks",
                        f"Consume {_protein_g} g protein daily across 4+ meals (≥30 g/meal)",
@@ -1882,7 +1873,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(ActionableMilestoneBox(train_steps))
     story.append(VGap(8))
     
-    # Avsluttende forskningsnotis
     story.append(P(
         "Research basis: Schoenfeld BJ (2010) J Strength Cond Res; Krieger JW (2010) J Strength Cond Res; "
         "Mandsager et al. (2018) JAMA; Zagatto et al. (2016) J Sports Sci Med; Warburton et al. (2006) CMAJ. "
@@ -1891,7 +1881,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     ))
     
     story.append(PageBreak())
-    # Fortsett med resten av PDF-en (Insights, Conditions, etc.)
     # ── PAGE 7: Insights + Conditions + Safety ──
     story.append(SecHeader("Personalised Key Insights", subtitle="Based on your individual data — not generic advice"))
     story.append(VGap(6))
