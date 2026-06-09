@@ -568,49 +568,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(P(f"Generated: {gen_v} | Target Goal: {_goal}", style_subtitle))
     story.append(HRFlowable(width="100%", thickness=1, color=STROKE, spaceAfter=20))
     
-    # Bruker-metadata tabell
-    meta_rows = [
-        ("Age / Sex", f"{age_v} yrs / {sex_v}"),
-        ("Height / Weight", f"{h_v} cm / {w_v} kg"),
-    ]
-    if bmi_v:
-        meta_rows.append(("BMI Status", f"{bmi_v:.1f} ({bmi_cat})"))
-    if vo2_v:
-        meta_rows.append(("Cardio Fitness (VO2 Max)", f"{vo2_v:.1f} mL/kg/min ({vo2_rat})"))
     
-    story.append(P("Biometric Overview", S("Sec1", size=14, color=ACCENT, bold=True, after=10)))
-    story.append(make_key_value_table(meta_rows))
-    story.append(Spacer(1, 15))
-    
-    # Generer treningsplan hvis valgt
-    if has_plan:
-        story.append(P("Your 7-Day Training Protocol", S("Sec2", size=14, color=ACCENT, bold=True, after=10)))
-        plan_data = _build_day_plan(_goal, _has_strength, _has_cardio, _has_sport, _has_low,
-                                    [_sel_strength], [_sel_cardio], [_sel_sport], [_sel_low])
-        
-        table_style = TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), CARD2),
-            ("TEXTCOLOR", (0, 0), (-1, 0), white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-            ("GRID", (0, 0), (-1, -1), 0.5, STROKE),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("FONTSIZE", (0, 0), (-1, -1), 8),
-        ])
-        
-        plan_table_rows = [[P("Day", S("TH", bold=True)), P("Session", S("TH", bold=True)), P("Activity", S("TH", bold=True)), P("Notes", S("TH", bold=True))]]
-        for day, session, act, duration, intensity, notes in plan_data:
-            plan_table_rows.append([
-                P(day, S("TD", bold=True)),
-                P(session, S("TD", color=BLUE)),
-                P(f"{act} ({duration})", S("TD")),
-                P(notes, S("TD", color=MUTED))
-            ])
-            
-        t_plan = Table(plan_table_rows, colWidths=[20*mm, 30*mm, 45*mm, 80*mm])
-        t_plan.setStyle(table_style)
-        story.append(t_plan)
-
+   
     # Health score kalkulering
     score_parts = []
     if bmi_v is not None:
