@@ -1435,11 +1435,9 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     else:
         story.append(P("No weight milestones generated.", S("nm", size=9, color=MUTED, after=10)))
     
-    # ── PAGE 7: Personalised Training Programme ──
-    story.append(PageBreak())    
-    story.append(SecHeader("Personalised Training Programme", subtitle="Evidence-based weekly plan built around your selected activities and goal"))
-    story.append(VGap(6))
-    
+    # ── PAGE 7: Personalised Training Programme (PREMIUM) ──
+    story.append(PageBreak())
+
     # ── Pull values safely from report data ──
     plan_d = report.get("plan") or {}
     _goal       = plan_d.get("goal", "Body Recomposition")
@@ -1452,22 +1450,24 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _cardio_acts   = {"Running/jogging", "Cycling (leisure)", "Cycling (vigorous)", "Swimming", "Rowing (moderate/vigorous)", "HIIT", "Elliptical", "Stair climbing / Stairmaster"}
     _sport_acts    = {"Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"}
     _low_acts      = {"Walking (casual)", "Brisk walking", "Yoga / Pilates", "Housework / Light chores", "Gardening / Heavy yard work"}
-    
+
     _has_strength = bool(_activities and _strength_acts & set(_activities))
     _has_cardio   = bool(_activities and _cardio_acts   & set(_activities))
     _has_sport    = bool(_activities and _sport_acts    & set(_activities))
     _has_low      = bool(_activities and _low_acts      & set(_activities))
-    
+
     _sel_strength = [a for a in _activities if a in _strength_acts] or ["Strength training (weights)"]
     _sel_cardio   = [a for a in _activities if a in _cardio_acts] or [a for a in _activities if a in _sport_acts] or ["Running/jogging"]
     _sel_sport    = [a for a in _activities if a in _sport_acts]
     _sel_low      = [a for a in _activities if a in _low_acts]
     
-    # ── Konstantar for training-seksjonen ──
+    # ══════════════════════════════════════════════════════════════════
+    # PREMIUM TRAINING SECTION — constants + custom flowables
+    # ══════════════════════════════════════════════════════════════════
     _WHITE      = HexColor("#FFFFFF")
-    _ROW_A      = HexColor("#1E2A3A")
-    _ROW_B      = HexColor("#162030")
-    _HEADER_BG  = HexColor("#0F1923")
+    _ROW_A      = HexColor("#111C33")
+    _ROW_B      = HexColor("#0D1628")
+    _HEADER_BG  = HexColor("#080F1E")
     _PHASE1_BG  = HexColor("#0F2A1E")
     _PHASE2_BG  = HexColor("#0F1F3A")
     _PHASE3_BG  = HexColor("#1A0F3A")
@@ -1492,22 +1492,117 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     # ── Goal-based parameter table ──
     _goal_params = {
         "Lose fat":               {"deficit": -400, "protein": "2.2 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
-                                   "phase1": "Metabolic Reset (Wk 1–3)", "phase2": "Progressive Overload (Wk 4–8)",
-                                   "phase3": "Intensification (Wk 9–12)", "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass."},
+                                   "phase1": "Metabolic Reset", "phase1_wk": "Wk 1–3",
+                                   "phase2": "Progressive Overload", "phase2_wk": "Wk 4–8",
+                                   "phase3": "Peak & Cut", "phase3_wk": "Wk 9–12",
+                                   "phase1_desc": "Restore metabolic health, calibrate deficit, establish movement patterns",
+                                   "phase2_desc": "Progressive load + caloric precision — preserve lean mass while losing fat",
+                                   "phase3_desc": "Peak intensity, HIIT integration, deload in final week",
+                                   "note": "Maintain a 350–450 kcal/day deficit. Prioritise strength to preserve lean mass.",
+                                   "goal_color": "#EF4444"},
         "Build muscle (bulk)":    {"deficit": +350, "protein": "2.0 g/kg", "strength_d": 4, "cardio_d": 2, "rest_d": 1,
-                                   "phase1": "Neural Adaptation (Wk 1–3)", "phase2": "Hypertrophy Block (Wk 4–8)",
-                                   "phase3": "Volume Peak (Wk 9–12)", "note": "Aim for 0.25–0.5 kg/week weight gain. Calorie surplus supports muscle protein synthesis."},
+                                   "phase1": "Neural Adaptation", "phase1_wk": "Wk 1–3",
+                                   "phase2": "Hypertrophy Block", "phase2_wk": "Wk 4–8",
+                                   "phase3": "Volume Peak", "phase3_wk": "Wk 9–12",
+                                   "phase1_desc": "Form mastery, movement quality, CNS adaptation to new loads",
+                                   "phase2_desc": "Maximum hypertrophy stimulus — 10–20 sets/muscle/week at 67–77% 1RM",
+                                   "phase3_desc": "Highest total volume, personal bests, mandatory deload in Wk 12",
+                                   "note": "Aim for 0.25–0.5 kg/week weight gain. Calorie surplus supports muscle protein synthesis.",
+                                   "goal_color": "#22C55E"},
         "Body Recomposition":     {"deficit": 0,    "protein": "2.4 g/kg", "strength_d": 3, "cardio_d": 3, "rest_d": 1,
-                                   "phase1": "Foundation (Wk 1–3)", "phase2": "Recomposition Block (Wk 4–8)",
-                                   "phase3": "Optimisation (Wk 9–12)", "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain."},
+                                   "phase1": "Foundation", "phase1_wk": "Wk 1–3",
+                                   "phase2": "Recomposition Block", "phase2_wk": "Wk 4–8",
+                                   "phase3": "Optimisation", "phase3_wk": "Wk 9–12",
+                                   "phase1_desc": "Habit formation, movement quality, baseline aerobic conditioning",
+                                   "phase2_desc": "Progressive overload + varied cardio — simultaneous fat loss & muscle gain",
+                                   "phase3_desc": "Peak compound lifts, deload in final week, composition re-assessment",
+                                   "note": "Eat at maintenance. High protein + progressive strength + varied cardio drives simultaneous fat loss and muscle gain.",
+                                   "goal_color": "#0EA5A3"},
     }
-    
+
     _gp = _goal_params.get(_goal, _goal_params["Body Recomposition"])
-    
-    # ── Goal overview box ──
-    story.append(P(f"Goal: {_goal}  ·  Programme length: {_weeks} weeks  ·  Calorie adjustment: {_gp['deficit']:+d} kcal/day  ·  Target protein: {_gp['protein']}", S("goal_banner", size=9.5, bold=True, color=ACCENT, after=4)))
-    story.append(P(_gp["note"], S("bt", size=9, lead=14, after=6)))
-    story.append(VGap(4))
+    _goal_col = HexColor(_gp["goal_color"])
+
+    if w_v:
+        _protein_g = round(float(w_v) * float(_gp["protein"].split()[0]))
+    else:
+        _protein_g = 160
+
+    # ══════════════════════════════════════════════════════════════════
+    # PREMIUM HEADER — title + goal badge + key metrics strip
+    # ══════════════════════════════════════════════════════════════════
+    class TrainingHeaderBlock(Flowable):
+        def __init__(self, goal, goal_col, weeks, protein, protein_g, activities, width):
+            super().__init__()
+            self.goal = goal
+            self.goal_col = goal_col
+            self.weeks = weeks
+            self.protein = protein
+            self.protein_g = protein_g
+            self.activities = activities[:4] if activities else []
+            self.w = width
+            self.h = 110
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            w, h = self.w, self.h
+            # Background
+            c.setFillColor(HexColor("#080F1E"))
+            c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setStrokeColor(self.goal_col)
+            c.setLineWidth(1.5)
+            c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
+            # Top accent bar
+            c.setFillColor(self.goal_col)
+            c.roundRect(0, h-4, w, 4, 2, fill=1, stroke=0)
+            # Title
+            c.setFillColor(HexColor("#FFFFFF"))
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(16, h - 28, "Personalised Training Programme")
+            # Subtitle
+            c.setFillColor(HexColor("#94A3B8"))
+            c.setFont("Helvetica", 8.5)
+            c.drawString(16, h - 42, "Evidence-based · Built around your selected activities · Periodised for your goal")
+            # Goal badge
+            badge_x = w - 130
+            c.setFillColor(self.goal_col)
+            c.roundRect(badge_x, h - 38, 118, 22, 11, fill=1, stroke=0)
+            c.setFillColor(HexColor("#FFFFFF"))
+            c.setFont("Helvetica-Bold", 9)
+            c.drawCentredString(badge_x + 59, h - 30, f"Goal: {self.goal}")
+            # Divider
+            c.setStrokeColor(HexColor("#1E2D45"))
+            c.setLineWidth(0.6)
+            c.line(16, h - 52, w - 16, h - 52)
+            # Metric pills
+            metrics = [
+                ("⏱", f"{self.weeks} Weeks", "#38BDF8"),
+                ("🥩", f"{self.protein_g}g Protein/day", "#22C55E"),
+                ("🏃", f"{len(self.activities)} Activities", "#A78BFA"),
+            ]
+            px = 16
+            for icon, label, col in metrics:
+                pill_w = 110
+                c.setFillColor(HexColor("#111C33"))
+                c.roundRect(px, 10, pill_w, 26, 13, fill=1, stroke=0)
+                c.setStrokeColor(HexColor(col))
+                c.setLineWidth(0.8)
+                c.roundRect(px, 10, pill_w, 26, 13, fill=0, stroke=1)
+                c.setFillColor(HexColor(col))
+                c.setFont("Helvetica-Bold", 8.5)
+                c.drawCentredString(px + pill_w/2, 20, f"{icon}  {label}")
+                px += pill_w + 10
+            # Activities list
+            if self.activities:
+                ax = px + 10
+                c.setFillColor(HexColor("#64748B"))
+                c.setFont("Helvetica", 7.5)
+                c.drawString(ax, 30, "YOUR ACTIVITIES:")
+                c.setFillColor(HexColor("#94A3B8"))
+                c.drawString(ax, 18, " · ".join(self.activities))
+
+    story.append(TrainingHeaderBlock(_goal, _goal_col, _weeks, _gp["protein"], _protein_g, _activities, CONTENT_W))
+    story.append(VGap(12))
     
     # ── Phase Timeline Bar ──
     story.append(P("Training Phases", S("sh", size=10, bold=True, color=TEXT, after=4)))
