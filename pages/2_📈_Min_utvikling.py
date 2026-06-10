@@ -1,3 +1,6 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # legg til src-mappa i sti
 """
 pages/2_📈_Min_utvikling.py  –  "My Progress" page
 Shows time-series charts for all key health metrics stored in Supabase.
