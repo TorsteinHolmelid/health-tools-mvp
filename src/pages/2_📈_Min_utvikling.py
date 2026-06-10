@@ -1,21 +1,22 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # legg til src-mappa i sti
-"""
-pages/2_📈_Min_utvikling.py  –  "My Progress" page
-Shows time-series charts for all key health metrics stored in Supabase.
-Requires the user to have paid (premium_access table) to view the full page.
-"""
+# Gjer at vi kan importere frå src-mappa (der db.py ligg)
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 from __future__ import annotations
 
 import uuid
 import streamlit as st
 import plotly.graph_objects as go
-import plotly.express as px
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 
-from db import get_db_client, get_user_history, has_premium_access
+# Importer frå db.py – viss dette feilar, får du klar feilmelding
+try:
+    from db import get_db_client, get_user_history, has_premium_access
+except ImportError as e:
+    st.error(f"Kunne ikkje importere frå db.py – sjekk at db.py ligg i src-mappa. Feil: {e}")
+    st.stop()
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -25,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Shared CSS (mirrors main app) ─────────────────────────────────────────────
+# ── Shared CSS (uendra) ─────────────────────────────────────────────────────
 st.markdown(
     """
 <style>
@@ -74,16 +75,12 @@ if "user_id" not in st.session_state:
 
 user_id: str = st.session_state["user_id"]
 
-# ── Stripe callback: persist premium access ───────────────────────────────────
+# ── Stripe callback: persister premium_access ────────────────────────────────
 _session_id = None
 try:
     _session_id = st.query_params.get("session_id")
 except Exception:
-    try:
-        _raw = st.experimental_get_query_params().get("session_id")
-        _session_id = _raw[0] if isinstance(_raw, list) else _raw
-    except Exception:
-        _session_id = None
+    _session_id = None
 if isinstance(_session_id, list):
     _session_id = _session_id[0] if _session_id else None
 
@@ -94,17 +91,15 @@ if _session_id and (
 ):
     st.session_state["report_unlocked"] = True
     st.session_state["stripe_session_id"] = _session_id
-    # Persist to DB so they keep access across devices / sessions
     from db import save_premium_access
     save_premium_access(db, user_id, _session_id)
 
-# ── Premium check ─────────────────────────────────────────────────────────────
-# Allow access if: paid via Stripe this session OR row exists in premium_access
+# ── Premium check ────────────────────────────────────────────────────────────
 _unlocked_session = st.session_state.get("report_unlocked", False)
 _unlocked_db = has_premium_access(db, user_id)
 is_premium = _unlocked_session or _unlocked_db
 
-# ── Hero header ───────────────────────────────────────────────────────────────
+# ── Hero header ──────────────────────────────────────────────────────────────
 st.markdown(
     """
 <div class="ht-hero">
@@ -115,7 +110,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ── PAYWALL ───────────────────────────────────────────────────────────────────
+# ── BETALINGSVEGG ────────────────────────────────────────────────────────────
 if not is_premium:
     st.markdown(
         """
@@ -147,7 +142,6 @@ if not is_premium:
 """,
         unsafe_allow_html=True,
     )
-
     stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
     st.link_button(
         "🔓 Unlock My Progress — 4.99 USD",
@@ -158,7 +152,7 @@ if not is_premium:
     st.caption("After payment you will be redirected back here automatically.")
     st.stop()
 
-# ── Load data ─────────────────────────────────────────────────────────────────
+# ── Last data frå databasen ───────────────────────────────────────────────────
 history = get_user_history(db, user_id)
 
 if not history:
@@ -168,28 +162,25 @@ if not history:
     )
     st.stop()
 
-# ── Build DataFrame ───────────────────────────────────────────────────────────
+# ── Bygg DataFrame ───────────────────────────────────────────────────────────
 df = pd.DataFrame(history)
-
-# Parse timestamps robustly
 df["created_at"] = pd.to_datetime(df["created_at"], utc=True, errors="coerce")
 df = df.dropna(subset=["created_at"]).sort_values("created_at").reset_index(drop=True)
 
-# Ensure numeric columns exist (fill with NaN if DB column absent)
+# Sikre at alle nødvendige kolonnar finst
 numeric_cols = ["weight", "bmi", "vo2max", "bio_age", "weekly_activity_minutes", "resting_hr"]
 for col in numeric_cols:
     if col not in df.columns:
         df[col] = float("nan")
     df[col] = pd.to_numeric(df[col], errors="coerce")
 
-# ── Time filter ───────────────────────────────────────────────────────────────
+# ── Tidsfilter ────────────────────────────────────────────────────────────────
 FILTER_OPTIONS = {
     "Last 30 days": 30,
     "Last 90 days": 90,
     "Last year": 365,
     "All time": None,
 }
-
 now_utc = datetime.now(timezone.utc)
 
 col_filter, col_count = st.columns([2, 1])
@@ -200,7 +191,6 @@ with col_filter:
         value="Last 90 days",
         label_visibility="collapsed",
     )
-
 days_back = FILTER_OPTIONS[selected_range]
 if days_back:
     cutoff = now_utc - timedelta(days=days_back)
@@ -215,12 +205,11 @@ if df_view.empty:
     st.warning(f"No measurements found for **{selected_range}**. Try expanding the time range.")
     st.stop()
 
-# ── Summary stats row ─────────────────────────────────────────────────────────
+# ── Oppsummeringskort ────────────────────────────────────────────────────────
 st.markdown('<div class="ht-card">', unsafe_allow_html=True)
 m1, m2, m3, m4 = st.columns(4)
 
 def _delta(series: pd.Series):
-    """Return (latest, delta_str) for a metric series, ignoring NaNs."""
     valid = series.dropna()
     if valid.empty:
         return None, None
@@ -243,28 +232,17 @@ with m3:
     st.metric("VO₂max", f"{vo2_val:.1f}" if vo2_val else "—", vo2_delta)
 with m4:
     st.metric("Bio Age", f"{bio_val:.0f}" if bio_val else "—", bio_delta)
-
 st.markdown("</div>", unsafe_allow_html=True)
 
-# ── Shared chart style ────────────────────────────────────────────────────────
+# ── Stil for diagram ─────────────────────────────────────────────────────────
 CHART_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
     font=dict(color="#94A3B8", size=11),
     margin=dict(l=10, r=10, t=36, b=10),
     height=260,
-    xaxis=dict(
-        showgrid=False,
-        zeroline=False,
-        color="#64748B",
-        tickfont=dict(color="#64748B"),
-    ),
-    yaxis=dict(
-        gridcolor="rgba(148,163,184,0.08)",
-        zeroline=False,
-        color="#64748B",
-        tickfont=dict(color="#64748B"),
-    ),
+    xaxis=dict(showgrid=False, zeroline=False, color="#64748B", tickfont=dict(color="#64748B")),
+    yaxis=dict(gridcolor="rgba(148,163,184,0.08)", zeroline=False, color="#64748B", tickfont=dict(color="#64748B")),
     hovermode="x unified",
 )
 
@@ -275,149 +253,59 @@ GREEN = "#22C55E"
 PINK = "#EC4899"
 ORANGE = "#F97316"
 
-
-def _line_chart(
-    series: pd.Series,
-    title: str,
-    unit: str,
-    color: str = ACCENT,
-    fill: bool = True,
-    reference_line: float | None = None,
-    ref_label: str = "",
-):
-    """Render a single metric over time as a Plotly line chart."""
+def _line_chart(series: pd.Series, title: str, unit: str, color: str = ACCENT, fill: bool = True, reference_line: float | None = None, ref_label: str = ""):
     plot_df = df_view[["created_at"]].copy()
     plot_df["value"] = series.values
     plot_df = plot_df.dropna(subset=["value"])
-
     if plot_df.empty:
         st.caption(f"No data available for {title}.")
         return
-
     fig = go.Figure()
-
-    # Gradient fill under line
     if fill:
-        fig.add_trace(
-            go.Scatter(
-                x=plot_df["created_at"],
-                y=plot_df["value"],
-                fill="tozeroy",
-                mode="none",
-                fillcolor=color.replace(")", ",0.10)").replace("rgb", "rgba")
-                if "rgb" in color
-                else f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.10)",
-                showlegend=False,
-                hoverinfo="skip",
-            )
-        )
-
-    # Main line
-    fig.add_trace(
-        go.Scatter(
-            x=plot_df["created_at"],
-            y=plot_df["value"],
-            mode="lines+markers",
-            line=dict(color=color, width=2.5),
-            marker=dict(color=color, size=6, line=dict(color="#0B1220", width=1.5)),
-            name=unit,
-            hovertemplate=f"<b>%{{y:.1f}} {unit}</b><br>%{{x|%b %d, %Y}}<extra></extra>",
-        )
-    )
-
-    # Optional reference / target line
+        try:
+            fillcolor = color.replace(")", ",0.10)").replace("rgb", "rgba") if "rgb" in color else f"rgba({int(color[1:3],16)},{int(color[3:5],16)},{int(color[5:7],16)},0.10)"
+        except:
+            fillcolor = "rgba(14,165,163,0.10)"
+        fig.add_trace(go.Scatter(x=plot_df["created_at"], y=plot_df["value"], fill="tozeroy", mode="none", fillcolor=fillcolor, showlegend=False, hoverinfo="skip"))
+    fig.add_trace(go.Scatter(x=plot_df["created_at"], y=plot_df["value"], mode="lines+markers", line=dict(color=color, width=2.5), marker=dict(color=color, size=6, line=dict(color="#0B1220", width=1.5)), name=unit, hovertemplate=f"<b>%{{y:.1f}} {unit}</b><br>%{{x|%b %d, %Y}}<extra></extra>"))
     if reference_line is not None:
-        fig.add_hline(
-            y=reference_line,
-            line_dash="dot",
-            line_color="rgba(148,163,184,0.35)",
-            annotation_text=ref_label,
-            annotation_font_color="#64748B",
-            annotation_font_size=10,
-        )
-
+        fig.add_hline(y=reference_line, line_dash="dot", line_color="rgba(148,163,184,0.35)", annotation_text=ref_label, annotation_font_color="#64748B", annotation_font_size=10)
     layout = dict(CHART_LAYOUT)
     layout["title"] = dict(text=title, font=dict(color="#E5E7EB", size=14), x=0)
     fig.update_layout(**layout)
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
-
-# ── Charts ────────────────────────────────────────────────────────────────────
-
 st.markdown("---")
-
-# Row 1: Weight + BMI
 c1, c2 = st.columns(2)
 with c1:
     _line_chart(df_view["weight"], "⚖️ Weight over time", "kg", color=BLUE)
 with c2:
-    _line_chart(
-        df_view["bmi"],
-        "📐 BMI over time",
-        "BMI",
-        color=ACCENT,
-        reference_line=25.0,
-        ref_label="BMI 25 (overweight threshold)",
-    )
+    _line_chart(df_view["bmi"], "📐 BMI over time", "BMI", color=ACCENT, reference_line=25.0, ref_label="BMI 25 (overweight threshold)")
 
-# Row 2: VO2max + Bio Age
 c3, c4 = st.columns(2)
 with c3:
     _line_chart(df_view["vo2max"], "🫁 VO₂max over time", "ml/kg/min", color=GREEN)
 with c4:
     _line_chart(df_view["bio_age"], "🧬 Biological Age over time", "yrs", color=PINK)
 
-# Row 3: Weekly activity minutes + Resting HR
 c5, c6 = st.columns(2)
 with c5:
-    # Weekly activity as bar chart
-    act_df = df_view[["created_at", "weekly_activity_minutes"]].dropna(
-        subset=["weekly_activity_minutes"]
-    )
+    act_df = df_view[["created_at", "weekly_activity_minutes"]].dropna(subset=["weekly_activity_minutes"])
     if not act_df.empty:
-        fig_act = go.Figure(
-            go.Bar(
-                x=act_df["created_at"],
-                y=act_df["weekly_activity_minutes"],
-                marker_color=YELLOW,
-                marker_line_color="rgba(0,0,0,0)",
-                name="min/week",
-                hovertemplate="<b>%{y:.0f} min</b><br>%{x|%b %d, %Y}<extra></extra>",
-            )
-        )
+        fig_act = go.Figure(go.Bar(x=act_df["created_at"], y=act_df["weekly_activity_minutes"], marker_color=YELLOW, marker_line_color="rgba(0,0,0,0)", name="min/week", hovertemplate="<b>%{y:.0f} min</b><br>%{x|%b %d, %Y}<extra></extra>"))
         layout_act = dict(CHART_LAYOUT)
-        layout_act["title"] = dict(
-            text="🏃 Weekly Activity Minutes", font=dict(color="#E5E7EB", size=14), x=0
-        )
-        # WHO guideline 150 min/week reference
-        fig_act.add_hline(
-            y=150,
-            line_dash="dot",
-            line_color="rgba(148,163,184,0.35)",
-            annotation_text="WHO 150 min target",
-            annotation_font_color="#64748B",
-            annotation_font_size=10,
-        )
+        layout_act["title"] = dict(text="🏃 Weekly Activity Minutes", font=dict(color="#E5E7EB", size=14), x=0)
+        fig_act.add_hline(y=150, line_dash="dot", line_color="rgba(148,163,184,0.35)", annotation_text="WHO 150 min target", annotation_font_color="#64748B", annotation_font_size=10)
         fig_act.update_layout(**layout_act)
         st.plotly_chart(fig_act, use_container_width=True, config={"displayModeBar": False})
     else:
         st.caption("No weekly activity data available yet.")
-
 with c6:
-    _line_chart(
-        df_view["resting_hr"],
-        "❤️ Resting Heart Rate",
-        "bpm",
-        color=ORANGE,
-        reference_line=60.0,
-        ref_label="Good: ≤60 bpm",
-    )
+    _line_chart(df_view["resting_hr"], "❤️ Resting Heart Rate", "bpm", color=ORANGE, reference_line=60.0, ref_label="Good: ≤60 bpm")
 
-# ── Trend insight box ─────────────────────────────────────────────────────────
 st.markdown("---")
 
 def _trend_text(series: pd.Series, label: str, unit: str, invert: bool = False) -> str:
-    """Return a plain-English trend sentence for a metric."""
     valid = series.dropna()
     if len(valid) < 2:
         return ""
@@ -426,11 +314,7 @@ def _trend_text(series: pd.Series, label: str, unit: str, invert: bool = False) 
     positive = delta < 0 if invert else delta > 0
     color = "#22C55E" if positive else "#EF4444"
     sign = "+" if delta > 0 else ""
-    return (
-        f'<span style="color:{color};font-weight:700;">{direction} {sign}{delta:.1f} {unit}</span> '
-        f'in {label} over the selected period.'
-    )
-
+    return f'<span style="color:{color};font-weight:700;">{direction} {sign}{delta:.1f} {unit}</span> in {label} over the selected period.'
 
 insights = [
     _trend_text(df_view["weight"], "weight", "kg", invert=True),
@@ -459,7 +343,6 @@ if insights:
         unsafe_allow_html=True,
     )
 
-# ── Footer note ───────────────────────────────────────────────────────────────
 st.caption(
     "Measurements are saved automatically each time you run a calculation on the main page. "
     f"Showing **{len(df_view)}** of **{len(df)}** total records."
