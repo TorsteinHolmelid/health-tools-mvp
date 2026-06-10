@@ -3779,18 +3779,18 @@ if st.session_state.generated:
         # Nå lagrer vi til databasen ETTER at alle beregninger er gjort
         try:
             db = get_db_client()
-# Hent verdiar frå results
-weight_val = results.get("bmi", {}).get("value") if "bmi" in results else None
-bmi_val = results.get("bmi", {}).get("value")
-vo2_val = results.get("vo2", {}).get("value")
-bio_val = results.get("bio_age", {}).get("value")
-# Weekly activity minutes – hent frå session_state (exercise_last)
-weekly_act = st.session_state.get("exercise_last", {}).get("minutes", 0) * st.session_state.get("exercise_last", {}).get("sessions_per_week", 0)
-# Resting HR – hent frå session_state
-resting_hr_val = st.session_state.get("global_resting_hr") or st.session_state.get("resting_hr")
-
-save_health_metrics(db, weight_kg, bmi_val, vo2_val, bio_val, weekly_act, resting_hr_val)
-            print("Data saved successfully.")
+            # Hent verdiar frå results
+            weight_val = results.get("bmi", {}).get("value") if "bmi" in results else None
+            bmi_val = results.get("bmi", {}).get("value")
+            vo2_val = results.get("vo2", {}).get("value")
+            bio_val = results.get("bio_age", {}).get("value")
+            # Weekly activity minutes – hent frå session_state (exercise_last)
+            weekly_act = st.session_state.get("exercise_last", {}).get("minutes", 0) * st.session_state.get("exercise_last", {}).get("sessions_per_week", 0)
+            # Resting HR – hent frå session_state
+            resting_hr_val = st.session_state.get("global_resting_hr") or st.session_state.get("resting_hr")
+            
+            save_health_metrics(db, weight_kg, bmi_val, vo2_val, bio_val, weekly_act, resting_hr_val)
+                        print("Data saved successfully.")
         except Exception as e:
             st.error(f"Could not save to history: {e}")
             
