@@ -9,36 +9,48 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 from db import get_db_client, get_user_history, has_premium_access
 
-st.set_page_config(page_title="My Progress", page_icon="📈", layout="centered")
+# --- Sidekonfigurasjon ---
+st.set_page_config(
+    page_title="My Progress",
+    page_icon="📈",
+    layout="centered",
+)
 
+# --- Brukar-ID ---
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = str(uuid.uuid4())
 user_id = st.session_state["user_id"]
 
+# --- Sjekk premium (både database OG mellombels session frå Stripe-callback) ---
 db = get_db_client()
-is_premium = has_premium_access(db, user_id)
+_unlocked_session = st.session_state.get("report_unlocked", False)
+_unlocked_db = has_premium_access(db, user_id)
+is_premium = _unlocked_session or _unlocked_db
 
 st.markdown("# 📈 My Progress")
 
 if not is_premium:
-    st.warning("Premium feature. Please upgrade.")
+    st.warning("This is a premium feature. Please upgrade to see your progress charts.")
     st.link_button("Unlock for 4.99 USD", "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02")
     st.stop()
 
+# --- Hent data ---
 history = get_user_history(db, user_id)
 if not history:
-    st.info("No measurements yet. Go to main page and calculate.")
+    st.info("No measurements saved yet. Go to the main page and calculate your health metrics first.")
     st.stop()
 
 df = pd.DataFrame(history)
 df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
 df = df.sort_values("created_at").reset_index(drop=True)
 
+# Sikre at kolonnar finst
 for col in ["weight", "bmi", "vo2max", "bio_age", "weekly_activity_minutes", "resting_hr"]:
     if col not in df.columns:
         df[col] = None
     df[col] = pd.to_numeric(df[col], errors="coerce")
 
+# --- Tidfilter ---
 option = st.select_slider("Time range", ["Last 30 days", "Last 90 days", "Last year", "All time"])
 days_map = {"Last 30 days": 30, "Last 90 days": 90, "Last year": 365, "All time": None}
 days = days_map[option]
@@ -48,30 +60,18 @@ if days:
     df = df[df["created_at"] >= cutoff]
 
 if df.empty:
-    st.warning("No data in selected range.")
+    st.warning("No data in selected time range.")
     st.stop()
 
 st.metric("Number of measurements", len(df))
 
-def plot_metric(col, title, unit, color):
-    if col in df.columns and df[col].notna().any():
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=df["created_at"], y=df[col], mode="lines+markers", name=unit, line=dict(color=color)))
-        fig.update_layout(title=title, xaxis_title="Date", yaxis_title=unit)
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.caption(f"No {title.lower()} data available.")
+# --- Vektgraf ---
+if df["weight"].notna().any():
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df["created_at"], y=df["weight"], mode="lines+markers", name="kg"))
+    fig.update_layout(title="Weight over time", xaxis_title="Date", yaxis_title="kg")
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.caption("No weight data available.")
 
-c1, c2 = st.columns(2)
-with c1:
-    plot_metric("weight", "Weight", "kg", "#3B82F6")
-    plot_metric("vo2max", "VO2max", "ml/kg/min", "#22C55E")
-with c2:
-    plot_metric("bmi", "BMI", "", "#0EA5A3")
-    plot_metric("bio_age", "Biological age", "years", "#EC4899")
-
-c3, c4 = st.columns(2)
-with c3:
-    plot_metric("weekly_activity_minutes", "Weekly activity", "min", "#F59E0B")
-with c4:
-    plot_metric("resting_hr", "Resting heart rate", "bpm", "#F97316")
+st.success("✅ Premium access works! More charts can be added.")
