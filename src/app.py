@@ -18,7 +18,47 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer, 
     Table, TableStyle, HRFlowable, Image as RLImage
 )
+import streamlit as st
+from db import sign_up, sign_in, is_authenticated, get_current_user_id, sign_out
 
+# --- Innlogging / registrering ---
+if not is_authenticated():
+    st.title("🏥 Health Tools - Login")
+    
+    tab1, tab2 = st.tabs(["Log in", "Sign up"])
+    
+    with tab1:
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Log in"):
+            user, error = sign_in(email, password)
+            if error:
+                st.error(f"Login failed: {error}")
+            else:
+                st.session_state["authenticated"] = True
+                st.session_state["user_id"] = user.id
+                st.rerun()
+    
+    with tab2:
+        email = st.text_input("Email", key="signup_email")
+        password = st.text_input("Password", type="password", key="signup_password")
+        if st.button("Sign up"):
+            user, error = sign_up(email, password)
+            if error:
+                st.error(f"Signup failed: {error}")
+            else:
+                st.success("Account created! Please check your email to confirm (if required), then log in.")
+    
+    st.stop()  # Stopp her viss ikkje innlogga
+
+# No kan resten av appen køyre som før, men med innlogga brukar
+st.sidebar.button("Log out", on_click=sign_out)
+st.sidebar.write(f"Logged in as: {get_current_user_id()[:8]}...")
+
+# --- Resten av din eksisterande kode i app.py (berre endre funksjonskall) ---
+# Merk: save_health_metrics() kallar du utan user_id-parameter no
+# get_user_history(db) kallar du utan user_id-parameter
+# has_premium_access(db) kallar du utan user_id-parameter
 import calculators
 from calculators import (
     bmr_mifflin,
