@@ -1,109 +1,118 @@
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
 import streamlit as st
-from supabase import create_client, Client
+import plotly.graph_objects as go
+import pandas as pd
+from datetime import datetime, timedelta, timezone
+from db import get_db_client, get_user_history, has_premium_access, is_authenticated, sign_out
 
-# Hent konfigurasjon – støttar både lokalt (os.getenv) og Streamlit Cloud (st.secrets)
-def get_supabase_url() -> str:
-    try:
-        # På Streamlit Cloud
-        return st.secrets["SUPABASE_URL"]
-    except:
-        # Lokalt (frå .env eller miljøvariabel)
-        return os.getenv("SUPABASE_URL", "")
+# --- Sidekonfigurasjon ---
+st.set_page_config(
+    page_title="My Progress",
+    page_icon="📈",
+    layout="centered",
+)
 
-def get_supabase_key() -> str:
-    try:
-        return st.secrets["SUPABASE_KEY"]
-    except:
-        return os.getenv("SUPABASE_KEY", "")
+# --- Innloggingssjekk (same som i app.py) ---
+if not is_authenticated():
+    st.warning("You must be logged in to see your progress.")
+    st.info("Please go back to the main page and log in first.")
+    st.stop()
 
-def get_db_client() -> Client:
-    url = get_supabase_url()
-    key = get_supabase_key()
-    if not url or not key:
-        raise Exception("Supabase credentials missing. Set SUPABASE_URL and SUPABASE_KEY in .env (lokalt) or Streamlit secrets (cloud).")
-    return create_client(url, key)
+# --- Brukar-ID frå session (sett ved innlogging) ---
+user_id = st.session_state.get("user_id")
+if not user_id:
+    st.error("User ID not found. Please log in again.")
+    st.stop()
 
-def get_current_user_id() -> str:
-    """Hent ID-en til den innlogga brukaren frå Streamlit session_state"""
-    return st.session_state.get("user_id", None)
+# --- Sjekk premium (både session og database) ---
+db = get_db_client()
+_unlocked_session = st.session_state.get("report_unlocked", False)
+_unlocked_db = has_premium_access(db)
+is_premium = _unlocked_session or _unlocked_db
 
-def is_authenticated() -> bool:
-    """Sjekk om brukaren er innlogga"""
-    return st.session_state.get("authenticated", False)
+st.markdown("# 📈 My Progress")
 
-def sign_up(email: str, password: str):
-    """Registrer ny brukar"""
-    client = get_db_client()
-    try:
-        response = client.auth.sign_up({"email": email, "password": password})
-        return response.user, None
-    except Exception as e:
-        return None, str(e)
+if not is_premium:
+    st.warning("This is a premium feature. Please upgrade to see your progress charts.")
+    st.link_button("Unlock for 4.99 USD", "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02")
+    st.stop()
 
-def sign_in(email: str, password: str):
-    """Logg inn eksisterande brukar"""
-    client = get_db_client()
-    try:
-        response = client.auth.sign_in_with_password({"email": email, "password": password})
-        return response.user, None
-    except Exception as e:
-        return None, str(e)
+# --- Hent data ---
+history = get_user_history(db)
+if not history:
+    st.info("No measurements saved yet. Go to the main page and calculate your health metrics first.")
+    st.stop()
 
-def sign_out():
-    """Logg ut"""
-    client = get_db_client()
-    try:
-        client.auth.sign_out()
-    except:
-        pass
-    st.session_state["authenticated"] = False
-    st.session_state["user_id"] = None
+df = pd.DataFrame(history)
+df["created_at"] = pd.to_datetime(df["created_at"], utc=True)
+df = df.sort_values("created_at").reset_index(drop=True)
 
-def save_health_metrics(db: Client, weight: float, bmi: float, vo2max: float, 
-                        bio_age: float, weekly_activity_minutes: float, resting_hr: float):
-    """Lagrar helsedata for innlogga brukar"""
-    user_id = get_current_user_id()
-    if not user_id:
-        raise Exception("Ikkje innlogga")
-    
-    data = {
-        "user_id": user_id,
-        "weight": weight,
-        "bmi": bmi,
-        "vo2max": vo2max,
-        "bio_age": bio_age,
-        "weekly_activity_minutes": weekly_activity_minutes,
-        "resting_hr": resting_hr,
-    }
-    return db.table("health_metrics").insert(data).execute()
+# Sikre at kolonnar finst
+for col in ["weight", "bmi", "vo2max", "bio_age", "weekly_activity_minutes", "resting_hr"]:
+    if col not in df.columns:
+        df[col] = None
+    df[col] = pd.to_numeric(df[col], errors="coerce")
 
-def get_user_history(db: Client):
-    """Hent historikk for innlogga brukar"""
-    user_id = get_current_user_id()
-    if not user_id:
-        return []
-    
-    response = db.table("health_metrics").select("*").eq("user_id", user_id).order("created_at").execute()
-    return response.data
+# --- Tidfilter ---
+option = st.select_slider("Time range", ["Last 30 days", "Last 90 days", "Last year", "All time"])
+days_map = {"Last 30 days": 30, "Last 90 days": 90, "Last year": 365, "All time": None}
+days = days_map[option]
+now_utc = datetime.now(timezone.utc)
+if days:
+    cutoff = now_utc - timedelta(days=days)
+    df = df[df["created_at"] >= cutoff]
 
-def has_premium_access(db: Client) -> bool:
-    """Sjekk om innlogga brukar har premium"""
-    user_id = get_current_user_id()
-    if not user_id:
-        return False
-    
-    response = db.table("premium_access").select("*").eq("user_id", user_id).execute()
-    return len(response.data) > 0
+if df.empty:
+    st.warning("No data in selected time range.")
+    st.stop()
 
-def save_premium_access(db: Client, stripe_session_id: str):
-    """Lagrar premium-tilgang for innlogga brukar"""
-    user_id = get_current_user_id()
-    if not user_id:
-        raise Exception("Ikkje innlogga")
-    
-    data = {
-        "user_id": user_id,
-        "stripe_session_id": stripe_session_id,
-    }
-    return db.table("premium_access").insert(data).execute()
+st.metric("Number of measurements", len(df))
+st.markdown("---")
+
+# --- Graf-funksjon (gjenbrukbar) ---
+def plot_metric(df, col, title, unit, color, ref_line=None, ref_label=""):
+    if col in df.columns and df[col].notna().any():
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=df["created_at"], y=df[col],
+            mode="lines+markers", name=unit,
+            line=dict(color=color, width=2),
+            marker=dict(size=6)
+        ))
+        if ref_line is not None:
+            fig.add_hline(y=ref_line, line_dash="dot", line_color="rgba(148,163,184,0.5)",
+                          annotation_text=ref_label, annotation_font_color="#64748B")
+        fig.update_layout(title=title, xaxis_title="Date", yaxis_title=unit,
+                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption(f"No {title.lower()} data available yet.")
+
+# --- Rad 1: Vekt + BMI ---
+c1, c2 = st.columns(2)
+with c1:
+    plot_metric(df, "weight", "Weight", "kg", "#3B82F6")
+with c2:
+    plot_metric(df, "bmi", "BMI", "", "#0EA5A3", ref_line=25.0, ref_label="Overweight threshold")
+
+# --- Rad 2: VO2max + Biologisk alder ---
+c3, c4 = st.columns(2)
+with c3:
+    plot_metric(df, "vo2max", "VO₂max", "ml/kg/min", "#22C55E")
+with c4:
+    plot_metric(df, "bio_age", "Biological age", "years", "#EC4899")
+
+# --- Rad 3: Ukentleg aktivitet + Kvilepuls ---
+c5, c6 = st.columns(2)
+with c5:
+    plot_metric(df, "weekly_activity_minutes", "Weekly activity", "min", "#F59E0B",
+                ref_line=150.0, ref_label="WHO goal: 150 min")
+with c6:
+    plot_metric(df, "resting_hr", "Resting heart rate", "bpm", "#F97316",
+                ref_line=60.0, ref_label="Good: ≤60 bpm")
+
+st.markdown("---")
+st.caption("Measurements are saved each time you calculate on the main page. Log in to keep your data across devices.")
