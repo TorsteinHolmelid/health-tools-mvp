@@ -4330,26 +4330,26 @@ if results:
         else:
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
-# --- Retrieve required values ---
-# BMI value
-bmi_val = results.get("bmi", {}).get("value", 0.0)
-
-# Exercise total minutes per week from session state
-ex_log = st.session_state.get("exercise_last", {})
-ex_min = ex_log.get("minutes", 0)
-ex_sess = ex_log.get("sessions_per_week", 0)
-ex_total_min = ex_min * ex_sess
-
-# Biological age difference
-bio_age_val = results.get("bio_age", {}).get("value")
-chron_age = float(age) if age else 0.0
-_diff = (bio_age_val - chron_age) if bio_age_val is not None else 0.0
-
-# --- Compute scores (0–100) ---
-bmi_score = 100 if 18.5 <= bmi_val < 25 else 70 if 17 <= bmi_val < 27 else 40
-vo2_score = float(results.get("vo2", {}).get("percentile", 50))
-activity_score = min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30
-lifestyle_score = max(0, min(100, 70 - (_diff * 10))) if _diff else 60
+    # --- Retrieve required values ---
+    # BMI value
+    bmi_val = results.get("bmi", {}).get("value", 0.0)
+    
+    # Exercise total minutes per week from session state
+    ex_log = st.session_state.get("exercise_last", {})
+    ex_min = ex_log.get("minutes", 0)
+    ex_sess = ex_log.get("sessions_per_week", 0)
+    ex_total_min = ex_min * ex_sess
+    
+    # Biological age difference
+    bio_age_val = results.get("bio_age", {}).get("value")
+    chron_age = float(age) if age else 0.0
+    _diff = (bio_age_val - chron_age) if bio_age_val is not None else 0.0
+    
+    # --- Compute scores (0–100) ---
+    bmi_score = 100 if 18.5 <= bmi_val < 25 else 70 if 17 <= bmi_val < 27 else 40
+    vo2_score = float(results.get("vo2", {}).get("percentile", 50))
+    activity_score = min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30
+    lifestyle_score = max(0, min(100, 70 - (_diff * 10))) if _diff else 60
 
     # ── Plan ──────────────────────────────────────────────────────────────────
         # ── Plan ────
