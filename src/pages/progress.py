@@ -65,13 +65,13 @@ if df.empty:
 
 st.metric("Number of measurements", len(df))
 
-# --- Enkel vektgraf (test) ---
-if "weight" in df.columns and df["weight"].notna().any():
+# --- Vis BMI (sidan du har BMI-data) ---
+if "bmi" in df.columns and df["bmi"].notna().any():
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df["created_at"], y=df["weight"], mode="lines+markers", name="kg"))
-    fig.update_layout(title="Weight over time", xaxis_title="Date", yaxis_title="kg")
+    fig.add_trace(go.Scatter(x=df["created_at"], y=df["bmi"], mode="lines+markers", name="BMI"))
+    fig.update_layout(title="BMI over time", xaxis_title="Date", yaxis_title="BMI")
     st.plotly_chart(fig, use_container_width=True)
 else:
-    st.caption("No weight data available.")
+    st.caption("No BMI data available.")
 
 st.success("More charts (BMI, VO2max, etc.) can be added the same way.")
