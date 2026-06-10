@@ -25,3 +25,13 @@ else:
     df = pd.DataFrame(history)
     st.write(f"Fant {len(df)} målingar")
     st.dataframe(df.head())
+    # etter st.dataframe
+    if "weight" in df.columns:
+        df["created_at"] = pd.to_datetime(df["created_at"])
+        df = df.dropna(subset=["weight"])
+        if not df.empty:
+            import plotly.graph_objects as go
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=df["created_at"], y=df["weight"], mode='lines+markers'))
+            fig.update_layout(title="Vekt over tid")
+            st.plotly_chart(fig)    
