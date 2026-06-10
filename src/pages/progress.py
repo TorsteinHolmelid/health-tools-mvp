@@ -21,7 +21,7 @@ if "user_id" not in st.session_state:
     st.session_state["user_id"] = str(uuid.uuid4())
 user_id = st.session_state["user_id"]
 
-# --- Sjekk premium (både database OG mellombels session frå Stripe-callback) ---
+# --- Sjekk premium ---
 db = get_db_client()
 _unlocked_session = st.session_state.get("report_unlocked", False)
 _unlocked_db = has_premium_access(db, user_id)
@@ -65,29 +65,72 @@ if df.empty:
 
 st.metric("Number of measurements", len(df))
 
-# --- Vektgraf (viss data finst) ---
-if df["weight"].notna().any():
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df["created_at"], y=df["weight"], mode="lines+markers", name="kg"))
-    fig.update_layout(title="Weight over time", xaxis_title="Date", yaxis_title="kg")
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.caption("No weight data available yet. (Add weight on main page)")
+st.markdown("---")
 
-# --- BMI-graf (du har data her!) ---
-if df["bmi"].notna().any():
-    fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(x=df["created_at"], y=df["bmi"], mode="lines+markers", name="BMI", line=dict(color="#0EA5A3")))
-    fig2.update_layout(title="BMI over time", xaxis_title="Date", yaxis_title="BMI")
-    st.plotly_chart(fig2, use_container_width=True)
-else:
-    st.caption("No BMI data available.")
+# --- Rad 1: Vekt + BMI ---
+c1, c2 = st.columns(2)
 
-# --- Biologisk alder ---
-if df["bio_age"].notna().any():
-    fig3 = go.Figure()
-    fig3.add_trace(go.Scatter(x=df["created_at"], y=df["bio_age"], mode="lines+markers", name="years", line=dict(color="#EC4899")))
-    fig3.update_layout(title="Biological age over time", xaxis_title="Date", yaxis_title="years")
-    st.plotly_chart(fig3, use_container_width=True)
+with c1:
+    if df["weight"].notna().any():
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df["created_at"], y=df["weight"], mode="lines+markers", name="kg", line=dict(color="#3B82F6")))
+        fig.update_layout(title="Weight over time", xaxis_title="Date", yaxis_title="kg")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption("No weight data available yet.")
 
-st.success("✅ Premium access works! More charts (VO2max, bio_age, activity, resting HR) can be added.")
+with c2:
+    if df["bmi"].notna().any():
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df["created_at"], y=df["bmi"], mode="lines+markers", name="BMI", line=dict(color="#0EA5A3")))
+        fig.update_layout(title="BMI over time", xaxis_title="Date", yaxis_title="BMI")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption("No BMI data available yet.")
+
+# --- Rad 2: VO2max + Biologisk alder ---
+c3, c4 = st.columns(2)
+
+with c3:
+    if df["vo2max"].notna().any():
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df["created_at"], y=df["vo2max"], mode="lines+markers", name="ml/kg/min", line=dict(color="#22C55E")))
+        fig.update_layout(title="VO2max over time", xaxis_title="Date", yaxis_title="ml/kg/min")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption("No VO2max data available yet.")
+
+with c4:
+    if df["bio_age"].notna().any():
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df["created_at"], y=df["bio_age"], mode="lines+markers", name="years", line=dict(color="#EC4899")))
+        fig.update_layout(title="Biological age over time", xaxis_title="Date", yaxis_title="years")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption("No biological age data available yet.")
+
+# --- Rad 3: Ukentleg aktivitet + Kvilepuls ---
+c5, c6 = st.columns(2)
+
+with c5:
+    if df["weekly_activity_minutes"].notna().any():
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df["created_at"], y=df["weekly_activity_minutes"], mode="lines+markers", name="min/week", line=dict(color="#F59E0B")))
+        fig.add_hline(y=150, line_dash="dot", line_color="rgba(148,163,184,0.5)", annotation_text="WHO goal: 150 min")
+        fig.update_layout(title="Weekly activity minutes", xaxis_title="Date", yaxis_title="minutes")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption("No weekly activity data available yet.")
+
+with c6:
+    if df["resting_hr"].notna().any():
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=df["created_at"], y=df["resting_hr"], mode="lines+markers", name="bpm", line=dict(color="#F97316")))
+        fig.add_hline(y=60, line_dash="dot", line_color="rgba(148,163,184,0.5)", annotation_text="Good: 60 bpm")
+        fig.update_layout(title="Resting heart rate", xaxis_title="Date", yaxis_title="bpm")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.caption("No resting heart rate data available yet.")
+
+st.markdown("---")
+st.caption("Measurements are saved each time you calculate on the main page. Add more data over time to see your progress!")
