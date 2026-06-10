@@ -4497,7 +4497,7 @@ st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if _unlocked:
-    st.success("✅ Rapport låst opp!")
+    st.success("✅ Report unlocked!")
 
 if not _unlocked:
     st.markdown(
