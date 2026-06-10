@@ -65,13 +65,29 @@ if df.empty:
 
 st.metric("Number of measurements", len(df))
 
-# --- Vektgraf ---
+# --- Vektgraf (viss data finst) ---
 if df["weight"].notna().any():
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df["created_at"], y=df["weight"], mode="lines+markers", name="kg"))
     fig.update_layout(title="Weight over time", xaxis_title="Date", yaxis_title="kg")
     st.plotly_chart(fig, use_container_width=True)
 else:
-    st.caption("No weight data available.")
+    st.caption("No weight data available yet. (Add weight on main page)")
 
-st.success("✅ Premium access works! More charts can be added.")
+# --- BMI-graf (du har data her!) ---
+if df["bmi"].notna().any():
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(x=df["created_at"], y=df["bmi"], mode="lines+markers", name="BMI", line=dict(color="#0EA5A3")))
+    fig2.update_layout(title="BMI over time", xaxis_title="Date", yaxis_title="BMI")
+    st.plotly_chart(fig2, use_container_width=True)
+else:
+    st.caption("No BMI data available.")
+
+# --- Biologisk alder ---
+if df["bio_age"].notna().any():
+    fig3 = go.Figure()
+    fig3.add_trace(go.Scatter(x=df["created_at"], y=df["bio_age"], mode="lines+markers", name="years", line=dict(color="#EC4899")))
+    fig3.update_layout(title="Biological age over time", xaxis_title="Date", yaxis_title="years")
+    st.plotly_chart(fig3, use_container_width=True)
+
+st.success("✅ Premium access works! More charts (VO2max, bio_age, activity, resting HR) can be added.")
