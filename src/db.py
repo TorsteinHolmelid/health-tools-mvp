@@ -52,11 +52,11 @@ def sign_out():
     st.session_state["authenticated"] = False
     st.session_state["user_id"] = None
 
-def save_health_metrics(db: Client, weight: float, bmi: float, vo2max: float, 
-                        bio_age: float, weekly_activity_minutes: float, resting_hr: float):
+def save_health_metrics(db: Client, weight=None, bmi=None, vo2max=None, 
+                        bio_age=None, weekly_activity_minutes=None, resting_hr=None):
     user_id = get_current_user_id()
     if not user_id:
-        raise Exception("Not logged in")
+        raise Exception("Ikkje innlogga")
     data = {
         "user_id": user_id,
         "weight": weight,
@@ -66,6 +66,7 @@ def save_health_metrics(db: Client, weight: float, bmi: float, vo2max: float,
         "weekly_activity_minutes": weekly_activity_minutes,
         "resting_hr": resting_hr,
     }
+    data = {k: v for k, v in data.items() if v is not None or k == "user_id"}
     return db.table("health_metrics").insert(data).execute()
 
 def get_user_history(db: Client):
