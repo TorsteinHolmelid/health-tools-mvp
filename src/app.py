@@ -3790,7 +3790,7 @@ if st.session_state.generated:
             resting_hr_val = st.session_state.get("global_resting_hr") or st.session_state.get("resting_hr")
             
             save_health_metrics(db, weight_kg, bmi_val, vo2_val, bio_val, weekly_act, resting_hr_val)
-                        print("Data saved successfully.")
+            print("Data saved successfully.")
         except Exception as e:
             st.error(f"Could not save to history: {e}")
             
