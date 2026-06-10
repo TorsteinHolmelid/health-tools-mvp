@@ -4,11 +4,14 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 import uuid
 import streamlit as st
+from db import get_db_client, get_user_history, has_premium_access
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from db import get_db_client, get_user_history, has_premium_access
-
+user_id = st.session_state["user_id"]  # Henta frå auth
+db = get_db_client()
+is_premium = has_premium_access(db)
 # --- Sidekonfigurasjon ---
 st.set_page_config(
     page_title="My Progress",
