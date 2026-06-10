@@ -21,9 +21,11 @@ if "user_id" not in st.session_state:
     st.session_state["user_id"] = str(uuid.uuid4())
 user_id = st.session_state["user_id"]
 
-# --- Sjekk premium (forenkla) ---
+# --- Sjekk premium (både database og mellombels session) ---
 db = get_db_client()
-is_premium = has_premium_access(db, user_id)
+_unlocked_session = st.session_state.get("report_unlocked", False)
+_unlocked_db = has_premium_access(db, user_id)
+is_premium = _unlocked_session or _unlocked_db
 
 st.markdown("# 📈 My Progress")
 
