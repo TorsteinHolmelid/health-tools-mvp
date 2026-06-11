@@ -870,7 +870,7 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
             <div class="kpi-trend">Topp """ + str(100 - (st.session_state.get("results", {}).get("vo2", {}).get("percentile", 50))) + """%</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-label">Biologisk alder</div>
+            <div class="kpi-label">Biological age</div>
             <div class="kpi-value" id="bio-kpi">0.0</div>
             <div class="kpi-trend">""" + bio_text + " " + bio_years + """ år</div>
         </div>
@@ -4738,14 +4738,14 @@ if results:
                 st.markdown(
                     f'''<div class="ht-locked-card">
   <div class="ht-locked-icon">🔒</div>
-  <div class="ht-locked-title">+{_extra_recs} fleire personlege anbefalingar</div>
-  <div class="ht-locked-sub">Lås opp full analyse for å sjå alle anbefalingane tilpassa dine tal.</div>
+  <div class="ht-locked-title">+{_extra_recs}  more personalized recommendations</div>
+  <div class="ht-locked-sub">Unlock the full analysis to see all recommendations tailored to your numbers.</div>
   <div class="ht-locked-lines">
     <div class="ht-locked-line"></div>
     <div class="ht-locked-line"></div>
     <div class="ht-locked-line short"></div>
   </div>
-  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Lås opp for 4,99 USD</a>
+  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Unlock for $4.99</a>
 </div>''',
                     unsafe_allow_html=True,
                 )
@@ -4943,37 +4943,37 @@ if not _unlocked:
     st.markdown(
         '''<div class="ht-compare">
   <div class="ht-compare-row head">
-    <div class="ht-compare-feature">Funksjon</div>
-    <div class="ht-compare-cell">Gratis</div>
+    <div class="ht-compare-feature">Feature</div>
+    <div class="ht-compare-cell">Free</div>
     <div class="ht-compare-cell">Premium</div>
   </div>
   <div class="ht-compare-row">
-    <div class="ht-compare-feature">BMI, energi & VO2max-oversikt</div>
+    <div class="ht-compare-feature">BMI, energy & VO2max overview</div>
     <div class="ht-compare-cell yes">✅</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
-    <div class="ht-compare-feature">Biologisk alder</div>
+    <div class="ht-compare-feature">Biological age</div>
     <div class="ht-compare-cell yes">✅</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
-    <div class="ht-compare-feature">Alle personlege anbefalingar</div>
+    <div class="ht-compare-feature">All personalized recommendations</div>
     <div class="ht-compare-cell no">—</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
-    <div class="ht-compare-feature">Full 12-vekers vekeplan & milepælar</div>
+    <div class="ht-compare-feature">Full 12-week plan & milestones</div>
     <div class="ht-compare-cell no">—</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
-    <div class="ht-compare-feature">AI Coach-innsikter</div>
+    <div class="ht-compare-feature">AI Coach insights</div>
     <div class="ht-compare-cell no">—</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
-    <div class="ht-compare-feature">Nedlastbar PDF-rapport</div>
+    <div class="ht-compare-feature">Downloadable PDF report</div>
     <div class="ht-compare-cell no">—</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
