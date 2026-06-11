@@ -343,19 +343,38 @@ st.markdown(
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
+:root {
+  --bg0: #070D18;
+  --bg1: #0B1220;
+  --card: rgba(15,23,42,.72);
+  --card2: rgba(17,28,51,.62);
+  --stroke: rgba(148,163,184,.16);
+  --stroke2: rgba(148,163,184,.10);
+  --text: #E5E7EB;
+  --muted: #94A3B8;
+  --muted2: #A7B4C6;
+  --accent: #0EA5A3;
+  --accent2: #3B82F6;
+  --good: #22C55E;
+  --warn: #F59E0B;
+  --bad: #EF4444;
+  --radius: 16px;
+}
+
 * {
   font-family: 'Inter', sans-serif;
 }
 
 html, body, .stApp {
-  background: #0A0E17;
-  color: #EDF2F7;
+  background: var(--bg0);
+  color: var(--text);
 }
 
 .stApp {
-  background: radial-gradient(circle at 0% 0%, rgba(14,165,163,0.08), transparent 50%),
-              radial-gradient(circle at 100% 100%, rgba(59,130,246,0.05), transparent 60%),
-              #0A0E17;
+  background: radial-gradient(1200px 600px at 18% -10%, rgba(14,165,163,.20), transparent 60%),
+              radial-gradient(900px 520px at 90% 0%, rgba(59,130,246,.15), transparent 55%),
+              linear-gradient(180deg, var(--bg0), var(--bg1) 40%, #070B14);
+  color: var(--text);
 }
 
 .block-container {
@@ -363,6 +382,7 @@ html, body, .stApp {
   padding: 1.8rem 1.5rem 3rem;
 }
 
+/* ========== SIDEBAR (ny premium) ========== */
 [data-testid="stSidebar"] {
   background: rgba(17, 24, 39, 0.7);
   backdrop-filter: blur(12px);
@@ -372,6 +392,13 @@ html, body, .stApp {
 
 [data-testid="stSidebar"] .stMarkdown {
   background: transparent;
+}
+
+[data-testid="stSidebar"] h1, 
+[data-testid="stSidebar"] h2, 
+[data-testid="stSidebar"] p, 
+[data-testid="stSidebar"] label {
+  color: #E2E8F0 !important;
 }
 
 .sidebar-trust {
@@ -384,14 +411,15 @@ html, body, .stApp {
   color: #94A3B8;
 }
 
+/* ========== HERO (ny premium) ========== */
 .ht-hero {
-  background: rgba(17, 24, 39, 0.5);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(14,165,163,0.25);
-  border-radius: 32px;
-  padding: 2rem 2rem 1.8rem;
-  margin-bottom: 2rem;
+  background: linear-gradient(135deg, rgba(14,165,163,.18), rgba(59,130,246,.12));
+  border: 1px solid var(--stroke);
+  border-radius: calc(var(--radius) + 6px);
+  padding: 24px 24px;
   box-shadow: 0 20px 40px -12px rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  margin-bottom: 2rem;
 }
 
 .ht-badge {
@@ -408,6 +436,7 @@ html, body, .stApp {
 }
 
 .ht-hero h1 {
+  margin: 0;
   font-size: 3rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -415,33 +444,46 @@ html, body, .stApp {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent !important;
-  margin: 0 0 0.5rem;
 }
 
 .ht-hero .sub {
+  margin-top: 6px;
+  color: var(--muted2);
   font-size: 1rem;
-  color: #A0AEC0;
+  line-height: 1.4;
   max-width: 80%;
 }
 
 .ht-pills {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 1.2rem;
+  gap: 8px;
+  margin-top: 1rem;
 }
 
 .ht-pill {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(71,85,105,0.4);
-  border-radius: 40px;
-  padding: 0.3rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(17,24,39,.65);
+  border: 1px solid var(--stroke2);
+  padding: 6px 12px;
+  border-radius: 999px;
+  color: var(--muted2);
   font-size: 0.75rem;
-  font-weight: 500;
-  color: #CBD5E1;
 }
 
-/* ========== SLIDER FIX – fungerer 100% ========== */
+.ht-card {
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 14px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.22);
+  backdrop-filter: blur(8px);
+  margin-bottom: 12px;
+}
+
+/* ========== SLIDER – FUNGERENDE (frå din gamle CSS) ========== */
 div[data-baseweb="slider"] {
   background: #1E293B;
   border-radius: 999px;
@@ -462,32 +504,29 @@ div[data-baseweb="slider"] div[role="slider"]:hover {
   transform: scale(1.1);
 }
 
-/* Ekstra for å sikre at etiketten ikkje blir borte */
 .stSlider label {
-  color: #CBD5E1 !important;
+  color: var(--text) !important;
 }
 
-/* Inputs */
-.stTextInput input, .stNumberInput input, textarea, select {
-  background: #111827 !important;
-  border: 1px solid #2D3A4A !important;
-  border-radius: 16px !important;
-  padding: 0.7rem 1rem !important;
-  color: #F1F5F9 !important;
+/* ========== INPUTS (frå din gamle) ========== */
+.stTextInput input, .stNumberInput input, textarea, select,
+.stSelectbox [data-baseweb="select"] {
+  background-color: rgba(255,255,255,0.04) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
 }
 
-.stButton > button {
-  border-radius: 40px !important;
-  font-weight: 600 !important;
-  padding: 0.6rem 1.4rem !important;
-  transition: all 0.2s ease;
-}
-
+/* ========== BUTTONS (frå din gamle, men med ny gradient) ========== */
 .stButton > button[data-testid="baseButton-primary"] {
   background: linear-gradient(135deg, #0EA5A3, #0F766E) !important;
-  border: none !important;
   color: white !important;
+  border: 0 !important;
+  border-radius: 40px !important;
+  padding: 10px 20px !important;
+  font-weight: 600 !important;
   box-shadow: 0 8px 18px rgba(14,165,163,0.25);
+  transition: all 0.2s ease;
 }
 
 .stButton > button[data-testid="baseButton-primary"]:hover {
@@ -495,28 +534,66 @@ div[data-baseweb="slider"] div[role="slider"]:hover {
   box-shadow: 0 14px 24px rgba(14,165,163,0.35);
 }
 
+.stButton > button[data-testid="baseButton-secondary"] {
+  background: rgba(255,255,255,0.03) !important;
+  border: 1.5px solid rgba(255,255,255,0.10) !important;
+  border-radius: 40px !important;
+  color: #E5E7EB !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease;
+}
+
+.stButton > button[data-testid="baseButton-secondary"]:hover {
+  border-color: rgba(14,165,163,0.5) !important;
+  background: rgba(14,165,163,0.08) !important;
+}
+
+/* ========== METRICS ========== */
 [data-testid="stMetric"] {
-  background: #111827;
-  border: 1px solid #2D3A4A;
-  border-radius: 24px;
-  padding: 1.2rem;
+  background: rgba(15,23,42,.55);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 12px;
 }
 
+/* ========== EXPANDERS ========== */
 [data-testid="stExpander"] details {
-  background: #111827 !important;
-  border: 1px solid #2D3A4A !important;
-  border-radius: 20px !important;
+  background: rgba(15,23,42,.45) !important;
+  border: 1px solid var(--stroke) !important;
+  border-radius: var(--radius) !important;
+  overflow: hidden !important;
 }
 
+[data-testid="stExpander"] summary {
+  padding: 10px 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+[data-testid="stExpander"] summary:hover {
+  background: rgba(148,163,184,.06) !important;
+}
+
+[data-testid="stCheckbox"] input {
+  transform: scale(1.10);
+}
+[data-testid="stToggle"] input {
+  transform: scale(1.05);
+}
+
+/* ========== RESPONSIV ========== */
 @media (max-width: 680px) {
+  .block-container {
+    padding: 1rem;
+  }
   .ht-hero h1 {
     font-size: 2rem;
   }
   .ht-hero .sub {
     max-width: 100%;
   }
-  .block-container {
-    padding: 1rem;
+  .stButton > button {
+    width: 100% !important;
   }
 }
 </style>
