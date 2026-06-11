@@ -330,194 +330,228 @@ if st.session_state.get("stripe_session_id"):
 st.markdown(
     """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
-
-:root {
-  --bg: #0A0F1A;
-  --bg-card: #111827;
-  --bg-card-hover: #1F2937;
-  --border: rgba(71,85,105,0.3);
-  --text: #F3F4F6;
-  --text-muted: #9CA3AF;
-  --accent: #0EA5A3;
-  --accent-hover: #14B8A6;
-  --accent-glow: rgba(14,165,163,0.2);
-  --success: #22C55E;
-  --warning: #F59E0B;
-  --danger: #EF4444;
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --shadow: 0 8px 20px rgba(0,0,0,0.3);
-  --shadow-hover: 0 12px 28px rgba(0,0,0,0.4);
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
 * {
-  font-family: 'Inter', sans-serif;
+    font-family: 'Inter', sans-serif;
 }
 
 html, body, .stApp {
-  background: var(--bg);
-  color: var(--text);
+    background: #0B1120;
+    color: #F1F5F9;
 }
 
 .stApp {
-  background: radial-gradient(ellipse at 20% 0%, rgba(14,165,163,0.08), transparent 50%),
-              radial-gradient(ellipse at 90% 100%, rgba(59,130,246,0.06), transparent 60%),
-              var(--bg);
+    background: radial-gradient(circle at 10% 20%, rgba(45,212,191,0.03), transparent 60%),
+                radial-gradient(circle at 90% 80%, rgba(56,189,248,0.02), transparent 70%),
+                #0B1120;
 }
 
 .block-container {
-  max-width: 1000px;
-  padding: 1.5rem 1rem 3rem;
+    max-width: 1100px;
+    padding: 2rem 1.5rem 4rem;
 }
 
-h1, h2, h3, p, label, li {
-  color: var(--text) !important;
+/* Typografi */
+h1, h2, h3, p, label, li, .stMarkdown, .stCaption {
+    color: #F1F5F9 !important;
 }
 
 h1 {
-  font-size: 2.2rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #FFFFFF, var(--accent));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
+    font-size: 2.4rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #FFFFFF, #2DD4BF);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+    margin-bottom: 0.5rem;
 }
 
 h2 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+    font-size: 1.6rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
 }
 
-div[data-testid="stExpander"] details,
-div.element-container div.stMarkdown div:not(.ht-hero) {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 0.25rem;
+h3 {
+    font-size: 1.2rem;
+    font-weight: 500;
 }
 
+/* Sidemeny */
+[data-testid="stSidebar"] {
+    background: rgba(17,24,39,0.7);
+    backdrop-filter: blur(8px);
+    border-right: 1px solid rgba(45,212,191,0.2);
+}
+
+[data-testid="stSidebar"] .element-container {
+    margin-bottom: 0.5rem;
+}
+
+/* Hero */
 .ht-hero {
-  background: linear-gradient(135deg, rgba(14,165,163,0.12), rgba(59,130,246,0.08));
-  border: 1px solid rgba(14,165,163,0.3);
-  border-radius: var(--radius-lg);
-  padding: 1.8rem;
-  margin-bottom: 1.8rem;
-  backdrop-filter: blur(4px);
-  box-shadow: var(--shadow);
+    background: rgba(30,41,59,0.4);
+    backdrop-filter: blur(12px);
+    border-radius: 28px;
+    border: 1px solid rgba(45,212,191,0.25);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
 }
 
 .ht-hero h1 {
-  margin: 0;
-  font-size: 2.4rem;
+    margin: 0;
+    font-size: 2.6rem;
 }
 
 .ht-hero .sub {
-  margin-top: 0.5rem;
-  color: var(--text-muted);
+    font-size: 0.9rem;
+    color: #94A3B8;
 }
 
 .ht-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 1.2rem;
 }
 
 .ht-pill {
-  background: rgba(31,41,55,0.8);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.3rem 0.9rem;
-  font-size: 0.75rem;
-  color: var(--text-muted);
+    background: rgba(51,65,85,0.6);
+    border: 1px solid rgba(45,212,191,0.2);
+    border-radius: 40px;
+    padding: 0.3rem 1rem;
+    font-size: 0.75rem;
+    color: #CBD5E1;
 }
 
+/* Kort og ekspander */
+[data-testid="stExpander"] details {
+    background: rgba(30,41,59,0.3);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(51,65,85,0.5);
+    border-radius: 20px;
+    margin-bottom: 1rem;
+}
+
+[data-testid="stExpander"] summary {
+    padding: 1rem 1.2rem !important;
+    font-weight: 500;
+    color: #E2E8F0 !important;
+}
+
+[data-testid="stExpander"] summary:hover {
+    background: rgba(45,212,191,0.05);
+    border-radius: 20px;
+}
+
+/* Inputs */
 .stTextInput input, .stNumberInput input, textarea, select,
 .stSelectbox [data-baseweb="select"] {
-  background-color: rgba(255,255,255,0.05) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: var(--radius-sm) !important;
-  padding: 0.6rem 1rem !important;
+    background: rgba(15,23,42,0.8) !important;
+    border: 1px solid #334155 !important;
+    border-radius: 14px !important;
+    color: #F1F5F9 !important;
+    padding: 0.6rem 1rem !important;
 }
 
 .stTextInput input:focus, .stNumberInput input:focus {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 2px var(--accent-glow);
+    border-color: #2DD4BF !important;
+    box-shadow: 0 0 0 2px rgba(45,212,191,0.2);
 }
 
+/* Knappar */
 .stButton > button {
-  border-radius: var(--radius-md) !important;
-  font-weight: 600 !important;
-  padding: 0.6rem 1.2rem !important;
-  transition: all 0.2s ease;
+    border-radius: 40px !important;
+    font-weight: 500 !important;
+    padding: 0.5rem 1.2rem !important;
+    transition: all 0.2s ease;
 }
 
 .stButton > button[data-testid="baseButton-primary"] {
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover)) !important;
-  color: white !important;
-  border: none !important;
-  box-shadow: 0 4px 12px rgba(14,165,163,0.3);
+    background: #2DD4BF !important;
+    color: #0F172A !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(45,212,191,0.3);
 }
 
 .stButton > button[data-testid="baseButton-primary"]:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(14,165,163,0.4);
+    background: #14B8A6 !important;
+    transform: translateY(-1px);
 }
 
 .stButton > button[data-testid="baseButton-secondary"] {
-  background: rgba(255,255,255,0.05) !important;
-  border: 1px solid var(--border) !important;
-  color: var(--text) !important;
+    background: rgba(51,65,85,0.6) !important;
+    border: 1px solid #475569 !important;
+    color: #E2E8F0 !important;
 }
 
 .stButton > button[data-testid="baseButton-secondary"]:hover {
-  border-color: var(--accent) !important;
-  background: rgba(14,165,163,0.1) !important;
+    background: rgba(45,212,191,0.15) !important;
+    border-color: #2DD4BF;
 }
 
+/* Metrics-kort */
 [data-testid="stMetric"] {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  box-shadow: var(--shadow);
+    background: rgba(30,41,59,0.4);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(51,65,85,0.5);
+    border-radius: 20px;
+    padding: 1rem;
 }
 
 [data-testid="stMetric"] label {
-  color: var(--text-muted) !important;
+    color: #94A3B8 !important;
+    font-size: 0.8rem;
 }
 
+[data-testid="stMetric"] div {
+    color: #F1F5F9 !important;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+/* Checkbox & Toggle */
 [data-testid="stCheckbox"] input {
-  transform: scale(1.1);
+    transform: scale(1.1);
 }
 
 [data-testid="stToggle"] input {
-  transform: scale(1.05);
+    transform: scale(1.05);
 }
 
-.css-1d391kg, [data-testid="stSidebar"] {
-  background: var(--bg-card);
-  border-right: 1px solid var(--border);
+/* Sliders */
+.stSlider > div {
+    background: rgba(51,65,85,0.5);
 }
 
+/* Spesielt for "Choose modules" ekspander */
+.stExpander:first-of-type details {
+    background: rgba(15,23,42,0.6);
+    border-color: #2DD4BF40;
+}
+
+/* Mobil */
 @media (max-width: 768px) {
-  .block-container {
-    padding: 1rem;
-  }
-  h1 {
-    font-size: 1.6rem;
-  }
-  .ht-hero h1 {
-    font-size: 1.8rem;
-  }
-  .stButton > button {
-    width: 100%;
-  }
+    .block-container {
+        padding: 1rem;
+    }
+    h1 {
+        font-size: 1.6rem;
+    }
+    .ht-hero h1 {
+        font-size: 1.8rem;
+    }
+    .ht-hero {
+        padding: 1.2rem;
+    }
+    .stButton > button {
+        width: 100%;
+    }
 }
 </style>
 """,
