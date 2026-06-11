@@ -2137,20 +2137,20 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(P("5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)))
                 # Generate radar image and insert
             # Example: if the line was indented 12 spaces, keep 12 spaces for the new lines
-            radar_scores = {
+    radar_scores = {
                 "Body Comp": radar.get("Body Comp", 50),
                 "Cardio": radar.get("Cardio", 50),
                 "Bio Age": radar.get("Bio Age", 50),
                 "Activity": radar.get("Activity", 50),
                 "Lifestyle": radar.get("Lifestyle", 50)
             }
-            buf_radar = plot_radar_as_bytes(
+    buf_radar = plot_radar_as_bytes(
                 radar_scores["Body Comp"],
                 radar_scores["Cardio"],
                 radar_scores["Activity"],
                 radar_scores["Lifestyle"]
             )
-            story.append(RLImage(buf_radar, width=CONTENT_W, height=CONTENT_W * 0.65))            
+    story.append(RLImage(buf_radar, width=CONTENT_W, height=CONTENT_W * 0.65))            
     story.append(VGap(4))
     story.append(P("Score 70+ = good. 45–70 = room to improve. Below 45 = priority area.", S("rl", size=7.5, color=MUTED, italic=True, after=4)))
     
