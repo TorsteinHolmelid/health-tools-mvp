@@ -15,59 +15,33 @@ from reportlab.lib.colors import HexColor, white, black
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer, 
+    SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer,
     Table, TableStyle, HRFlowable, Image as RLImage
 )
-
-import streamlit as st
 from db import sign_up, sign_in, is_authenticated, get_current_user_id, sign_out
 
-import io
-import math
-from typing import Optional
- 
-# ── matplotlib (no display backend) ──────────────────────────────────────────
+import numpy as np
+import plotly.graph_objects as go
 import matplotlib
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
-import numpy as np
- 
-# ── reportlab ─────────────────────────────────────────────────────────────────
-from reportlab.lib.colors import HexColor, white, Color
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.platypus import Flowable, Paragraph, Spacer
-# ── Globale fargekonstanter (brukes av PDF og UI) ─────────────────────────────
+
+# ── Globale fargekonstanter (brukt av PDF og UI) ─────────────────────────────
 from reportlab.lib.colors import HexColor, white, black, Color
 
-C_BG      = HexColor("#0B1220")
-C_CARD    = HexColor("#111C33")
-C_CARD2   = HexColor("#0F172A")
-C_ACCENT  = HexColor("#0EA5A3")
-C_BLUE    = HexColor("#3B82F6")
-C_GOOD    = HexColor("#22C55E")
-C_WARN    = HexColor("#F59E0B")
-C_BAD     = HexColor("#EF4444")
-C_TEXT    = HexColor("#E5E7EB")
-C_MUTED   = HexColor("#94A3B8")
-C_STROKE  = HexColor("#334155")
-C_DIM     = HexColor("#64748B")
-TEXT   = HexColor("#E5E7EB")
-ACCENT = HexColor("#0EA5A3")
-MUTED  = HexColor("#94A3B8")
-CARD   = HexColor("#111C33")
-CARD2  = HexColor("#0F172A")
-STROKE = HexColor("#334155")
-GOOD   = HexColor("#22C55E")
-WARN   = HexColor("#F59E0B")
-BAD    = HexColor("#EF4444")
-BLUE   = HexColor("#3B82F6")
-DIM    = HexColor("#64748B")
-BG     = HexColor("#0B1220")
+BG      = HexColor("#0B1220")
+CARD    = HexColor("#111C33")
+CARD2   = HexColor("#0F172A")
+ACCENT  = HexColor("#0EA5A3")
+BLUE    = HexColor("#3B82F6")
+GOOD    = HexColor("#22C55E")
+WARN    = HexColor("#F59E0B")
+BAD     = HexColor("#EF4444")
+TEXT    = HexColor("#E5E7EB")
+MUTED   = HexColor("#94A3B8")
+STROKE  = HexColor("#334155")
+DIM     = HexColor("#64748B")
 # --- Innlogging / registrering ---
 if not is_authenticated():
     st.title("🏥 Health Tools - Login")
