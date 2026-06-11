@@ -483,12 +483,33 @@ html, body, .stApp {
   margin-bottom: 12px;
 }
 
-/* ========== SLIDER – FUNGERENDE (frå din gamle CSS) ========== */
+/* ========== SLIDER – fiksa "dobbel-linje" ========== */
+/* Det yttre slider-elementet skal IKKJE ha eiga bakgrunn/høgde, */
+/* elles legg det seg som ei ekstra linje attmed BaseWeb sin eigen track. */
 div[data-baseweb="slider"] {
-  background: #1E293B;
-  border-radius: 999px;
-  height: 4px;
-  margin: 0.5rem 0;
+  background: transparent !important;
+  height: auto !important;
+  border-radius: 0 !important;
+  margin: 1rem 0 !important;
+}
+
+/* Nullstill alle indre wrapper-div'ar (kan elles arve bakgrunn frå tema) */
+div[data-baseweb="slider"] > div {
+  background: transparent !important;
+}
+
+/* Sjølve "track"-stripa – det er denne som skal ha farge/høgde/runda kantar */
+div[data-baseweb="slider"] > div > div:first-child {
+  background: #1E293B !important;
+  border-radius: 999px !important;
+  height: 4px !important;
+}
+
+/* Den fylte/markerte delen av streken (frå min->valgt verdi) */
+div[data-baseweb="slider"] > div > div:first-child > div {
+  background: #0EA5A3 !important;
+  border-radius: 999px !important;
+  height: 4px !important;
 }
 
 div[data-baseweb="slider"] div[role="slider"] {
