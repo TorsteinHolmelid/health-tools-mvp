@@ -325,7 +325,8 @@ if _session_id and (
 if st.session_state.get("stripe_session_id"):
     _sid = st.session_state["stripe_session_id"]
     st.sidebar.success(f"✅ Betaling verifisert  •  ID: ...{_sid[-6:]}")
-
+    
+# ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
 :root{
