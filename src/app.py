@@ -54,18 +54,28 @@ if not is_authenticated():
 
 # No kan resten av appen køyre som før, men med innlogga brukar
 st.sidebar.button("Log out", on_click=sign_out)
-st.sidebar.markdown("---")
+
+_user_email = st.session_state.get("user_email", "")
+_avatar_letter = (_user_email[0].upper() if _user_email else "U")
+
 st.sidebar.markdown(
-    """
-<div class="sidebar-trust">
-  🔒 <strong>256‑bit encryption</strong><br>
-  🛡️ GDPR · Zero third parties<br>
-  🧠 Your data stays yours — always.
+    f"""
+<div class="ht-side-card">
+  <div class="ht-side-user">
+    <div class="ht-side-avatar">{_avatar_letter}</div>
+    <div class="ht-side-user-info">
+      <div class="ht-side-user-email">{escape(_user_email)}</div>
+      <div class="ht-side-user-status">● Logga inn</div>
+    </div>
+  </div>
+  <hr class="ht-side-divider">
+  <div class="ht-side-feature">🔒 256-bit kryptering</div>
+  <div class="ht-side-feature">🛡️ GDPR · ingen tredjepartar</div>
+  <div class="ht-side-feature">🔐 Dataa dine — alltid berre dine</div>
 </div>
 """,
     unsafe_allow_html=True,
 )
-st.sidebar.write(f"Logged in as: {st.session_state.get('user_email', '')}")
 
 # --- Resten av din eksisterande kode i app.py (berre endre funksjonskall) ---
 # Merk: save_health_metrics() kallar du utan user_id-parameter no
@@ -335,7 +345,10 @@ if _session_id and (
 
 if st.session_state.get("stripe_session_id"):
     _sid = st.session_state["stripe_session_id"]
-    st.sidebar.success(f"✅ Betaling verifisert  •  ID: ...{_sid[-6:]}")
+    st.sidebar.markdown(
+        f"""<div class="ht-side-badge-verified">✅ Premium aktivert · ID …{_sid[-6:]}</div>""",
+        unsafe_allow_html=True,
+    )
     
 # ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
 st.markdown(
@@ -383,32 +396,86 @@ html, body, .stApp {
 }
 
 /* ========== SIDEBAR (ny premium) ========== */
-[data-testid="stSidebar"] {
-  background: rgba(17, 24, 39, 0.7);
-  backdrop-filter: blur(12px);
-  border-right: 1px solid rgba(14,165,163,0.2);
-  padding: 1.5rem 0.8rem;
-}
-
-[data-testid="stSidebar"] .stMarkdown {
-  background: transparent;
-}
-
-[data-testid="stSidebar"] h1, 
-[data-testid="stSidebar"] h2, 
-[data-testid="stSidebar"] p, 
-[data-testid="stSidebar"] label {
-  color: #E2E8F0 !important;
-}
-
-.sidebar-trust {
-  background: rgba(14,165,163,0.1);
-  border-left: 3px solid #0EA5A3;
-  border-radius: 12px;
-  padding: 0.6rem 1rem;
+.ht-side-card {
+  background: linear-gradient(160deg, rgba(14,165,163,0.08), rgba(15,23,42,0.9));
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 16px;
   margin: 1rem 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+
+.ht-side-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ht-side-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0EA5A3, #0F766E);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.ht-side-user-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ht-side-user-email {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ht-side-user-status {
+  font-size: 0.7rem;
+  color: #34D399;
+}
+
+.ht-side-divider {
+  height: 1px;
+  background: var(--stroke);
+  border: none;
+  margin: 12px 0;
+}
+
+.ht-side-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 0.75rem;
-  color: #94A3B8;
+  color: var(--muted2);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+.ht-side-feature:last-child { margin-bottom: 0; }
+
+.ht-side-badge-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(52,211,153,0.12);
+  border: 1px solid rgba(52,211,153,0.3);
+  color: #34D399;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  margin: 0.5rem 0;
 }
 
 /* ========== HERO (ny premium) ========== */
@@ -2993,7 +3060,16 @@ with st.expander("⚙️ Choose modules", expanded=False):
         run_plan = st.toggle("Weight goal / plan", value=True, key="s_plan")
 
 # ── Sidebar (kept minimal) ────
-st.sidebar.info("✅ Your health data is stored securely in your private account. Only you can access it when logged in.")
+st.sidebar.markdown(
+    """
+<div class="ht-side-card" style="margin-top:0.5rem;">
+  <div class="ht-side-feature" style="margin:0;">
+    🔏 Helsedataa dine vert lagra trygt i din private konto — berre du har tilgang når du er innlogga.
+  </div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
 
 # ── Session state defaults ────────────────────────────────────────────────────
 if "resting_hr" not in st.session_state:
