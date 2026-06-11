@@ -1030,18 +1030,18 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     )
 
     # Theme og Fargar
-    BG      = HexColor("#0B1220")
-    CARD    = HexColor("#111C33")
-    CARD2   = HexColor("#0F172A")
-    ACCENT  = HexColor("#0EA5A3")
-    BLUE    = HexColor("#3B82F6")
-    GOOD    = HexColor("#22C55E")
-    WARN    = HexColor("#F59E0B")
-    BAD     = HexColor("#EF4444")
-    TEXT    = HexColor("#E5E7EB")
-    MUTED   = HexColor("#94A3B8")
-    STROKE  = HexColor("#334155")
-    DIM     = HexColor("#64748B")
+C_BG    = "#0B1220"
+C_ACCENT = "#0EA5A3"
+C_TEXT   = "#E5E7EB"
+C_MUTED  = "#94A3B8"
+C_STROKE = "#334155"
+C_CARD   = "#111C33"
+C_CARD2  = "#0F172A"
+C_GOOD   = "#22C55E"
+C_WARN   = "#F59E0B"
+C_BAD    = "#EF4444"
+C_BLUE   = "#3B82F6"
+C_DIM    = "#64748B"
 
     # Hjelpefunksjonar for tekst
     _styles = getSampleStyleSheet()
