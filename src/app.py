@@ -93,28 +93,41 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 
 def plot_radar_as_bytes(bmi_score, vo2_score, activity_score, lifestyle_score):
-    categories = ['Body Composition', 'Cardio Fitness', 'Activity Volume', 'Lifestyle']
+    import matplotlib.pyplot as plt
+    import numpy as np
+    from io import BytesIO
+
+    categories = ['Body Comp', 'Cardio', 'Activity', 'Lifestyle']
     values = [bmi_score, vo2_score, activity_score, lifestyle_score]
-    fig = go.Figure(data=go.Scatterpolar(
-        r=values, theta=categories, fill='toself',
-        marker=dict(color='#0EA5A3', size=6),
-        line=dict(color='#0EA5A3', width=2), opacity=0.7
-    ))
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0, 100], color='#94A3B8', gridcolor='#334155'),
-            angularaxis=dict(tickfont=dict(color='#E5E7EB', size=10), gridcolor='#334155'),
-            bgcolor='rgba(0,0,0,0)'
-        ),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=60, r=60, t=20, b=20),
-        height=350, width=450,
-        font=dict(color='#E5E7EB')
-    )
+
+    N = len(categories)
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
+    angles += angles[:1]
+    values += values[:1]
+
+    fig, ax = plt.subplots(figsize=(5, 4), subplot_kw=dict(polar=True))
+    ax.fill(angles, values, color='#0EA5A3', alpha=0.25)
+    ax.plot(angles, values, color='#0EA5A3', linewidth=2)
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(categories, color='#E5E7EB', fontsize=9)
+
+    ax.set_ylim(0, 100)
+    ax.set_yticks([20, 40, 60, 80, 100])
+    ax.set_yticklabels(['20', '40', '60', '80', '100'], color='#94A3B8')
+    ax.grid(color='#334155', linewidth=0.5)
+
+    ax.set_facecolor('none')
+    fig.patch.set_facecolor('none')
+
+    for i, (angle, val) in enumerate(zip(angles[:-1], values[:-1])):
+        ax.text(angle, val + 5, str(int(val)), ha='center', va='center',
+                color='#0EA5A3', fontsize=8, fontweight='bold')
+
     buf = BytesIO()
-    fig.write_image(buf, format='png', engine='kaleido')
+    plt.savefig(buf, format='png', dpi=150, facecolor='#0B1220', bbox_inches='tight')
     buf.seek(0)
+    plt.close(fig)
     return buf
 
 def plot_vo2_gauge_as_bytes(percentile):
