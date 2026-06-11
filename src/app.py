@@ -2851,7 +2851,7 @@ with st.expander("⚙️ Choose modules", expanded=False):
         run_plan = st.toggle("Weight goal / plan", value=True, key="s_plan")
 
 # ── Sidebar (kept minimal) ────
-st.sidebar.info("This app does not store personal health data.")
+st.sidebar.info("✅ Your health data is stored securely in your private account. Only you can access it when logged in.")
 
 # ── Session state defaults ────────────────────────────────────────────────────
 if "resting_hr" not in st.session_state:
