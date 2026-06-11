@@ -4851,7 +4851,7 @@ if results:
                     _summary_msg = (
                         f"At a steady {abs(_rate):.2f} kg/week, you're on track to go from {_start_w:.1f} kg to "
                         f"{_end_w:.1f} kg by around {_eta} — a total change of {abs(_total_change):.1f} kg. "
-    …
+   
 
                 # Progress toward goal
                 if abs(_total_change) > 0.01:
