@@ -1932,9 +1932,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
     story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
     story.append(PageBreak())
-    story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
-    story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
-    story.append(PageBreak())            
+     
         # ========== NEW PAGE: Executive Summary (personal narrative) ==========
     story.append(SecHeader("Executive Summary – Your Personal Health Narrative", accent=ACCENT))
     story.append(VGap(6))
