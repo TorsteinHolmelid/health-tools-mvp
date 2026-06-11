@@ -3791,7 +3791,7 @@ if st.session_state.generated:
 st.markdown("---")
 col_save1, col_save2 = st.columns([3, 1])
 with col_save1:
-    st.caption("Målingane vert ikkje lagra automatisk. Trykk knappen for å lagre dagens data til historikken din.")
+    st.caption("The measurements are not saved automatically. Press the button to save today's data to your history.")
 with col_save2:
     if st.button("💾 Save this measurement to history", type="primary", use_container_width=True):
         try:
@@ -3817,7 +3817,7 @@ with col_save2:
                     weekly_activity_minutes=weekly_min,
                     resting_hr=resting_hr_val
                 )
-                st.success("✅ Måling lagra! Gå til 'My Progress' for å sjå utvikling.")
+                st.success("✅ Measurement saved! Go to 'My Progress' to view your progress.")
                 st.balloons()
         except Exception as e:
             st.error(f"Feil ved lagring: {e}")
