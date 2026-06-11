@@ -2030,9 +2030,9 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         story.append(SecHeader("Cardio Fitness — VO2max", subtitle="The single strongest predictor of long-term health and all-cause mortality"))
         story.append(VGap(6))
                     # Generate VO2 gauge image
-            buf_gauge = plot_vo2_gauge_as_bytes(vo2_pct)
-            story.append(RLImage(buf_gauge, width=CONTENT_W, height=80))
-            story.append(VGap(6))
+        buf_gauge = plot_vo2_gauge_as_bytes(vo2_pct)
+        story.append(RLImage(buf_gauge, width=CONTENT_W, height=80))
+        story.append(VGap(6))
             # Keep the explanatory text that follows (the paragraph and tips)
         story.append(VGap(6))
     
