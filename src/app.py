@@ -338,6 +338,9 @@ if st.session_state.get("stripe_session_id"):
     st.sidebar.success(f"✅ Betaling verifisert  •  ID: ...{_sid[-6:]}")
     
 # ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
+st.markdown(
+    """
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
 * {
@@ -521,6 +524,10 @@ div[data-baseweb="slider"] div[role="slider"] {
     padding: 1rem;
   }
 }
+</style>
+""",
+    unsafe_allow_html=True,
+)
 # ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
 def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
     """Vis animerte KPI-kort med trender"""
