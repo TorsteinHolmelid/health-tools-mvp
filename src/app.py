@@ -327,24 +327,27 @@ if st.session_state.get("stripe_session_id"):
     st.sidebar.success(f"✅ Betaling verifisert  •  ID: ...{_sid[-6:]}")
     
 # ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
+st.markdown(
+    """
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
-:root{
-  --bg:#0A0F1A;
-  --bg-card:#111827;
-  --bg-card-hover:#1F2937;
+:root {
+  --bg: #0A0F1A;
+  --bg-card: #111827;
+  --bg-card-hover: #1F2937;
   --border: rgba(71,85,105,0.3);
-  --text:#F3F4F6;
-  --text-muted:#9CA3AF;
-  --accent:#0EA5A3;
-  --accent-hover:#14B8A6;
+  --text: #F3F4F6;
+  --text-muted: #9CA3AF;
+  --accent: #0EA5A3;
+  --accent-hover: #14B8A6;
   --accent-glow: rgba(14,165,163,0.2);
-  --success:#22C55E;
-  --warning:#F59E0B;
-  --danger:#EF4444;
-  --radius-sm:8px;
-  --radius-md:12px;
-  --radius-lg:16px;
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
   --shadow: 0 8px 20px rgba(0,0,0,0.3);
   --shadow-hover: 0 12px 28px rgba(0,0,0,0.4);
 }
@@ -369,7 +372,6 @@ html, body, .stApp {
   padding: 1.5rem 1rem 3rem;
 }
 
-/* Typografi */
 h1, h2, h3, p, label, li {
   color: var(--text) !important;
 }
@@ -390,7 +392,6 @@ h2 {
   letter-spacing: -0.01em;
 }
 
-/* Kort og boksar */
 div[data-testid="stExpander"] details,
 div.element-container div.stMarkdown div:not(.ht-hero) {
   background: var(--bg-card);
@@ -399,7 +400,6 @@ div.element-container div.stMarkdown div:not(.ht-hero) {
   padding: 0.25rem;
 }
 
-/* Hero-seksjon */
 .ht-hero {
   background: linear-gradient(135deg, rgba(14,165,163,0.12), rgba(59,130,246,0.08));
   border: 1px solid rgba(14,165,163,0.3);
@@ -413,10 +413,6 @@ div.element-container div.stMarkdown div:not(.ht-hero) {
 .ht-hero h1 {
   margin: 0;
   font-size: 2.4rem;
-  background: linear-gradient(135deg, #FFFFFF, var(--accent));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
 }
 
 .ht-hero .sub {
@@ -440,7 +436,6 @@ div.element-container div.stMarkdown div:not(.ht-hero) {
   color: var(--text-muted);
 }
 
-/* Input-felt */
 .stTextInput input, .stNumberInput input, textarea, select,
 .stSelectbox [data-baseweb="select"] {
   background-color: rgba(255,255,255,0.05) !important;
@@ -455,7 +450,6 @@ div.element-container div.stMarkdown div:not(.ht-hero) {
   box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
-/* Knappar */
 .stButton > button {
   border-radius: var(--radius-md) !important;
   font-weight: 600 !important;
@@ -486,7 +480,6 @@ div.element-container div.stMarkdown div:not(.ht-hero) {
   background: rgba(14,165,163,0.1) !important;
 }
 
-/* Metrics */
 [data-testid="stMetric"] {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -499,7 +492,6 @@ div.element-container div.stMarkdown div:not(.ht-hero) {
   color: var(--text-muted) !important;
 }
 
-/* Checkbox og toggle */
 [data-testid="stCheckbox"] input {
   transform: scale(1.1);
 }
@@ -508,13 +500,11 @@ div.element-container div.stMarkdown div:not(.ht-hero) {
   transform: scale(1.05);
 }
 
-/* Sidemeny */
 .css-1d391kg, [data-testid="stSidebar"] {
   background: var(--bg-card);
   border-right: 1px solid var(--border);
 }
 
-/* Responsiv */
 @media (max-width: 768px) {
   .block-container {
     padding: 1rem;
@@ -529,6 +519,10 @@ div.element-container div.stMarkdown div:not(.ht-hero) {
     width: 100%;
   }
 }
+</style>
+""",
+    unsafe_allow_html=True,
+)
 # ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
 def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
     """Vis animerte KPI-kort med trender"""
