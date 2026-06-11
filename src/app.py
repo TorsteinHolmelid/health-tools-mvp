@@ -1846,6 +1846,26 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     
     story.append(SecHeader("Overall Health Dashboard", subtitle="Composite score across 5 dimensions — for directional guidance only"))
     story.append(VGap(6))
+    # --- Health score calculation ---
+    score_parts = []
+    if bmi_v is not None:
+        if 18.5 <= bmi_v < 25:
+            score_parts.append(100)
+        elif 17 <= bmi_v < 27:
+            score_parts.append(75)
+        elif 15 <= bmi_v < 30:
+            score_parts.append(50)
+        else:
+            score_parts.append(25)
+    if vo2_v is not None:
+        score_parts.append(min(100, int(vo2_pct)))
+    if bio_diff is not None:
+        score_parts.append(max(0, min(100, int(70 - bio_diff * 10))))
+    if ex_total_min:
+        score_parts.append(min(100, int(ex_total_min / 300 * 100)))
+    health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
+    score_col = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
+    score_label = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
     story.append(HealthScoreRing(health_score, score_label, score_col))
     story.append(VGap(8))
     
