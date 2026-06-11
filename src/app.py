@@ -4558,7 +4558,7 @@ if results:
                     unsafe_allow_html=True
                 )
 else:
-    st.info("Trykk på 'Calculate / Generate report' for å kjøre beregningene.")
+    st.info("Click 'Calculate / "Generate report" to run the calculations")
  
 # ── Paywall / PDF ──── (0 innrykk — UTANFOR if results:)
 st.markdown("---")
