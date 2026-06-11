@@ -4830,7 +4830,7 @@ if results:
     <div class="ht-locked-line"></div>
     <div class="ht-locked-line short"></div>
   </div>
-  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Lås opp for 4,99 USD</a>
+  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Unlock for 4,99 USD</a>
 </div>''',
                 unsafe_allow_html=True,
             )
