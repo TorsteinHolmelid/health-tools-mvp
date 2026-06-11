@@ -4604,7 +4604,7 @@ if not _unlocked:
 else:
     _results_for_pdf = st.session_state.get("results", {})
     if not _results_for_pdf:
-        st.warning("⚠️ Kjør beregningane først (trykk 'Calculate'), så kan du laste ned PDF-rapporten.")
+        st.warning("⚠️ Run the calculations first (click 'Calculate'), then you can download the PDF report.")
     else:
         # 1. Bygg rapport-data
         report = {
