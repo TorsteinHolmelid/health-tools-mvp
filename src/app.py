@@ -53,7 +53,7 @@ if not is_authenticated():
 
 # No kan resten av appen køyre som før, men med innlogga brukar
 st.sidebar.button("Log out", on_click=sign_out)
-st.sidebar.write(f"Logged in as: {get_current_user_id()[:8]}...")
+st.sidebar.write(f"Logged in as: {st.session_state.get('user_email', '')}")
 
 # --- Resten av din eksisterande kode i app.py (berre endre funksjonskall) ---
 # Merk: save_health_metrics() kallar du utan user_id-parameter no
