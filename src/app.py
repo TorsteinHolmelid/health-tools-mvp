@@ -41,7 +41,21 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Flowable, Paragraph, Spacer
+# ── Globale fargekonstanter (brukes av PDF og UI) ─────────────────────────────
+from reportlab.lib.colors import HexColor, white, black, Color
 
+C_BG      = HexColor("#0B1220")
+C_CARD    = HexColor("#111C33")
+C_CARD2   = HexColor("#0F172A")
+C_ACCENT  = HexColor("#0EA5A3")
+C_BLUE    = HexColor("#3B82F6")
+C_GOOD    = HexColor("#22C55E")
+C_WARN    = HexColor("#F59E0B")
+C_BAD     = HexColor("#EF4444")
+C_TEXT    = HexColor("#E5E7EB")
+C_MUTED   = HexColor("#94A3B8")
+C_STROKE  = HexColor("#334155")
+C_DIM     = HexColor("#64748B")
 # --- Innlogging / registrering ---
 if not is_authenticated():
     st.title("🏥 Health Tools - Login")
