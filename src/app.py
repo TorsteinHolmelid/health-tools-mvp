@@ -530,13 +530,13 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
     """Vis animerte KPI-kort med trender"""
     from streamlit.components.v1 import html
     
-    # Sørg for at vi har tall
     bmi_display = f"{bmi_val:.1f}" if bmi_val else "—"
     vo2_display = f"{vo2_val:.1f}" if vo2_val else "—"
     bio_years = f"{abs(bio_diff):.1f}" if bio_diff else "—"
     bio_text = "yngre" if bio_diff and bio_diff < 0 else "eldre" if bio_diff and bio_diff > 0 else "samme"
     
-    komponent = f"""
+    # Bruk vanlig string (ikke f-string) for CSS-delen, eller escape krøllparenteser
+    css_part = """
     <style>
     .kpi-grid {{
         display: grid;
@@ -590,12 +590,12 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
         <div class="kpi-card">
             <div class="kpi-label">VO₂max</div>
             <div class="kpi-value" id="vo2-kpi">0.0</div>
-            <div class="kpi-trend">Topp {100 - (vo2_pct or 0):.0f}%</div>
+            <div class="kpi-trend">Topp """ + str(100 - (st.session_state.get("results", {}).get("vo2", {}).get("percentile", 50))) + """%</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-label">Biologisk alder</div>
             <div class="kpi-value" id="bio-kpi">0.0</div>
-            <div class="kpi-trend">{bio_text} {bio_years} år</div>
+            <div class="kpi-trend">""" + bio_text + " " + bio_years + """ år</div>
         </div>
     </div>
     <script>
@@ -614,18 +614,13 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
             }};
             requestAnimationFrame(step);
         }}
-        animateNumber('bmi-kpi', {bmi_val or 0}, 1);
-        animateNumber('vo2-kpi', {vo2_val or 0}, 1);
-        animateNumber('bio-kpi', {bio_val or 0}, 1);
+        animateNumber('bmi-kpi', """ + str(bmi_val or 0) + """, 1);
+        animateNumber('vo2-kpi', """ + str(vo2_val or 0) + """, 1);
+        animateNumber('bio-kpi', """ + str(bio_val or 0) + """, 1);
     }})();
     </script>
     """
-    # Hent vo2_pct fra session_state hvis tilgjengelig
-    vo2_pct = st.session_state.get("results", {}).get("vo2", {}).get("percentile", 50)
-    komponent = komponent.replace("{vo2_pct or 0}", str(vo2_pct))
-    bio_val = (age + (bio_diff or 0)) if bio_diff else age
-    komponent = komponent.replace("{bio_val or 0}", str(bio_val))
-    html(komponent, height=200)
+    html(css_part, height=200)
 # ── Render Hero ───────────────────────────────────────────────────────────────
 st.markdown(
     """
