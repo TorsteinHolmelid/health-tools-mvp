@@ -1042,7 +1042,43 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     def _sf(x):
         try: return float(x)
         except: return None
+    def _plot_to_image(fig, width=400, height=300):
+        """Konverter ein Plotly-figur til eit bytes-objekt (PNG) som kan brukast i PDF."""
+        import io
+        img_bytes = fig.to_image(format="png", width=width, height=height)
+        return io.BytesIO(img_bytes)
 
+    def _radar_chart_image():
+        # Lag radardiagrammet på nytt (same som i app, men her må vi ha data)
+        radar_scores = {
+            "Body Comp": radar.get("Body Comp", 50),
+            "Cardio": radar.get("Cardio", 50),
+            "Bio Age": radar.get("Bio Age", 50),
+            "Activity": radar.get("Activity", 50),
+            "Lifestyle": radar.get("Lifestyle", 50),
+        }
+        import plotly.graph_objects as go
+        categories = list(radar_scores.keys())
+        values = list(radar_scores.values())
+        fig = go.Figure(data=go.Scatterpolar(r=values, theta=categories, fill='toself',
+                                             marker=dict(color=ACCENT.hexval()), line=dict(color=ACCENT.hexval(), width=2)))
+        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,100])),
+                          paper_bgcolor='white', plot_bgcolor='white',
+                          font=dict(color='black'), showlegend=False, width=450, height=350)
+        return _plot_to_image(fig, width=450, height=350)
+
+    def _vo2_gauge_image():
+        pct = vo2_pct
+        col = vo2_color(pct).hexval()
+        fig = go.Figure(go.Indicator(mode="gauge+number", value=pct,
+                                     number=dict(suffix="th", font=dict(size=40, color=col)),
+                                     gauge=dict(axis=dict(range=[0,100]), bar=dict(color=col),
+                                                steps=[dict(range=[0,40], color="#EF4444"),
+                                                       dict(range=[40,60], color="#F59E0B"),
+                                                       dict(range=[60,80], color="#3B82F6"),
+                                                       dict(range=[80,100], color="#22C55E")])))
+        fig.update_layout(width=400, height=300, paper_bgcolor='white', font=dict(color='black'))
+        return _plot_to_image(fig, width=400, height=300)
     # Data extraction
     inp       = report.get("inputs", {}) or {}
     age_v     = inp.get("age", "—")
