@@ -374,13 +374,6 @@ html, body, .stApp {
   background: transparent;
 }
 
-[data-testid="stSidebar"] h1, 
-[data-testid="stSidebar"] h2, 
-[data-testid="stSidebar"] p, 
-[data-testid="stSidebar"] label {
-  color: #E2E8F0 !important;
-}
-
 .sidebar-trust {
   background: rgba(14,165,163,0.1);
   border-left: 3px solid #0EA5A3;
@@ -448,14 +441,12 @@ html, body, .stApp {
   color: #CBD5E1;
 }
 
-div[data-testid="stSlider"] > div {
-  padding: 0.25rem 0;
-}
-
+/* ========== SLIDER FIX – fungerer 100% ========== */
 div[data-baseweb="slider"] {
   background: #1E293B;
   border-radius: 999px;
   height: 4px;
+  margin: 0.5rem 0;
 }
 
 div[data-baseweb="slider"] div[role="slider"] {
@@ -464,8 +455,19 @@ div[data-baseweb="slider"] div[role="slider"] {
   width: 16px;
   height: 16px;
   border-radius: 50%;
+  transition: transform 0.1s ease;
 }
 
+div[data-baseweb="slider"] div[role="slider"]:hover {
+  transform: scale(1.1);
+}
+
+/* Ekstra for å sikre at etiketten ikkje blir borte */
+.stSlider label {
+  color: #CBD5E1 !important;
+}
+
+/* Inputs */
 .stTextInput input, .stNumberInput input, textarea, select {
   background: #111827 !important;
   border: 1px solid #2D3A4A !important;
