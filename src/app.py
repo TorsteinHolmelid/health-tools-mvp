@@ -26,7 +26,7 @@ from pdf_premium_additions import (
    )
 import streamlit as st
 from db import sign_up, sign_in, is_authenticated, get_current_user_id, sign_out
-from __future__ import annotations
+
 import io
 import math
 from typing import Optional
