@@ -346,7 +346,7 @@ if _session_id and (
 if st.session_state.get("stripe_session_id"):
     _sid = st.session_state["stripe_session_id"]
     st.sidebar.markdown(
-        f"""<div class="ht-side-badge-verified">✅ Premium aktivert · ID …{_sid[-6:]}</div>""",
+        f"""<div class="ht-side-badge-verified">✅ Premium activated · ID …{_sid[-6:]}</div>""",
         unsafe_allow_html=True,
     )
     
@@ -3064,7 +3064,7 @@ st.sidebar.markdown(
     """
 <div class="ht-side-card" style="margin-top:0.5rem;">
   <div class="ht-side-feature" style="margin:0;">
-    🔏 Helsedataa dine vert lagra trygt i din private konto — berre du har tilgang når du er innlogga.
+    🔏 Your health data is stored securely in your private account — only you have access when you are logged in.
   </div>
 </div>
 """,
