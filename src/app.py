@@ -27,9 +27,7 @@ matplotlib.use("Agg")
 import matplotlib.patches as mpatches
 from matplotlib.patches import FancyBboxPatch
 
-# ── Globale fargekonstanter (brukt av PDF og UI) ─────────────────────────────
-from reportlab.lib.colors import HexColor, white, black, Color
-
+# ── Globale fargekonstanter ──────────────────────────────────────────────────
 BG      = HexColor("#0B1220")
 CARD    = HexColor("#111C33")
 CARD2   = HexColor("#0F172A")
@@ -42,12 +40,11 @@ TEXT    = HexColor("#E5E7EB")
 MUTED   = HexColor("#94A3B8")
 STROKE  = HexColor("#334155")
 DIM     = HexColor("#64748B")
-# --- Innlogging / registrering ---
+
+# ── Innlogging / registrering (uendra) ──────────────────────────────────────
 if not is_authenticated():
     st.title("🏥 Health Tools - Login")
-    
     tab1, tab2 = st.tabs(["Log in", "Sign up"])
-    
     with tab1:
         email = st.text_input("Email", key="login_email")
         password = st.text_input("Password", type="password", key="login_password")
@@ -58,9 +55,8 @@ if not is_authenticated():
             else:
                 st.session_state["authenticated"] = True
                 st.session_state["user_id"] = user.id
-                st.session_state["user_email"] = email   # <-- legg til denne linja
+                st.session_state["user_email"] = email
                 st.rerun()
-    
     with tab2:
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_password")
@@ -70,15 +66,11 @@ if not is_authenticated():
                 st.error(f"Signup failed: {error}")
             else:
                 st.success("Account created! Please check your email to confirm (if required), then log in.")
-    
-    st.stop()  # Stopp her viss ikkje innlogga
+    st.stop()
 
-# No kan resten av appen køyre som før, men med innlogga brukar
 st.sidebar.button("Log out", on_click=sign_out)
-
 _user_email = st.session_state.get("user_email", "")
 _avatar_letter = (_user_email[0].upper() if _user_email else "U")
-
 st.sidebar.markdown(
     f"""
 <div class="ht-side-card">
@@ -98,21 +90,16 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
-# --- Resten av din eksisterande kode i app.py (berre endre funksjonskall) ---
-# Merk: save_health_metrics() kallar du utan user_id-parameter no
-# get_user_history(db) kallar du utan user_id-parameter
-# has_premium_access(db) kallar du utan user_id-parameter
 import calculators
 from calculators import (
     bmr_mifflin,
     tdee_including_weekly_exercise,
 )
 from db import get_db_client, save_health_metrics
+
 def plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score):
-    import plotly.graph_objects as go
     categories = ['Kroppssammensetning', 'Kondisjon', 'Aktivitet', 'Livsstil']
     values = [bmi_score, vo2_score, activity_score, lifestyle_score]
-    
     fig = go.Figure(data=go.Scatterpolar(
         r=values,
         theta=categories,
@@ -135,10 +122,8 @@ def plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score):
     )
     return fig
 
-# ── Databaseoppsett ───────────────────────────────────────────────────────────
 db = get_db_client()
 
-# ── Globale konstantar for PDF ────────────────────────────────────────────────
 PAGE_W, PAGE_H = A4
 MARGIN_H = 18 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN_H
@@ -146,113 +131,65 @@ CONTENT_W = PAGE_W - 2 * MARGIN_H
 def P(txt, style):
     return Paragraph(str(txt), style)
 
-# ── Streamlit Session State & Config ──────────────────────────────────────────
 if "generated" not in st.session_state:
     st.session_state.generated = False
-
-# Ikkje generer eigen UUID for innlogga brukarar – user_id kjem frå auth
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = None
 
-st.set_page_config(
-    page_title="Health Tools MVP",
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
+st.set_page_config(page_title="Health Tools MVP", layout="centered", initial_sidebar_state="collapsed")
 
-# ── Resting HR Sync funksjonar ────────────────────────────────────────────────
 _HR_KEYS = [
     "resting_hr", "global_resting_hr", "basic_resting_hr",
     "ui_resting_hr", "vo2_rhr_value", "bio_rhr_val",
 ]
-
 def _sync_hr(source_key: str):
     val = st.session_state.get(source_key)
-    if val is None:
-        return
-    try:
-        v = int(val)
-    except Exception:
-        return
+    if val is None: return
+    try: v = int(val)
+    except: return
     for k in _HR_KEYS:
         if k != source_key:
             st.session_state[k] = v
+def sync_from_basic(): _sync_hr("basic_resting_hr")
+def sync_from_calc(): _sync_hr("ui_resting_hr")
+def sync_from_vo2(): _sync_hr("vo2_rhr_value")
+def sync_from_bio(): _sync_hr("bio_rhr_val")
 
-def sync_from_basic():
-    _sync_hr("basic_resting_hr")
-
-def sync_from_calc():
-    _sync_hr("ui_resting_hr")
-
-def sync_from_vo2():
-    _sync_hr("vo2_rhr_value")
-
-def sync_from_bio():
-    _sync_hr("bio_rhr_val")
-
-# ── PDF Styles Klasse ─────────────────────────────────────────────────────────
 class PDFStyles:
-    PRIMARY = colors.HexColor("#0EA5A3")
-    BG = colors.HexColor("#0B1220")
-    TEXT = colors.HexColor("#E5E7EB")
-    MUTED = colors.HexColor("#94A3B8")
-    
-    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=colors.white)
-    H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=colors.white)
+    PRIMARY = HexColor("#0EA5A3")
+    BG = HexColor("#0B1220")
+    TEXT = HexColor("#E5E7EB")
+    MUTED = HexColor("#94A3B8")
+    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=white)
+    H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=white)
     Body = ParagraphStyle("Body", fontName="Helvetica", fontSize=10, leading=14, spaceAfter=10, textColor=colors.lightgrey)
-    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=colors.HexColor("#64748B"))
+    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=HexColor("#64748B"))
 
-# ── Treningsplan Builder ──────────────────────────────────────────────────────
 def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                     strength_list, cardio_list, sport_list, low_list):
-    """
-    Lager en personlig ukestruktur basert på brukerens faktiske aktiviteter.
-    Rullerer gjennom flere aktiviteter innen hver kategori for variasjon.
-    """
-    # Standardaktiviteter hvis brukeren ikke har valgt noe
-    if not strength_list:
-        strength_list = ["Strength training (weights)"]
-    if not cardio_list:
-        cardio_list = ["Running/jogging"]
-    if not sport_list:
-        sport_list = []
-    if not low_list:
-        low_list = ["Walking (casual)"]
-
-    # Hjelpefunksjon for å velge aktivitet med rullering (basert på ukedag)
+    if not strength_list: strength_list = ["Strength training (weights)"]
+    if not cardio_list: cardio_list = ["Running/jogging"]
+    if not sport_list: sport_list = []
+    if not low_list: low_list = ["Walking (casual)"]
     def _cycle_activity(act_list, day_index, offset=0):
-        if not act_list:
-            return None
+        if not act_list: return None
         idx = (day_index + offset) % len(act_list)
         return act_list[idx]
-
-    # Basisoppsett – dagene som alltid finnes
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     plan = []
-
     for i, day in enumerate(days):
         if day == "Sunday":
             plan.append((day, "Rest", "—", "—", "—", "Full rest or restorative yoga / stretching"))
             continue
-
-        # Velg aktiviteter basert på dag og tilgjengelige lister
-        # Vi fordeler dagene slik at alle kategorier får plass
         if goal == "Build muscle (bulk)":
-            # Styrke på man, ons, fre
-            if i in [0, 2, 4] and has_strength:
+            if i in [0,2,4] and has_strength:
                 primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength"
-                intensity = "Hard"
-                duration = "50 min"
+                session_type = "Strength"; intensity = "Hard"; duration = "50 min"
                 notes = f"Progressive overload – {primary_act} · 4×8–12 · RPE 8"
-            # Kardio på tir, lør
-            elif i in [1, 5] and has_cardio:
+            elif i in [1,5] and has_cardio:
                 primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"
-                intensity = "Moderate"
-                duration = "40 min"
+                session_type = "Cardio"; intensity = "Moderate"; duration = "40 min"
                 notes = f"Zone 2 – {primary_act} · builds aerobic base"
-            # Sport eller lav intensitet på tor
             elif i == 3 and (has_sport or has_low):
                 if has_sport:
                     primary_act = _cycle_activity(sport_list, i, 2)
@@ -260,79 +197,50 @@ def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                 else:
                     primary_act = _cycle_activity(low_list, i, 3)
                     session_type = "Active Recovery"
-                intensity = "Light–Moderate"
-                duration = "35 min"
+                intensity = "Light–Moderate"; duration = "35 min"
                 notes = f"{primary_act} – enjoyment & recovery"
             else:
-                # Fallback til lav intensitet
                 primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
-                session_type = "Active Recovery"
-                intensity = "Light"
-                duration = "30 min"
+                session_type = "Active Recovery"; intensity = "Light"; duration = "30 min"
                 notes = f"Low-intensity movement – {primary_act} · keep HR <120"
-
         elif goal == "Lose fat":
-            # Styrke + HIIT på man, ons, fre
-            if i in [0, 2, 4] and has_strength:
+            if i in [0,2,4] and has_strength:
                 primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength + HIIT"
-                intensity = "Moderate–Hard"
-                duration = "50 min"
+                session_type = "Strength + HIIT"; intensity = "Moderate–Hard"; duration = "50 min"
                 notes = f"{primary_act} supersets (3×12) + 15 min HIIT finisher"
-            # Kardio på tir, tor, lør
-            elif i in [1, 3, 5] and has_cardio:
+            elif i in [1,3,5] and has_cardio:
                 primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"
-                intensity = "Moderate"
-                duration = "45 min"
+                session_type = "Cardio"; intensity = "Moderate"; duration = "45 min"
                 notes = f"{primary_act} – steady state fat oxidation zone (65–75% HRmax)"
             else:
-                # Sport eller lav intensitet
                 if has_sport and i in [4]:
                     primary_act = _cycle_activity(sport_list, i, 2)
                     session_type = "Sport"
                 else:
                     primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
                     session_type = "LISS / Active"
-                intensity = "Light–Moderate"
-                duration = "40 min"
+                intensity = "Light–Moderate"; duration = "40 min"
                 notes = f"{primary_act} – low impact to aid recovery while burning calories"
-
-        else:  # Body Recomposition (default)
-            # Styrke på man, ons, fre
-            if i in [0, 2, 4] and has_strength:
+        else:
+            if i in [0,2,4] and has_strength:
                 primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength"
-                intensity = "Moderate–Hard"
-                duration = "50 min"
+                session_type = "Strength"; intensity = "Moderate–Hard"; duration = "50 min"
                 notes = f"{primary_act} · 4×8–12 · progressive overload"
-            # Kardio på tir, lør
-            elif i in [1, 5] and has_cardio:
+            elif i in [1,5] and has_cardio:
                 primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"
-                intensity = "Moderate"
-                duration = "35 min"
+                session_type = "Cardio"; intensity = "Moderate"; duration = "35 min"
                 notes = f"{primary_act} – Zone 2 (65–75% HRmax) · aerobic base"
-            # Sport på tor
             elif i == 3 and has_sport:
                 primary_act = _cycle_activity(sport_list, i, 2)
-                session_type = "Sport"
-                intensity = "Moderate"
-                duration = "40 min"
+                session_type = "Sport"; intensity = "Moderate"; duration = "40 min"
                 notes = f"{primary_act} – skill practice & enjoyment"
             else:
-                # Lav intensitet som variasjon
                 primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
-                session_type = "Active Recovery"
-                intensity = "Light"
-                duration = "30 min"
+                session_type = "Active Recovery"; intensity = "Light"; duration = "30 min"
                 notes = f"{primary_act} – movement variety, NEAT & recovery"
-
         plan.append((day, session_type, primary_act, duration, intensity, notes))
-
     return plan
 
-# ── Custom Flowables ──────────────────────────────────────────────────────────
 class PremiumRadarChart(Flowable):
     def __init__(self, scores, width=400):
         super().__init__()
@@ -342,35 +250,23 @@ class PremiumRadarChart(Flowable):
     def wrap(self, aw, ah):
         return self.w, self.h
 
-
-# ── Stripe Query Param Sjekk ──────────────────────────────────────────────────
 _session_id = None
 try:
     _session_id = st.query_params.get("session_id")
-except Exception:
+except:
     try:
         _raw = st.experimental_get_query_params().get("session_id")
         _session_id = _raw[0] if isinstance(_raw, list) else _raw
-    except Exception:
+    except:
         _session_id = None
-
 if isinstance(_session_id, list):
     _session_id = _session_id[0] if _session_id else None
-
-if _session_id and (
-    str(_session_id).startswith("cs_live_") or
-    str(_session_id).startswith("cs_test_")
-):
+if _session_id and (str(_session_id).startswith("cs_live_") or str(_session_id).startswith("cs_test_")):
     st.session_state["report_unlocked"] = True
     st.session_state["stripe_session_id"] = _session_id
-
 if st.session_state.get("stripe_session_id"):
     _sid = st.session_state["stripe_session_id"]
-    st.sidebar.markdown(
-        f"""<div class="ht-side-badge-verified">✅ Premium activated · ID …{_sid[-6:]}</div>""",
-        unsafe_allow_html=True,
-    )
-    
+    st.sidebar.markdown(f"""<div class="ht-side-badge-verified">✅ Premium activated · ID …{_sid[-6:]}</div>""", unsafe_allow_html=True)
 # ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
 st.markdown(
     """
@@ -825,24 +721,19 @@ div[data-baseweb="slider"] div[role="slider"]:hover {
 
 # ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
 def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
-    """Vis animerte KPI-kort med trender"""
-    from streamlit.components.v1 import html
-    
     bmi_display = f"{bmi_val:.1f}" if bmi_val else "—"
     vo2_display = f"{vo2_val:.1f}" if vo2_val else "—"
     bio_years = f"{abs(bio_diff):.1f}" if bio_diff else "—"
     bio_text = "yngre" if bio_diff and bio_diff < 0 else "eldre" if bio_diff and bio_diff > 0 else "samme"
-    
-    # Bruk vanlig string (ikke f-string) for CSS-delen, eller escape krøllparenteser
     css_part = """
     <style>
-    .kpi-grid {{
+    .kpi-grid{{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 1rem;
         margin: 1.5rem 0;
     }}
-    .kpi-card {{
+    .kpi-card{{
         background: linear-gradient(145deg, rgba(17,28,51,0.9), rgba(11,18,32,0.95));
         backdrop-filter: blur(4px);
         border-radius: 28px;
@@ -852,19 +743,19 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
         transition: all 0.2s ease;
         box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     }}
-    .kpi-card:hover {{
+    .kpi-card:hover{{
         transform: translateY(-3px);
         border-color: rgba(14,165,163,0.7);
         box-shadow: 0 14px 28px rgba(0,0,0,0.4);
     }}
-    .kpi-label {{
+    .kpi-label{{
         font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 2px;
         color: #94A3B8;
         margin-bottom: 8px;
     }}
-    .kpi-value {{
+    .kpi-value{{
         font-size: 42px;
         font-weight: 800;
         background: linear-gradient(135deg, #E5E7EB, #0EA5A3);
@@ -873,7 +764,7 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
         color: transparent;
         line-height: 1;
     }}
-    .kpi-trend {{
+    .kpi-trend{{
         font-size: 12px;
         margin-top: 8px;
         color: #22C55E;
@@ -914,102 +805,62 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
         }}
         animateNumber('bmi-kpi', """ + str(bmi_val or 0) + """, 1);
         animateNumber('vo2-kpi', """ + str(vo2_val or 0) + """, 1);
-        animateNumber('bio-kpi', """ + str(bio_val or 0) + """, 1);
+        animateNumber('bio-kpi', """ + str(bio_diff or 0) + """, 1);
     }})();
     </script>
     """
-    html(css_part, height=200)
-# ── Render Hero ───────────────────────────────────────────────────────────────
-st.markdown(
-    """
-<div class="ht-hero">
-  <div class="ht-badge">🔐 SECURE • GDPR • ENCRYPTED</div>
-  <h1>My Health Tools</h1>
-  <div class="sub">Your private health dashboard — science‑based insights, zero data sharing.</div>
-  <div class="ht-pills">
-    <span class="ht-pill">🧬 Biological age</span>
-    <span class="ht-pill">❤️ VO₂max & cardio</span>
-    <span class="ht-pill">📈 Track progress</span>
-    <span class="ht-pill">🔒 Only you see data</span>
-  </div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
-# ── Consent & Privacy Sjekk ───────────────────────────────────────────────────
+    components.html(css_part, height=200)
+
+st.markdown("""<div class="ht-hero">...</div>""", unsafe_allow_html=True)   # (sett inn din hero HTML)
+
 if "consent_given" not in st.session_state:
     st.session_state.consent_given = False
-
 if not st.session_state.consent_given:
     with st.expander("Please read: Consent & privacy", expanded=True):
         st.markdown("This demo stores nothing by default and is for educational purposes only. By continuing you confirm you understand it's not clinical advice.")
-    cols = st.columns([1, 1])
+    cols = st.columns([1,1])
     if cols[0].button("I agree", key="consent_agree", type="primary"):
         st.session_state.consent_given = True
         try:
             if not st.session_state.get("_consent_rerun_done"):
                 st.session_state["_consent_rerun_done"] = True
                 st.rerun()
-        except Exception:
-            pass
+        except: pass
     if cols[1].button("Exit", key="consent_exit"):
         st.stop()
-# ── Premium Download Gate Komponent ───────────────────────────────────────────
+
 def render_premium_download_gate(pdf_bytes):
-    """
-    Renders the premium download section in a clean, professional container.
-    """
     with st.container(border=True):
         st.subheader("✅ Your Premium Health Report is ready")
-        st.markdown("""
-        We have analyzed your biomarkers and generated a tailored 30-day protocol.
-        This report includes:
-        * 🎯 **Top 3 health priorities**
-        * 📊 **Radar analysis of your biomarkers**
-        * 📝 **Actionable 30-day health plan**
-        """)
-        
-        st.write("") 
-        
-        st.download_button(
-            label="📥 Download your PDF Report (4.99 USD)",
-            data=pdf_bytes,
-            file_name="Health_Audit_Report.pdf",
-            mime="application/pdf",
-            type="primary",
-            use_container_width=True
-        )
-        
+        st.markdown("We have analyzed your biomarkers and generated a tailored 30-day protocol.\nThis report includes:\n* 🎯 **Top 3 health priorities**\n* 📊 **Radar analysis of your biomarkers**\n* 📝 **Actionable 30-day health plan**")
+        st.download_button(label="📥 Download your PDF Report (4.99 USD)", data=pdf_bytes, file_name="Health_Audit_Report.pdf", mime="application/pdf", type="primary", use_container_width=True)
         st.caption("Your purchase is secured with 100% encryption.")
 
-
-# ── PDF Hjelpefunksjonar ───────────────────────────────────────────────────────
 def para(text: str, style) -> Paragraph:
     return Paragraph(escape(str(text)).replace("\n", "<br/>"), style)
 
-
-def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
+def make_key_value_table(rows, col_widths=(55*mm, 120*mm)):
     styles = getSampleStyleSheet()
     body = styles["BodyText"]
     body.fontName = "Helvetica"
     body.fontSize = 9
     body.leading = 11
     data = [[para("Field", body), para("Value", body)]]
-    for k, v in rows:
+    for k,v in rows:
         data.append([para(k, body), para(v, body)])
     t = Table(data, colWidths=col_widths, repeatRows=1)
     t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cbd5e1")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("BACKGROUND", (0,0), (-1,0), HexColor("#0f172a")),
+        ("TEXTCOLOR", (0,0), (-1,0), white),
+        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,-1), 9),
+        ("GRID", (0,0), (-1,-1), 0.35, HexColor("#cbd5e1")),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [white, HexColor("#f8fafc")]),
+        ("VALIGN", (0,0), (-1,-1), "TOP"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING", (0,0), (-1,-1), 6),
+        ("TOPPADDING", (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
     ]))
     return t
 
