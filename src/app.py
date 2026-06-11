@@ -1760,46 +1760,77 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     
     
     
-    # ── SIDA 1: Cover + Dashboard ──
+    # ── SIDE 1 – Executive Summary (personleg) ──
     story.append(VGap(16))
     story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
-    story.append(P("Personalised Precision Health Analysis — Powered by Validated Clinical Formulas", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
+    story.append(P("Personalised Precision Health Analysis", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
     story.append(P("Premium Individual Health Report", S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
-    
+
+    # Info-boks (age, sex, height, weight, date) – uendra
     info_rows = [
         [P("AGE", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("SEX", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("HEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("WEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("DATE", S("il", size=6.5, color=MUTED, align=TA_CENTER))],
         [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
     ]
     it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
-    it.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,-1), CARD), 
-        ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), 
-        ("BOX", (0,0), (-1,-1), 1, STROKE), 
-        ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), 
-        ("TOPPADDING", (0,0), (-1,-1), 8), 
-        ("BOTTOMPADDING", (0,0), (-1,-1), 8)
-    ]))
+    it.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,-1), CARD), ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 8), ("BOTTOMPADDING", (0,0), (-1,-1), 8)]))
     story.append(it)
-    story.append(VGap(8))
-    
-    story.append(SecHeader("Overall Health Dashboard", subtitle="Composite score across 5 dimensions — for directional guidance only"))
-    story.append(VGap(6))
-    story.append(HealthScoreRing(health_score, score_label, score_col))
-    story.append(VGap(8))
-    
-    kmetrics = []
-    if bmi_v is not None: kmetrics.append(("BMI", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
-    if vo2_v is not None: kmetrics.append(("VO2max", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th pct", vo2_col.hexval()))
-    if bio_diff is not None: kmetrics.append(("Bio Age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} vs calendar", bio_col.hexval()))
-    if cur_kcal and rec_kcal:
-        d_k = int(rec_kcal - cur_kcal)
-        kmetrics.append(("Calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day", "#22C55E" if d_k < 0 else "#3B82F6"))
-    if kmetrics:
-        story.append(MetricCard(kmetrics[:4]))
-        story.append(VGap(8))
-    
-    story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
-    story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
+    story.append(VGap(12))
+
+    # ── Personleg Executive Summary (tekst) ──
+    summary_lines = []
+    # Målbasert åpning
+    goal_text = ""
+    if _goal == "Lose fat":
+        goal_text = f"Your goal is fat loss. With your current TDEE of {int(cur_kcal)} kcal/day and a recommended deficit of {int(rec_kcal)} kcal/day, you are targeting {abs(kg_pw):.2f} kg/week."
+    elif _goal == "Build muscle (bulk)":
+        goal_text = f"Your goal is muscle gain. Based on your TDEE of {int(cur_kcal)} kcal/day, we recommend a controlled surplus of {int(rec_kcal)} kcal/day with at least {_protein_g} g of protein daily."
+    else:
+        goal_text = f"Your goal is body recomposition — maintaining weight while improving composition. Your maintenance calories are {int(cur_kcal)} kcal/day. Keep protein at least {_protein_g} g/day."
+
+    summary_lines.append(goal_text)
+
+    # Personlege innsikter basert på data
+    if bmi_v is not None and bmi_v >= 30:
+        summary_lines.append(f"Your BMI of {bmi_v:.1f} indicates obesity. Focus on a modest daily calorie deficit and daily steps — small, consistent habits produce the most durable results.")
+    elif bmi_v is not None and bmi_v >= 25:
+        summary_lines.append(f"Your BMI of {bmi_v:.1f} is in the overweight range. Adding 2–3 strength sessions per week is the single most effective way to shift body composition, beyond cardio alone.")
+    if vo2_pct < 40:
+        summary_lines.append(f"Your VO2max of {vo2_v:.1f} ml/kg/min is below average for your age. Even 3×30 minutes of brisk walking per week will begin improving this.")
+    if bio_diff is not None and bio_diff > 2:
+        summary_lines.append(f"Your estimated biological age is {abs(bio_diff):.1f} years above your calendar age. Prioritising sleep consistency and daily stress management are the two highest‑ROI interventions.")
+    if ex_total_min < 150:
+        summary_lines.append(f"You currently log {ex_total_min} min/week of exercise — below the WHO 150 min/week guideline. Increasing to 150 min/week would reduce your all‑cause mortality risk by ~30%.")
+
+    summary_para = Paragraph("<br/><br/>".join(summary_lines), S("summary", size=9.5, lead=16, color=TEXT, after=12))
+    story.append(summary_para)
+    story.append(VGap(10))
+
+    # ── Topp 3 handlingar denne veka (concrete, personalised) ──
+    next_steps = []
+    if _goal == "Lose fat":
+        next_steps.append("Track your calories for 3 days using a free app — awareness alone changes behaviour.")
+        next_steps.append("Walk 8,000 steps daily. This adds ~300 kcal/day without increasing hunger.")
+        if vo2_pct < 50:
+            next_steps.append("Add 2×20 min Zone 2 cardio (easy pace) on non‑strength days.")
+    elif _goal == "Build muscle (bulk)":
+        next_steps.append("Hit your daily protein target every single day for the next 7 days.")
+        next_steps.append("Log your strength workouts: weight, sets, reps. Progress by adding 2.5 kg next week.")
+        next_steps.append("Sleep 8 hours minimum — muscle repair peaks during deep sleep.")
+    else:  # Recomp / maintenance
+        next_steps.append("Eat at your maintenance calories ±100 kcal daily. Weigh yourself weekly to confirm.")
+        next_steps.append("Strength train 3× this week: focus on compound lifts (squat, press, row).")
+        next_steps.append("Increase daily steps by 1,000 from your baseline — NEAT is the hidden driver of recomposition.")
+
+    if vo2_pct < 30 and "Zone 2" not in "".join(next_steps):
+        next_steps.append("Do 3×30 min aerobic sessions this week at a pace where you can still talk.")
+    if ex_total_min < 150 and "150 min" not in "".join(next_steps):
+        next_steps.append(f"Aim for {150 - ex_total_min} more minutes of moderate activity this week to reach the WHO guideline.")
+
+    story.append(P("🎯 YOUR TOP 3 ACTIONS THIS WEEK", S("next_h", size=11, bold=True, color=ACCENT, after=6)))
+    for i, step in enumerate(next_steps[:3], 1):
+        story.append(P(f"{i}. {step}", S("step", size=9, lead=14, color=TEXT, after=6)))
+    story.append(VGap(12))
+
     story.append(PageBreak())
     
     
@@ -1884,6 +1915,28 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             story.append(VGap(6))
     
         story.append(P("About BMI: BMI is a population screening tool. It doesn't account for muscle mass, bone density, age, or fat distribution. Use it alongside waist circumference, body fat %, and fitness metrics.", S("bn", size=8, lead=12, color=MUTED, italic=True, after=6)))
+    story.append(PageBreak())
+        # ── SIDE 2 – Visuelle grafar (radar + VO2-gauge) ──
+    story.append(SecHeader("Your Health Radar & VO₂max Ranking", subtitle="Visual summary of your 5 key dimensions"))
+    story.append(VGap(10))
+
+    # Radar chart image
+    try:
+        radar_img = _radar_chart_image()
+        story.append(RLImage(radar_img, width=CONTENT_W*0.9, height=220))
+    except:
+        story.append(P("Radar chart temporarily unavailable.", S("err", size=9, color=MUTED)))
+    story.append(VGap(10))
+
+    # VO2 gauge image (if VO2 exists)
+    if vo2_v is not None:
+        try:
+            gauge_img = _vo2_gauge_image()
+            story.append(RLImage(gauge_img, width=CONTENT_W*0.7, height=180))
+        except:
+            story.append(P("VO2 gauge temporarily unavailable.", S("err", size=9, color=MUTED)))
+    story.append(VGap(15))
+
     story.append(PageBreak())
     
     # ── PAGE 3: Cardio Fitness ──
