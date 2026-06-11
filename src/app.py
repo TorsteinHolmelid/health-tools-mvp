@@ -478,6 +478,119 @@ html, body, .stApp {
   margin: 0.5rem 0;
 }
 
+/* ========== PREMIUM LOCK CARD ========== */
+.ht-locked-card {
+  border: 1px dashed rgba(14,165,163,0.35);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(14,165,163,0.07), rgba(59,130,246,0.05));
+  padding: 22px 18px;
+  margin: 12px 0 18px 0;
+  text-align: center;
+}
+
+.ht-locked-icon {
+  font-size: 26px;
+  margin-bottom: 6px;
+}
+
+.ht-locked-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.ht-locked-sub {
+  font-size: 12.5px;
+  color: var(--muted2);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.ht-locked-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 auto 16px auto;
+  max-width: 320px;
+  filter: blur(4px);
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+
+.ht-locked-line {
+  height: 12px;
+  border-radius: 6px;
+  background: rgba(148,163,184,0.3);
+}
+
+.ht-locked-line.short {
+  width: 60%;
+  align-self: center;
+}
+
+.ht-locked-cta {
+  display: inline-block;
+  background: linear-gradient(135deg, #0EA5A3, #0F766E);
+  color: #fff !important;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 10px 24px;
+  border-radius: 999px;
+  text-decoration: none !important;
+  box-shadow: 0 8px 18px rgba(14,165,163,0.25);
+}
+
+/* ========== FREE VS PREMIUM SAMANLIKNING ========== */
+.ht-compare {
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 14px 0;
+  background: var(--card);
+}
+
+.ht-compare-row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.7fr 0.7fr;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--stroke2);
+}
+
+.ht-compare-row:last-child {
+  border-bottom: none;
+}
+
+.ht-compare-row.head {
+  background: rgba(255,255,255,0.03);
+  font-weight: 700;
+  color: var(--muted2);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ht-compare-feature {
+  color: var(--text);
+  text-align: left;
+}
+
+.ht-compare-cell {
+  text-align: center;
+  font-size: 15px;
+}
+
+.ht-compare-cell.yes {
+  color: #22C55E;
+}
+
+.ht-compare-cell.no {
+  color: #64748B;
+}
+
 /* ========== HERO (ny premium) ========== */
 .ht-hero {
   background: linear-gradient(135deg, rgba(14,165,163,.18), rgba(59,130,246,.12));
@@ -4042,6 +4155,10 @@ with col_save2:
 # ── Display results ───────────────────────────────────────────────────────────
 results = st.session_state.get("results", {})
 
+# Premium-status (brukt til å låse/vise seksjonar lenger nede)
+_unlocked = st.session_state.get("report_unlocked", False)
+stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
+
 if results:
         # --- BMI SEKSJON ---
     if "bmi" in results:
@@ -4588,7 +4705,7 @@ if results:
         st.markdown("---")
         st.subheader("Conditions & recommendations")
         if results.get("triage_recommendations"):
-            _rec_cards_html = ""
+            _rec_cards_list = []
             for _r in results["triage_recommendations"]:
                 _r_lower = str(_r).lower()
                 if any(w in _r_lower for w in ["avoid", "risk", "warning", "stop", "danger", "limit"]):
@@ -4603,7 +4720,7 @@ if results:
                     _rc = "#F59E0B"; _ri = "🩺"; _rbg = "rgba(245,158,11,0.08)"; _rb = "rgba(245,158,11,0.25)"
                 else:
                     _rc = "#0EA5A3"; _ri = "💡"; _rbg = "rgba(14,165,163,0.08)"; _rb = "rgba(14,165,163,0.25)"
-                _rec_cards_html += (
+                _rec_cards_list.append(
                     '<div style="display:flex;align-items:flex-start;gap:12px;'
                     'background:' + _rbg + ';border:1px solid ' + _rb + ';'
                     'border-left:3px solid ' + _rc + ';border-radius:12px;'
@@ -4612,9 +4729,29 @@ if results:
                     '<div style="font-size:13px;color:#E5E7EB;line-height:1.6;">' + str(_r) + '</div>'
                     '</div>'
                 )
-            st.markdown(_rec_cards_html, unsafe_allow_html=True)
+            if _unlocked:
+                st.markdown("".join(_rec_cards_list), unsafe_allow_html=True)
+            else:
+                # Vis den første anbefalinga gratis som smakebit
+                st.markdown(_rec_cards_list[0], unsafe_allow_html=True)
+                _extra_recs = max(0, len(_rec_cards_list) - 1)
+                st.markdown(
+                    f'''<div class="ht-locked-card">
+  <div class="ht-locked-icon">🔒</div>
+  <div class="ht-locked-title">+{_extra_recs} fleire personlege anbefalingar</div>
+  <div class="ht-locked-sub">Lås opp full analyse for å sjå alle anbefalingane tilpassa dine tal.</div>
+  <div class="ht-locked-lines">
+    <div class="ht-locked-line"></div>
+    <div class="ht-locked-line"></div>
+    <div class="ht-locked-line short"></div>
+  </div>
+  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Lås opp for 4,99 USD</a>
+</div>''',
+                    unsafe_allow_html=True,
+                )
         else:
             st.info(results.get("triage", {}).get("message", "No triage details."))
+
 
     # --- Retrieve required values ---
     # BMI value
@@ -4680,7 +4817,24 @@ if results:
 
         # ── Milestone roadmap ──
         milestones = plan.get("milestones", [])
-        if milestones:
+        if milestones and not _unlocked:
+            st.markdown("#### 🗺️ Milestone roadmap")
+            st.markdown(
+                f'''<div class="ht-locked-card">
+  <div class="ht-locked-icon">🔒</div>
+  <div class="ht-locked-title">Din fulle {len(milestones)}-vekers vekeplan</div>
+  <div class="ht-locked-sub">Lås opp for å sjå veke-for-veke milepælar, framdrift mot målet ditt og personlege coach-innsikter.</div>
+  <div class="ht-locked-lines">
+    <div class="ht-locked-line"></div>
+    <div class="ht-locked-line"></div>
+    <div class="ht-locked-line"></div>
+    <div class="ht-locked-line short"></div>
+  </div>
+  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Lås opp for 4,99 USD</a>
+</div>''',
+                unsafe_allow_html=True,
+            )
+        if milestones and _unlocked:
             st.markdown("#### 🗺️ Milestone roadmap")
             _start_w = float(weight_kg)
             _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
@@ -4786,6 +4940,46 @@ if _unlocked:
     st.success("✅ Report unlocked!")
 
 if not _unlocked:
+    st.markdown(
+        '''<div class="ht-compare">
+  <div class="ht-compare-row head">
+    <div class="ht-compare-feature">Funksjon</div>
+    <div class="ht-compare-cell">Gratis</div>
+    <div class="ht-compare-cell">Premium</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">BMI, energi & VO2max-oversikt</div>
+    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Biologisk alder</div>
+    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Alle personlege anbefalingar</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Full 12-vekers vekeplan & milepælar</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">AI Coach-innsikter</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Nedlastbar PDF-rapport</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+</div>''',
+        unsafe_allow_html=True
+    )
     st.markdown(
         '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
         'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
