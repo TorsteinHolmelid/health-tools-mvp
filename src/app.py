@@ -1866,6 +1866,24 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
     score_col = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
     score_label = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
+
+    # --- Radar scores mapping (må vere før HealthScoreRing) ---
+    radar = {}
+    radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75 if (bmi_v and 17 <= bmi_v < 27) else 50 if (bmi_v and 15 <= bmi_v < 30) else 25 if bmi_v else 50)
+    radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
+    radar["Bio Age"]   = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
+    radar["Activity"]  = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
+    life = 60
+    for f in factors:
+        try:
+            d = float(f.get("delta", 0))
+            if d < 0:
+                life = min(100, life + 8)
+            elif d > 1:
+                life = max(10, life - 8)
+        except:
+            pass
+    radar["Lifestyle"] = max(0, min(100, life))
     story.append(HealthScoreRing(health_score, score_label, score_col))
     story.append(VGap(8))
     
