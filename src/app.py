@@ -3777,31 +3777,42 @@ if st.session_state.generated:
                 else:
                     results["plan"] = plan
 
-        # Nå lagrer vi til databasen ETTER at alle beregninger er gjort
+# ── Manuell lagring ──────────────────────────────────────────────
+st.markdown("---")
+col_save1, col_save2 = st.columns([3, 1])
+with col_save1:
+    st.caption("Målingane vert ikkje lagra automatisk. Trykk knappen for å lagre dagens data til historikken din.")
+with col_save2:
+    if st.button("💾 Save this measurement to history", type="primary", use_container_width=True):
         try:
-            db = get_db_client()
-            # Hent verdiar frå results
-            weight_val = results.get("bmi", {}).get("value") if "bmi" in results else None
-            bmi_val = results.get("bmi", {}).get("value")
-            vo2_val = results.get("vo2", {}).get("value")
-            bio_val = results.get("bio_age", {}).get("value")
-            # Weekly activity minutes – hent frå session_state (exercise_last)
-            weekly_act = st.session_state.get("exercise_last", {}).get("minutes", 0) * st.session_state.get("exercise_last", {}).get("sessions_per_week", 0)
-            # Resting HR – hent frå session_state
-            resting_hr_val = st.session_state.get("global_resting_hr") or st.session_state.get("resting_hr")
-            
-            save_health_metrics(
-    db,
-    weight=weight_f,
-    bmi=bmi_value,
-    vo2max=vo2_value,
-    bio_age=bio_age,
-    weekly_activity_minutes=weekly_minutes,
-    resting_hr=resting_hr
-)
-            print("Data saved successfully.")
+            # Hent dei siste resultata (berre den noverande økta)
+            res = st.session_state.get("results", {})
+            if not res:
+                st.error("Ingen resultat å lagre. Køyr 'Calculate' først.")
+            else:
+                db = get_db_client()
+                # Hent ut enkeltverdiane (tilpass etter dine variabelnamn)
+                weight_val = weight_kg if 'weight_kg' in locals() else None
+                bmi_val = res.get("bmi", {}).get("value")
+                vo2_val = res.get("vo2", {}).get("value")
+                bio_val = res.get("bio_age", {}).get("value")
+                # Hent aktivitetsdata frå session_state (der du har lagra dei)
+                weekly_min = st.session_state.get("v_weekly_minutes", weekly_minutes)
+                resting_hr_val = st.session_state.get("resting_hr") or st.session_state.get("basic_resting_hr")
+                
+                save_health_metrics(
+                    db,
+                    weight=weight_val,
+                    bmi=bmi_val,
+                    vo2max=vo2_val,
+                    bio_age=bio_val,
+                    weekly_activity_minutes=weekly_min,
+                    resting_hr=resting_hr_val
+                )
+                st.success("✅ Måling lagra! Gå til 'My Progress' for å sjå utvikling.")
+                st.balloons()
         except Exception as e:
-            st.error(f"Could not save to history: {e}")
+            st.error(f"Feil ved lagring: {e}")
             
         # Oppdater session state slik at resten av appen får resultata
         st.session_state["results"] = results
