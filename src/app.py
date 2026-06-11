@@ -131,6 +131,9 @@ def plot_radar_as_bytes(bmi_score, vo2_score, activity_score, lifestyle_score):
     return buf
 
 def plot_vo2_gauge_as_bytes(percentile):
+    import matplotlib.pyplot as plt
+    from io import BytesIO
+
     fig, ax = plt.subplots(figsize=(6, 1.2))
     ax.set_xlim(0, 100)
     ax.set_ylim(0, 1)
@@ -1058,20 +1061,32 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
 
 # ── Hovedfunksjon for Ultimate PDF Generering ─────────────────────────────────
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
+    import io, math
+    from datetime import datetime, timezone
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.lib.colors import HexColor, white, black
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer,
+        Table, TableStyle, HRFlowable, Image as RLImage
+    )
+    from html import escape
+
     buffer = io.BytesIO()
-    # Dimensjonar
     PAGE_W, PAGE_H = A4
     MARGIN_H = 18 * mm
+    CONTENT_W = PAGE_W - 2 * MARGIN_H
+
     doc = SimpleDocTemplate(
-        buffer, 
-        pagesize=A4,
-        leftMargin=MARGIN_H, 
-        rightMargin=MARGIN_H, 
-        topMargin=26 * mm, 
-        bottomMargin=18 * mm
+        buffer, pagesize=A4,
+        leftMargin=MARGIN_H, rightMargin=MARGIN_H,
+        topMargin=26 * mm, bottomMargin=18 * mm
     )
 
-    # Theme og Fargar
+    # Fargar
     BG      = HexColor("#0B1220")
     CARD    = HexColor("#111C33")
     CARD2   = HexColor("#0F172A")
@@ -1085,27 +1100,20 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     STROKE  = HexColor("#334155")
     DIM     = HexColor("#64748B")
 
-    # Hjelpefunksjonar for tekst
     _styles = getSampleStyleSheet()
     def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
         return ParagraphStyle(
-            name,
-            parent=_styles["Normal"],
+            name, parent=_styles["Normal"],
             fontName="Helvetica-Bold" if bold else ("Helvetica-Oblique" if italic else "Helvetica"),
-            fontSize=size,
-            textColor=color,
-            spaceAfter=after,
-            leading=lead or (size + 4),
-            alignment=align
+            fontSize=size, textColor=color, spaceAfter=after,
+            leading=lead or (size + 4), alignment=align
         )
-
-    def P(txt, style):
-        return Paragraph(str(txt), style)
-
+    def P(txt, style): return Paragraph(str(txt), style)
     def _sf(x):
         try: return float(x)
         except: return None
-    # ----- Personal executive summary (narrative) -----
+
+    # ----- Nye hjelpefunksjonar for personleg tekst -----
     def personal_executive_summary():
         inp = report.get("inputs", {})
         bmi_d = report.get("bmi", {})
@@ -1121,54 +1129,31 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         bio_val = bio_d.get("value")
         bio_diff = (bio_val - age) if (bio_val and age) else None
         total_min = (ex.get("minutes", 0) or 0) * (ex.get("sessions_per_week", 0) or 0)
-        goal = plan.get("goal", "maintenance")
         rate = plan.get("kg_per_week")
 
         sentences = []
-
         if bmi_val:
-            if bmi_val < 18.5:
-                sentences.append(f"Your BMI of {bmi_val:.1f} is in the underweight range. This means your body has low energy reserves – the top priority is to increase calorie intake while doing resistance training 3x/week.")
-            elif bmi_val < 25:
-                sentences.append(f"Your BMI of {bmi_val:.1f} is in the optimal longevity zone. Your focus should shift from weight to body composition – aim to gain muscle while keeping BMI stable.")
-            elif bmi_val < 30:
-                sentences.append(f"With a BMI of {bmi_val:.1f}, you are in the overweight category. A modest deficit of 300–500 kcal/day combined with strength training will produce the most sustainable fat loss.")
-            else:
-                sentences.append(f"Your BMI of {bmi_val:.1f} is in the obese range. The most effective first step is not aggressive dieting but establishing a daily step target of 8,000 and two full-body strength sessions per week.")
-
+            if bmi_val < 18.5: sentences.append(f"Your BMI of {bmi_val:.1f} is in the underweight range – focus on calorie surplus and resistance training.")
+            elif bmi_val < 25: sentences.append(f"Your BMI of {bmi_val:.1f} is optimal – now focus on body recomposition (muscle gain).")
+            elif bmi_val < 30: sentences.append(f"Your BMI of {bmi_val:.1f} is in the overweight category – a moderate deficit of 300–500 kcal/day works best.")
+            else: sentences.append(f"Your BMI of {bmi_val:.1f} is in the obese range – start with daily steps and two strength sessions per week.")
         if vo2_val:
-            if vo2_pct < 40:
-                sentences.append(f"Your VO₂max of {vo2_val:.1f} ml/kg/min places you in the bottom {int(vo2_pct)}th percentile for your age. This is the single strongest predictor of long‑term health – and it responds quickly. Starting 3×30 min of easy Zone 2 cardio per week will deliver measurable improvements in 6 weeks.")
-            elif vo2_pct < 70:
-                sentences.append(f"Your VO₂max of {vo2_val:.1f} ml/kg/min is in the {int(vo2_pct)}th percentile – good, but there is room to grow. Adding just one interval session per week (e.g., 4×4 min hard effort) will raise your ceiling significantly.")
-            else:
-                sentences.append(f"Excellent! Your VO₂max of {vo2_val:.1f} ml/kg/min is above the {int(vo2_pct)}th percentile. To maintain this advantage, never take more than 10 days off from aerobic training – detraining starts quickly.")
-
+            if vo2_pct < 40: sentences.append(f"Your VO₂max of {vo2_val:.1f} is in the bottom {int(vo2_pct)}th percentile – 3x30 min Zone 2 cardio will improve it quickly.")
+            elif vo2_pct < 70: sentences.append(f"Your VO₂max of {vo2_val:.1f} is in the {int(vo2_pct)}th percentile – add one interval session per week.")
+            else: sentences.append(f"Excellent! Your VO₂max of {vo2_val:.1f} is above the {int(vo2_pct)}th percentile – maintain with 2–3 sessions/week.")
         if bio_diff is not None:
-            if bio_diff < -1:
-                sentences.append(f"Your estimated biological age is {abs(bio_diff):.1f} years younger than your calendar age. This is a powerful sign that your current habits are working – protect them with consistency.")
-            elif bio_diff > 1:
-                sentences.append(f"Your biological age is {bio_diff:.1f} years older than your calendar age. The two biggest levers to reverse this are sleep consistency (fixed bedtime ±30 min) and increasing your VO₂max by 3–5 ml/kg/min.")
-            else:
-                sentences.append(f"Your biological age matches your calendar age – you are not losing ground. Now is the perfect moment to pick one of the red/amber factors from your breakdown and focus on it for 8 weeks.")
-
+            if bio_diff < -1: sentences.append(f"Your biological age is {abs(bio_diff):.1f} years younger than calendar age – protect these habits.")
+            elif bio_diff > 1: sentences.append(f"Your biological age is {bio_diff:.1f} years older – focus on sleep consistency and VO₂max.")
+            else: sentences.append(f"Your biological age matches calendar age – pick one red/amber factor to improve.")
         if total_min:
-            if total_min < 150:
-                sentences.append(f"You currently log {total_min} min/week of exercise, which is {150 - total_min} min below the WHO recommendation. Even adding 20 min of brisk walking 3 times this week will reduce your all‑cause mortality risk.")
-            else:
-                sentences.append(f"You meet the WHO guideline with {total_min} min/week – great foundation. The next upgrade is adding 2 strength sessions per week if you haven't already; it's the most underused tool for metabolic health.")
-
-        if rate is not None and abs(rate) > 0.01:
-            if rate < 0:
-                sentences.append(f"Your goal is to lose {abs(rate):.2f} kg/week. At this rate, you will reach your target in {plan.get('weeks', '?')} weeks. Keep protein at 1.8 g/kg/day to preserve muscle.")
-            elif rate > 0:
-                sentences.append(f"You are in a lean gain phase at +{rate:.2f} kg/week. Pair this surplus with progressive overload in the gym – otherwise the extra calories will become fat.")
-            else:
-                sentences.append(f"You are aiming for body recomposition – maintaining weight while changing composition. This works best with protein ≥2.0 g/kg/day and consistent strength training.")
-
+            if total_min < 150: sentences.append(f"You log {total_min} min/week – {150-total_min} min below WHO recommendation. Even 20 min of brisk walking helps.")
+            else: sentences.append(f"You meet WHO guideline with {total_min} min/week – add strength training for metabolic health.")
+        if rate and abs(rate) > 0.01:
+            if rate < 0: sentences.append(f"Your goal: lose {abs(rate):.2f} kg/week. Keep protein at 1.8 g/kg/day to preserve muscle.")
+            elif rate > 0: sentences.append(f"You are in a lean gain phase (+{rate:.2f} kg/week) – pair with progressive overload.")
+            else: sentences.append(f"Body recomposition at maintenance – protein ≥2.0 g/kg/day and consistent strength training.")
         return "<br/><br/>".join(sentences[:5])
 
-    # ----- This week's action steps (concrete, personalised) -----
     def this_weeks_actions():
         bmi_val = report.get("bmi", {}).get("value")
         vo2_pct = report.get("vo2", {}).get("percentile", 50)
@@ -1178,98 +1163,79 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         goal = report.get("plan", {}).get("goal", "maintenance")
 
         actions = []
-
-        # Action 1: weakest domain
         weaknesses = []
-        if bmi_val and (bmi_val < 18.5 or bmi_val > 27):
-            weaknesses.append(("body composition", "Follow your calorie target every day this week – even on weekends."))
-        if vo2_pct < 50:
-            weaknesses.append(("cardio fitness", "Do three 30‑minute walks at a conversational pace (Zone 2)."))
-        if bio_diff and bio_diff > 1:
-            weaknesses.append(("biological age", "Go to bed and wake up at the same time (±30 min) every single day."))
-        if total_min < 150:
-            weaknesses.append(("activity volume", "Add 15 minutes of movement before breakfast each morning."))
+        if bmi_val and (bmi_val < 18.5 or bmi_val > 27): weaknesses.append(("body composition", "Follow your calorie target every day this week."))
+        if vo2_pct < 50: weaknesses.append(("cardio fitness", "Do three 30‑minute walks at conversational pace (Zone 2)."))
+        if bio_diff and bio_diff > 1: weaknesses.append(("biological age", "Go to bed and wake up at the same time (±30 min) every day."))
+        if total_min < 150: weaknesses.append(("activity volume", "Add 15 minutes of movement before breakfast each morning."))
 
         if weaknesses:
             top = weaknesses[0]
             actions.append(f"🎯 **Focus on {top[0]}:** {top[1]}")
         else:
             actions.append("🎯 **Maintain your strength:** Do two full‑body resistance sessions this week (even 20 min each).")
-
-        # Action 2: nutrition
         actions.append("🥗 **Protein anchor:** Have at least 30g of protein at every meal (breakfast, lunch, dinner).")
-        # Action 3: sleep
         actions.append("😴 **Sleep hygiene:** No screens 30 min before bed – track your sleep duration tonight.")
-        # Action 4: goal specific
         if goal.lower() == "lose fat":
             actions.append("🚶 **NEAT boost:** Walk for 10 minutes immediately after lunch and dinner.")
         elif goal.lower() == "build muscle (bulk)":
             actions.append("🏋️ **Progressive overload:** Add 2.5 kg to your main lift this week if you completed all reps last week.")
         else:
             actions.append("⚖️ **Weekly weigh‑in:** Measure your weight on the same scale, same time, two days this week – use the average.")
-        # Action 5: accountability
         actions.append("📱 **Accountability:** Tell one person your health goal for this week – verbal commitment increases follow‑through by 65%.")
         return actions
-    # Data extraction
-    inp       = report.get("inputs", {}) or {}
-    age_v     = inp.get("age", "—")
-    sex_v     = inp.get("sex", "—")
-    h_v       = inp.get("height_cm", "—")
-    w_v       = inp.get("weight_kg", "—")
+
+    # ----- Datauttrekk -----
+    inp = report.get("inputs", {}) or {}
+    age_v = inp.get("age", "—")
+    sex_v = inp.get("sex", "—")
+    h_v = inp.get("height_cm", "—")
+    w_v = inp.get("weight_kg", "—")
     gen_v = report.get("generated", datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
 
-    bmi_d     = report.get("bmi") or {}
-    vo2_d     = report.get("vo2") or {}
-    bio_d     = report.get("bio_age") or {}
-    factors   = report.get("bio_factors") or []
-    plan_d    = report.get("plan") or {}
-    exlog     = report.get("exercise_log") or {}
-    triage_r  = report.get("triage_recommendations") or []
-    whr_d     = report.get("whr") or {}
-    bf_d      = report.get("bodyfat") or {}
+    bmi_d = report.get("bmi") or {}
+    vo2_d = report.get("vo2") or {}
+    bio_d = report.get("bio_age") or {}
+    factors = report.get("bio_factors") or []
+    plan_d = report.get("plan") or {}
+    exlog = report.get("exercise_log") or {}
+    triage_r = report.get("triage_recommendations") or []
+    whr_d = report.get("whr") or {}
+    bf_d = report.get("bodyfat") or {}
 
-    bmi_v     = _sf(bmi_d.get("value"))
-    bmi_cat   = str(bmi_d.get("category", ""))
-    vo2_v     = _sf(vo2_d.get("value"))
-    vo2_pct   = _sf(vo2_d.get("percentile")) or 0.0
-    vo2_rat   = str(vo2_d.get("rating", ""))
-    vo2_meth  = str(vo2_d.get("method", ""))
-    vo2_band  = str(vo2_d.get("age_band", ""))
-    vo2_mean  = _sf(vo2_d.get("mean"))
-    bio_v     = _sf(bio_d.get("value"))
-    age_f     = _sf(age_v)
+    bmi_v = _sf(bmi_d.get("value"))
+    bmi_cat = str(bmi_d.get("category", ""))
+    vo2_v = _sf(vo2_d.get("value"))
+    vo2_pct = _sf(vo2_d.get("percentile")) or 0.0
+    vo2_rat = str(vo2_d.get("rating", ""))
+    vo2_meth = str(vo2_d.get("method", ""))
+    vo2_band = str(vo2_d.get("age_band", ""))
+    vo2_mean = _sf(vo2_d.get("mean"))
+    bio_v = _sf(bio_d.get("value"))
+    age_f = _sf(age_v)
 
-    has_plan  = bool(plan_d and not plan_d.get("error"))
-    cur_kcal  = _sf(plan_d.get("current_needs_kcal")) if has_plan else None
-    rec_kcal  = _sf(plan_d.get("recommended_daily_kcal")) if has_plan else None
-    kg_pw     = _sf(plan_d.get("kg_per_week")) if has_plan else None
+    has_plan = bool(plan_d and not plan_d.get("error"))
+    cur_kcal = _sf(plan_d.get("current_needs_kcal")) if has_plan else None
+    rec_kcal = _sf(plan_d.get("recommended_daily_kcal")) if has_plan else None
+    kg_pw = _sf(plan_d.get("kg_per_week")) if has_plan else None
     milestones = plan_d.get("milestones", []) if has_plan else []
 
-    ex_act    = str(exlog.get("activity", ""))
-    ex_int    = str(exlog.get("intensity", ""))
-    ex_min    = exlog.get("minutes", 0)
-    ex_sess   = exlog.get("sessions_per_week", 0)
+    ex_act = str(exlog.get("activity", ""))
+    ex_int = str(exlog.get("intensity", ""))
+    ex_min = exlog.get("minutes", 0)
+    ex_sess = exlog.get("sessions_per_week", 0)
     ex_kcal_s = _sf(exlog.get("kcal_per_session")) or 0.0
     ex_kcal_w = _sf(exlog.get("kcal_per_week")) or 0.0
     ex_total_min = int(ex_min or 0) * int(ex_sess or 0)
 
-    _goal         = plan_d.get("goal", "Maintenance")
-    _has_strength = plan_d.get("has_strength", False)
-    _has_cardio   = plan_d.get("has_cardio", False)
-    _has_sport    = plan_d.get("has_sport", False)
-    _has_low      = plan_d.get("has_low", False)
+    _goal = plan_d.get("goal", "Maintenance")
 
-    _sel_strength = plan_d.get("selected_strength", "—")
-    _sel_cardio   = plan_d.get("selected_cardio", "—")
-    _sel_sport    = plan_d.get("selected_sport", "—")
-    _sel_low      = plan_d.get("selected_low", "—")
-
-    # Farge-helpers deklarert inni funksjonen
+    # Fargehjelpere
     def bmi_color(v):
         if v is None: return MUTED
-        if v < 18.5:  return BLUE
-        if v < 25:    return GOOD
-        if v < 30:    return WARN
+        if v < 18.5: return BLUE
+        if v < 25: return GOOD
+        if v < 30: return WARN
         return BAD
 
     def vo2_color(pct):
@@ -1280,17 +1246,17 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
 
     def bio_color(diff):
         if diff is None: return MUTED
-        if diff <= -1:   return GOOD
-        if diff <= 2:    return WARN
+        if diff <= -1: return GOOD
+        if diff <= 2: return WARN
         return BAD
 
-    bmi_col  = bmi_color(bmi_v)
-    vo2_col  = vo2_color(vo2_pct)
+    bmi_col = bmi_color(bmi_v)
+    vo2_col = vo2_color(vo2_pct)
     bio_diff = (bio_v - age_f) if (bio_v is not None and age_f is not None) else None
     if bio_diff is not None:
         bio_diff = max(-5.0, min(5.0, bio_diff))
         bio_v = age_f + bio_diff
-    bio_col  = bio_color(bio_diff)
+    bio_col = bio_color(bio_diff)
 
 # ── Bygging av PDF Story ──────────────────────────────────────────────────
     def draw_page(canvas, doc):
@@ -1317,39 +1283,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     
     
    
-    # Health score kalkulering
-    score_parts = []
-    if bmi_v is not None:
-        if 18.5 <= bmi_v < 25:   score_parts.append(100)
-        elif 17 <= bmi_v < 27:   score_parts.append(75)
-        elif 15 <= bmi_v < 30:   score_parts.append(50)
-        else:                     score_parts.append(25)
-    if vo2_v is not None:
-        score_parts.append(min(100, int(vo2_pct)))
-    if bio_diff is not None:
-        score_parts.append(max(0, min(100, int(70 - bio_diff * 10))))
-    if ex_total_min:
-        score_parts.append(min(100, int(ex_total_min / 300 * 100)))
-    health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
-    score_col    = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
-    score_label  = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
-    
-    # Radar scores mapping
-    radar = {}
-    radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75  if (bmi_v and 17 <= bmi_v < 27) else 50  if (bmi_v and 15 <= bmi_v < 30) else 25  if bmi_v else 50)
-    radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
-    radar["Bio Age"]   = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
-    radar["Activity"]  = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
-    life = 60
-    for f in factors:
-        try:
-            d = float(f.get("delta", 0))
-            if d < 0: life = min(100, life + 8)
-            elif d > 1: life = max(10, life - 8)
-        except: pass
-    radar["Lifestyle"] = max(0, min(100, life))
-    
-    # Health Levers logikk
+    # Biggest lever
     if vo2_v is not None and vo2_pct < 40:
         biggest_lever = "Cardio fitness (VO2max)"
         lever_why = "The single most impactful modifiable longevity factor — and the fastest to improve with training."
@@ -1365,29 +1299,26 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     else:
         biggest_lever = "Strength training + progressive overload"
         lever_why = "Your core markers are solid — the next tier of improvement comes from consistent resistance training."
-    
-    # Insights generering
+
+    # Insights (same as before)
     insights = []
     if bmi_v is not None:
-        if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps. Avoid aggressive cuts — they accelerate muscle loss and reduce long-term adherence. Aim for 0.5–0.75 kg/week loss."))
-        elif bmi_v >= 25: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is slightly elevated. Strength training 2–3x/week combined with a modest deficit is more effective than cardio alone. A loss rate of 0.5 kg/week preserves significantly more lean mass than faster approaches."))
-        elif bmi_v < 18.5: insights.append(("Body Composition", BLUE, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is below the typical range. Prioritise progressive strength training and ensure adequate protein (≥1.6 g/kg/day) and total energy intake. Avoid calorie deficits — focus on building lean mass and strength."))
-        else: insights.append(("Body Composition", GOOD, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is in the normal range. The biggest upgrades now come from cardio fitness and strength, not body weight changes. Use resistance training and aerobic capacity as your primary targets."))
-    
+        if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps."))
+        elif bmi_v >= 25: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is slightly elevated. Strength training 2–3x/week combined with a modest deficit is more effective than cardio alone."))
+        elif bmi_v < 18.5: insights.append(("Body Composition", BLUE, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is below the typical range. Prioritise progressive strength training and ensure adequate protein (≥1.6 g/kg/day)."))
+        else: insights.append(("Body Composition", GOOD, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is in the normal range. Focus on cardio fitness and strength."))
     if vo2_v is not None:
-        if vo2_pct < 30: insights.append(("Cardio Fitness", BAD, f"Your VO2max of {vo2_v:.1f} ml/kg/min ({vo2_pct:.0f}th percentile) is in the lowest tier. VO2max is the strongest predictor of all-cause mortality. The good news: it responds quickly. Start with 3–4x 30-min easy aerobic sessions per week. Expect noticeable improvement in 4–6 weeks."))
-        elif vo2_pct < 50: insights.append(("Cardio Fitness", WARN, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is below average. Adding one structured interval session weekly (e.g. 4×4 min hard effort) alongside 2 easy sessions typically produces the fastest improvement over 6–12 weeks."))
-        elif vo2_pct < 75: insights.append(("Cardio Fitness", BLUE, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is above average. To push higher, use 80/20 training — 80% easy effort, 20% hard. Most people accidentally do 50/50, which leads to fatigue without meaningful VO2 adaptation."))
-        else: insights.append(("Cardio Fitness", GOOD, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is excellent. Maintain with 2–3 quality sessions/week. Avoid unplanned breaks over 2 weeks — detraining begins quickly."))
-    
+        if vo2_pct < 30: insights.append(("Cardio Fitness", BAD, f"Your VO2max of {vo2_v:.1f} ml/kg/min ({vo2_pct:.0f}th percentile) is low. Start with 3–4x 30-min easy aerobic sessions per week."))
+        elif vo2_pct < 50: insights.append(("Cardio Fitness", WARN, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is below average. Add one interval session weekly."))
+        elif vo2_pct < 75: insights.append(("Cardio Fitness", BLUE, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is above average. Use 80/20 training."))
+        else: insights.append(("Cardio Fitness", GOOD, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is excellent. Maintain with 2–3 quality sessions/week."))
     if bio_diff is not None:
-        if bio_diff > 3: insights.append(("Biological Age", BAD, f"Estimated biological age ({bio_v:.1f} yrs) is {bio_diff:.1f} years above calendar age. This is driven by lifestyle factors — most are reversible. Highest-impact levers: sleep consistency, cardio fitness, blood pressure control, and stress management."))
-        elif bio_diff > 0: insights.append(("Biological Age", WARN, f"Estimated biological age ({bio_v:.1f} yrs) is slightly above calendar age ({bio_diff:.1f} yrs). This gap is small and reversible. Focus on the red/amber factors in your factor breakdown."))
-        else: insights.append(("Biological Age", GOOD, f"Estimated biological age ({bio_v:.1f} yrs) is {abs(bio_diff):.1f} yrs below calendar age. This reflects well on your current habits. Maintain them — consistency is what sustains this."))
-    
+        if bio_diff > 3: insights.append(("Biological Age", BAD, f"Estimated biological age ({bio_v:.1f} yrs) is {bio_diff:.1f} years above calendar age. Focus on sleep, cardio fitness, and stress management."))
+        elif bio_diff > 0: insights.append(("Biological Age", WARN, f"Estimated biological age ({bio_v:.1f} yrs) is slightly above calendar age ({bio_diff:.1f} yrs). Focus on red/amber factors."))
+        else: insights.append(("Biological Age", GOOD, f"Estimated biological age ({bio_v:.1f} yrs) is {abs(bio_diff):.1f} yrs below calendar age. Maintain your habits."))
     if exlog:
-        if ex_total_min < 150: insights.append(("Exercise Volume", WARN, f"You're logging {ex_total_min} min/week — {150 - ex_total_min} min short of the WHO 150 min/week guideline. Even small increases (+20 min/week) measurably reduce all-cause mortality and metabolic disease risk."))
-        else: insights.append(("Exercise Volume", GOOD, f"You're meeting WHO guidelines with {ex_total_min} min/week ({ex_kcal_w:.0f} kcal/week). Consider adding strength training if not already included — it's the most underutilised tool for metabolic health and longevity."))
+        if ex_total_min < 150: insights.append(("Exercise Volume", WARN, f"You're logging {ex_total_min} min/week — {150 - ex_total_min} min short of WHO guideline."))
+        else: insights.append(("Exercise Volume", GOOD, f"You're meeting WHO guidelines with {ex_total_min} min/week. Add strength training if missing."))
     
     interval_t = "Short intervals (4×4 min hard)" if vo2_pct < 60 else "Tempo run / threshold (25 min)"
     plan_7 = [
@@ -1404,11 +1335,10 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     
     # ── Lokale Custom Flowables ────────────────
     class VGap(Flowable):
-        def __init__(self, h=8):
-            super().__init__(); self._h = h
+        def __init__(self, h=8): super().__init__(); self._h = h
         def wrap(self, aw, ah): return aw, self._h
         def draw(self): pass
-    
+
     class SecHeader(Flowable):
         def __init__(self, title, subtitle="", accent=None, width=CONTENT_W):
             super().__init__()
@@ -1453,27 +1383,28 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             self.score = score; self.label = label; self.color = color; self.w = width; self.h = 130
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
-            c = self.canv; cx = self.w / 2; cy = self.h / 2 + 14; R = 46
+            c = self.canv; cx = self.w/2; cy = self.h/2 + 14; R = 46
             c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
-            frac = self.score / 100.0; steps = max(2, int(frac * 72))
+            frac = self.score/100.0; steps = max(2, int(frac*72))
             for i in range(steps):
-                a1 = math.pi / 2 - (i / 72) * 2 * math.pi
-                a2 = math.pi / 2 - ((i + 1) / 72) * 2 * math.pi
+                a1 = math.pi/2 - (i/72)*2*math.pi
+                a2 = math.pi/2 - ((i+1)/72)*2*math.pi
                 c.setStrokeColor(self.color); c.setLineWidth(13)
-                c.line(cx + R * math.cos(a1), cy + R * math.sin(a1), cx + R * math.cos(a2), cy + R * math.sin(a2))
+                c.line(cx + R*math.cos(a1), cy + R*math.sin(a1), cx + R*math.cos(a2), cy + R*math.sin(a2))
             c.setFillColor(self.color); c.setFont("Helvetica-Bold", 28)
-            c.drawCentredString(cx, cy + 6, str(self.score))
+            c.drawCentredString(cx, cy+6, str(self.score))
             c.setFillColor(MUTED); c.setFont("Helvetica", 8)
-            c.drawCentredString(cx, cy - 8, "/ 100")
+            c.drawCentredString(cx, cy-8, "/100")
             c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 10)
-            c.drawCentredString(cx, cy - 22, self.label)
-            dims = list(radar.items()); dw = self.w / len(dims)
+            c.drawCentredString(cx, cy-22, self.label)
+            dims = list(radar.items()); dw = self.w/len(dims)
             for j, (dim, sc) in enumerate(dims):
-                dx = j * dw + dw / 2; dy = 10
-                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
-                c.setFillColor(CARD2); c.roundRect(j * dw + 2, 2, dw - 4, 24, 4, fill=1, stroke=0)
-                c.setFillColor(dc); c.setFont("Helvetica-Bold", 9); c.drawCentredString(dx, dy + 8, str(sc))
-                c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawCentredString(dx, dy, dim)
+                dx = j*dw + dw/2; dy = 10
+                dc = GOOD if sc>=70 else WARN if sc>=45 else BAD
+                c.setFillColor(CARD2); c.roundRect(j*dw+2,2,dw-4,24,4,fill=1,stroke=0)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold",9); c.drawCentredString(dx, dy+8, str(sc))
+                c.setFillColor(MUTED); c.setFont("Helvetica",6); c.drawCentredString(dx, dy, dim)
+
     
     class BMIScale(Flowable):
         def __init__(self, bmi_val, width=CONTENT_W):
