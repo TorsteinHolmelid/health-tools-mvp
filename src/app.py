@@ -18,12 +18,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer, 
     Table, TableStyle, HRFlowable, Image as RLImage
 )
-from pdf_premium_additions import (
-     build_executive_summary_text,
-     render_radar_png,
-     render_vo2_gauge_png,
-     NextStepsFlowable,
-   )
+
 import streamlit as st
 from db import sign_up, sign_in, is_authenticated, get_current_user_id, sign_out
 
