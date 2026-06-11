@@ -3820,7 +3820,7 @@ with col_save2:
                 st.success("✅ Measurement saved! Go to 'My Progress' to view your progress.")
                 st.balloons()
         except Exception as e:
-            st.error(f"Feil ved lagring: {e}")
+            st.error(f"Error saving: {e}")
 # ── Display results ───────────────────────────────────────────────────────────
 results = st.session_state.get("results", {})
 
