@@ -107,8 +107,9 @@ def P(txt, style):
 if "generated" not in st.session_state:
     st.session_state.generated = False
 
+# Ikkje generer eigen UUID for innlogga brukarar – user_id kjem frå auth
 if "user_id" not in st.session_state:
-    st.session_state["user_id"] = str(uuid.uuid4())
+    st.session_state["user_id"] = None
 
 st.set_page_config(
     page_title="Health Tools MVP",
