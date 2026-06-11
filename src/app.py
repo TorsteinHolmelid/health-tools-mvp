@@ -15,36 +15,18 @@ from reportlab.lib.colors import HexColor, white, black
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer,
+    SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer, 
     Table, TableStyle, HRFlowable, Image as RLImage
 )
+import streamlit as st
 from db import sign_up, sign_in, is_authenticated, get_current_user_id, sign_out
 
-import numpy as np
-import plotly.graph_objects as go
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.patches as mpatches
-from matplotlib.patches import FancyBboxPatch
-
-# ── Globale fargekonstanter ──────────────────────────────────────────────────
-BG      = HexColor("#0B1220")
-CARD    = HexColor("#111C33")
-CARD2   = HexColor("#0F172A")
-ACCENT  = HexColor("#0EA5A3")
-BLUE    = HexColor("#3B82F6")
-GOOD    = HexColor("#22C55E")
-WARN    = HexColor("#F59E0B")
-BAD     = HexColor("#EF4444")
-TEXT    = HexColor("#E5E7EB")
-MUTED   = HexColor("#94A3B8")
-STROKE  = HexColor("#334155")
-DIM     = HexColor("#64748B")
-
-# ── Innlogging / registrering (uendra) ──────────────────────────────────────
+# --- Innlogging / registrering ---
 if not is_authenticated():
     st.title("🏥 Health Tools - Login")
+    
     tab1, tab2 = st.tabs(["Log in", "Sign up"])
+    
     with tab1:
         email = st.text_input("Email", key="login_email")
         password = st.text_input("Password", type="password", key="login_password")
@@ -55,8 +37,9 @@ if not is_authenticated():
             else:
                 st.session_state["authenticated"] = True
                 st.session_state["user_id"] = user.id
-                st.session_state["user_email"] = email
+                st.session_state["user_email"] = email   # <-- legg til denne linja
                 st.rerun()
+    
     with tab2:
         email = st.text_input("Email", key="signup_email")
         password = st.text_input("Password", type="password", key="signup_password")
@@ -66,11 +49,15 @@ if not is_authenticated():
                 st.error(f"Signup failed: {error}")
             else:
                 st.success("Account created! Please check your email to confirm (if required), then log in.")
-    st.stop()
+    
+    st.stop()  # Stopp her viss ikkje innlogga
 
+# No kan resten av appen køyre som før, men med innlogga brukar
 st.sidebar.button("Log out", on_click=sign_out)
+
 _user_email = st.session_state.get("user_email", "")
 _avatar_letter = (_user_email[0].upper() if _user_email else "U")
+
 st.sidebar.markdown(
     f"""
 <div class="ht-side-card">
@@ -90,16 +77,21 @@ st.sidebar.markdown(
     unsafe_allow_html=True,
 )
 
+# --- Resten av din eksisterande kode i app.py (berre endre funksjonskall) ---
+# Merk: save_health_metrics() kallar du utan user_id-parameter no
+# get_user_history(db) kallar du utan user_id-parameter
+# has_premium_access(db) kallar du utan user_id-parameter
 import calculators
 from calculators import (
     bmr_mifflin,
     tdee_including_weekly_exercise,
 )
 from db import get_db_client, save_health_metrics
-
 def plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score):
+    import plotly.graph_objects as go
     categories = ['Kroppssammensetning', 'Kondisjon', 'Aktivitet', 'Livsstil']
     values = [bmi_score, vo2_score, activity_score, lifestyle_score]
+    
     fig = go.Figure(data=go.Scatterpolar(
         r=values,
         theta=categories,
@@ -122,8 +114,10 @@ def plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score):
     )
     return fig
 
+# ── Databaseoppsett ───────────────────────────────────────────────────────────
 db = get_db_client()
 
+# ── Globale konstantar for PDF ────────────────────────────────────────────────
 PAGE_W, PAGE_H = A4
 MARGIN_H = 18 * mm
 CONTENT_W = PAGE_W - 2 * MARGIN_H
@@ -131,65 +125,113 @@ CONTENT_W = PAGE_W - 2 * MARGIN_H
 def P(txt, style):
     return Paragraph(str(txt), style)
 
+# ── Streamlit Session State & Config ──────────────────────────────────────────
 if "generated" not in st.session_state:
     st.session_state.generated = False
+
+# Ikkje generer eigen UUID for innlogga brukarar – user_id kjem frå auth
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = None
 
-st.set_page_config(page_title="Health Tools MVP", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="Health Tools MVP",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
 
+# ── Resting HR Sync funksjonar ────────────────────────────────────────────────
 _HR_KEYS = [
     "resting_hr", "global_resting_hr", "basic_resting_hr",
     "ui_resting_hr", "vo2_rhr_value", "bio_rhr_val",
 ]
+
 def _sync_hr(source_key: str):
     val = st.session_state.get(source_key)
-    if val is None: return
-    try: v = int(val)
-    except: return
+    if val is None:
+        return
+    try:
+        v = int(val)
+    except Exception:
+        return
     for k in _HR_KEYS:
         if k != source_key:
             st.session_state[k] = v
-def sync_from_basic(): _sync_hr("basic_resting_hr")
-def sync_from_calc(): _sync_hr("ui_resting_hr")
-def sync_from_vo2(): _sync_hr("vo2_rhr_value")
-def sync_from_bio(): _sync_hr("bio_rhr_val")
 
+def sync_from_basic():
+    _sync_hr("basic_resting_hr")
+
+def sync_from_calc():
+    _sync_hr("ui_resting_hr")
+
+def sync_from_vo2():
+    _sync_hr("vo2_rhr_value")
+
+def sync_from_bio():
+    _sync_hr("bio_rhr_val")
+
+# ── PDF Styles Klasse ─────────────────────────────────────────────────────────
 class PDFStyles:
-    PRIMARY = HexColor("#0EA5A3")
-    BG = HexColor("#0B1220")
-    TEXT = HexColor("#E5E7EB")
-    MUTED = HexColor("#94A3B8")
-    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=white)
-    H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=white)
+    PRIMARY = colors.HexColor("#0EA5A3")
+    BG = colors.HexColor("#0B1220")
+    TEXT = colors.HexColor("#E5E7EB")
+    MUTED = colors.HexColor("#94A3B8")
+    
+    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=colors.white)
+    H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=colors.white)
     Body = ParagraphStyle("Body", fontName="Helvetica", fontSize=10, leading=14, spaceAfter=10, textColor=colors.lightgrey)
-    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=HexColor("#64748B"))
+    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=colors.HexColor("#64748B"))
 
+# ── Treningsplan Builder ──────────────────────────────────────────────────────
 def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                     strength_list, cardio_list, sport_list, low_list):
-    if not strength_list: strength_list = ["Strength training (weights)"]
-    if not cardio_list: cardio_list = ["Running/jogging"]
-    if not sport_list: sport_list = []
-    if not low_list: low_list = ["Walking (casual)"]
+    """
+    Lager en personlig ukestruktur basert på brukerens faktiske aktiviteter.
+    Rullerer gjennom flere aktiviteter innen hver kategori for variasjon.
+    """
+    # Standardaktiviteter hvis brukeren ikke har valgt noe
+    if not strength_list:
+        strength_list = ["Strength training (weights)"]
+    if not cardio_list:
+        cardio_list = ["Running/jogging"]
+    if not sport_list:
+        sport_list = []
+    if not low_list:
+        low_list = ["Walking (casual)"]
+
+    # Hjelpefunksjon for å velge aktivitet med rullering (basert på ukedag)
     def _cycle_activity(act_list, day_index, offset=0):
-        if not act_list: return None
+        if not act_list:
+            return None
         idx = (day_index + offset) % len(act_list)
         return act_list[idx]
+
+    # Basisoppsett – dagene som alltid finnes
     days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
     plan = []
+
     for i, day in enumerate(days):
         if day == "Sunday":
             plan.append((day, "Rest", "—", "—", "—", "Full rest or restorative yoga / stretching"))
             continue
+
+        # Velg aktiviteter basert på dag og tilgjengelige lister
+        # Vi fordeler dagene slik at alle kategorier får plass
         if goal == "Build muscle (bulk)":
-            if i in [0,2,4] and has_strength:
+            # Styrke på man, ons, fre
+            if i in [0, 2, 4] and has_strength:
                 primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength"; intensity = "Hard"; duration = "50 min"
+                session_type = "Strength"
+                intensity = "Hard"
+                duration = "50 min"
                 notes = f"Progressive overload – {primary_act} · 4×8–12 · RPE 8"
-            elif i in [1,5] and has_cardio:
+            # Kardio på tir, lør
+            elif i in [1, 5] and has_cardio:
                 primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"; intensity = "Moderate"; duration = "40 min"
+                session_type = "Cardio"
+                intensity = "Moderate"
+                duration = "40 min"
                 notes = f"Zone 2 – {primary_act} · builds aerobic base"
+            # Sport eller lav intensitet på tor
             elif i == 3 and (has_sport or has_low):
                 if has_sport:
                     primary_act = _cycle_activity(sport_list, i, 2)
@@ -197,50 +239,79 @@ def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
                 else:
                     primary_act = _cycle_activity(low_list, i, 3)
                     session_type = "Active Recovery"
-                intensity = "Light–Moderate"; duration = "35 min"
+                intensity = "Light–Moderate"
+                duration = "35 min"
                 notes = f"{primary_act} – enjoyment & recovery"
             else:
+                # Fallback til lav intensitet
                 primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
-                session_type = "Active Recovery"; intensity = "Light"; duration = "30 min"
+                session_type = "Active Recovery"
+                intensity = "Light"
+                duration = "30 min"
                 notes = f"Low-intensity movement – {primary_act} · keep HR <120"
+
         elif goal == "Lose fat":
-            if i in [0,2,4] and has_strength:
+            # Styrke + HIIT på man, ons, fre
+            if i in [0, 2, 4] and has_strength:
                 primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength + HIIT"; intensity = "Moderate–Hard"; duration = "50 min"
+                session_type = "Strength + HIIT"
+                intensity = "Moderate–Hard"
+                duration = "50 min"
                 notes = f"{primary_act} supersets (3×12) + 15 min HIIT finisher"
-            elif i in [1,3,5] and has_cardio:
+            # Kardio på tir, tor, lør
+            elif i in [1, 3, 5] and has_cardio:
                 primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"; intensity = "Moderate"; duration = "45 min"
+                session_type = "Cardio"
+                intensity = "Moderate"
+                duration = "45 min"
                 notes = f"{primary_act} – steady state fat oxidation zone (65–75% HRmax)"
             else:
+                # Sport eller lav intensitet
                 if has_sport and i in [4]:
                     primary_act = _cycle_activity(sport_list, i, 2)
                     session_type = "Sport"
                 else:
                     primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
                     session_type = "LISS / Active"
-                intensity = "Light–Moderate"; duration = "40 min"
+                intensity = "Light–Moderate"
+                duration = "40 min"
                 notes = f"{primary_act} – low impact to aid recovery while burning calories"
-        else:
-            if i in [0,2,4] and has_strength:
+
+        else:  # Body Recomposition (default)
+            # Styrke på man, ons, fre
+            if i in [0, 2, 4] and has_strength:
                 primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength"; intensity = "Moderate–Hard"; duration = "50 min"
+                session_type = "Strength"
+                intensity = "Moderate–Hard"
+                duration = "50 min"
                 notes = f"{primary_act} · 4×8–12 · progressive overload"
-            elif i in [1,5] and has_cardio:
+            # Kardio på tir, lør
+            elif i in [1, 5] and has_cardio:
                 primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"; intensity = "Moderate"; duration = "35 min"
+                session_type = "Cardio"
+                intensity = "Moderate"
+                duration = "35 min"
                 notes = f"{primary_act} – Zone 2 (65–75% HRmax) · aerobic base"
+            # Sport på tor
             elif i == 3 and has_sport:
                 primary_act = _cycle_activity(sport_list, i, 2)
-                session_type = "Sport"; intensity = "Moderate"; duration = "40 min"
+                session_type = "Sport"
+                intensity = "Moderate"
+                duration = "40 min"
                 notes = f"{primary_act} – skill practice & enjoyment"
             else:
+                # Lav intensitet som variasjon
                 primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
-                session_type = "Active Recovery"; intensity = "Light"; duration = "30 min"
+                session_type = "Active Recovery"
+                intensity = "Light"
+                duration = "30 min"
                 notes = f"{primary_act} – movement variety, NEAT & recovery"
+
         plan.append((day, session_type, primary_act, duration, intensity, notes))
+
     return plan
 
+# ── Custom Flowables ──────────────────────────────────────────────────────────
 class PremiumRadarChart(Flowable):
     def __init__(self, scores, width=400):
         super().__init__()
@@ -250,23 +321,35 @@ class PremiumRadarChart(Flowable):
     def wrap(self, aw, ah):
         return self.w, self.h
 
+
+# ── Stripe Query Param Sjekk ──────────────────────────────────────────────────
 _session_id = None
 try:
     _session_id = st.query_params.get("session_id")
-except:
+except Exception:
     try:
         _raw = st.experimental_get_query_params().get("session_id")
         _session_id = _raw[0] if isinstance(_raw, list) else _raw
-    except:
+    except Exception:
         _session_id = None
+
 if isinstance(_session_id, list):
     _session_id = _session_id[0] if _session_id else None
-if _session_id and (str(_session_id).startswith("cs_live_") or str(_session_id).startswith("cs_test_")):
+
+if _session_id and (
+    str(_session_id).startswith("cs_live_") or
+    str(_session_id).startswith("cs_test_")
+):
     st.session_state["report_unlocked"] = True
     st.session_state["stripe_session_id"] = _session_id
+
 if st.session_state.get("stripe_session_id"):
     _sid = st.session_state["stripe_session_id"]
-    st.sidebar.markdown(f"""<div class="ht-side-badge-verified">✅ Premium activated · ID …{_sid[-6:]}</div>""", unsafe_allow_html=True)
+    st.sidebar.markdown(
+        f"""<div class="ht-side-badge-verified">✅ Premium activated · ID …{_sid[-6:]}</div>""",
+        unsafe_allow_html=True,
+    )
+    
 # ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
 st.markdown(
     """
@@ -721,19 +804,24 @@ div[data-baseweb="slider"] div[role="slider"]:hover {
 
 # ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
 def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
+    """Vis animerte KPI-kort med trender"""
+    from streamlit.components.v1 import html
+    
     bmi_display = f"{bmi_val:.1f}" if bmi_val else "—"
     vo2_display = f"{vo2_val:.1f}" if vo2_val else "—"
     bio_years = f"{abs(bio_diff):.1f}" if bio_diff else "—"
     bio_text = "yngre" if bio_diff and bio_diff < 0 else "eldre" if bio_diff and bio_diff > 0 else "samme"
+    
+    # Bruk vanlig string (ikke f-string) for CSS-delen, eller escape krøllparenteser
     css_part = """
     <style>
-    .kpi-grid{{
+    .kpi-grid {{
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 1rem;
         margin: 1.5rem 0;
     }}
-    .kpi-card{{
+    .kpi-card {{
         background: linear-gradient(145deg, rgba(17,28,51,0.9), rgba(11,18,32,0.95));
         backdrop-filter: blur(4px);
         border-radius: 28px;
@@ -743,19 +831,19 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
         transition: all 0.2s ease;
         box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     }}
-    .kpi-card:hover{{
+    .kpi-card:hover {{
         transform: translateY(-3px);
         border-color: rgba(14,165,163,0.7);
         box-shadow: 0 14px 28px rgba(0,0,0,0.4);
     }}
-    .kpi-label{{
+    .kpi-label {{
         font-size: 12px;
         text-transform: uppercase;
         letter-spacing: 2px;
         color: #94A3B8;
         margin-bottom: 8px;
     }}
-    .kpi-value{{
+    .kpi-value {{
         font-size: 42px;
         font-weight: 800;
         background: linear-gradient(135deg, #E5E7EB, #0EA5A3);
@@ -764,7 +852,7 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
         color: transparent;
         line-height: 1;
     }}
-    .kpi-trend{{
+    .kpi-trend {{
         font-size: 12px;
         margin-top: 8px;
         color: #22C55E;
@@ -805,62 +893,102 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
         }}
         animateNumber('bmi-kpi', """ + str(bmi_val or 0) + """, 1);
         animateNumber('vo2-kpi', """ + str(vo2_val or 0) + """, 1);
-        animateNumber('bio-kpi', """ + str(bio_diff or 0) + """, 1);
+        animateNumber('bio-kpi', """ + str(bio_val or 0) + """, 1);
     }})();
     </script>
     """
-    components.html(css_part, height=200)
-
-st.markdown("""<div class="ht-hero">...</div>""", unsafe_allow_html=True)   # (sett inn din hero HTML)
-
+    html(css_part, height=200)
+# ── Render Hero ───────────────────────────────────────────────────────────────
+st.markdown(
+    """
+<div class="ht-hero">
+  <div class="ht-badge">🔐 SECURE • GDPR • ENCRYPTED</div>
+  <h1>My Health Tools</h1>
+  <div class="sub">Your private health dashboard — science‑based insights, zero data sharing.</div>
+  <div class="ht-pills">
+    <span class="ht-pill">🧬 Biological age</span>
+    <span class="ht-pill">❤️ VO₂max & cardio</span>
+    <span class="ht-pill">📈 Track progress</span>
+    <span class="ht-pill">🔒 Only you see data</span>
+  </div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
+# ── Consent & Privacy Sjekk ───────────────────────────────────────────────────
 if "consent_given" not in st.session_state:
     st.session_state.consent_given = False
+
 if not st.session_state.consent_given:
     with st.expander("Please read: Consent & privacy", expanded=True):
         st.markdown("This demo stores nothing by default and is for educational purposes only. By continuing you confirm you understand it's not clinical advice.")
-    cols = st.columns([1,1])
+    cols = st.columns([1, 1])
     if cols[0].button("I agree", key="consent_agree", type="primary"):
         st.session_state.consent_given = True
         try:
             if not st.session_state.get("_consent_rerun_done"):
                 st.session_state["_consent_rerun_done"] = True
                 st.rerun()
-        except: pass
+        except Exception:
+            pass
     if cols[1].button("Exit", key="consent_exit"):
         st.stop()
-
+# ── Premium Download Gate Komponent ───────────────────────────────────────────
 def render_premium_download_gate(pdf_bytes):
+    """
+    Renders the premium download section in a clean, professional container.
+    """
     with st.container(border=True):
         st.subheader("✅ Your Premium Health Report is ready")
-        st.markdown("We have analyzed your biomarkers and generated a tailored 30-day protocol.\nThis report includes:\n* 🎯 **Top 3 health priorities**\n* 📊 **Radar analysis of your biomarkers**\n* 📝 **Actionable 30-day health plan**")
-        st.download_button(label="📥 Download your PDF Report (4.99 USD)", data=pdf_bytes, file_name="Health_Audit_Report.pdf", mime="application/pdf", type="primary", use_container_width=True)
+        st.markdown("""
+        We have analyzed your biomarkers and generated a tailored 30-day protocol.
+        This report includes:
+        * 🎯 **Top 3 health priorities**
+        * 📊 **Radar analysis of your biomarkers**
+        * 📝 **Actionable 30-day health plan**
+        """)
+        
+        st.write("") 
+        
+        st.download_button(
+            label="📥 Download your PDF Report (4.99 USD)",
+            data=pdf_bytes,
+            file_name="Health_Audit_Report.pdf",
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True
+        )
+        
         st.caption("Your purchase is secured with 100% encryption.")
 
+
+# ── PDF Hjelpefunksjonar ───────────────────────────────────────────────────────
 def para(text: str, style) -> Paragraph:
     return Paragraph(escape(str(text)).replace("\n", "<br/>"), style)
 
-def make_key_value_table(rows, col_widths=(55*mm, 120*mm)):
+
+def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
     styles = getSampleStyleSheet()
     body = styles["BodyText"]
     body.fontName = "Helvetica"
     body.fontSize = 9
     body.leading = 11
     data = [[para("Field", body), para("Value", body)]]
-    for k,v in rows:
+    for k, v in rows:
         data.append([para(k, body), para(v, body)])
     t = Table(data, colWidths=col_widths, repeatRows=1)
     t.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), HexColor("#0f172a")),
-        ("TEXTCOLOR", (0,0), (-1,0), white),
-        ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,-1), 9),
-        ("GRID", (0,0), (-1,-1), 0.35, HexColor("#cbd5e1")),
-        ("ROWBACKGROUNDS", (0,1), (-1,-1), [white, HexColor("#f8fafc")]),
-        ("VALIGN", (0,0), (-1,-1), "TOP"),
-        ("LEFTPADDING", (0,0), (-1,-1), 6),
-        ("RIGHTPADDING", (0,0), (-1,-1), 6),
-        ("TOPPADDING", (0,0), (-1,-1), 5),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cbd5e1")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
     return t
 
@@ -868,116 +996,203 @@ def make_key_value_table(rows, col_widths=(55*mm, 120*mm)):
 # ── Hovedfunksjon for Ultimate PDF Generering ─────────────────────────────────
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
     buffer = io.BytesIO()
+    # Dimensjonar
     PAGE_W, PAGE_H = A4
     MARGIN_H = 18 * mm
     doc = SimpleDocTemplate(
-        buffer, pagesize=A4,
-        leftMargin=MARGIN_H, rightMargin=MARGIN_H,
-        topMargin=26 * mm, bottomMargin=18 * mm
+        buffer, 
+        pagesize=A4,
+        leftMargin=MARGIN_H, 
+        rightMargin=MARGIN_H, 
+        topMargin=26 * mm, 
+        bottomMargin=18 * mm
     )
 
-    # Hjelpefunksjonar for tekst (lokale, unngår kollisjon)
+    # Theme og Fargar
+    BG      = HexColor("#0B1220")
+    CARD    = HexColor("#111C33")
+    CARD2   = HexColor("#0F172A")
+    ACCENT  = HexColor("#0EA5A3")
+    BLUE    = HexColor("#3B82F6")
+    GOOD    = HexColor("#22C55E")
+    WARN    = HexColor("#F59E0B")
+    BAD     = HexColor("#EF4444")
+    TEXT    = HexColor("#E5E7EB")
+    MUTED   = HexColor("#94A3B8")
+    STROKE  = HexColor("#334155")
+    DIM     = HexColor("#64748B")
+
+    # Hjelpefunksjonar for tekst
     _styles = getSampleStyleSheet()
     def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
         return ParagraphStyle(
-            name, parent=_styles["Normal"],
+            name,
+            parent=_styles["Normal"],
             fontName="Helvetica-Bold" if bold else ("Helvetica-Oblique" if italic else "Helvetica"),
-            fontSize=size, textColor=color, spaceAfter=after,
-            leading=lead or (size + 4), alignment=align
+            fontSize=size,
+            textColor=color,
+            spaceAfter=after,
+            leading=lead or (size + 4),
+            alignment=align
         )
+
     def P(txt, style):
         return Paragraph(str(txt), style)
 
     def _sf(x):
         try: return float(x)
         except: return None
+    def _plot_to_image(fig, width=400, height=300):
+        """Konverter ein Plotly-figur til eit bytes-objekt (PNG) som kan brukast i PDF."""
+        import io
+        img_bytes = fig.to_image(format="png", width=width, height=height)
+        return io.BytesIO(img_bytes)
 
-    # Datauttrekk
-    inp = report.get("inputs", {}) or {}
-    age_v = inp.get("age", "—")
-    sex_v = inp.get("sex", "—")
-    h_v = inp.get("height_cm", "—")
-    w_v = inp.get("weight_kg", "—")
+    def _radar_chart_image():
+        # Lag radardiagrammet på nytt (same som i app, men her må vi ha data)
+        radar_scores = {
+            "Body Comp": radar.get("Body Comp", 50),
+            "Cardio": radar.get("Cardio", 50),
+            "Bio Age": radar.get("Bio Age", 50),
+            "Activity": radar.get("Activity", 50),
+            "Lifestyle": radar.get("Lifestyle", 50),
+        }
+        import plotly.graph_objects as go
+        categories = list(radar_scores.keys())
+        values = list(radar_scores.values())
+        fig = go.Figure(data=go.Scatterpolar(r=values, theta=categories, fill='toself',
+                                             marker=dict(color=ACCENT.hexval()), line=dict(color=ACCENT.hexval(), width=2)))
+        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,100])),
+                          paper_bgcolor='white', plot_bgcolor='white',
+                          font=dict(color='black'), showlegend=False, width=450, height=350)
+        return _plot_to_image(fig, width=450, height=350)
+
+    def _vo2_gauge_image():
+        pct = vo2_pct
+        col = vo2_color(pct).hexval()
+        fig = go.Figure(go.Indicator(mode="gauge+number", value=pct,
+                                     number=dict(suffix="th", font=dict(size=40, color=col)),
+                                     gauge=dict(axis=dict(range=[0,100]), bar=dict(color=col),
+                                                steps=[dict(range=[0,40], color="#EF4444"),
+                                                       dict(range=[40,60], color="#F59E0B"),
+                                                       dict(range=[60,80], color="#3B82F6"),
+                                                       dict(range=[80,100], color="#22C55E")])))
+        fig.update_layout(width=400, height=300, paper_bgcolor='white', font=dict(color='black'))
+        return _plot_to_image(fig, width=400, height=300)
+    # Data extraction
+    inp       = report.get("inputs", {}) or {}
+    age_v     = inp.get("age", "—")
+    sex_v     = inp.get("sex", "—")
+    h_v       = inp.get("height_cm", "—")
+    w_v       = inp.get("weight_kg", "—")
     gen_v = report.get("generated", datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
 
-    bmi_d = report.get("bmi") or {}
-    vo2_d = report.get("vo2") or {}
-    bio_d = report.get("bio_age") or {}
-    factors = report.get("bio_factors") or []
-    plan_d = report.get("plan") or {}
-    exlog = report.get("exercise_log") or {}
-    triage_r = report.get("triage_recommendations") or []
-    whr_d = report.get("whr") or {}
-    bf_d = report.get("bodyfat") or {}
+    bmi_d     = report.get("bmi") or {}
+    vo2_d     = report.get("vo2") or {}
+    bio_d     = report.get("bio_age") or {}
+    factors   = report.get("bio_factors") or []
+    plan_d    = report.get("plan") or {}
+    exlog     = report.get("exercise_log") or {}
+    triage_r  = report.get("triage_recommendations") or []
+    whr_d     = report.get("whr") or {}
+    bf_d      = report.get("bodyfat") or {}
 
-    bmi_v = _sf(bmi_d.get("value"))
-    bmi_cat = str(bmi_d.get("category", ""))
-    vo2_v = _sf(vo2_d.get("value"))
-    vo2_pct = _sf(vo2_d.get("percentile")) or 0.0
-    vo2_rat = str(vo2_d.get("rating", ""))
-    vo2_meth = str(vo2_d.get("method", ""))
-    vo2_band = str(vo2_d.get("age_band", ""))
-    vo2_mean = _sf(vo2_d.get("mean"))
-    bio_v = _sf(bio_d.get("value"))
-    age_f = _sf(age_v)
+    bmi_v     = _sf(bmi_d.get("value"))
+    bmi_cat   = str(bmi_d.get("category", ""))
+    vo2_v     = _sf(vo2_d.get("value"))
+    vo2_pct   = _sf(vo2_d.get("percentile")) or 0.0
+    vo2_rat   = str(vo2_d.get("rating", ""))
+    vo2_meth  = str(vo2_d.get("method", ""))
+    vo2_band  = str(vo2_d.get("age_band", ""))
+    vo2_mean  = _sf(vo2_d.get("mean"))
+    bio_v     = _sf(bio_d.get("value"))
+    age_f     = _sf(age_v)
 
-    has_plan = bool(plan_d and not plan_d.get("error"))
-    cur_kcal = _sf(plan_d.get("current_needs_kcal")) if has_plan else None
-    rec_kcal = _sf(plan_d.get("recommended_daily_kcal")) if has_plan else None
-    kg_pw = _sf(plan_d.get("kg_per_week")) if has_plan else None
+    has_plan  = bool(plan_d and not plan_d.get("error"))
+    cur_kcal  = _sf(plan_d.get("current_needs_kcal")) if has_plan else None
+    rec_kcal  = _sf(plan_d.get("recommended_daily_kcal")) if has_plan else None
+    kg_pw     = _sf(plan_d.get("kg_per_week")) if has_plan else None
     milestones = plan_d.get("milestones", []) if has_plan else []
 
-    ex_act = str(exlog.get("activity", ""))
-    ex_int = str(exlog.get("intensity", ""))
-    ex_min = exlog.get("minutes", 0)
-    ex_sess = exlog.get("sessions_per_week", 0)
+    ex_act    = str(exlog.get("activity", ""))
+    ex_int    = str(exlog.get("intensity", ""))
+    ex_min    = exlog.get("minutes", 0)
+    ex_sess   = exlog.get("sessions_per_week", 0)
     ex_kcal_s = _sf(exlog.get("kcal_per_session")) or 0.0
     ex_kcal_w = _sf(exlog.get("kcal_per_week")) or 0.0
     ex_total_min = int(ex_min or 0) * int(ex_sess or 0)
 
-    _goal = plan_d.get("goal", "Maintenance")
+    _goal         = plan_d.get("goal", "Maintenance")
     _has_strength = plan_d.get("has_strength", False)
-    _has_cardio = plan_d.get("has_cardio", False)
-    _has_sport = plan_d.get("has_sport", False)
-    _has_low = plan_d.get("has_low", False)
-    _sel_strength = plan_d.get("selected_strength", "—")
-    _sel_cardio = plan_d.get("selected_cardio", "—")
-    _sel_sport = plan_d.get("selected_sport", "—")
-    _sel_low = plan_d.get("selected_low", "—")
+    _has_cardio   = plan_d.get("has_cardio", False)
+    _has_sport    = plan_d.get("has_sport", False)
+    _has_low      = plan_d.get("has_low", False)
 
-    # Fargehjelpere
+    _sel_strength = plan_d.get("selected_strength", "—")
+    _sel_cardio   = plan_d.get("selected_cardio", "—")
+    _sel_sport    = plan_d.get("selected_sport", "—")
+    _sel_low      = plan_d.get("selected_low", "—")
+
+    # Farge-helpers deklarert inni funksjonen
     def bmi_color(v):
         if v is None: return MUTED
-        if v < 18.5: return BLUE
-        if v < 25: return GOOD
-        if v < 30: return WARN
+        if v < 18.5:  return BLUE
+        if v < 25:    return GOOD
+        if v < 30:    return WARN
         return BAD
+
     def vo2_color(pct):
         if pct >= 80: return GOOD
         if pct >= 60: return BLUE
         if pct >= 40: return WARN
         return BAD
+
     def bio_color(diff):
         if diff is None: return MUTED
-        if diff <= -1: return GOOD
-        if diff <= 2: return WARN
+        if diff <= -1:   return GOOD
+        if diff <= 2:    return WARN
         return BAD
 
-    bmi_col = bmi_color(bmi_v)
-    vo2_col = vo2_color(vo2_pct)
+    bmi_col  = bmi_color(bmi_v)
+    vo2_col  = vo2_color(vo2_pct)
     bio_diff = (bio_v - age_f) if (bio_v is not None and age_f is not None) else None
     if bio_diff is not None:
         bio_diff = max(-5.0, min(5.0, bio_diff))
         bio_v = age_f + bio_diff
-    bio_col = bio_color(bio_diff)
+    bio_col  = bio_color(bio_diff)
 
-    # Helsescore
+# ── Bygging av PDF Story ──────────────────────────────────────────────────
+    def draw_page(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+        canvas.setFillColor(ACCENT); canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
+        canvas.setFillColor(CARD2); canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
+        canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5); canvas.drawString(MARGIN_H, PAGE_H-15, "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL")
+        canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8); canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
+        canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
+        canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5); canvas.drawString(MARGIN_H, 4, "Educational use only — not a medical diagnosis — health-tools.streamlit.app")
+        canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
+        canvas.restoreState()
+
+
+    story = []
+    
+    # Header / Tittel
+    style_title = S("DocTitle", size=24, color=white, bold=True, after=15)
+    style_subtitle = S("DocSub", size=10, color=MUTED, after=20)
+    story.append(P("Health Audit Report", style_title))
+    story.append(P(f"Generated: {gen_v} | Target Goal: {_goal}", style_subtitle))
+    story.append(HRFlowable(width="100%", thickness=1, color=STROKE, spaceAfter=20))
+    
+    
+   
+    # Health score kalkulering
     score_parts = []
     if bmi_v is not None:
-        if 18.5 <= bmi_v < 25: score_parts.append(100)
-        elif 17 <= bmi_v < 27: score_parts.append(75)
-        elif 15 <= bmi_v < 30: score_parts.append(50)
-        else: score_parts.append(25)
+        if 18.5 <= bmi_v < 25:   score_parts.append(100)
+        elif 17 <= bmi_v < 27:   score_parts.append(75)
+        elif 15 <= bmi_v < 30:   score_parts.append(50)
+        else:                     score_parts.append(25)
     if vo2_v is not None:
         score_parts.append(min(100, int(vo2_pct)))
     if bio_diff is not None:
@@ -985,15 +1200,15 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     if ex_total_min:
         score_parts.append(min(100, int(ex_total_min / 300 * 100)))
     health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
-    score_col = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
-    score_label = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
-
-    # Radar mapping
+    score_col    = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
+    score_label  = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65 else "Fair" if health_score >= 45 else "Needs attention")
+    
+    # Radar scores mapping
     radar = {}
-    radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75 if (bmi_v and 17 <= bmi_v < 27) else 50 if (bmi_v and 15 <= bmi_v < 30) else 25 if bmi_v else 50)
-    radar["Cardio"] = int(vo2_pct) if vo2_v else 50
-    radar["Bio Age"] = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
-    radar["Activity"] = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
+    radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75  if (bmi_v and 17 <= bmi_v < 27) else 50  if (bmi_v and 15 <= bmi_v < 30) else 25  if bmi_v else 50)
+    radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
+    radar["Bio Age"]   = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
+    radar["Activity"]  = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
     life = 60
     for f in factors:
         try:
@@ -1002,8 +1217,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             elif d > 1: life = max(10, life - 8)
         except: pass
     radar["Lifestyle"] = max(0, min(100, life))
-
-    # Biggest lever
+    
+    # Health Levers logikk
     if vo2_v is not None and vo2_pct < 40:
         biggest_lever = "Cardio fitness (VO2max)"
         lever_why = "The single most impactful modifiable longevity factor — and the fastest to improve with training."
@@ -1019,34 +1234,50 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     else:
         biggest_lever = "Strength training + progressive overload"
         lever_why = "Your core markers are solid — the next tier of improvement comes from consistent resistance training."
-
-    # Insights
+    
+    # Insights generering
     insights = []
     if bmi_v is not None:
         if bmi_v >= 30: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is high. The most sustainable approach combines a modest daily calorie deficit (−300 to −500 kcal), 2–3 strength sessions/week to preserve muscle, and increased daily steps. Avoid aggressive cuts — they accelerate muscle loss and reduce long-term adherence. Aim for 0.5–0.75 kg/week loss."))
         elif bmi_v >= 25: insights.append(("Body Composition", WARN, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is slightly elevated. Strength training 2–3x/week combined with a modest deficit is more effective than cardio alone. A loss rate of 0.5 kg/week preserves significantly more lean mass than faster approaches."))
         elif bmi_v < 18.5: insights.append(("Body Composition", BLUE, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is below the typical range. Prioritise progressive strength training and ensure adequate protein (≥1.6 g/kg/day) and total energy intake. Avoid calorie deficits — focus on building lean mass and strength."))
         else: insights.append(("Body Composition", GOOD, f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is in the normal range. The biggest upgrades now come from cardio fitness and strength, not body weight changes. Use resistance training and aerobic capacity as your primary targets."))
+    
     if vo2_v is not None:
         if vo2_pct < 30: insights.append(("Cardio Fitness", BAD, f"Your VO2max of {vo2_v:.1f} ml/kg/min ({vo2_pct:.0f}th percentile) is in the lowest tier. VO2max is the strongest predictor of all-cause mortality. The good news: it responds quickly. Start with 3–4x 30-min easy aerobic sessions per week. Expect noticeable improvement in 4–6 weeks."))
         elif vo2_pct < 50: insights.append(("Cardio Fitness", WARN, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is below average. Adding one structured interval session weekly (e.g. 4×4 min hard effort) alongside 2 easy sessions typically produces the fastest improvement over 6–12 weeks."))
         elif vo2_pct < 75: insights.append(("Cardio Fitness", BLUE, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is above average. To push higher, use 80/20 training — 80% easy effort, 20% hard. Most people accidentally do 50/50, which leads to fatigue without meaningful VO2 adaptation."))
         else: insights.append(("Cardio Fitness", GOOD, f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is excellent. Maintain with 2–3 quality sessions/week. Avoid unplanned breaks over 2 weeks — detraining begins quickly."))
+    
     if bio_diff is not None:
         if bio_diff > 3: insights.append(("Biological Age", BAD, f"Estimated biological age ({bio_v:.1f} yrs) is {bio_diff:.1f} years above calendar age. This is driven by lifestyle factors — most are reversible. Highest-impact levers: sleep consistency, cardio fitness, blood pressure control, and stress management."))
         elif bio_diff > 0: insights.append(("Biological Age", WARN, f"Estimated biological age ({bio_v:.1f} yrs) is slightly above calendar age ({bio_diff:.1f} yrs). This gap is small and reversible. Focus on the red/amber factors in your factor breakdown."))
         else: insights.append(("Biological Age", GOOD, f"Estimated biological age ({bio_v:.1f} yrs) is {abs(bio_diff):.1f} yrs below calendar age. This reflects well on your current habits. Maintain them — consistency is what sustains this."))
+    
     if exlog:
         if ex_total_min < 150: insights.append(("Exercise Volume", WARN, f"You're logging {ex_total_min} min/week — {150 - ex_total_min} min short of the WHO 150 min/week guideline. Even small increases (+20 min/week) measurably reduce all-cause mortality and metabolic disease risk."))
         else: insights.append(("Exercise Volume", GOOD, f"You're meeting WHO guidelines with {ex_total_min} min/week ({ex_kcal_w:.0f} kcal/week). Consider adding strength training if not already included — it's the most underutilised tool for metabolic health and longevity."))
-
-    # Lokale flowables (må definerast inni funksjonen for å ha tilgang til fargekonstantane)
+    
+    interval_t = "Short intervals (4×4 min hard)" if vo2_pct < 60 else "Tempo run / threshold (25 min)"
+    plan_7 = [
+        ("Mon", "Easy cardio (Zone 2)", "35–45 min", "Aerobic base — can hold a conversation"),
+        ("Tue", "Full-body strength", "30–40 min", "Muscle, metabolism, bone density"),
+        ("Wed", "Mobility + light walk", "20–30 min", "Recovery, reduce stiffness"),
+        ("Thu", interval_t, "25–35 min", "Raise VO2max + cardio ceiling"),
+        ("Fri", "Full-body strength", "30–40 min", "Progressive overload + posture"),
+        ("Sat", "Long easy walk / cycle", "50–75 min", "Weekly aerobic volume (easy)"),
+        ("Sun", "Review + plan next week", "10–15 min", "Make progress sustainable"),
+    ]
+    if has_plan and kg_pw is not None:
+        plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Align food plan with weekly goal")
+    
+    # ── Lokale Custom Flowables ────────────────
     class VGap(Flowable):
         def __init__(self, h=8):
             super().__init__(); self._h = h
         def wrap(self, aw, ah): return aw, self._h
         def draw(self): pass
-
+    
     class SecHeader(Flowable):
         def __init__(self, title, subtitle="", accent=None, width=CONTENT_W):
             super().__init__()
@@ -1055,64 +1286,64 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv
-            c.setFillColor(CARD); c.roundRect(0,0,self.w,self.h,8,fill=1,stroke=0)
-            c.setFillColor(self.accent); c.roundRect(0,0,5,self.h,2,fill=1,stroke=0)
-            c.setFillColor(TEXT); c.setFont("Helvetica-Bold",13)
-            c.drawString(16, self.h-22, self.title)
+            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setFillColor(self.accent); c.roundRect(0, 0, 5, self.h, 2, fill=1, stroke=0)
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 13)
+            c.drawString(16, self.h - 22, self.title)
             if self.subtitle:
-                c.setFillColor(MUTED); c.setFont("Helvetica",7.5)
-                c.drawString(16,8,self.subtitle[:90])
-
+                c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+                c.drawString(16, 8, self.subtitle[:90])
+    
     class MetricCard(Flowable):
         def __init__(self, metrics, width=CONTENT_W, card_h=66):
             super().__init__()
             self.metrics = metrics; self.w = width; self.h = card_h
             n = max(1, len(metrics))
-            self.card_w = (width - (n-1)*6)/n
+            self.card_w = (width - (n - 1) * 6) / n
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv; cw = self.card_w; ch = self.h
-            for i,(lbl,val,sub,col_s) in enumerate(self.metrics):
-                col = HexColor(col_s) if isinstance(col_s,str) else col_s
-                x = i*(cw+6)
-                c.setFillColor(CARD); c.roundRect(x,0,cw,ch,8,fill=1,stroke=0)
-                c.setFillColor(col); c.roundRect(x,ch-4,cw,4,2,fill=1,stroke=0)
-                c.setFillColor(MUTED); c.setFont("Helvetica",6.5)
-                c.drawString(x+10,ch-16,str(lbl).upper()[:22])
-                c.setFillColor(col); c.setFont("Helvetica-Bold",16)
-                c.drawString(x+10,ch-34,str(val)[:18])
+            for i, (lbl, val, sub, col_s) in enumerate(self.metrics):
+                col = HexColor(col_s) if isinstance(col_s, str) else col_s
+                x = i * (cw + 6)
+                c.setFillColor(CARD); c.roundRect(x, 0, cw, ch, 8, fill=1, stroke=0)
+                c.setFillColor(col); c.roundRect(x, ch - 4, cw, 4, 2, fill=1, stroke=0)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+                c.drawString(x + 10, ch - 16, str(lbl).upper()[:22])
+                c.setFillColor(col); c.setFont("Helvetica-Bold", 16)
+                c.drawString(x + 10, ch - 34, str(val)[:18])
                 if sub:
-                    c.setFillColor(MUTED); c.setFont("Helvetica",7.5)
-                    c.drawString(x+10,ch-47,str(sub)[:26])
-
+                    c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+                    c.drawString(x + 10, ch - 47, str(sub)[:26])
+    
     class HealthScoreRing(Flowable):
         def __init__(self, score, label, color, width=CONTENT_W):
             super().__init__()
             self.score = score; self.label = label; self.color = color; self.w = width; self.h = 130
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
-            c = self.canv; cx = self.w/2; cy = self.h/2+14; R = 46
-            c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx,cy,R,fill=0,stroke=1)
-            frac = self.score/100.0; steps = max(2, int(frac*72))
+            c = self.canv; cx = self.w / 2; cy = self.h / 2 + 14; R = 46
+            c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
+            frac = self.score / 100.0; steps = max(2, int(frac * 72))
             for i in range(steps):
-                a1 = math.pi/2 - (i/72)*2*math.pi
-                a2 = math.pi/2 - ((i+1)/72)*2*math.pi
+                a1 = math.pi / 2 - (i / 72) * 2 * math.pi
+                a2 = math.pi / 2 - ((i + 1) / 72) * 2 * math.pi
                 c.setStrokeColor(self.color); c.setLineWidth(13)
-                c.line(cx+R*math.cos(a1), cy+R*math.sin(a1), cx+R*math.cos(a2), cy+R*math.sin(a2))
-            c.setFillColor(self.color); c.setFont("Helvetica-Bold",28)
-            c.drawCentredString(cx,cy+6,str(self.score))
-            c.setFillColor(MUTED); c.setFont("Helvetica",8)
-            c.drawCentredString(cx,cy-8,"/ 100")
-            c.setFillColor(TEXT); c.setFont("Helvetica-Bold",10)
-            c.drawCentredString(cx,cy-22,self.label)
-            dims = list(radar.items()); dw = self.w/len(dims)
-            for j,(dim,sc) in enumerate(dims):
-                dx = j*dw + dw/2; dy = 10
-                dc = GOOD if sc>=70 else WARN if sc>=45 else BAD
-                c.setFillColor(CARD2); c.roundRect(j*dw+2,2,dw-4,24,4,fill=1,stroke=0)
-                c.setFillColor(dc); c.setFont("Helvetica-Bold",9); c.drawCentredString(dx,dy+8,str(sc))
-                c.setFillColor(MUTED); c.setFont("Helvetica",6); c.drawCentredString(dx,dy,str(dim))
-
+                c.line(cx + R * math.cos(a1), cy + R * math.sin(a1), cx + R * math.cos(a2), cy + R * math.sin(a2))
+            c.setFillColor(self.color); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(cx, cy + 6, str(self.score))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+            c.drawCentredString(cx, cy - 8, "/ 100")
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 10)
+            c.drawCentredString(cx, cy - 22, self.label)
+            dims = list(radar.items()); dw = self.w / len(dims)
+            for j, (dim, sc) in enumerate(dims):
+                dx = j * dw + dw / 2; dy = 10
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                c.setFillColor(CARD2); c.roundRect(j * dw + 2, 2, dw - 4, 24, 4, fill=1, stroke=0)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold", 9); c.drawCentredString(dx, dy + 8, str(sc))
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawCentredString(dx, dy, dim)
+    
     class BMIScale(Flowable):
         def __init__(self, bmi_val, width=CONTENT_W):
             super().__init__()
@@ -1120,29 +1351,29 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv; bmi = self.bmi; w = self.w
-            c.setFillColor(CARD); c.roundRect(0,0,w,self.h,10,fill=1,stroke=0)
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
             col = bmi_color(bmi)
-            c.setFillColor(col); c.setFont("Helvetica-Bold",30); c.drawString(14,62,f"{bmi:.1f}")
-            c.setFillColor(MUTED); c.setFont("Helvetica",7.5); c.drawString(14,52,"BMI")
-            cat = ("Underweight" if bmi<18.5 else "Normal weight" if bmi<25 else "Overweight" if bmi<30 else "Obese")
-            c.setFillColor(col); c.setFont("Helvetica-Bold",9); c.drawString(14,39,cat)
-            SMAX = 45.0; bx = 14; by = 18; bh = 13; bw = w-28
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 62, f"{bmi:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 52, "BMI")
+            cat = ("Underweight" if bmi < 18.5 else "Normal weight" if bmi < 25 else "Overweight" if bmi < 30 else "Obese")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 9); c.drawString(14, 39, cat)
+            SMAX = 45.0; bx = 14; by = 18; bh = 13; bw = w - 28
             segs = [(0,18.5,"#3B82F6","Underweight"),(18.5,25,"#22C55E","Normal"),(25,30,"#F59E0B","Overweight"),(30,45,"#EF4444","Obese")]
-            for i,(s,e,cl,lbl) in enumerate(segs):
+            for i, (s, e, cl, lbl) in enumerate(segs):
                 sx = bx + (s/SMAX)*bw; sw = ((e-s)/SMAX)*bw
                 c.setFillColor(HexColor(cl))
-                if i==0: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx+3,by,sw-3,bh,fill=1,stroke=0)
-                elif i==len(segs)-1: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx,by,sw-3,bh,fill=1,stroke=0)
+                if i == 0: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx+3,by,sw-3,bh,fill=1,stroke=0)
+                elif i == len(segs)-1: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx,by,sw-3,bh,fill=1,stroke=0)
                 else: c.rect(sx,by,sw,bh,fill=1,stroke=0)
-                c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold",5.5)
+                c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
                 c.drawCentredString(sx+sw/2, by+4, lbl)
             mx = bx + min(1.0, bmi/SMAX)*bw
-            c.setStrokeColor(white); c.setLineWidth(1.5); c.line(mx,by-2,mx,by+bh+2)
-            c.setFillColor(white); path = c.beginPath(); path.moveTo(mx,by+bh+9); path.lineTo(mx-5,by+bh+2); path.lineTo(mx+5,by+bh+2); path.close()
+            c.setStrokeColor(white); c.setLineWidth(1.5); c.line(mx, by-2, mx, by+bh+2)
+            c.setFillColor(white); path = c.beginPath(); path.moveTo(mx, by+bh+9); path.lineTo(mx-5, by+bh+2); path.lineTo(mx+5, by+bh+2); path.close()
             c.drawPath(path, fill=1, stroke=0)
-            for lbl,pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
-                c.setFillColor(MUTED); c.setFont("Helvetica",5.5); c.drawCentredString(bx+(pos/SMAX)*bw, by-8, lbl)
-
+            for lbl, pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
+                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + (pos/SMAX)*bw, by-8, lbl)
+    
     class VO2Visual(Flowable):
         def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
             super().__init__()
@@ -1151,52 +1382,52 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         def draw(self):
             c = self.canv; w = self.w; pct = self.pct
             col = vo2_color(pct)
-            c.setFillColor(CARD); c.roundRect(0,0,w,self.h,10,fill=1,stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold",30); c.drawString(14,56,f"{self.vo2:.1f}")
-            c.setFillColor(MUTED); c.setFont("Helvetica",7.5); c.drawString(14,46,"ml / kg / min")
-            c.setFillColor(col); c.setFont("Helvetica-Bold",10); c.drawString(14,32,str(self.rat or "—"))
-            c.setFillColor(MUTED); c.setFont("Helvetica",7); c.drawString(14,20,"Rating")
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 56, f"{self.vo2:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 46, "ml / kg / min")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 10); c.drawString(14, 32, str(self.rat or "—"))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 20, "Rating")
             bx = w*0.44; bw2 = w*0.51; bh = 13; by = 48
-            c.setFillColor(MUTED); c.setFont("Helvetica",6.5); c.drawString(bx, by+bh+6, "POPULATION PERCENTILE")
-            c.setFillColor(STROKE); c.roundRect(bx,by,bw2,bh,4,fill=1,stroke=0)
-            c.setFillColor(col); c.roundRect(bx,by,max(8,(pct/100)*bw2),bh,4,fill=1,stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold",12); c.drawRightString(bx+bw2, by-14, f"{pct:.0f}th percentile")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(bx, by+bh+6, "POPULATION PERCENTILE")
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
+            c.setFillColor(col); c.roundRect(bx, by, max(8, (pct/100)*bw2), bh, 4, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 12); c.drawRightString(bx+bw2, by-14, f"{pct:.0f}th percentile")
             zones = [(0,20,"#EF4444"),(20,40,"#F59E0B"),(40,60,"#3B82F6"),(60,80,"#22C55E"),(80,100,"#10B981")]
             sz_y = 18; sz_h = 7
-            for zs,ze,zc in zones:
-                c.setFillColor(HexColor(zc)); c.rect(bx+(zs/100)*bw2, sz_y, ((ze-zs)/100)*bw2, sz_h, fill=1, stroke=0)
+            for zs, ze, zc in zones:
+                c.setFillColor(HexColor(zc)); c.rect(bx + (zs/100)*bw2, sz_y, ((ze-zs)/100)*bw2, sz_h, fill=1, stroke=0)
             c.setStrokeColor(white); c.setLineWidth(1.5); nx = bx + (pct/100)*bw2; c.line(nx, sz_y-2, nx, sz_y+sz_h+2)
             zlabels = ["Low","Below avg","Average","Good","Excellent"]
-            for j,(zl,(zs,ze,_)) in enumerate(zip(zlabels, zones)):
-                c.setFillColor(MUTED); c.setFont("Helvetica",5.5); c.drawCentredString(bx+((zs+ze)/200)*bw2, sz_y-8, zl)
-
+            for j, (zl, (zs, ze, _)) in enumerate(zip(zlabels, zones)):
+                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + ((zs+ze)/200)*bw2, sz_y-8, zl)
+    
     class RadarChart(Flowable):
         def __init__(self, scores_dict, width=CONTENT_W):
             super().__init__()
             self.scores = scores_dict; self.w = width; self.h = 165
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
-            c = self.canv; cx = self.w/2; cy = self.h/2+10; R = 58
+            c = self.canv; cx = self.w/2; cy = self.h/2 + 10; R = 58
             labels = list(self.scores.keys()); vals = [self.scores[k]/100.0 for k in labels]; n = len(labels)
-            def pt(i,r): ang = math.pi/2 + 2*math.pi*i/n; return cx+r*math.cos(ang), cy+r*math.sin(ang)
-            for ring in [0.25,0.5,0.75,1.0]:
+            def pt(i, r): ang = math.pi/2 + 2*math.pi*i/n; return cx + r*math.cos(ang), cy + r*math.sin(ang)
+            for ring in [0.25, 0.5, 0.75, 1.0]:
                 pts = [pt(i, ring*R) for i in range(n)]
                 c.setStrokeColor(STROKE); c.setLineWidth(0.5); path = c.beginPath(); path.moveTo(*pts[0])
                 for p in pts[1:]: path.lineTo(*p)
                 path.close(); c.drawPath(path, fill=0, stroke=1)
             for i in range(n):
-                ox,oy = pt(i,R); c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(cx,cy,ox,oy)
+                ox, oy = pt(i, R); c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(cx, cy, ox, oy)
             poly = [pt(i, vals[i]*R) for i in range(n)]; c.setFillColor(ACCENT); path = c.beginPath(); path.moveTo(*poly[0])
             for p in poly[1:]: path.lineTo(*p)
             path.close(); c.setFillAlpha(0.25); c.drawPath(path, fill=1, stroke=0); c.setFillAlpha(1.0)
             c.setStrokeColor(ACCENT); c.setLineWidth(1.5); c.drawPath(path, fill=0, stroke=1)
-            for i,(lbl,val) in enumerate(zip(labels, vals)):
-                px,py = pt(i, val*R); c.setFillColor(ACCENT); c.circle(px,py,3.5,fill=1,stroke=0)
-                lx,ly = pt(i,R+15); sc = int(val*100)
-                dc = GOOD if sc>=70 else WARN if sc>=45 else BAD
-                c.setFillColor(TEXT); c.setFont("Helvetica-Bold",7.5); c.drawCentredString(lx,ly+4,lbl)
-                c.setFillColor(dc); c.setFont("Helvetica-Bold",8.5); c.drawCentredString(lx,ly-6,str(sc))
-
+            for i, (lbl, val) in enumerate(zip(labels, vals)):
+                px, py = pt(i, val*R); c.setFillColor(ACCENT); c.circle(px, py, 3.5, fill=1, stroke=0)
+                lx, ly = pt(i, R+15); sc = int(val*100)
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 7.5); c.drawCentredString(lx, ly+4, lbl)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold", 8.5); c.drawCentredString(lx, ly-6, str(sc))
+    
     class BioAgeBar(Flowable):
         def __init__(self, bio_val, chron_val, width=CONTENT_W):
             super().__init__()
@@ -1204,37 +1435,37 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv; w = self.w; diff = self.bio - self.chron; col = bio_color(diff)
-            c.setFillColor(CARD); c.roundRect(0,0,w,self.h,10,fill=1,stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold",30); c.drawString(14,38,f"{self.bio:.1f}")
-            c.setFillColor(MUTED); c.setFont("Helvetica",7); c.drawString(14,28,"Biological age")
-            c.setFillColor(col); c.setFont("Helvetica-Bold",8.5); c.drawString(14,14,f"{abs(diff):.1f} yrs {'younger' if diff<0 else 'older'}")
-            c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(w*0.35,8,w*0.35,self.h-8)
-            bx = w*0.38; bw2 = w*0.57; max_age = max(self.bio,self.chron)*1.3
-            c.setFillColor(MUTED); c.setFont("Helvetica",7)
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 38, f"{self.bio:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 28, "Biological age")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 8.5); c.drawString(14, 14, f"{abs(diff):.1f} yrs {'younger' if diff<0 else 'older'}")
+            c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(w*0.35, 8, w*0.35, self.h-8)
+            bx = w*0.38; bw2 = w*0.57; max_age = max(self.bio, self.chron)*1.3
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7)
             c.drawString(bx, self.h-16, f"Calendar age:   {self.chron:.0f} yrs")
             c.drawString(bx, self.h-28, f"Biological age: {self.bio:.1f} yrs")
-            for j,(val,lbl2,cl) in enumerate([(self.chron,"Calendar",MUTED),(self.bio,"Biological",col)]):
-                bar_y = 14 + j*16; c.setFillColor(STROKE); c.roundRect(bx,bar_y,bw2,8,3,fill=1,stroke=0)
-                c.setFillColor(cl); c.roundRect(bx,bar_y,(val/max_age)*bw2,8,3,fill=1,stroke=0)
-
+            for j, (val, lbl2, cl) in enumerate([(self.chron, "Calendar", MUTED), (self.bio, "Biological", col)]):
+                bar_y = 14 + j*16; c.setFillColor(STROKE); c.roundRect(bx, bar_y, bw2, 8, 3, fill=1, stroke=0)
+                c.setFillColor(cl); c.roundRect(bx, bar_y, (val/max_age)*bw2, 8, 3, fill=1, stroke=0)
+    
     class FactorBars(Flowable):
         def __init__(self, factors, width=CONTENT_W):
             super().__init__()
-            self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta",0))), reverse=True)[:8]
+            self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta", 0))), reverse=True)[:8]
             self.w = width; self.h = len(self.factors)*21 + 12
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
-            c = self.canv; c.setFillColor(CARD); c.roundRect(0,0,self.w,self.h,8,fill=1,stroke=0)
+            c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
             bx = self.w*0.42; bw2 = self.w*0.44; row = 21
-            for i,f in enumerate(self.factors):
-                y = self.h - 14 - i*row; delta = float(f.get("delta",0))
-                cl = "#22C55E" if delta <=0 else "#EF4444" if delta>1 else "#F59E0B"
-                frac = min(abs(delta)/8.0,1.0)
-                c.setFillColor(MUTED); c.setFont("Helvetica",7.5); c.drawString(10,y-4,str(f.get("label",""))[:30])
-                c.setFillColor(STROKE); c.roundRect(bx,y-4,bw2,9,2,fill=1,stroke=0)
-                if frac>0: c.setFillColor(HexColor(cl)); c.roundRect(bx,y-4,frac*bw2,9,2,fill=1,stroke=0)
-                c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold",7.5); c.drawRightString(self.w-6,y-4,f"{delta:+.1f} yrs")
-
+            for i, f in enumerate(self.factors):
+                y = self.h - 14 - i*row; delta = float(f.get("delta", 0))
+                cl = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
+                frac = min(abs(delta)/8.0, 1.0)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(10, y-4, str(f.get("label", ""))[:30])
+                c.setFillColor(STROKE); c.roundRect(bx, y-4, bw2, 9, 2, fill=1, stroke=0)
+                if frac > 0: c.setFillColor(HexColor(cl)); c.roundRect(bx, y-4, frac*bw2, 9, 2, fill=1, stroke=0)
+                c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 7.5); c.drawRightString(self.w-6, y-4, f"{delta:+.1f} yrs")
+    
     class CalorieBar(Flowable):
         def __init__(self, maintenance, recommended, kg_per_week, width=CONTENT_W):
             super().__init__()
@@ -1242,19 +1473,19 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv; delta = self.rec - self.maint
-            col = "#22C55E" if delta<0 else "#3B82F6" if delta>0 else "#94A3B8"
-            lbl = "Deficit" if delta<0 else "Surplus" if delta>0 else "Maintenance"
-            c.setFillColor(CARD); c.roundRect(0,0,self.w,self.h,10,fill=1,stroke=0)
-            cw3 = (self.w-16)/3
-            for j,(title,val,cl) in enumerate([("MAINTENANCE",f"{self.maint:.0f}","#94A3B8"),("RECOMMENDED",f"{self.rec:.0f}",col),(lbl.upper(),f"{delta:+.0f} kcal",col)]):
-                x = 8 + j*cw3; c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold",15); c.drawString(x+4,50,val)
-                c.setFillColor(MUTED); c.setFont("Helvetica",6.5); c.drawString(x+4,40,"kcal/day" if j<2 else "per day"); c.drawString(x+4,self.h-14,title)
-                if j<2: c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(x+cw3+1,10,x+cw3+1,self.h-6)
-            bx=8; by=18; bw2=self.w-16
-            c.setFillColor(STROKE); c.roundRect(bx,by,bw2,9,3,fill=1,stroke=0)
-            c.setFillColor(HexColor(col)); c.roundRect(bx,by,int(min(1.0,abs(delta)/max(1,self.maint)*5)*bw2),9,3,fill=1,stroke=0)
-            if self.rate is not None: c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold",8); c.drawRightString(self.w-10,6,f"{self.rate:+.2f} kg/week")
-
+            col = "#22C55E" if delta < 0 else "#3B82F6" if delta > 0 else "#94A3B8"
+            lbl = "Deficit" if delta < 0 else "Surplus" if delta > 0 else "Maintenance"
+            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 10, fill=1, stroke=0)
+            cw3 = (self.w - 16) / 3
+            for j, (title, val, cl) in enumerate([("MAINTENANCE", f"{self.maint:.0f}", "#94A3B8"), ("RECOMMENDED", f"{self.rec:.0f}", col), (lbl.upper(), f"{delta:+.0f} kcal", col)]):
+                x = 8 + j*cw3; c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 15); c.drawString(x+4, 50, val)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(x+4, 40, "kcal/day" if j < 2 else "per day"); c.drawString(x+4, self.h-14, title)
+                if j < 2: c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(x+cw3+1, 10, x+cw3+1, self.h-6)
+            bx = 8; by = 18; bw2 = self.w-16
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, 9, 3, fill=1, stroke=0)
+            c.setFillColor(HexColor(col)); c.roundRect(bx, by, int(min(1.0, abs(delta) / max(1, self.maint) * 5)*bw2), 9, 3, fill=1, stroke=0)
+            if self.rate is not None: c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold", 8); c.drawRightString(self.w-10, 6, f"{self.rate:+.2f} kg/week")
+    
     class MilestoneRow(Flowable):
         def __init__(self, week, weight, focus, progress_pct, col_s, is_last, width=CONTENT_W):
             super().__init__()
@@ -1270,109 +1501,132 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
             bx=self.w-88; bw2=78
             c.setFillColor(STROKE); c.roundRect(bx,17,bw2,6,2,fill=1,stroke=0); c.setFillColor(col); c.roundRect(bx,17,self.prog/100*bw2,6,2,fill=1,stroke=0)
             c.setFillColor(MUTED); c.setFont("Helvetica",6); c.drawRightString(bx+bw2,11,f"{self.prog:.0f}%")
-
+    
     class InsightBlock(Flowable):
         def __init__(self, title, text, color, width=CONTENT_W):
             super().__init__()
             self.title = title; self.text = text; self.color = color if isinstance(color, colors.Color) else HexColor(str(color)); self.w = width
             self._para = Paragraph(f"<b>{title}:</b> {text}", S("_ib", size=8.8, lead=13))
-            _, ph = self._para.wrap(width-20, 9999); self.h = max(36, ph+16)
+            _, ph = self._para.wrap(width - 20, 9999); self.h = max(36, ph + 16)
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
-            c = self.canv; c.setFillColor(CARD); c.roundRect(0,0,self.w,self.h,6,fill=1,stroke=0)
-            c.setFillColor(self.color); c.roundRect(0,0,4,self.h,2,fill=1,stroke=0)
-            self._para.drawOn(c,14,8)
-
+            c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 6, fill=1, stroke=0)
+            c.setFillColor(self.color); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._para.drawOn(c, 14, 8)
+    
     class ExpertInsightBox(Flowable):
         def __init__(self, section: str, text: str, width=CONTENT_W):
             super().__init__()
             self.w = width
-            self._header = Paragraph(f'<b>🔬 EXPERT INSIGHT — {section.upper()}</b>', S(f"_ei_h_{abs(hash(text))}", size=7.5, lead=11, color=WARN, bold=True))
+            self._header = Paragraph(
+                f'<b>🔬 EXPERT INSIGHT — {section.upper()}</b>',
+                S(f"_ei_h_{abs(hash(text))}", size=7.5, lead=11, color=WARN, bold=True)
+            )
             self._body = Paragraph(text, S(f"_ei_b_{abs(hash(text))}", size=8.8, lead=14, color=TEXT))
-            _, hh = self._header.wrap(width-24, 9999)
-            _, bh = self._body.wrap(width-24, 9999)
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
             self.h = hh + bh + 30
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#120F00"))
-            c.roundRect(0,0,self.w,self.h,8,fill=1,stroke=0)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
             c.setStrokeColor(WARN); c.setLineWidth(1.0)
-            c.roundRect(0,0,self.w,self.h,8,fill=0,stroke=1)
-            c.setFillColor(WARN); c.roundRect(0,0,4,self.h,2,fill=1,stroke=0)
-            self._header.drawOn(c,14,self.h-18)
-            self._body.drawOn(c,14,8)
-
+            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(WARN); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+    
     class ActionableMilestoneBox(Flowable):
         def __init__(self, steps: list, width=CONTENT_W):
             super().__init__()
             self.w = width
             bullet_html = "".join(f"→  {s}<br/>" for s in steps)
-            self._header = Paragraph('<b>🎯 ACTIONABLE MILESTONE — YOUR NEXT 4 WEEKS</b>', S(f"_am_h_{abs(hash(bullet_html))}", size=7.5, lead=11, color=ACCENT, bold=True))
+            self._header = Paragraph(
+                '<b>🎯 ACTIONABLE MILESTONE — YOUR NEXT 4 WEEKS</b>',
+                S(f"_am_h_{abs(hash(bullet_html))}", size=7.5, lead=11, color=ACCENT, bold=True)
+            )
             self._body = Paragraph(bullet_html, S(f"_am_b_{abs(hash(bullet_html))}", size=8.8, lead=15, color=TEXT))
-            _, hh = self._header.wrap(width-24, 9999)
-            _, bh = self._body.wrap(width-24, 9999)
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
             self.h = hh + bh + 30
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#00100E"))
-            c.roundRect(0,0,self.w,self.h,8,fill=1,stroke=0)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
             c.setStrokeColor(ACCENT); c.setLineWidth(1.0)
-            c.roundRect(0,0,self.w,self.h,8,fill=0,stroke=1)
-            c.setFillColor(ACCENT); c.roundRect(0,0,4,self.h,2,fill=1,stroke=0)
-            self._header.drawOn(c,14,self.h-18)
-            self._body.drawOn(c,14,8)
-
+            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(ACCENT); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+    
     class CompoundingEffectBox(Flowable):
         def __init__(self, width=CONTENT_W):
             super().__init__()
             self.w = width
-            body_html = ("<b>Health is compound interest.</b> A 1% weekly improvement in sleep quality, training load, or nutrition precision compounds to a <b>52% total gain over one year.</b> The habits you establish today are not just today's result — they are the foundation every future week builds upon. Small, consistent actions have disproportionate long-term returns. This is the defining principle of every intervention recommended in this report.")
-            self._header = Paragraph('<b>📈  THE COMPOUNDING EFFECT — WHY 1% MATTERS</b>', S("_ce_h", size=7.5, lead=11, color=BLUE, bold=True))
+            body_html = (
+                "<b>Health is compound interest.</b> A 1% weekly improvement in sleep quality, "
+                "training load, or nutrition precision compounds to a <b>52% total gain over one year.</b> "
+                "The habits you establish today are not just today's result — they are the foundation "
+                "every future week builds upon. Small, consistent actions have disproportionate long-term returns. "
+                "This is the defining principle of every intervention recommended in this report."
+            )
+            self._header = Paragraph(
+                '<b>📈  THE COMPOUNDING EFFECT — WHY 1% MATTERS</b>',
+                S("_ce_h", size=7.5, lead=11, color=BLUE, bold=True)
+            )
             self._body = Paragraph(body_html, S("_ce_b", size=8.8, lead=14, color=TEXT))
-            _, hh = self._header.wrap(width-24,9999)
-            _, bh = self._body.wrap(width-24,9999)
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
             self.h = hh + bh + 30
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv
             c.setFillColor(HexColor("#020810"))
-            c.roundRect(0,0,self.w,self.h,8,fill=1,stroke=0)
+            c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
             c.setStrokeColor(BLUE); c.setLineWidth(1.0)
-            c.roundRect(0,0,self.w,self.h,8,fill=0,stroke=1)
-            c.setFillColor(BLUE); c.roundRect(0,0,4,self.h,2,fill=1,stroke=0)
-            self._header.drawOn(c,14,self.h-18)
-            self._body.drawOn(c,14,8)
-
+            c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(BLUE); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+    
     class ExecutiveSummaryCheatSheet(Flowable):
+        """Premium executive summary with manual text wrapping (safe and simple)."""
         def __init__(self, stop_items, start_items, maintain_items, width=CONTENT_W):
             super().__init__()
             self.w = width
             self.stop = stop_items[:3] if stop_items else ["None identified"]
             self.start = start_items[:3] if start_items else ["None identified"]
             self.maintain = maintain_items[:3] if maintain_items else ["None identified"]
-            self.h = 260
+            self.h = 260  # fast høyde, justeres ved wrap om nødvendig
+
         def _draw_panel(self, c, x, y, pw, ph, emoji, title, items, bg_hex, accent_hex):
+            # Bakgrunn og ramme
             c.setFillColor(HexColor(bg_hex))
-            c.roundRect(x,y,pw,ph,10,fill=1,stroke=0)
+            c.roundRect(x, y, pw, ph, 10, fill=1, stroke=0)
             c.setStrokeColor(HexColor(accent_hex))
             c.setLineWidth(1.2)
-            c.roundRect(x,y,pw,ph,10,fill=0,stroke=1)
+            c.roundRect(x, y, pw, ph, 10, fill=0, stroke=1)
+            # Toppfargebånd
             c.setFillColor(HexColor(accent_hex))
-            c.roundRect(x,y+ph-3,pw,3,1,fill=1,stroke=0)
+            c.roundRect(x, y + ph - 3, pw, 3, 1, fill=1, stroke=0)
+            # Tittel (emoji + tekst)
             c.setFillColor(HexColor(accent_hex))
-            c.setFont("Helvetica-Bold",11)
-            c.drawCentredString(x+pw/2, y+ph-22, f"{emoji}  {title}")
+            c.setFont("Helvetica-Bold", 11)
+            c.drawCentredString(x + pw / 2, y + ph - 22, f"{emoji}  {title}")
+            # Skillestrek
             c.setStrokeColor(HexColor(accent_hex))
             c.setLineWidth(0.4)
-            c.line(x+12, y+ph-30, x+pw-12, y+ph-30)
+            c.line(x + 12, y + ph - 30, x + pw - 12, y + ph - 30)
+            # Skriv ut punktene med manuell linjedeling (maks 28 tegn per linje)
             c.setFillColor(HexColor("#E5E7EB"))
-            c.setFont("Helvetica",7.5)
+            c.setFont("Helvetica", 7.5)
             line_height = 11
             current_y = y + ph - 46
             for item in items:
                 text = f"• {item}"
+                # Del opp teksten i biter på maks 28 tegn
                 words = text.split()
                 lines = []
                 current_line = ""
@@ -1385,650 +1639,170 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
                         current_line = word
                 if current_line:
                     lines.append(current_line)
+                # Tegn linjene
                 for line in lines:
-                    c.drawString(x+10, current_y, line)
+                    c.drawString(x + 10, current_y, line)
                     current_y -= line_height
-                current_y -= 4
+                current_y -= 4  # ekstra mellomrom mellom punkter
+
         def draw(self):
             c = self.canv
+            # Hovedramme
             c.setFillColor(HexColor("#080D1A"))
-            c.roundRect(0,0,self.w,self.h,12,fill=1,stroke=0)
+            c.roundRect(0, 0, self.w, self.h, 12, fill=1, stroke=0)
             c.setStrokeColor(ACCENT)
             c.setLineWidth(1.2)
-            c.roundRect(0,0,self.w,self.h,12,fill=0,stroke=1)
+            c.roundRect(0, 0, self.w, self.h, 12, fill=0, stroke=1)
+            # Topptekst
             c.setFillColor(ACCENT)
-            c.setFont("Helvetica-Bold",13)
-            c.drawCentredString(self.w/2, self.h-22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
+            c.setFont("Helvetica-Bold", 13)
+            c.drawCentredString(self.w / 2, self.h - 22, "EXECUTIVE SUMMARY — YOUR PERSONAL CHEAT SHEET")
             c.setFillColor(MUTED)
-            c.setFont("Helvetica",7.5)
-            c.drawCentredString(self.w/2, self.h-36, "Review quarterly · Share with your physician · Act on the top priority daily")
+            c.setFont("Helvetica", 7.5)
+            c.drawCentredString(self.w / 2, self.h - 36, "Review quarterly · Share with your physician · Act on the top priority daily")
+            # Kolonner
             gap = 8
             ph = self.h - 48
-            pw = (self.w - gap*2)/3
-            self._draw_panel(c,0,8,pw,ph,"🛑","STOP",self.stop,"#150202","#EF4444")
-            self._draw_panel(c,pw+gap,8,pw,ph,"🚀","START",self.start,"#011008","#22C55E")
-            self._draw_panel(c,(pw+gap)*2,8,pw,ph,"✅","MAINTAIN",self.maintain,"#020A18","#3B82F6")
-
-    def draw_page(canvas, doc):
-        canvas.saveState()
-        canvas.setFillColor(BG); canvas.rect(0,0,PAGE_W,PAGE_H,fill=1,stroke=0)
-        canvas.setFillColor(ACCENT); canvas.rect(0,PAGE_H-3,PAGE_W,3,fill=1,stroke=0)
-        canvas.setFillColor(CARD2); canvas.rect(0,PAGE_H-22,PAGE_W,19,fill=1,stroke=0)
-        canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold",8.5); canvas.drawString(MARGIN_H,PAGE_H-15,"LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL")
-        canvas.setFillColor(MUTED); canvas.setFont("Helvetica",8); canvas.drawRightString(PAGE_W-MARGIN_H,PAGE_H-15,f"Page {canvas.getPageNumber()}")
-        canvas.setFillColor(STROKE); canvas.rect(0,0,PAGE_W,14,fill=1,stroke=0)
-        canvas.setFillColor(DIM); canvas.setFont("Helvetica",6.5); canvas.drawString(MARGIN_H,4,"Educational use only — not a medical diagnosis — health-tools.streamlit.app")
-        canvas.drawRightString(PAGE_W-MARGIN_H,4,datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
-        canvas.restoreState()
-
-    story = []
+            pw = (self.w - gap * 2) / 3
+            self._draw_panel(c, 0,               8, pw, ph, "🛑", "STOP",     self.stop,     "#150202", "#EF4444")
+            self._draw_panel(c, pw + gap,        8, pw, ph, "🚀", "START",    self.start,    "#011008", "#22C55E")
+            self._draw_panel(c, (pw + gap) * 2, 8, pw, ph, "✅", "MAINTAIN", self.maintain, "#020A18", "#3B82F6")
+    class ExecutiveSummaryPanel(Flowable):
+        """Premium 3-spalter executive summary med gradientbakgrunn"""
+        def __init__(self, stop_items, start_items, keep_items, width=CONTENT_W):
+            super().__init__()
+            self.stop = stop_items[:4]
+            self.start = start_items[:4]
+            self.keep = keep_items[:4]
+            self.w = width
+            self.h = 270
+            
+        def wrap(self, aw, ah):
+            return self.w, self.h
+            
+        def draw(self):
+            c = self.canv
+            # Hovedramme med gradient (simulert)
+            c.setFillColor(HexColor("#080D1A"))
+            c.roundRect(0, 0, self.w, self.h, 14, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT)
+            c.setLineWidth(1.2)
+            c.roundRect(0, 0, self.w, self.h, 14, fill=0, stroke=1)
+            
+            # Tittel med linje
+            c.setFillColor(ACCENT)
+            c.setFont("Helvetica-Bold", 14)
+            c.drawCentredString(self.w/2, self.h-20, "EXECUTIVE SUMMARY")
+            c.setStrokeColor(ACCENT)
+            c.setLineWidth(0.8)
+            c.line(self.w/2-50, self.h-28, self.w/2+50, self.h-28)
+            
+            # Undertekst
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 7)
+            c.drawCentredString(self.w/2, self.h-38, "Your personal cheat sheet – review quarterly")
+            
+            # Kolonner – bredder
+            gap = 10
+            col_w = (self.w - 2*gap) / 3
+            x_pos = [0, col_w+gap, 2*(col_w+gap)]
+            titles = [("STOP", "#EF4444", "🛑"), ("START", "#22C55E", "🚀"), ("MAINTAIN", "#3B82F6", "✅")]
+            items = [self.stop, self.start, self.keep]
+            
+            for idx, (title, color, emoji) in enumerate(titles):
+                x = x_pos[idx]
+                # Panel-bakgrunn
+                c.setFillColor(HexColor("#0F172A"))
+                c.roundRect(x, 10, col_w, self.h-50, 10, fill=1, stroke=0)
+                c.setStrokeColor(HexColor(color))
+                c.setLineWidth(1)
+                c.roundRect(x, 10, col_w, self.h-50, 10, fill=0, stroke=1)
+                # Farget toppbånd
+                c.setFillColor(HexColor(color))
+                c.roundRect(x, self.h-40, col_w, 5, 2, fill=1, stroke=0)
+                # Tittel
+                c.setFillColor(HexColor(color))
+                c.setFont("Helvetica-Bold", 11)
+                c.drawCentredString(x+col_w/2, self.h-58, f"{emoji}  {title}")
+                # Strek under tittel
+                c.setStrokeColor(HexColor(color))
+                c.setLineWidth(0.4)
+                c.line(x+12, self.h-66, x+col_w-12, self.h-66)
+                # Punkter – manuell linjedeling
+                c.setFillColor(TEXT)
+                c.setFont("Helvetica", 7.5)
+                y_pos = self.h-85
+                for item in items[idx]:
+                    lines = self._wrap_text(item, col_w-20, 7.5)
+                    for line in lines:
+                        if y_pos < 20: break
+                        c.drawString(x+10, y_pos, f"• {line}")
+                        y_pos -= 12
+                    y_pos -= 6
+                    
+        def _wrap_text(self, text, max_width, font_size):
+            """Enkel tekstbryter – del opp ved 35 tegn"""
+            if len(text) <= 35:
+                return [text]
+            words = text.split()
+            lines = []
+            current = ""
+            for w in words:
+                if len(current) + len(w) + 1 <= 35:
+                    current += (" " if current else "") + w
+                else:
+                    lines.append(current)
+                    current = w
+            if current:
+                lines.append(current)
+            return lines    
+    # ── Sidetegningsmal (Topp- og botntekst) ──
+    
+    
+    
+    # ── SIDA 1: Cover + Dashboard ──
     story.append(VGap(16))
     story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
     story.append(P("Personalised Precision Health Analysis — Powered by Validated Clinical Formulas", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
     story.append(P("Premium Individual Health Report", S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
-
-    info_rows = [[P("AGE",S("il",size=6.5,color=MUTED,align=TA_CENTER)),P("SEX",S("il",size=6.5,color=MUTED,align=TA_CENTER)),P("HEIGHT",S("il",size=6.5,color=MUTED,align=TA_CENTER)),P("WEIGHT",S("il",size=6.5,color=MUTED,align=TA_CENTER)),P("DATE",S("il",size=6.5,color=MUTED,align=TA_CENTER))],
-                [P(f"{age_v} yrs",S("iv",size=11,bold=True,align=TA_CENTER)),P(str(sex_v),S("iv",size=11,bold=True,align=TA_CENTER)),P(f"{h_v} cm",S("iv",size=11,bold=True,align=TA_CENTER)),P(f"{w_v} kg",S("iv",size=11,bold=True,align=TA_CENTER)),P(str(gen_v)[:10],S("iv",size=8,color=MUTED,align=TA_CENTER))]]
+    
+    info_rows = [
+        [P("AGE", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("SEX", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("HEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("WEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("DATE", S("il", size=6.5, color=MUTED, align=TA_CENTER))],
+        [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
+    ]
     it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
-    it.setStyle(TableStyle([("BACKGROUND",(0,0),(-1,-1),CARD),("ROWBACKGROUNDS",(0,0),(-1,-1),[CARD,CARD2]),("BOX",(0,0),(-1,-1),1,STROKE),("INNERGRID",(0,0),(-1,-1),0.5,STROKE),("TOPPADDING",(0,0),(-1,-1),8),("BOTTOMPADDING",(0,0),(-1,-1),8)]))
+    it.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,-1), CARD), 
+        ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), 
+        ("BOX", (0,0), (-1,-1), 1, STROKE), 
+        ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), 
+        ("TOPPADDING", (0,0), (-1,-1), 8), 
+        ("BOTTOMPADDING", (0,0), (-1,-1), 8)
+    ]))
     story.append(it)
     story.append(VGap(8))
-
+    
     story.append(SecHeader("Overall Health Dashboard", subtitle="Composite score across 5 dimensions — for directional guidance only"))
     story.append(VGap(6))
     story.append(HealthScoreRing(health_score, score_label, score_col))
     story.append(VGap(8))
-
+    
     kmetrics = []
-    if bmi_v is not None: kmetrics.append(("BMI",f"{bmi_v:.1f}",bmi_cat,bmi_col.hexval()))
-    if vo2_v is not None: kmetrics.append(("VO2max",f"{vo2_v:.1f}",f"{vo2_pct:.0f}th pct",vo2_col.hexval()))
-    if bio_diff is not None: kmetrics.append(("Bio Age",f"{bio_v:.1f} yrs",f"{bio_diff:+.1f} vs calendar",bio_col.hexval()))
+    if bmi_v is not None: kmetrics.append(("BMI", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
+    if vo2_v is not None: kmetrics.append(("VO2max", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th pct", vo2_col.hexval()))
+    if bio_diff is not None: kmetrics.append(("Bio Age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} vs calendar", bio_col.hexval()))
     if cur_kcal and rec_kcal:
         d_k = int(rec_kcal - cur_kcal)
-        kmetrics.append(("Calories",f"{int(rec_kcal)}",f"{d_k:+d} kcal/day","#22C55E" if d_k<0 else "#3B82F6"))
+        kmetrics.append(("Calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day", "#22C55E" if d_k < 0 else "#3B82F6"))
     if kmetrics:
         story.append(MetricCard(kmetrics[:4]))
         story.append(VGap(8))
-
-    story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl",size=10,bold=True,color=TEXT,after=3)))
-    story.append(P(lever_why, S("bl2",size=9,color=MUTED,after=4)))
+    
+    story.append(P(f"Biggest lever right now: {biggest_lever}", S("bl", size=10, bold=True, color=TEXT, after=3)))
+    story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
     story.append(PageBreak())
     
-# ═════════════════════════════════════════════════════════════════════════════
-# 1. PERSONALISED EXECUTIVE SUMMARY TEXT
-# ═════════════════════════════════════════════════════════════════════════════
- 
-def build_executive_summary_text(
-    age: Optional[float],
-    sex: Optional[str],
-    weight_kg: Optional[float],
-    bmi_v: Optional[float],
-    bmi_cat: Optional[str],
-    vo2_v: Optional[float],
-    vo2_pct: Optional[float],
-    bio_v: Optional[float],
-    bio_diff: Optional[float],
-    ex_total_min: Optional[int],
-    ex_kcal_w: Optional[float],
-    health_score: int,
-    score_label: str,
-    biggest_lever: str,
-) -> str:
-    """
-    Returns a rich, ~150-200 word paragraph with concrete, individual sentences.
-    Every number is pulled from the user's actual data so each report reads uniquely.
-    """
-    parts: list[str] = []
- 
-    # — Opening sentence with overall score —
-    age_str = f"{int(age)}-year-old" if age else "your"
-    sex_str = sex.lower() if sex else "individual"
-    parts.append(
-        f"This report summarises the precision health analysis for a {age_str} {sex_str}"
-        f"{f' weighing {weight_kg:.1f} kg' if weight_kg else ''}."
-        f" Your composite Health Score is <b>{health_score}/100</b> — rated <b>{score_label}</b>."
-    )
- 
-    # — BMI sentence —
-    if bmi_v is not None:
-        if 18.5 <= bmi_v < 25:
-            parts.append(
-                f"Your BMI of <b>{bmi_v:.1f}</b> ({bmi_cat}) sits in the optimal range —"
-                " body composition is not a primary concern, which frees your energy budget for performance."
-            )
-        elif bmi_v >= 30:
-            parts.append(
-                f"Your BMI of <b>{bmi_v:.1f}</b> ({bmi_cat}) is the most actionable metric in this report."
-                " A sustained daily deficit of 400–500 kcal combined with strength training twice weekly"
-                " is the evidence-based protocol with the highest long-term adherence rate."
-            )
-        elif bmi_v >= 25:
-            parts.append(
-                f"Your BMI of <b>{bmi_v:.1f}</b> ({bmi_cat}) is modestly elevated."
-                " Even a 5% reduction in body weight at this range produces measurable improvements"
-                " in cardiovascular risk markers and metabolic efficiency."
-            )
-        else:
-            parts.append(
-                f"Your BMI of <b>{bmi_v:.1f}</b> ({bmi_cat}) is below the reference range."
-                " Building lean mass through progressive overload and a positive calorie balance"
-                " is the highest-priority intervention."
-            )
- 
-    # — VO2max sentence —
-    if vo2_v is not None and vo2_pct is not None:
-        ranking = (
-            "elite" if vo2_pct >= 90 else
-            "excellent" if vo2_pct >= 80 else
-            "above average" if vo2_pct >= 65 else
-            "average" if vo2_pct >= 50 else
-            "below average" if vo2_pct >= 35 else
-            "low"
-        )
-        parts.append(
-            f"Cardiorespiratory fitness (VO2max <b>{vo2_v:.1f} ml/kg/min</b>) places you"
-            f" in the <b>{ranking}</b> tier — {vo2_pct:.0f}th percentile for your age group."
-        )
-        if vo2_pct < 50:
-            parts.append(
-                "VO2max is the single strongest predictor of all-cause mortality in population studies."
-                " Structured aerobic training produces meaningful improvement in as few as 6–8 weeks."
-            )
- 
-    # — Biological age sentence —
-    if bio_v is not None and bio_diff is not None and age is not None:
-        if bio_diff <= -1:
-            parts.append(
-                f"Your estimated biological age of <b>{bio_v:.1f} years</b> is"
-                f" <b>{abs(bio_diff):.1f} years younger</b> than your calendar age —"
-                " a direct reflection of your current lifestyle choices compounding positively."
-            )
-        elif bio_diff > 2:
-            parts.append(
-                f"Your estimated biological age (<b>{bio_v:.1f} years</b>) is"
-                f" <b>{bio_diff:.1f} years older</b> than your calendar age."
-                " The gap is driven by modifiable factors: sleep, stress, and cardio fitness"
-                " account for the largest adjustments."
-            )
-        else:
-            parts.append(
-                f"Your estimated biological age (<b>{bio_v:.1f} years</b>) closely matches"
-                f" your calendar age — a solid baseline with clear upside in the lifestyle factors."
-            )
- 
-    # — Activity / exercise sentence —
-    if ex_total_min is not None:
-        if ex_total_min >= 150:
-            parts.append(
-                f"You are logging <b>{ex_total_min} min/week</b>"
-                f"{f' ({ex_kcal_w:.0f} kcal/week)' if ex_kcal_w else ''}"
-                " — meeting WHO guidelines. The marginal benefit from additional volume now"
-                " comes primarily from intensity variation, not raw minutes."
-            )
-        else:
-            gap = 150 - ex_total_min
-            parts.append(
-                f"At <b>{ex_total_min} min/week</b> you are {gap} minutes short of the WHO target."
-                " Each additional 20 min/week of moderate activity is associated with"
-                " a 3–4% reduction in all-cause mortality risk."
-            )
- 
-    # — Closing action sentence —
-    parts.append(
-        f"<b>Your highest-leverage focus area:</b> {biggest_lever}."
-        " The next-steps section on this page translates this into five specific actions"
-        " you can begin this week."
-    )
- 
-    return "  ".join(parts)
- 
- 
-# ═════════════════════════════════════════════════════════════════════════════
-# 2. CHART IMAGES — radar + VO2 gauge rendered as actual PNG via matplotlib
-# ═════════════════════════════════════════════════════════════════════════════
- 
-def _dark_fig(w_in: float = 5.0, h_in: float = 3.5) -> plt.Figure:
-    """Create a matplotlib figure with the dark health-tools theme."""
-    fig = plt.Figure(figsize=(w_in, h_in), facecolor=C_BG)
-    return fig
- 
- 
-def render_radar_png(
-    body_comp: float,
-    cardio: float,
-    bio_age: float,
-    activity: float,
-    lifestyle: float,
-    width_px: int = 460,
-    height_px: int = 420,
-    dpi: int = 120,
-) -> io.BytesIO:
-    """
-    Renders a pentagon radar chart.  Returns a BytesIO PNG.
-    Scores should be 0–100.
-    """
-    labels = ["Body\nComp", "Cardio", "Bio\nAge", "Activity", "Lifestyle"]
-    values = [body_comp, cardio, bio_age, activity, lifestyle]
- 
-    N = len(labels)
-    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
-    # close the polygon
-    vals_plot = values + [values[0]]
-    angles_plot = angles + [angles[0]]
- 
-    fig_w = width_px / dpi
-    fig_h = height_px / dpi
-    fig = plt.Figure(figsize=(fig_w, fig_h), facecolor=C_BG)
-    ax = fig.add_subplot(111, polar=True, facecolor=C_BG)
- 
-    # Grid rings
-    for r in [20, 40, 60, 80, 100]:
-        ring_vals = [r] * (N + 1)
-        ax.plot(angles_plot, ring_vals, color=C_STROKE, linewidth=0.6, linestyle="--", alpha=0.5)
- 
-    # Spoke lines
-    for angle in angles:
-        ax.plot([angle, angle], [0, 100], color=C_STROKE, linewidth=0.6, alpha=0.5)
- 
-    # Fill area
-    ax.fill(angles_plot, vals_plot, color=C_ACCENT, alpha=0.25)
-    ax.plot(angles_plot, vals_plot, color=C_ACCENT, linewidth=2.2)
- 
-    # Data point dots
-    for a, v, lbl in zip(angles, values, labels):
-        dot_color = (
-            C_GOOD if v >= 70 else
-            C_WARN if v >= 45 else
-            C_BAD
-        )
-        ax.scatter([a], [v], color=dot_color, s=55, zorder=5)
-        ax.annotate(
-            f"{v:.0f}",
-            xy=(a, v),
-            xytext=(a, v + 12),
-            ha="center", va="center",
-            fontsize=7.5, color=C_TEXT, fontweight="bold",
-        )
- 
-    # Axis labels
-    ax.set_xticks(angles)
-    ax.set_xticklabels(labels, color=C_MUTED, fontsize=8.5)
-    ax.set_yticklabels([])
-    ax.set_ylim(0, 110)
-    ax.set_theta_offset(np.pi / 2)
-    ax.set_theta_direction(-1)
-    ax.spines["polar"].set_visible(False)
- 
-    fig.tight_layout(pad=1.2)
- 
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=dpi, facecolor=C_BG, bbox_inches="tight")
-    buf.seek(0)
-    plt.close(fig)
-    return buf
- 
- 
-def render_vo2_gauge_png(
-    percentile: float,
-    vo2_value: float,
-    age: Optional[float] = None,
-    width_px: int = 440,
-    height_px: int = 300,
-    dpi: int = 120,
-) -> io.BytesIO:
-    """
-    Renders a semi-circular gauge for VO2max percentile.
-    Returns a BytesIO PNG.
-    """
-    fig_w = width_px / dpi
-    fig_h = height_px / dpi
-    fig = plt.Figure(figsize=(fig_w, fig_h), facecolor=C_BG)
-    ax = fig.add_subplot(111, facecolor=C_BG)
-    ax.set_aspect("equal")
- 
-    # Gauge arcs — 5 colour bands from 180° to 0° (left to right)
-    bands = [
-        (0,   40,  C_BAD,  "Low"),
-        (40,  55,  C_WARN, "Below avg"),
-        (55,  70,  C_BLUE, "Average"),
-        (70,  85,  "#7C3AED", "Good"),
-        (85,  100, C_GOOD, "Excellent"),
-    ]
-    outer_r = 1.0
-    inner_r = 0.62
-    lw = 28
- 
-    def pct_to_angle(p):
-        # 0% → 180°, 100% → 0°
-        return 180 - p * 1.8
- 
-    for lo, hi, col, _ in bands:
-        theta1 = pct_to_angle(hi)
-        theta2 = pct_to_angle(lo)
-        arc = mpatches.Arc(
-            (0, 0), 2 * outer_r, 2 * outer_r,
-            angle=0, theta1=theta1, theta2=theta2,
-            color=col, linewidth=lw, solid_capstyle="butt",
-        )
-        ax.add_patch(arc)
- 
-    # Needle
-    needle_angle_deg = pct_to_angle(percentile)
-    needle_angle_rad = math.radians(needle_angle_deg)
-    nx = 0.85 * math.cos(needle_angle_rad)
-    ny = 0.85 * math.sin(needle_angle_rad)
-    ax.annotate(
-        "", xy=(nx, ny), xytext=(0, 0),
-        arrowprops=dict(arrowstyle="-|>", color=C_TEXT, lw=2.5,
-                        mutation_scale=14),
-    )
-    ax.scatter([0], [0], s=80, color=C_TEXT, zorder=6)
- 
-    # Centre text: VO2 value
-    ax.text(0, -0.18, f"{vo2_value:.1f}", ha="center", va="center",
-            color=C_ACCENT, fontsize=18, fontweight="bold")
-    ax.text(0, -0.34, "ml/kg/min", ha="center", va="center",
-            color=C_MUTED, fontsize=7)
- 
-    # Percentile label
-    pct_col = (
-        C_GOOD  if percentile >= 80 else
-        "#7C3AED" if percentile >= 70 else
-        C_BLUE  if percentile >= 55 else
-        C_WARN  if percentile >= 40 else
-        C_BAD
-    )
-    ax.text(0, 0.28, f"{percentile:.0f}th percentile", ha="center", va="center",
-            color=pct_col, fontsize=11, fontweight="bold")
- 
-    age_lbl = f"for age {int(age)}" if age else ""
-    ax.text(0, 0.16, age_lbl, ha="center", va="center",
-            color=C_MUTED, fontsize=7.5)
- 
-    # Legend pills at bottom
-    legend_x = -1.05
-    for i, (lo, hi, col, lbl) in enumerate(bands):
-        bx = -1.08 + i * 0.55
-        rect = FancyBboxPatch(
-            (bx, -0.74), 0.48, 0.14,
-            boxstyle="round,pad=0.02", linewidth=0,
-            facecolor=col, alpha=0.85,
-        )
-        ax.add_patch(rect)
-        ax.text(bx + 0.24, -0.668, lbl, ha="center", va="center",
-                color="white", fontsize=5.5, fontweight="bold")
- 
-    ax.set_xlim(-1.2, 1.2)
-    ax.set_ylim(-0.82, 1.12)
-    ax.axis("off")
- 
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=dpi, facecolor=C_BG, bbox_inches="tight")
-    buf.seek(0)
-    plt.close(fig)
-    return buf
- 
- 
-# ═════════════════════════════════════════════════════════════════════════════
-# 3. NEXT STEPS THIS WEEK — premium card-style flowable
-# ═════════════════════════════════════════════════════════════════════════════
- 
-def build_next_steps(
-    bmi_v: Optional[float],
-    vo2_pct: Optional[float],
-    bio_diff: Optional[float],
-    ex_total_min: Optional[int],
-    has_plan: bool,
-    goal: str = "Body Recomposition",
-    weight_kg: Optional[float] = None,
-) -> list[dict]:
-    """
-    Returns 3–5 concrete, specific action cards for this week.
-    Each dict: {icon, title, action, why, color}
-    """
-    steps: list[dict] = []
- 
-    # ── 1. VO2max / cardio ──────────────────────────────────────────────────
-    if vo2_pct is not None and vo2_pct < 50:
-        steps.append({
-            "icon": "❤️",
-            "title": "Zone 2 cardio — this week",
-            "action": (
-                "Do 3 sessions of 30–35 min easy cardio (you can hold a full conversation)."
-                " Walking briskly, cycling, or light jogging all count."
-            ),
-            "why": (
-                f"Your VO2max is at the {vo2_pct:.0f}th percentile — the fastest-improving"
-                " longevity marker you own. Zone 2 training drives mitochondrial density."
-            ),
-            "color": C_BAD if vo2_pct < 30 else C_WARN,
-        })
-    elif vo2_pct is not None and vo2_pct < 75:
-        steps.append({
-            "icon": "⚡",
-            "title": "Add one interval session",
-            "action": (
-                "After a 10 min warm-up, do 4 × 4 min at hard effort (8/10 RPE)"
-                " with 3 min easy recovery between. End with 10 min cool-down."
-            ),
-            "why": (
-                f"You are at the {vo2_pct:.0f}th percentile — one structured interval session"
-                " per week is the most efficient method to push higher."
-            ),
-            "color": C_BLUE,
-        })
- 
-    # ── 2. BMI / body composition ───────────────────────────────────────────
-    if bmi_v is not None and bmi_v >= 25:
-        protein_g = round(weight_kg * 1.8) if weight_kg else 140
-        steps.append({
-            "icon": "🥗",
-            "title": "Hit your protein target daily",
-            "action": (
-                f"Target <b>{protein_g}g protein/day</b> — spread across 4 meals"
-                " (~35g each). Prioritise eggs, chicken, fish, or Greek yoghurt."
-            ),
-            "why": (
-                "Protein is the most satiating macro and preserves lean mass during"
-                " a calorie deficit. Without it, 25–40% of weight lost is muscle."
-            ),
-            "color": C_WARN if bmi_v < 30 else C_BAD,
-        })
- 
-    # ── 3. Biological age ───────────────────────────────────────────────────
-    if bio_diff is not None and bio_diff > 1:
-        steps.append({
-            "icon": "🌙",
-            "title": "Fix your sleep window — tonight",
-            "action": (
-                "Set a consistent bed-time and wake-time — even on weekends."
-                " Aim for 7–9 hours. Keep screens off 45 min before bed."
-            ),
-            "why": (
-                f"Your biological age runs {bio_diff:.1f} years ahead of calendar age."
-                " Sleep consistency is the highest-leverage single intervention"
-                " supported by biological age research."
-            ),
-            "color": C_WARN,
-        })
- 
-    # ── 4. Exercise volume ──────────────────────────────────────────────────
-    if ex_total_min is not None and ex_total_min < 150:
-        gap = 150 - ex_total_min
-        steps.append({
-            "icon": "🚶",
-            "title": f"Add {gap} min of movement",
-            "action": (
-                f"Add {gap} min across the week — that is just {gap // 5} extra minutes"
-                " on your existing days, or one new 20 min walk. Track it."
-            ),
-            "why": (
-                "The WHO 150 min/week threshold is where the mortality risk curve"
-                " flattens significantly. You are close — make it this week."
-            ),
-            "color": C_WARN,
-        })
-    elif ex_total_min is not None and ex_total_min >= 150:
-        steps.append({
-            "icon": "💪",
-            "title": "Add one strength session",
-            "action": (
-                "If you are not already strength training: 3 sets of 8–12 reps on"
-                " squat, hinge, press, and row. 30–40 min total. No gym needed."
-            ),
-            "why": (
-                "You meet cardio guidelines. Resistance training is the most underused"
-                " tool for metabolic health and bone density after 30."
-            ),
-            "color": C_GOOD,
-        })
- 
-    # ── 5. Tracking / weekly review ─────────────────────────────────────────
-    steps.append({
-        "icon": "📊",
-        "title": "Measure once, log twice",
-        "action": (
-            "Weigh yourself at the same time tomorrow morning (post-toilet, pre-food)."
-            " Log it in My Progress. Set a reminder to repeat every 7 days."
-        ),
-        "why": (
-            "Consistent measurement creates the feedback loop that makes every"
-            " other recommendation in this report compoundable over time."
-        ),
-        "color": C_ACCENT,
-    })
- 
-    return steps[:5]
- 
- 
-class NextStepsFlowable(Flowable):
-    """
-    Renders 3–5 'Next Steps This Week' action cards in a premium dark style.
-    Each card has: coloured left-bar + icon badge, title, action text, why text.
-    """
- 
-    CARD_H     = 88      # height of each card in points
-    CARD_GAP   = 10      # vertical gap between cards
-    HEADER_H   = 52      # height of the title block at the top
- 
-    def __init__(self, steps: list[dict], width: float = CONTENT_W):
-        super().__init__()
-        self.steps = steps
-        self.w     = width
-        n          = len(steps)
-        self.h     = self.HEADER_H + n * (self.CARD_H + self.CARD_GAP)
- 
-    def wrap(self, aw, ah):
-        return self.w, self.h
- 
-    def draw(self):
-        c   = self.canv
-        w   = self.w
- 
-        # ── Section header ──────────────────────────────────────────────────
-        c.setFillColor(HexColor(C_CARD))
-        c.roundRect(0, self.h - self.HEADER_H, w, self.HEADER_H, 10, fill=1, stroke=0)
-        c.setFillColor(HexColor(C_ACCENT))
-        c.roundRect(0, self.h - self.HEADER_H, 5, self.HEADER_H, 2, fill=1, stroke=0)
- 
-        c.setFillColor(white)
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(18, self.h - 26, "NEXT STEPS THIS WEEK")
- 
-        c.setFillColor(HexColor(C_MUTED))
-        c.setFont("Helvetica", 8)
-        c.drawString(18, self.h - 40, "5 concrete actions — start today, track progress in My Progress")
- 
-        # ── Individual cards ─────────────────────────────────────────────────
-        for i, step in enumerate(self.steps):
-            card_y = self.h - self.HEADER_H - (i + 1) * (self.CARD_H + self.CARD_GAP)
-            self._draw_card(c, 0, card_y, w, self.CARD_H, step, i + 1)
- 
-    def _draw_card(self, c, x, y, w, h, step: dict, num: int):
-        col    = HexColor(step.get("color", C_ACCENT))
-        icon   = step.get("icon", "•")
-        title  = step.get("title", "")
-        action = step.get("action", "")
-        why    = step.get("why", "")
- 
-        # Card background
-        c.setFillColor(HexColor(C_CARD2))
-        c.roundRect(x, y, w, h, 8, fill=1, stroke=0)
- 
-        # Coloured left bar
-        c.setFillColor(col)
-        c.roundRect(x, y, 5, h, 2, fill=1, stroke=0)
- 
-        # Top accent line
-        c.setFillColor(col)
-        c.setFillAlpha(0.25)
-        c.roundRect(x, y + h - 3, w, 3, 1, fill=1, stroke=0)
-        c.setFillAlpha(1.0)
- 
-        # Subtle border
-        c.setStrokeColor(HexColor(C_STROKE))
-        c.setLineWidth(0.5)
-        c.roundRect(x, y, w, h, 8, fill=0, stroke=1)
- 
-        # Step number badge (circle)
-        badge_cx = x + 26
-        badge_cy = y + h - 22
-        c.setFillColor(col)
-        c.circle(badge_cx, badge_cy, 11, fill=1, stroke=0)
-        c.setFillColor(white)
-        c.setFont("Helvetica-Bold", 9)
-        c.drawCentredString(badge_cx, badge_cy - 3, str(num))
- 
-        # Icon to the right of badge
-        c.setFillColor(white)
-        c.setFont("Helvetica", 13)
-        c.drawString(x + 42, y + h - 28, icon)
- 
-        # Title
-        c.setFillColor(white)
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(x + 62, y + h - 24, title[:58])
- 
-        # Action text (wrapped)
-        action_style = ParagraphStyle(
-            f"_ns_action_{num}",
-            fontName="Helvetica",
-            fontSize=8.0,
-            leading=12,
-            textColor=HexColor(C_TEXT),
-        )
-        action_para = Paragraph(action, action_style)
-        max_w = w - 70
-        _, action_h = action_para.wrap(max_w, 999)
-        action_y = y + h - 42 - action_h
-        action_para.drawOn(c, x + 62, action_y)
- 
-        # Why text (smaller, muted, right-aligned area)
-        why_style = ParagraphStyle(
-            f"_ns_why_{num}",
-            fontName="Helvetica-Oblique",
-            fontSize=7.0,
-            leading=10,
-            textColor=HexColor(C_DIM),
-        )
-        why_para = Paragraph(f"Why: {why}", why_style)
-        _, why_h = why_para.wrap(w - 72, 999)
-        why_y = max(y + 6, action_y - why_h - 4)
-        why_para.drawOn(c, x + 62, why_y)
- 
- 
-# ═════════════════════════════════════════════════════════════════════════════
-# Convenience wrapper that builds a ReportLab Image from a BytesIO PNG
-# ═════════════════════════════════════════════════════════════════════════════
- 
-def png_to_rl_image(buf: io.BytesIO, width_pts: float, height_pts: float):
-    """
-    Wraps a PNG BytesIO buffer in a ReportLab Image flowable.
-    width_pts / height_pts are the desired rendered size in points.
-    """
-    from reportlab.platypus import Image as RLImage
-    buf.seek(0)
-    return RLImage(buf, width=width_pts, height=height_pts)    
+    
     # ── PAGE 2: Body Composition ──
     story.append(SecHeader("Body Composition", subtitle="BMI, body fat estimate, and waist-to-hip ratio"))
     story.append(VGap(6))
@@ -2867,12 +2641,6 @@ def png_to_rl_image(buf: io.BytesIO, width_pts: float, height_pts: float):
     ))
 
 # Bygg dokumentet og returner bytes
-        # Sjekk alle flowables i story for å finne None-bilder
-    for i, flow in enumerate(story):
-        if isinstance(flow, RLImage):
-            if flow._img is None:
-                st.error(f"RLImage på index {i} har None data!")
-                raise ValueError(f"RLImage på index {i} er None")
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.getvalue()
