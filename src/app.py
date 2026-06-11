@@ -65,13 +65,13 @@ st.sidebar.markdown(
     <div class="ht-side-avatar">{_avatar_letter}</div>
     <div class="ht-side-user-info">
       <div class="ht-side-user-email">{escape(_user_email)}</div>
-      <div class="ht-side-user-status">● Logga inn</div>
+      <div class="ht-side-user-status">● Logged in</div>
     </div>
   </div>
   <hr class="ht-side-divider">
-  <div class="ht-side-feature">🔒 256-bit kryptering</div>
-  <div class="ht-side-feature">🛡️ GDPR · ingen tredjepartar</div>
-  <div class="ht-side-feature">🔐 Dataa dine — alltid berre dine</div>
+  <div class="ht-side-feature">🔒 256-bit encryption</div>
+  <div class="ht-side-feature">🛡️ GDPR · no third parties</div>
+  <div class="ht-side-feature">🔐 Your data — always yours alone</div>
 </div>
 """,
     unsafe_allow_html=True,
