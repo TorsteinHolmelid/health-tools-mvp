@@ -37,6 +37,7 @@ if not is_authenticated():
             else:
                 st.session_state["authenticated"] = True
                 st.session_state["user_id"] = user.id
+                st.session_state["user_email"] = email   # <-- legg til denne linja
                 st.rerun()
     
     with tab2:
