@@ -1030,18 +1030,18 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     )
 
     # Theme og Fargar
-C_BG    = "#0B1220"
-C_ACCENT = "#0EA5A3"
-C_TEXT   = "#E5E7EB"
-C_MUTED  = "#94A3B8"
-C_STROKE = "#334155"
-C_CARD   = "#111C33"
-C_CARD2  = "#0F172A"
-C_GOOD   = "#22C55E"
-C_WARN   = "#F59E0B"
-C_BAD    = "#EF4444"
-C_BLUE   = "#3B82F6"
-C_DIM    = "#64748B"
+    C_BG    = "#0B1220"
+    C_ACCENT = "#0EA5A3"
+    C_TEXT   = "#E5E7EB"
+    C_MUTED  = "#94A3B8"
+    C_STROKE = "#334155"
+    C_CARD   = "#111C33"
+    C_CARD2  = "#0F172A"
+    C_GOOD   = "#22C55E"
+    C_WARN   = "#F59E0B"
+    C_BAD    = "#EF4444"
+    C_BLUE   = "#3B82F6"
+    C_DIM    = "#64748B"
 
     # Hjelpefunksjonar for tekst
     _styles = getSampleStyleSheet()
