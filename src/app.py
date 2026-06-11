@@ -18,8 +18,34 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer, 
     Table, TableStyle, HRFlowable, Image as RLImage
 )
+from pdf_premium_additions import (
+     build_executive_summary_text,
+     render_radar_png,
+     render_vo2_gauge_png,
+     NextStepsFlowable,
+   )
 import streamlit as st
 from db import sign_up, sign_in, is_authenticated, get_current_user_id, sign_out
+from __future__ import annotations
+import io
+import math
+from typing import Optional
+ 
+# ── matplotlib (no display backend) ──────────────────────────────────────────
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.patches import FancyBboxPatch
+import numpy as np
+ 
+# ── reportlab ─────────────────────────────────────────────────────────────────
+from reportlab.lib.colors import HexColor, white, Color
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import Flowable, Paragraph, Spacer
 
 # --- Innlogging / registrering ---
 if not is_authenticated():
@@ -1802,7 +1828,581 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     story.append(P(lever_why, S("bl2", size=9, color=MUTED, after=4)))
     story.append(PageBreak())
     
-    
+# ═════════════════════════════════════════════════════════════════════════════
+# 1. PERSONALISED EXECUTIVE SUMMARY TEXT
+# ═════════════════════════════════════════════════════════════════════════════
+ 
+def build_executive_summary_text(
+    age: Optional[float],
+    sex: Optional[str],
+    weight_kg: Optional[float],
+    bmi_v: Optional[float],
+    bmi_cat: Optional[str],
+    vo2_v: Optional[float],
+    vo2_pct: Optional[float],
+    bio_v: Optional[float],
+    bio_diff: Optional[float],
+    ex_total_min: Optional[int],
+    ex_kcal_w: Optional[float],
+    health_score: int,
+    score_label: str,
+    biggest_lever: str,
+) -> str:
+    """
+    Returns a rich, ~150-200 word paragraph with concrete, individual sentences.
+    Every number is pulled from the user's actual data so each report reads uniquely.
+    """
+    parts: list[str] = []
+ 
+    # — Opening sentence with overall score —
+    age_str = f"{int(age)}-year-old" if age else "your"
+    sex_str = sex.lower() if sex else "individual"
+    parts.append(
+        f"This report summarises the precision health analysis for a {age_str} {sex_str}"
+        f"{f' weighing {weight_kg:.1f} kg' if weight_kg else ''}."
+        f" Your composite Health Score is <b>{health_score}/100</b> — rated <b>{score_label}</b>."
+    )
+ 
+    # — BMI sentence —
+    if bmi_v is not None:
+        if 18.5 <= bmi_v < 25:
+            parts.append(
+                f"Your BMI of <b>{bmi_v:.1f}</b> ({bmi_cat}) sits in the optimal range —"
+                " body composition is not a primary concern, which frees your energy budget for performance."
+            )
+        elif bmi_v >= 30:
+            parts.append(
+                f"Your BMI of <b>{bmi_v:.1f}</b> ({bmi_cat}) is the most actionable metric in this report."
+                " A sustained daily deficit of 400–500 kcal combined with strength training twice weekly"
+                " is the evidence-based protocol with the highest long-term adherence rate."
+            )
+        elif bmi_v >= 25:
+            parts.append(
+                f"Your BMI of <b>{bmi_v:.1f}</b> ({bmi_cat}) is modestly elevated."
+                " Even a 5% reduction in body weight at this range produces measurable improvements"
+                " in cardiovascular risk markers and metabolic efficiency."
+            )
+        else:
+            parts.append(
+                f"Your BMI of <b>{bmi_v:.1f}</b> ({bmi_cat}) is below the reference range."
+                " Building lean mass through progressive overload and a positive calorie balance"
+                " is the highest-priority intervention."
+            )
+ 
+    # — VO2max sentence —
+    if vo2_v is not None and vo2_pct is not None:
+        ranking = (
+            "elite" if vo2_pct >= 90 else
+            "excellent" if vo2_pct >= 80 else
+            "above average" if vo2_pct >= 65 else
+            "average" if vo2_pct >= 50 else
+            "below average" if vo2_pct >= 35 else
+            "low"
+        )
+        parts.append(
+            f"Cardiorespiratory fitness (VO2max <b>{vo2_v:.1f} ml/kg/min</b>) places you"
+            f" in the <b>{ranking}</b> tier — {vo2_pct:.0f}th percentile for your age group."
+        )
+        if vo2_pct < 50:
+            parts.append(
+                "VO2max is the single strongest predictor of all-cause mortality in population studies."
+                " Structured aerobic training produces meaningful improvement in as few as 6–8 weeks."
+            )
+ 
+    # — Biological age sentence —
+    if bio_v is not None and bio_diff is not None and age is not None:
+        if bio_diff <= -1:
+            parts.append(
+                f"Your estimated biological age of <b>{bio_v:.1f} years</b> is"
+                f" <b>{abs(bio_diff):.1f} years younger</b> than your calendar age —"
+                " a direct reflection of your current lifestyle choices compounding positively."
+            )
+        elif bio_diff > 2:
+            parts.append(
+                f"Your estimated biological age (<b>{bio_v:.1f} years</b>) is"
+                f" <b>{bio_diff:.1f} years older</b> than your calendar age."
+                " The gap is driven by modifiable factors: sleep, stress, and cardio fitness"
+                " account for the largest adjustments."
+            )
+        else:
+            parts.append(
+                f"Your estimated biological age (<b>{bio_v:.1f} years</b>) closely matches"
+                f" your calendar age — a solid baseline with clear upside in the lifestyle factors."
+            )
+ 
+    # — Activity / exercise sentence —
+    if ex_total_min is not None:
+        if ex_total_min >= 150:
+            parts.append(
+                f"You are logging <b>{ex_total_min} min/week</b>"
+                f"{f' ({ex_kcal_w:.0f} kcal/week)' if ex_kcal_w else ''}"
+                " — meeting WHO guidelines. The marginal benefit from additional volume now"
+                " comes primarily from intensity variation, not raw minutes."
+            )
+        else:
+            gap = 150 - ex_total_min
+            parts.append(
+                f"At <b>{ex_total_min} min/week</b> you are {gap} minutes short of the WHO target."
+                " Each additional 20 min/week of moderate activity is associated with"
+                " a 3–4% reduction in all-cause mortality risk."
+            )
+ 
+    # — Closing action sentence —
+    parts.append(
+        f"<b>Your highest-leverage focus area:</b> {biggest_lever}."
+        " The next-steps section on this page translates this into five specific actions"
+        " you can begin this week."
+    )
+ 
+    return "  ".join(parts)
+ 
+ 
+# ═════════════════════════════════════════════════════════════════════════════
+# 2. CHART IMAGES — radar + VO2 gauge rendered as actual PNG via matplotlib
+# ═════════════════════════════════════════════════════════════════════════════
+ 
+def _dark_fig(w_in: float = 5.0, h_in: float = 3.5) -> plt.Figure:
+    """Create a matplotlib figure with the dark health-tools theme."""
+    fig = plt.Figure(figsize=(w_in, h_in), facecolor=C_BG)
+    return fig
+ 
+ 
+def render_radar_png(
+    body_comp: float,
+    cardio: float,
+    bio_age: float,
+    activity: float,
+    lifestyle: float,
+    width_px: int = 460,
+    height_px: int = 420,
+    dpi: int = 120,
+) -> io.BytesIO:
+    """
+    Renders a pentagon radar chart.  Returns a BytesIO PNG.
+    Scores should be 0–100.
+    """
+    labels = ["Body\nComp", "Cardio", "Bio\nAge", "Activity", "Lifestyle"]
+    values = [body_comp, cardio, bio_age, activity, lifestyle]
+ 
+    N = len(labels)
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
+    # close the polygon
+    vals_plot = values + [values[0]]
+    angles_plot = angles + [angles[0]]
+ 
+    fig_w = width_px / dpi
+    fig_h = height_px / dpi
+    fig = plt.Figure(figsize=(fig_w, fig_h), facecolor=C_BG)
+    ax = fig.add_subplot(111, polar=True, facecolor=C_BG)
+ 
+    # Grid rings
+    for r in [20, 40, 60, 80, 100]:
+        ring_vals = [r] * (N + 1)
+        ax.plot(angles_plot, ring_vals, color=C_STROKE, linewidth=0.6, linestyle="--", alpha=0.5)
+ 
+    # Spoke lines
+    for angle in angles:
+        ax.plot([angle, angle], [0, 100], color=C_STROKE, linewidth=0.6, alpha=0.5)
+ 
+    # Fill area
+    ax.fill(angles_plot, vals_plot, color=C_ACCENT, alpha=0.25)
+    ax.plot(angles_plot, vals_plot, color=C_ACCENT, linewidth=2.2)
+ 
+    # Data point dots
+    for a, v, lbl in zip(angles, values, labels):
+        dot_color = (
+            C_GOOD if v >= 70 else
+            C_WARN if v >= 45 else
+            C_BAD
+        )
+        ax.scatter([a], [v], color=dot_color, s=55, zorder=5)
+        ax.annotate(
+            f"{v:.0f}",
+            xy=(a, v),
+            xytext=(a, v + 12),
+            ha="center", va="center",
+            fontsize=7.5, color=C_TEXT, fontweight="bold",
+        )
+ 
+    # Axis labels
+    ax.set_xticks(angles)
+    ax.set_xticklabels(labels, color=C_MUTED, fontsize=8.5)
+    ax.set_yticklabels([])
+    ax.set_ylim(0, 110)
+    ax.set_theta_offset(np.pi / 2)
+    ax.set_theta_direction(-1)
+    ax.spines["polar"].set_visible(False)
+ 
+    fig.tight_layout(pad=1.2)
+ 
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, facecolor=C_BG, bbox_inches="tight")
+    buf.seek(0)
+    plt.close(fig)
+    return buf
+ 
+ 
+def render_vo2_gauge_png(
+    percentile: float,
+    vo2_value: float,
+    age: Optional[float] = None,
+    width_px: int = 440,
+    height_px: int = 300,
+    dpi: int = 120,
+) -> io.BytesIO:
+    """
+    Renders a semi-circular gauge for VO2max percentile.
+    Returns a BytesIO PNG.
+    """
+    fig_w = width_px / dpi
+    fig_h = height_px / dpi
+    fig = plt.Figure(figsize=(fig_w, fig_h), facecolor=C_BG)
+    ax = fig.add_subplot(111, facecolor=C_BG)
+    ax.set_aspect("equal")
+ 
+    # Gauge arcs — 5 colour bands from 180° to 0° (left to right)
+    bands = [
+        (0,   40,  C_BAD,  "Low"),
+        (40,  55,  C_WARN, "Below avg"),
+        (55,  70,  C_BLUE, "Average"),
+        (70,  85,  "#7C3AED", "Good"),
+        (85,  100, C_GOOD, "Excellent"),
+    ]
+    outer_r = 1.0
+    inner_r = 0.62
+    lw = 28
+ 
+    def pct_to_angle(p):
+        # 0% → 180°, 100% → 0°
+        return 180 - p * 1.8
+ 
+    for lo, hi, col, _ in bands:
+        theta1 = pct_to_angle(hi)
+        theta2 = pct_to_angle(lo)
+        arc = mpatches.Arc(
+            (0, 0), 2 * outer_r, 2 * outer_r,
+            angle=0, theta1=theta1, theta2=theta2,
+            color=col, linewidth=lw, solid_capstyle="butt",
+        )
+        ax.add_patch(arc)
+ 
+    # Needle
+    needle_angle_deg = pct_to_angle(percentile)
+    needle_angle_rad = math.radians(needle_angle_deg)
+    nx = 0.85 * math.cos(needle_angle_rad)
+    ny = 0.85 * math.sin(needle_angle_rad)
+    ax.annotate(
+        "", xy=(nx, ny), xytext=(0, 0),
+        arrowprops=dict(arrowstyle="-|>", color=C_TEXT, lw=2.5,
+                        mutation_scale=14),
+    )
+    ax.scatter([0], [0], s=80, color=C_TEXT, zorder=6)
+ 
+    # Centre text: VO2 value
+    ax.text(0, -0.18, f"{vo2_value:.1f}", ha="center", va="center",
+            color=C_ACCENT, fontsize=18, fontweight="bold")
+    ax.text(0, -0.34, "ml/kg/min", ha="center", va="center",
+            color=C_MUTED, fontsize=7)
+ 
+    # Percentile label
+    pct_col = (
+        C_GOOD  if percentile >= 80 else
+        "#7C3AED" if percentile >= 70 else
+        C_BLUE  if percentile >= 55 else
+        C_WARN  if percentile >= 40 else
+        C_BAD
+    )
+    ax.text(0, 0.28, f"{percentile:.0f}th percentile", ha="center", va="center",
+            color=pct_col, fontsize=11, fontweight="bold")
+ 
+    age_lbl = f"for age {int(age)}" if age else ""
+    ax.text(0, 0.16, age_lbl, ha="center", va="center",
+            color=C_MUTED, fontsize=7.5)
+ 
+    # Legend pills at bottom
+    legend_x = -1.05
+    for i, (lo, hi, col, lbl) in enumerate(bands):
+        bx = -1.08 + i * 0.55
+        rect = FancyBboxPatch(
+            (bx, -0.74), 0.48, 0.14,
+            boxstyle="round,pad=0.02", linewidth=0,
+            facecolor=col, alpha=0.85,
+        )
+        ax.add_patch(rect)
+        ax.text(bx + 0.24, -0.668, lbl, ha="center", va="center",
+                color="white", fontsize=5.5, fontweight="bold")
+ 
+    ax.set_xlim(-1.2, 1.2)
+    ax.set_ylim(-0.82, 1.12)
+    ax.axis("off")
+ 
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, facecolor=C_BG, bbox_inches="tight")
+    buf.seek(0)
+    plt.close(fig)
+    return buf
+ 
+ 
+# ═════════════════════════════════════════════════════════════════════════════
+# 3. NEXT STEPS THIS WEEK — premium card-style flowable
+# ═════════════════════════════════════════════════════════════════════════════
+ 
+def build_next_steps(
+    bmi_v: Optional[float],
+    vo2_pct: Optional[float],
+    bio_diff: Optional[float],
+    ex_total_min: Optional[int],
+    has_plan: bool,
+    goal: str = "Body Recomposition",
+    weight_kg: Optional[float] = None,
+) -> list[dict]:
+    """
+    Returns 3–5 concrete, specific action cards for this week.
+    Each dict: {icon, title, action, why, color}
+    """
+    steps: list[dict] = []
+ 
+    # ── 1. VO2max / cardio ──────────────────────────────────────────────────
+    if vo2_pct is not None and vo2_pct < 50:
+        steps.append({
+            "icon": "❤️",
+            "title": "Zone 2 cardio — this week",
+            "action": (
+                "Do 3 sessions of 30–35 min easy cardio (you can hold a full conversation)."
+                " Walking briskly, cycling, or light jogging all count."
+            ),
+            "why": (
+                f"Your VO2max is at the {vo2_pct:.0f}th percentile — the fastest-improving"
+                " longevity marker you own. Zone 2 training drives mitochondrial density."
+            ),
+            "color": C_BAD if vo2_pct < 30 else C_WARN,
+        })
+    elif vo2_pct is not None and vo2_pct < 75:
+        steps.append({
+            "icon": "⚡",
+            "title": "Add one interval session",
+            "action": (
+                "After a 10 min warm-up, do 4 × 4 min at hard effort (8/10 RPE)"
+                " with 3 min easy recovery between. End with 10 min cool-down."
+            ),
+            "why": (
+                f"You are at the {vo2_pct:.0f}th percentile — one structured interval session"
+                " per week is the most efficient method to push higher."
+            ),
+            "color": C_BLUE,
+        })
+ 
+    # ── 2. BMI / body composition ───────────────────────────────────────────
+    if bmi_v is not None and bmi_v >= 25:
+        protein_g = round(weight_kg * 1.8) if weight_kg else 140
+        steps.append({
+            "icon": "🥗",
+            "title": "Hit your protein target daily",
+            "action": (
+                f"Target <b>{protein_g}g protein/day</b> — spread across 4 meals"
+                " (~35g each). Prioritise eggs, chicken, fish, or Greek yoghurt."
+            ),
+            "why": (
+                "Protein is the most satiating macro and preserves lean mass during"
+                " a calorie deficit. Without it, 25–40% of weight lost is muscle."
+            ),
+            "color": C_WARN if bmi_v < 30 else C_BAD,
+        })
+ 
+    # ── 3. Biological age ───────────────────────────────────────────────────
+    if bio_diff is not None and bio_diff > 1:
+        steps.append({
+            "icon": "🌙",
+            "title": "Fix your sleep window — tonight",
+            "action": (
+                "Set a consistent bed-time and wake-time — even on weekends."
+                " Aim for 7–9 hours. Keep screens off 45 min before bed."
+            ),
+            "why": (
+                f"Your biological age runs {bio_diff:.1f} years ahead of calendar age."
+                " Sleep consistency is the highest-leverage single intervention"
+                " supported by biological age research."
+            ),
+            "color": C_WARN,
+        })
+ 
+    # ── 4. Exercise volume ──────────────────────────────────────────────────
+    if ex_total_min is not None and ex_total_min < 150:
+        gap = 150 - ex_total_min
+        steps.append({
+            "icon": "🚶",
+            "title": f"Add {gap} min of movement",
+            "action": (
+                f"Add {gap} min across the week — that is just {gap // 5} extra minutes"
+                " on your existing days, or one new 20 min walk. Track it."
+            ),
+            "why": (
+                "The WHO 150 min/week threshold is where the mortality risk curve"
+                " flattens significantly. You are close — make it this week."
+            ),
+            "color": C_WARN,
+        })
+    elif ex_total_min is not None and ex_total_min >= 150:
+        steps.append({
+            "icon": "💪",
+            "title": "Add one strength session",
+            "action": (
+                "If you are not already strength training: 3 sets of 8–12 reps on"
+                " squat, hinge, press, and row. 30–40 min total. No gym needed."
+            ),
+            "why": (
+                "You meet cardio guidelines. Resistance training is the most underused"
+                " tool for metabolic health and bone density after 30."
+            ),
+            "color": C_GOOD,
+        })
+ 
+    # ── 5. Tracking / weekly review ─────────────────────────────────────────
+    steps.append({
+        "icon": "📊",
+        "title": "Measure once, log twice",
+        "action": (
+            "Weigh yourself at the same time tomorrow morning (post-toilet, pre-food)."
+            " Log it in My Progress. Set a reminder to repeat every 7 days."
+        ),
+        "why": (
+            "Consistent measurement creates the feedback loop that makes every"
+            " other recommendation in this report compoundable over time."
+        ),
+        "color": C_ACCENT,
+    })
+ 
+    return steps[:5]
+ 
+ 
+class NextStepsFlowable(Flowable):
+    """
+    Renders 3–5 'Next Steps This Week' action cards in a premium dark style.
+    Each card has: coloured left-bar + icon badge, title, action text, why text.
+    """
+ 
+    CARD_H     = 88      # height of each card in points
+    CARD_GAP   = 10      # vertical gap between cards
+    HEADER_H   = 52      # height of the title block at the top
+ 
+    def __init__(self, steps: list[dict], width: float = CONTENT_W):
+        super().__init__()
+        self.steps = steps
+        self.w     = width
+        n          = len(steps)
+        self.h     = self.HEADER_H + n * (self.CARD_H + self.CARD_GAP)
+ 
+    def wrap(self, aw, ah):
+        return self.w, self.h
+ 
+    def draw(self):
+        c   = self.canv
+        w   = self.w
+ 
+        # ── Section header ──────────────────────────────────────────────────
+        c.setFillColor(HexColor(C_CARD))
+        c.roundRect(0, self.h - self.HEADER_H, w, self.HEADER_H, 10, fill=1, stroke=0)
+        c.setFillColor(HexColor(C_ACCENT))
+        c.roundRect(0, self.h - self.HEADER_H, 5, self.HEADER_H, 2, fill=1, stroke=0)
+ 
+        c.setFillColor(white)
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(18, self.h - 26, "NEXT STEPS THIS WEEK")
+ 
+        c.setFillColor(HexColor(C_MUTED))
+        c.setFont("Helvetica", 8)
+        c.drawString(18, self.h - 40, "5 concrete actions — start today, track progress in My Progress")
+ 
+        # ── Individual cards ─────────────────────────────────────────────────
+        for i, step in enumerate(self.steps):
+            card_y = self.h - self.HEADER_H - (i + 1) * (self.CARD_H + self.CARD_GAP)
+            self._draw_card(c, 0, card_y, w, self.CARD_H, step, i + 1)
+ 
+    def _draw_card(self, c, x, y, w, h, step: dict, num: int):
+        col    = HexColor(step.get("color", C_ACCENT))
+        icon   = step.get("icon", "•")
+        title  = step.get("title", "")
+        action = step.get("action", "")
+        why    = step.get("why", "")
+ 
+        # Card background
+        c.setFillColor(HexColor(C_CARD2))
+        c.roundRect(x, y, w, h, 8, fill=1, stroke=0)
+ 
+        # Coloured left bar
+        c.setFillColor(col)
+        c.roundRect(x, y, 5, h, 2, fill=1, stroke=0)
+ 
+        # Top accent line
+        c.setFillColor(col)
+        c.setFillAlpha(0.25)
+        c.roundRect(x, y + h - 3, w, 3, 1, fill=1, stroke=0)
+        c.setFillAlpha(1.0)
+ 
+        # Subtle border
+        c.setStrokeColor(HexColor(C_STROKE))
+        c.setLineWidth(0.5)
+        c.roundRect(x, y, w, h, 8, fill=0, stroke=1)
+ 
+        # Step number badge (circle)
+        badge_cx = x + 26
+        badge_cy = y + h - 22
+        c.setFillColor(col)
+        c.circle(badge_cx, badge_cy, 11, fill=1, stroke=0)
+        c.setFillColor(white)
+        c.setFont("Helvetica-Bold", 9)
+        c.drawCentredString(badge_cx, badge_cy - 3, str(num))
+ 
+        # Icon to the right of badge
+        c.setFillColor(white)
+        c.setFont("Helvetica", 13)
+        c.drawString(x + 42, y + h - 28, icon)
+ 
+        # Title
+        c.setFillColor(white)
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(x + 62, y + h - 24, title[:58])
+ 
+        # Action text (wrapped)
+        action_style = ParagraphStyle(
+            f"_ns_action_{num}",
+            fontName="Helvetica",
+            fontSize=8.0,
+            leading=12,
+            textColor=HexColor(C_TEXT),
+        )
+        action_para = Paragraph(action, action_style)
+        max_w = w - 70
+        _, action_h = action_para.wrap(max_w, 999)
+        action_y = y + h - 42 - action_h
+        action_para.drawOn(c, x + 62, action_y)
+ 
+        # Why text (smaller, muted, right-aligned area)
+        why_style = ParagraphStyle(
+            f"_ns_why_{num}",
+            fontName="Helvetica-Oblique",
+            fontSize=7.0,
+            leading=10,
+            textColor=HexColor(C_DIM),
+        )
+        why_para = Paragraph(f"Why: {why}", why_style)
+        _, why_h = why_para.wrap(w - 72, 999)
+        why_y = max(y + 6, action_y - why_h - 4)
+        why_para.drawOn(c, x + 62, why_y)
+ 
+ 
+# ═════════════════════════════════════════════════════════════════════════════
+# Convenience wrapper that builds a ReportLab Image from a BytesIO PNG
+# ═════════════════════════════════════════════════════════════════════════════
+ 
+def png_to_rl_image(buf: io.BytesIO, width_pts: float, height_pts: float):
+    """
+    Wraps a PNG BytesIO buffer in a ReportLab Image flowable.
+    width_pts / height_pts are the desired rendered size in points.
+    """
+    from reportlab.platypus import Image as RLImage
+    buf.seek(0)
+    return RLImage(buf, width=width_pts, height=height_pts)    
     # ── PAGE 2: Body Composition ──
     story.append(SecHeader("Body Composition", subtitle="BMI, body fat estimate, and waist-to-hip ratio"))
     story.append(VGap(6))
