@@ -995,20 +995,35 @@ def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
 
 # ── Hovedfunksjon for Ultimate PDF Generering ─────────────────────────────────
 def create_pdf_bytes_ultimate(report: dict) -> bytes:
+    import io
+    import math
+    import plotly.graph_objects as go
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.lib.colors import HexColor, white, black
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer,
+        Table, TableStyle, HRFlowable, Image as RLImage
+    )
+    from datetime import datetime, timezone
+    from html import escape
+
     buffer = io.BytesIO()
-    # Dimensjonar
     PAGE_W, PAGE_H = A4
     MARGIN_H = 18 * mm
     doc = SimpleDocTemplate(
-        buffer, 
+        buffer,
         pagesize=A4,
-        leftMargin=MARGIN_H, 
-        rightMargin=MARGIN_H, 
-        topMargin=26 * mm, 
+        leftMargin=MARGIN_H,
+        rightMargin=MARGIN_H,
+        topMargin=26 * mm,
         bottomMargin=18 * mm
     )
 
-    # Theme og Fargar
+    # Tema og fargar (same som før)
     BG      = HexColor("#0B1220")
     CARD    = HexColor("#111C33")
     CARD2   = HexColor("#0F172A")
@@ -1022,7 +1037,6 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     STROKE  = HexColor("#334155")
     DIM     = HexColor("#64748B")
 
-    # Hjelpefunksjonar for tekst
     _styles = getSampleStyleSheet()
     def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
         return ParagraphStyle(
@@ -1042,50 +1056,51 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     def _sf(x):
         try: return float(x)
         except: return None
+
+    # ------------------------------
+    # Hjelpefunksjonar for grafar som bilete
+    # ------------------------------
     def _plot_to_image(fig, width=400, height=300):
-        """Konverter ein Plotly-figur til eit bytes-objekt (PNG) som kan brukast i PDF."""
-        import io
         img_bytes = fig.to_image(format="png", width=width, height=height)
         return io.BytesIO(img_bytes)
 
-    def _radar_chart_image():
-        # Lag radardiagrammet på nytt (same som i app, men her må vi ha data)
-        radar_scores = {
-            "Body Comp": radar.get("Body Comp", 50),
-            "Cardio": radar.get("Cardio", 50),
-            "Bio Age": radar.get("Bio Age", 50),
-            "Activity": radar.get("Activity", 50),
-            "Lifestyle": radar.get("Lifestyle", 50),
-        }
-        import plotly.graph_objects as go
+    def _radar_chart_image(radar_scores):
         categories = list(radar_scores.keys())
         values = list(radar_scores.values())
-        fig = go.Figure(data=go.Scatterpolar(r=values, theta=categories, fill='toself',
-                                             marker=dict(color=ACCENT.hexval()), line=dict(color=ACCENT.hexval(), width=2)))
-        fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,100])),
-                          paper_bgcolor='white', plot_bgcolor='white',
-                          font=dict(color='black'), showlegend=False, width=450, height=350)
+        fig = go.Figure(data=go.Scatterpolar(
+            r=values, theta=categories, fill='toself',
+            marker=dict(color=ACCENT.hexval()), line=dict(color=ACCENT.hexval(), width=2)
+        ))
+        fig.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0,100])),
+            paper_bgcolor='white', plot_bgcolor='white',
+            font=dict(color='black'), showlegend=False, width=450, height=350
+        )
         return _plot_to_image(fig, width=450, height=350)
 
-    def _vo2_gauge_image():
-        pct = vo2_pct
-        col = vo2_color(pct).hexval()
-        fig = go.Figure(go.Indicator(mode="gauge+number", value=pct,
-                                     number=dict(suffix="th", font=dict(size=40, color=col)),
-                                     gauge=dict(axis=dict(range=[0,100]), bar=dict(color=col),
-                                                steps=[dict(range=[0,40], color="#EF4444"),
-                                                       dict(range=[40,60], color="#F59E0B"),
-                                                       dict(range=[60,80], color="#3B82F6"),
-                                                       dict(range=[80,100], color="#22C55E")])))
+    def _vo2_gauge_image(vo2_pct):
+        col = GOOD.hexval() if vo2_pct >= 80 else BLUE.hexval() if vo2_pct >= 60 else WARN.hexval() if vo2_pct >= 40 else BAD.hexval()
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number", value=vo2_pct,
+            number=dict(suffix="th", font=dict(size=40, color=col)),
+            gauge=dict(
+                axis=dict(range=[0,100]), bar=dict(color=col),
+                steps=[dict(range=[0,40], color="#EF4444"),
+                       dict(range=[40,60], color="#F59E0B"),
+                       dict(range=[60,80], color="#3B82F6"),
+                       dict(range=[80,100], color="#22C55E")]
+            )
+        ))
         fig.update_layout(width=400, height=300, paper_bgcolor='white', font=dict(color='black'))
         return _plot_to_image(fig, width=400, height=300)
-    # Data extraction
+
+    # ---------- Datauttrekk (same som før) ----------
     inp       = report.get("inputs", {}) or {}
     age_v     = inp.get("age", "—")
     sex_v     = inp.get("sex", "—")
     h_v       = inp.get("height_cm", "—")
     w_v       = inp.get("weight_kg", "—")
-    gen_v = report.get("generated", datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
+    gen_v     = report.get("generated", datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
 
     bmi_d     = report.get("bmi") or {}
     vo2_d     = report.get("vo2") or {}
@@ -1122,7 +1137,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     ex_kcal_w = _sf(exlog.get("kcal_per_week")) or 0.0
     ex_total_min = int(ex_min or 0) * int(ex_sess or 0)
 
-    _goal         = plan_d.get("goal", "Maintenance")
+    _goal         = plan_d.get("goal", "Maintenance") if has_plan else "Maintenance"
     _has_strength = plan_d.get("has_strength", False)
     _has_cardio   = plan_d.get("has_cardio", False)
     _has_sport    = plan_d.get("has_sport", False)
@@ -1133,7 +1148,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     _sel_sport    = plan_d.get("selected_sport", "—")
     _sel_low      = plan_d.get("selected_low", "—")
 
-    # Farge-helpers deklarert inni funksjonen
+    # Farge-hjelparar (same)
     def bmi_color(v):
         if v is None: return MUTED
         if v < 18.5:  return BLUE
@@ -1161,7 +1176,21 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         bio_v = age_f + bio_diff
     bio_col  = bio_color(bio_diff)
 
-# ── Bygging av PDF Story ──────────────────────────────────────────────────
+    # ------------------------------
+    # Sikre trygge standardverdiar for alle variablar som brukast i executive summary
+    # ------------------------------
+    _protein_g = 160
+    if has_plan and w_v:
+        try:
+            goal_params = {
+                "Lose fat": 2.2, "Build muscle (bulk)": 2.0, "Body Recomposition": 2.4
+            }
+            mult = goal_params.get(_goal, 2.0)
+            _protein_g = round(float(w_v) * mult)
+        except:
+            _protein_g = 160
+
+    # ---------- Bygging av PDF story ----------
     def draw_page(canvas, doc):
         canvas.saveState()
         canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
@@ -1174,8 +1203,8 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         canvas.drawRightString(PAGE_W-MARGIN_H, 4, datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
         canvas.restoreState()
 
-
     story = []
+
     
     # Header / Tittel
     style_title = S("DocTitle", size=24, color=white, bold=True, after=15)
@@ -1760,52 +1789,60 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
     
     
     
-    # ── SIDE 1 – Executive Summary (personleg) ──
+    # ----- SIDE 1: Executive Summary (personleg) -----
     story.append(VGap(16))
     story.append(P("LONGEVITY INTELLIGENCE REPORT", S("h1", size=28, color=ACCENT, bold=True, align=TA_CENTER, after=2)))
     story.append(P("Personalised Precision Health Analysis", S("h2", size=11, color=MUTED, align=TA_CENTER, after=8)))
     story.append(P("Premium Individual Health Report", S("h2", size=13, color=MUTED, align=TA_CENTER, after=8)))
 
-    # Info-boks (age, sex, height, weight, date) – uendra
+    # Info-tabell
     info_rows = [
         [P("AGE", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("SEX", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("HEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("WEIGHT", S("il", size=6.5, color=MUTED, align=TA_CENTER)), P("DATE", S("il", size=6.5, color=MUTED, align=TA_CENTER))],
         [P(f"{age_v} yrs", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(sex_v), S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{h_v} cm", S("iv", size=11, bold=True, align=TA_CENTER)), P(f"{w_v} kg", S("iv", size=11, bold=True, align=TA_CENTER)), P(str(gen_v)[:10], S("iv", size=8, color=MUTED, align=TA_CENTER))],
     ]
     it = Table(info_rows, colWidths=[CONTENT_W/5]*5)
-    it.setStyle(TableStyle([("BACKGROUND", (0,0), (-1,-1), CARD), ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]), ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE), ("TOPPADDING", (0,0), (-1,-1), 8), ("BOTTOMPADDING", (0,0), (-1,-1), 8)]))
+    it.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,-1), CARD),
+        ("ROWBACKGROUNDS", (0,0), (-1,-1), [CARD, CARD2]),
+        ("BOX", (0,0), (-1,-1), 1, STROKE),
+        ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE),
+        ("TOPPADDING", (0,0), (-1,-1), 8),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 8)
+    ]))
     story.append(it)
     story.append(VGap(12))
 
-    # ── Personleg Executive Summary (tekst) ──
+    # Executive summary – personlege setningar
     summary_lines = []
-    # Målbasert åpning
-    goal_text = ""
-    if _goal == "Lose fat":
-        goal_text = f"Your goal is fat loss. With your current TDEE of {int(cur_kcal)} kcal/day and a recommended deficit of {int(rec_kcal)} kcal/day, you are targeting {abs(kg_pw):.2f} kg/week."
-    elif _goal == "Build muscle (bulk)":
-        goal_text = f"Your goal is muscle gain. Based on your TDEE of {int(cur_kcal)} kcal/day, we recommend a controlled surplus of {int(rec_kcal)} kcal/day with at least {_protein_g} g of protein daily."
+    if has_plan and cur_kcal and rec_kcal:
+        if _goal == "Lose fat":
+            summary_lines.append(f"Your goal is fat loss. With a TDEE of {int(cur_kcal)} kcal/day, a deficit of {int(cur_kcal - rec_kcal)} kcal/day targets {abs(kg_pw):.2f} kg/week.")
+        elif _goal == "Build muscle (bulk)":
+            summary_lines.append(f"Your goal is muscle gain. A controlled surplus of {int(rec_kcal - cur_kcal)} kcal/day with at least {_protein_g} g protein daily is recommended.")
+        else:
+            summary_lines.append(f"Your goal is body recomposition. Maintenance at {int(cur_kcal)} kcal/day with protein ≥{_protein_g} g/day supports composition shift.")
     else:
-        goal_text = f"Your goal is body recomposition — maintaining weight while improving composition. Your maintenance calories are {int(cur_kcal)} kcal/day. Keep protein at least {_protein_g} g/day."
+        summary_lines.append("This report provides a personalised health overview based on your current measurements and activity levels.")
 
-    summary_lines.append(goal_text)
-
-    # Personlege innsikter basert på data
-    if bmi_v is not None and bmi_v >= 30:
-        summary_lines.append(f"Your BMI of {bmi_v:.1f} indicates obesity. Focus on a modest daily calorie deficit and daily steps — small, consistent habits produce the most durable results.")
-    elif bmi_v is not None and bmi_v >= 25:
-        summary_lines.append(f"Your BMI of {bmi_v:.1f} is in the overweight range. Adding 2–3 strength sessions per week is the single most effective way to shift body composition, beyond cardio alone.")
+    if bmi_v is not None:
+        if bmi_v >= 30:
+            summary_lines.append(f"Your BMI of {bmi_v:.1f} indicates obesity. A modest daily calorie deficit and increased steps are the most sustainable levers.")
+        elif bmi_v >= 25:
+            summary_lines.append(f"Your BMI of {bmi_v:.1f} is in the overweight range. Adding 2–3 strength sessions per week is the single most effective way to shift composition.")
+        elif bmi_v < 18.5:
+            summary_lines.append(f"Your BMI of {bmi_v:.1f} is underweight. Prioritise progressive strength training and a calorie surplus to build lean mass.")
     if vo2_pct < 40:
-        summary_lines.append(f"Your VO2max of {vo2_v:.1f} ml/kg/min is below average for your age. Even 3×30 minutes of brisk walking per week will begin improving this.")
+        summary_lines.append(f"Your VO2max of {vo2_v:.1f} ml/kg/min is below average. Even 3×30 min of brisk walking per week will begin improving this critical longevity marker.")
     if bio_diff is not None and bio_diff > 2:
-        summary_lines.append(f"Your estimated biological age is {abs(bio_diff):.1f} years above your calendar age. Prioritising sleep consistency and daily stress management are the two highest‑ROI interventions.")
+        summary_lines.append(f"Your estimated biological age is {abs(bio_diff):.1f} years above calendar age. Sleep consistency and daily stress management are the highest‑ROI interventions.")
     if ex_total_min < 150:
-        summary_lines.append(f"You currently log {ex_total_min} min/week of exercise — below the WHO 150 min/week guideline. Increasing to 150 min/week would reduce your all‑cause mortality risk by ~30%.")
+        summary_lines.append(f"You log {ex_total_min} min/week of exercise — below the WHO 150 min/week guideline. Increasing to 150 min/week could reduce all‑cause mortality risk by ~30%.")
 
     summary_para = Paragraph("<br/><br/>".join(summary_lines), S("summary", size=9.5, lead=16, color=TEXT, after=12))
     story.append(summary_para)
     story.append(VGap(10))
 
-    # ── Topp 3 handlingar denne veka (concrete, personalised) ──
+    # TOP 3 ACTIONS THIS WEEK – personlege handlingar
     next_steps = []
     if _goal == "Lose fat":
         next_steps.append("Track your calories for 3 days using a free app — awareness alone changes behaviour.")
@@ -1816,7 +1853,7 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         next_steps.append("Hit your daily protein target every single day for the next 7 days.")
         next_steps.append("Log your strength workouts: weight, sets, reps. Progress by adding 2.5 kg next week.")
         next_steps.append("Sleep 8 hours minimum — muscle repair peaks during deep sleep.")
-    else:  # Recomp / maintenance
+    else:
         next_steps.append("Eat at your maintenance calories ±100 kcal daily. Weigh yourself weekly to confirm.")
         next_steps.append("Strength train 3× this week: focus on compound lifts (squat, press, row).")
         next_steps.append("Increase daily steps by 1,000 from your baseline — NEAT is the hidden driver of recomposition.")
@@ -1825,118 +1862,53 @@ def create_pdf_bytes_ultimate(report: dict) -> bytes:
         next_steps.append("Do 3×30 min aerobic sessions this week at a pace where you can still talk.")
     if ex_total_min < 150 and "150 min" not in "".join(next_steps):
         next_steps.append(f"Aim for {150 - ex_total_min} more minutes of moderate activity this week to reach the WHO guideline.")
+    if len(next_steps) > 3:
+        next_steps = next_steps[:3]
 
     story.append(P("🎯 YOUR TOP 3 ACTIONS THIS WEEK", S("next_h", size=11, bold=True, color=ACCENT, after=6)))
-    for i, step in enumerate(next_steps[:3], 1):
+    for i, step in enumerate(next_steps, 1):
         story.append(P(f"{i}. {step}", S("step", size=9, lead=14, color=TEXT, after=6)))
     story.append(VGap(12))
+    story.append(PageBreak())
 
-    story.append(PageBreak())
-    
-    
-    # ── PAGE 2: Body Composition ──
-    story.append(SecHeader("Body Composition", subtitle="BMI, body fat estimate, and waist-to-hip ratio"))
-    story.append(VGap(6))
-    
-    if bmi_v is not None:
-        story.append(BMIScale(bmi_v))
-        story.append(VGap(8))
-        if bmi_v < 18.5: bmi_text = f"Your BMI of {bmi_v:.1f} is in the underweight range. BMI doesn't distinguish muscle from fat. Prioritise progressive resistance training and ensure adequate calorie and protein intake. Avoid deficits."
-        elif bmi_v < 25: bmi_text = f"Your BMI of {bmi_v:.1f} is in the normal weight range. Focus on building or maintaining strength and cardiovascular capacity."
-        elif bmi_v < 30: bmi_text = f"Your BMI of {bmi_v:.1f} is in the overweight range. Aim for a modest deficit (−300 to −500 kcal/day), 2–3 strength sessions per week, and increased daily step count."
-        else: bmi_text = f"Your BMI of {bmi_v:.1f} is in the obese range. Consistency beats intensity here. Start with achievable habits: daily step target, 2x/week full-body strength, and a sustainable calorie strategy."
-        story.append(P(bmi_text, S("bt", size=9, lead=14, after=8)))
-        
-        # ── BMI Expert Insight + Actionable Milestone ──
-        if bmi_v < 18.5:
-            _bmi_insight = (
-                "BMI below 18.5 is associated with increased all-cause mortality and reduced immune function "
-                "(WHO Global Database on Body Mass Index). Priority: achieve positive energy balance and build lean mass "
-                "through progressive resistance training. Evidence supports 1.8–2.2 g protein/kg/day with a 300 kcal/day "
-                "surplus as the optimal starting protocol for underweight individuals."
-            )
-            _bmi_steps = [
-                "Week 1–2: Establish a 300 kcal surplus using your Mifflin-St Jeor TDEE as the baseline",
-                "Week 3–4: Begin 3×/week progressive strength training — compound lifts: squat, press, row",
-                "Monthly target: +0.3 to +0.5 kg/month total weight — this rate strongly favours lean mass gain",
-                "Track: weekly weight + weekly protein intake — both must trend upward simultaneously",
-            ]
-        elif bmi_v < 25:
-            _bmi_insight = (
-                "BMI 18.5–24.9 represents the lowest-risk range for metabolic disease, cardiovascular events, "
-                "and all-cause mortality (Lancet, 2016 meta-analysis of 10.6 million participants). "
-                "Your current body composition is a quantifiable longevity asset. The strategic priority "
-                "now shifts to body recomposition: preserving this BMI while increasing lean-to-fat ratio."
-            )
-            _bmi_steps = [
-                "Week 1–2: Baseline your true TDEE — track calories accurately for 7 days minimum",
-                "Week 3–4: Add 2×/week progressive strength training to shift composition without changing scale weight",
-                "Monthly measure: waist circumference — a superior metabolic risk marker vs. BMI alone",
-                "Annual goal: increase skeletal muscle mass by 0.5–1 kg while maintaining BMI range",
-            ]
-        elif bmi_v < 30:
-            _bmi_insight = (
-                "BMI 25–29.9 is associated with a 20–30% increased risk of type 2 diabetes and cardiovascular "
-                "events vs. normal weight (WHO, 2023). However, a 5–10% body weight reduction substantially "
-                "mitigates this risk. The evidence-based protocol: a modest caloric deficit (−300 to −500 kcal/day) "
-                "combined with resistance training 2–3×/week produces superior fat loss vs. cardio-only approaches."
-            )
-            _bmi_steps = [
-                "Week 1–2: Target a 350–450 kcal/day deficit — produces 0.35–0.45 kg/week loss with minimal muscle loss",
-                "Week 3–4: Add 2 strength sessions/week — resistance training is the primary lean mass preservation tool",
-                "Daily habit: Minimum 8,000 steps — non-exercise activity (NEAT) accounts for up to 25% of your TDEE",
-                "12-week goal: 3–4 kg total loss, waist circumference reduction of 3–5 cm",
-            ]
-        else:
-            _bmi_insight = (
-                "BMI ≥ 30 is a significant modifiable risk factor for 13 cancer types, type 2 diabetes, and "
-                "cardiovascular disease (CDC, 2023). Each sustained 1 kg fat loss is associated with measurable "
-                "improvements in insulin sensitivity, blood pressure, and joint load. The most durable approach "
-                "is a moderate deficit (−400 to −500 kcal/day) combined with increasing daily movement — not "
-                "aggressive restriction, which accelerates muscle loss and reduces long-term adherence."
-            )
-            _bmi_steps = [
-                "Week 1–2: Establish a daily step baseline — target 7,000 steps before adding structured exercise",
-                "Week 3–4: Introduce 2×/week full-body strength training (45 min) — builds metabolic rate long-term",
-                "Nutrition anchor: 400–500 kcal/day deficit targeting 0.5–0.75 kg/week — do not exceed this rate",
-                "Minimum protein: 1.6 g/kg/day — non-negotiable to prevent the fat-free mass loss that slows metabolism",
-            ]
-        story.append(VGap(6))
-        story.append(ExpertInsightBox("Body Composition", _bmi_insight))
-        story.append(VGap(6))
-        story.append(ActionableMilestoneBox(_bmi_steps))
-        story.append(VGap(6))
-        
-        extra = []
-        if whr_d.get("value"): extra.append(("Waist-to-Hip Ratio", f'{float(whr_d["value"]):.2f} — {whr_d.get("category","")}', "", "#3B82F6"))
-        if bf_d.get("value"): extra.append(("Body Fat % (Navy)", f'{float(bf_d["value"]):.1f}%', "", "#8B5CF6"))
-        if extra:
-            story.append(MetricCard(extra, card_h=56))
-            story.append(VGap(6))
-    
-        story.append(P("About BMI: BMI is a population screening tool. It doesn't account for muscle mass, bone density, age, or fat distribution. Use it alongside waist circumference, body fat %, and fitness metrics.", S("bn", size=8, lead=12, color=MUTED, italic=True, after=6)))
-    story.append(PageBreak())
-        # ── SIDE 2 – Visuelle grafar (radar + VO2-gauge) ──
+    # ----- SIDE 2: Grafikk (radar + VO2-gauge) -----
     story.append(SecHeader("Your Health Radar & VO₂max Ranking", subtitle="Visual summary of your 5 key dimensions"))
     story.append(VGap(10))
 
-    # Radar chart image
+    # Bygg radar‑ordbok (hent frå tidlegare logikk, men vi kopierer inn att)
+    radar_scores = {
+        "Body Comp": 100 if (bmi_v and 18.5 <= bmi_v < 25) else 75 if (bmi_v and 17 <= bmi_v < 27) else 50 if (bmi_v and 15 <= bmi_v < 30) else 25 if bmi_v else 50,
+        "Cardio": int(vo2_pct) if vo2_v else 50,
+        "Bio Age": max(0, min(100, int(70 - (bio_diff or 0) * 10))) if bio_diff is not None else 50,
+        "Activity": min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30,
+        "Lifestyle": 60
+    }
+    # Legg til livsstil basert på faktorar (same som tidlegare)
+    life = 60
+    for f in factors:
+        try:
+            d = float(f.get("delta", 0))
+            if d < 0: life = min(100, life + 8)
+            elif d > 1: life = max(10, life - 8)
+        except: pass
+    radar_scores["Lifestyle"] = max(0, min(100, life))
+
+    # Radar chart
     try:
-        radar_img = _radar_chart_image()
+        radar_img = _radar_chart_image(radar_scores)
         story.append(RLImage(radar_img, width=CONTENT_W*0.9, height=220))
-    except:
-        story.append(P("Radar chart temporarily unavailable.", S("err", size=9, color=MUTED)))
+    except Exception as e:
+        story.append(P(f"Radar chart not available ({e}).", S("err", size=9, color=MUTED)))
     story.append(VGap(10))
 
-    # VO2 gauge image (if VO2 exists)
+    # VO2 gauge (viss data finst)
     if vo2_v is not None:
         try:
-            gauge_img = _vo2_gauge_image()
+            gauge_img = _vo2_gauge_image(vo2_pct)
             story.append(RLImage(gauge_img, width=CONTENT_W*0.7, height=180))
-        except:
-            story.append(P("VO2 gauge temporarily unavailable.", S("err", size=9, color=MUTED)))
+        except Exception as e:
+            story.append(P(f"VO2 gauge not available ({e}).", S("err", size=9, color=MUTED)))
     story.append(VGap(15))
-
     story.append(PageBreak())
     
     # ── PAGE 3: Cardio Fitness ──
