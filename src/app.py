@@ -3785,19 +3785,17 @@ with col_save1:
 with col_save2:
     if st.button("💾 Save this measurement to history", type="primary", use_container_width=True):
         try:
-            # Hent dei siste resultata (berre den noverande økta)
             res = st.session_state.get("results", {})
             if not res:
                 st.error("Ingen resultat å lagre. Køyr 'Calculate' først.")
             else:
                 db = get_db_client()
-                # Hent ut enkeltverdiane (tilpass etter dine variabelnamn)
-                weight_val = weight_kg if 'weight_kg' in locals() else None
+                # Hent ut enkeltverdiane – tilpass etter dine input-nøklar
+                weight_val = st.session_state.get("inp_weight", None)  # dersom weight-input har key="inp_weight"
                 bmi_val = res.get("bmi", {}).get("value")
                 vo2_val = res.get("vo2", {}).get("value")
                 bio_val = res.get("bio_age", {}).get("value")
-                # Hent aktivitetsdata frå session_state (der du har lagra dei)
-                weekly_min = st.session_state.get("v_weekly_minutes", weekly_minutes)
+                weekly_min = st.session_state.get("v_weekly_minutes", 0)
                 resting_hr_val = st.session_state.get("resting_hr") or st.session_state.get("basic_resting_hr")
                 
                 save_health_metrics(
@@ -3813,16 +3811,6 @@ with col_save2:
                 st.balloons()
         except Exception as e:
             st.error(f"Feil ved lagring: {e}")
-            
-        # Oppdater session state slik at resten av appen får resultata
-        st.session_state["results"] = results
-        st.success("Calculation finished — results ready.")
-        
-    except Exception as e:
-        st.error(f"Error during calculation: {e}")
-        st.text(traceback.format_exc())
-        logging.exception("Calculation failed")
-        st.session_state["results"] = {} # Tøm hvis feil
 # ── Display results ───────────────────────────────────────────────────────────
 results = st.session_state.get("results", {})
 
