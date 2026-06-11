@@ -2867,6 +2867,12 @@ def png_to_rl_image(buf: io.BytesIO, width_pts: float, height_pts: float):
     ))
 
 # Bygg dokumentet og returner bytes
+        # Sjekk alle flowables i story for å finne None-bilder
+    for i, flow in enumerate(story):
+        if isinstance(flow, RLImage):
+            if flow._img is None:
+                st.error(f"RLImage på index {i} har None data!")
+                raise ValueError(f"RLImage på index {i} er None")
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     buffer.seek(0)
     return buffer.getvalue()
