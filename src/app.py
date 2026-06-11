@@ -326,157 +326,208 @@ if st.session_state.get("stripe_session_id"):
     _sid = st.session_state["stripe_session_id"]
     st.sidebar.success(f"✅ Betaling verifisert  •  ID: ...{_sid[-6:]}")
 
-# ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
-st.markdown(
-    """
-<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+
 :root{
-  --bg0:#070D18;
-  --bg1:#0B1220;
-  --card: rgba(15,23,42,.72);
-  --card2: rgba(17,28,51,.62);
-  --stroke: rgba(148,163,184,.16);
-  --stroke2: rgba(148,163,184,.10);
-  --text:#E5E7EB;
-  --muted:#94A3B8;
-  --muted2:#A7B4C6;
+  --bg:#0A0F1A;
+  --bg-card:#111827;
+  --bg-card-hover:#1F2937;
+  --border: rgba(71,85,105,0.3);
+  --text:#F3F4F6;
+  --text-muted:#9CA3AF;
   --accent:#0EA5A3;
-  --accent2:#3B82F6;
-  --good:#22C55E;
-  --warn:#F59E0B;
-  --bad:#EF4444;
-  --radius:16px;
+  --accent-hover:#14B8A6;
+  --accent-glow: rgba(14,165,163,0.2);
+  --success:#22C55E;
+  --warning:#F59E0B;
+  --danger:#EF4444;
+  --radius-sm:8px;
+  --radius-md:12px;
+  --radius-lg:16px;
+  --shadow: 0 8px 20px rgba(0,0,0,0.3);
+  --shadow-hover: 0 12px 28px rgba(0,0,0,0.4);
 }
 
-img, svg, iframe { max-width: 100% !important; height: auto !important; }
+* {
+  font-family: 'Inter', sans-serif;
+}
 
-.stApp{
-  background:
-    radial-gradient(1200px 600px at 18% -10%, rgba(14,165,163,.20), transparent 60%),
-    radial-gradient(900px 520px at 90% 0%, rgba(59,130,246,.15), transparent 55%),
-    linear-gradient(180deg, var(--bg0), var(--bg1) 40%, #070B14);
+html, body, .stApp {
+  background: var(--bg);
   color: var(--text);
 }
 
-.block-container{
-  max-width: 980px;
-  padding-top: 1.35rem;
-  padding-bottom: 2.2rem;
+.stApp {
+  background: radial-gradient(ellipse at 20% 0%, rgba(14,165,163,0.08), transparent 50%),
+              radial-gradient(ellipse at 90% 100%, rgba(59,130,246,0.06), transparent 60%),
+              var(--bg);
 }
 
-h1, h2, h3, p, label, li { color: var(--text) !important; }
-small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !important; }
-
-.ht-hero{
-  background: linear-gradient(135deg, rgba(14,165,163,.18), rgba(59,130,246,.12));
-  border: 1px solid var(--stroke);
-  border-radius: calc(var(--radius) + 6px);
-  padding: 18px 18px;
-  box-shadow: 0 18px 50px rgba(0,0,0,.25);
-  backdrop-filter: blur(8px);
-  margin-bottom: 14px;
-}
-.ht-hero h1{ margin:0; font-size: 38px; letter-spacing:-0.02em; }
-.ht-hero .sub{ margin-top:6px; color: var(--muted2); font-size: 13px; line-height:1.4; }
-.ht-pills{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
-.ht-pill{
-  display:inline-flex; align-items:center; gap:6px;
-  background: rgba(17,24,39,.65);
-  border: 1px solid var(--stroke2);
-  padding: 6px 10px;
-  border-radius: 999px;
-  color: var(--muted2);
-  font-size: 12px;
+.block-container {
+  max-width: 1000px;
+  padding: 1.5rem 1rem 3rem;
 }
 
-.ht-card{
-  background: var(--card);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius);
-  padding: 14px 14px;
-  box-shadow: 0 12px 36px rgba(0,0,0,.22);
-  backdrop-filter: blur(8px);
-  margin-bottom: 12px;
-}
-
-.ht-h2{
-  font-size: 22px;
-  font-weight: 750;
-  letter-spacing: -0.01em;
-  margin: 2px 0 6px 0;
-}
-.ht-sub{ color: var(--muted); font-size: 13px; margin: 0 0 10px 0; }
-
-[data-testid="stMetric"]{
-  background: rgba(15,23,42,.55);
-  border: 1px solid var(--stroke);
-  border-radius: 14px;
-  padding: 10px 12px;
-}
-
-.stTextInput input, .stNumberInput input, textarea, select,
-.stSelectbox [data-baseweb="select"]{
-  background-color: rgba(255,255,255,0.04) !important;
+/* Typografi */
+h1, h2, h3, p, label, li {
   color: var(--text) !important;
-  border: 1px solid rgba(255,255,255,0.10) !important;
-  border-radius: 12px !important;
 }
 
-[data-testid="stExpander"] details{
-  background: rgba(15,23,42,.45) !important;
-  border: 1px solid var(--stroke) !important;
-  border-radius: var(--radius) !important;
-  overflow: hidden !important;
+h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #FFFFFF, var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
 }
-[data-testid="stExpander"] summary{
-  padding: 10px 14px !important;
-  font-weight: 700 !important;
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
-[data-testid="stExpander"] summary:hover{
-  background: rgba(148,163,184,.06) !important;
+
+/* Kort og boksar */
+div[data-testid="stExpander"] details,
+div.element-container div.stMarkdown div:not(.ht-hero) {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.25rem;
 }
 
-[data-testid="stCheckbox"] input{ transform: scale(1.10); }
-[data-testid="stToggle"] input{ transform: scale(1.05); }
+/* Hero-seksjon */
+.ht-hero {
+  background: linear-gradient(135deg, rgba(14,165,163,0.12), rgba(59,130,246,0.08));
+  border: 1px solid rgba(14,165,163,0.3);
+  border-radius: var(--radius-lg);
+  padding: 1.8rem;
+  margin-bottom: 1.8rem;
+  backdrop-filter: blur(4px);
+  box-shadow: var(--shadow);
+}
 
-.stButton > button[data-testid="baseButton-primary"]{
-  background: linear-gradient(135deg, #0EA5A3, #22C55E) !important;
-  color: #052e2b !important;
-  border: 0 !important;
-  border-radius: 14px !important;
-  padding: 10px 14px !important;
-  font-weight: 750 !important;
-  box-shadow: 0 14px 34px rgba(14,165,163,.18);
+.ht-hero h1 {
+  margin: 0;
+  font-size: 2.4rem;
+  background: linear-gradient(135deg, #FFFFFF, var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
 }
-.stButton > button[data-testid="baseButton-primary"]:hover{
-  filter: brightness(0.97); transform: translateY(-1px);
+
+.ht-hero .sub {
+  margin-top: 0.5rem;
+  color: var(--text-muted);
 }
-.stButton > button[data-testid="baseButton-secondary"]{
-  background: rgba(255,255,255,0.03) !important;
-  border: 1.5px solid rgba(255,255,255,0.10) !important;
-  border-radius: 12px !important;
-  color: #E5E7EB !important;
+
+.ht-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ht-pill {
+  background: rgba(31,41,55,0.8);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3rem 0.9rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Input-felt */
+.stTextInput input, .stNumberInput input, textarea, select,
+.stSelectbox [data-baseweb="select"] {
+  background-color: rgba(255,255,255,0.05) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 0.6rem 1rem !important;
+}
+
+.stTextInput input:focus, .stNumberInput input:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* Knappar */
+.stButton > button {
+  border-radius: var(--radius-md) !important;
   font-weight: 600 !important;
-  white-space: pre-wrap !important;
-  min-height: 82px !important;
-  font-size: 11px !important;
-  line-height: 1.45 !important;
-}
-.stButton > button[data-testid="baseButton-secondary"]:hover{
-  border-color: rgba(14,165,163,0.5) !important;
-  background: rgba(14,165,163,0.08) !important;
+  padding: 0.6rem 1.2rem !important;
+  transition: all 0.2s ease;
 }
 
-@media (max-width: 600px){
-  .main > div { padding-left: 10px !important; padding-right: 10px !important; }
-  .ht-hero h1{ font-size: 30px; }
-  .stButton > button { width: 100% !important; }
+.stButton > button[data-testid="baseButton-primary"] {
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover)) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(14,165,163,0.3);
 }
-</style>
-""",
-    unsafe_allow_html=True,
-)
+
+.stButton > button[data-testid="baseButton-primary"]:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(14,165,163,0.4);
+}
+
+.stButton > button[data-testid="baseButton-secondary"] {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+
+.stButton > button[data-testid="baseButton-secondary"]:hover {
+  border-color: var(--accent) !important;
+  background: rgba(14,165,163,0.1) !important;
+}
+
+/* Metrics */
+[data-testid="stMetric"] {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+[data-testid="stMetric"] label {
+  color: var(--text-muted) !important;
+}
+
+/* Checkbox og toggle */
+[data-testid="stCheckbox"] input {
+  transform: scale(1.1);
+}
+
+[data-testid="stToggle"] input {
+  transform: scale(1.05);
+}
+
+/* Sidemeny */
+.css-1d391kg, [data-testid="stSidebar"] {
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+}
+
+/* Responsiv */
+@media (max-width: 768px) {
+  .block-container {
+    padding: 1rem;
+  }
+  h1 {
+    font-size: 1.6rem;
+  }
+  .ht-hero h1 {
+    font-size: 1.8rem;
+  }
+  .stButton > button {
+    width: 100%;
+  }
+}
 # ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
 def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
     """Vis animerte KPI-kort med trender"""
