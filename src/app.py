@@ -340,6 +340,7 @@ if st.session_state.get("stripe_session_id"):
 # ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
 st.markdown(
     """
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
 * {
@@ -362,7 +363,6 @@ html, body, .stApp {
   padding: 1.8rem 1.5rem 3rem;
 }
 
-/* ========== SIDEBAR = premium, clean ========== */
 [data-testid="stSidebar"] {
   background: rgba(17, 24, 39, 0.7);
   backdrop-filter: blur(12px);
@@ -391,7 +391,6 @@ html, body, .stApp {
   color: #94A3B8;
 }
 
-/* ========== HERO ========== */
 .ht-hero {
   background: rgba(17, 24, 39, 0.5);
   backdrop-filter: blur(12px);
@@ -449,7 +448,6 @@ html, body, .stApp {
   color: #CBD5E1;
 }
 
-/* ========== SLIDER – FUNGERENDE (testa) ========== */
 div[data-testid="stSlider"] > div {
   padding: 0.25rem 0;
 }
@@ -468,7 +466,6 @@ div[data-baseweb="slider"] div[role="slider"] {
   border-radius: 50%;
 }
 
-/* Text inputs */
 .stTextInput input, .stNumberInput input, textarea, select {
   background: #111827 !important;
   border: 1px solid #2D3A4A !important;
@@ -477,7 +474,6 @@ div[data-baseweb="slider"] div[role="slider"] {
   color: #F1F5F9 !important;
 }
 
-/* Knapper */
 .stButton > button {
   border-radius: 40px !important;
   font-weight: 600 !important;
@@ -497,7 +493,6 @@ div[data-baseweb="slider"] div[role="slider"] {
   box-shadow: 0 14px 24px rgba(14,165,163,0.35);
 }
 
-/* Metrics */
 [data-testid="stMetric"] {
   background: #111827;
   border: 1px solid #2D3A4A;
@@ -505,14 +500,12 @@ div[data-baseweb="slider"] div[role="slider"] {
   padding: 1.2rem;
 }
 
-/* Expanders */
 [data-testid="stExpander"] details {
   background: #111827 !important;
   border: 1px solid #2D3A4A !important;
   border-radius: 20px !important;
 }
 
-/* Responsiv */
 @media (max-width: 680px) {
   .ht-hero h1 {
     font-size: 2rem;
@@ -524,6 +517,10 @@ div[data-baseweb="slider"] div[role="slider"] {
     padding: 1rem;
   }
 }
+</style>
+""",
+    unsafe_allow_html=True,
+)
 
 # ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
 def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
