@@ -4834,24 +4834,24 @@ if results:
 </div>''',
                 unsafe_allow_html=True,
             )
-if milestones and _unlocked:
-            st.markdown("#### 🗺️ Milestone roadmap")
-
-            _start_w = float(weight_kg)
-            _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
-            _total_change = _end_w - _start_w
-            _losing = _total_change < 0
-            _total_weeks = len(milestones)
-            _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
-            _wks_coach = int(plan_weeks) if plan_weeks else _total_weeks
-            _eta = (datetime.now() + timedelta(weeks=_wks_coach)).strftime("%d %b %Y")
-
-            # ── Personleg samandrag øvst ──
-            if _rate < 0:
-                _summary_msg = (
-                    f"At a steady {abs(_rate):.2f} kg/week, you're on track to go from {_start_w:.1f} kg to "
-                    f"{_end_w:.1f} kg by around {_eta} — a total change of {abs(_total_change):.1f} kg. "
-…
+    if milestones and _unlocked:
+                st.markdown("#### 🗺️ Milestone roadmap")
+    
+                _start_w = float(weight_kg)
+                _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
+                _total_change = _end_w - _start_w
+                _losing = _total_change < 0
+                _total_weeks = len(milestones)
+                _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
+                _wks_coach = int(plan_weeks) if plan_weeks else _total_weeks
+                _eta = (datetime.now() + timedelta(weeks=_wks_coach)).strftime("%d %b %Y")
+    
+                # ── Personleg samandrag øvst ──
+                if _rate < 0:
+                    _summary_msg = (
+                        f"At a steady {abs(_rate):.2f} kg/week, you're on track to go from {_start_w:.1f} kg to "
+                        f"{_end_w:.1f} kg by around {_eta} — a total change of {abs(_total_change):.1f} kg. "
+    …
 
                 # Progress toward goal
                 if abs(_total_change) > 0.01:
