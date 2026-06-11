@@ -375,7 +375,6 @@ html, body, .stApp {
   background: transparent;
 }
 
-/* sidebarens tekst og element */
 [data-testid="stSidebar"] h1, 
 [data-testid="stSidebar"] h2, 
 [data-testid="stSidebar"] p, 
@@ -451,7 +450,7 @@ html, body, .stApp {
   color: #CBD5E1;
 }
 
-/* ========== INPUTS – sånn at slider blir mykje penare ========== */
+/* ========== INPUTS – SLIDER FIX ========== */
 .stSlider > div {
   padding-top: 0.5rem;
 }
@@ -470,6 +469,7 @@ div[data-baseweb="slider"] div[role="slider"] {
   border-radius: 50%;
 }
 
+/* Text inputs */
 .stTextInput input, .stNumberInput input, textarea, select {
   background: #111827 !important;
   border: 1px solid #2D3A4A !important;
@@ -478,6 +478,7 @@ div[data-baseweb="slider"] div[role="slider"] {
   color: #F1F5F9 !important;
 }
 
+/* Knapper */
 .stButton > button {
   border-radius: 40px !important;
   font-weight: 600 !important;
@@ -497,7 +498,7 @@ div[data-baseweb="slider"] div[role="slider"] {
   box-shadow: 0 14px 24px rgba(14,165,163,0.35);
 }
 
-/* Metrics – små kort */
+/* Metrics */
 [data-testid="stMetric"] {
   background: #111827;
   border: 1px solid #2D3A4A;
