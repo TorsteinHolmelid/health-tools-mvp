@@ -330,243 +330,178 @@ if st.session_state.get("stripe_session_id"):
 st.markdown(
     """
 <style>
-/* Import Apple-like font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
 
+:root{
+  --bg0:#070D18;
+  --bg1:#0B1220;
+  --card: rgba(15,23,42,.72);
+  --card2: rgba(17,28,51,.62);
+  --stroke: rgba(148,163,184,.16);
+  --stroke2: rgba(148,163,184,.10);
+  --text:#E5E7EB;
+  --muted:#94A3B8;
+  --muted2:#A7B4C6;
+  --accent:#0EA5A3;
+  --accent2:#3B82F6;
+  --good:#22C55E;
+  --warn:#F59E0B;
+  --bad:#EF4444;
+  --radius:16px;
+}
+
 * {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
-/* Global reset */
-html, body, .stApp {
-    background: #05070C;
-    color: #EDEDF0;
+img, svg, iframe { max-width: 100% !important; height: auto !important; }
+
+.stApp{
+  background:
+    radial-gradient(1200px 600px at 18% -10%, rgba(14,165,163,.20), transparent 60%),
+    radial-gradient(900px 520px at 90% 0%, rgba(59,130,246,.15), transparent 55%),
+    linear-gradient(180deg, var(--bg0), var(--bg1) 40%, #070B14);
+  color: var(--text);
 }
 
-.stApp {
-    background: radial-gradient(circle at 20% 30%, rgba(20, 30, 50, 0.3), transparent 70%),
-                radial-gradient(circle at 80% 70%, rgba(10, 20, 30, 0.2), transparent 60%),
-                #05070C;
+.block-container{
+  max-width: 980px;
+  padding-top: 1.35rem;
+  padding-bottom: 2.2rem;
 }
 
-/* Main container */
-.block-container {
-    max-width: 1100px;
-    padding: 2rem 1.5rem 4rem;
+h1, h2, h3, p, label, li { color: var(--text) !important; }
+small, .stCaption, [data-testid="stCaptionContainer"] { color: var(--muted) !important; }
+
+.ht-hero{
+  background: linear-gradient(135deg, rgba(14,165,163,.18), rgba(59,130,246,.12));
+  border: 1px solid var(--stroke);
+  border-radius: calc(var(--radius) + 6px);
+  padding: 18px 18px;
+  box-shadow: 0 18px 50px rgba(0,0,0,.25);
+  backdrop-filter: blur(8px);
+  margin-bottom: 14px;
+}
+.ht-hero h1{ margin:0; font-size: 38px; letter-spacing:-0.02em; }
+.ht-hero .sub{ margin-top:6px; color: var(--muted2); font-size: 13px; line-height:1.4; }
+.ht-pills{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.ht-pill{
+  display:inline-flex; align-items:center; gap:6px;
+  background: rgba(17,24,39,.65);
+  border: 1px solid var(--stroke2);
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--muted2);
+  font-size: 12px;
 }
 
-/* Headings */
-h1, h2, h3, h4, p, label, li {
-    color: #F0F0F5 !important;
+.ht-card{
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 14px 14px;
+  box-shadow: 0 12px 36px rgba(0,0,0,.22);
+  backdrop-filter: blur(8px);
+  margin-bottom: 12px;
 }
 
-h1 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    background: linear-gradient(135deg, #FFFFFF, #8B9EFF);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent !important;
+.ht-h2{
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  margin: 2px 0 6px 0;
+}
+.ht-sub{ color: var(--muted); font-size: 13px; margin: 0 0 10px 0; }
+
+[data-testid="stMetric"]{
+  background: rgba(15,23,42,.55);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 10px 12px;
 }
 
-h2 {
-    font-size: 1.6rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    margin-bottom: 1rem;
-}
-
-/* Cards / expanders */
-div[data-testid="stExpander"] details,
-div.stMarkdown div:not(.ht-hero) {
-    background: rgba(20, 28, 38, 0.6);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 24px;
-    padding: 0rem;
-    transition: all 0.2s ease;
-}
-
-div[data-testid="stExpander"] details:hover {
-    border-color: rgba(255,255,255,0.15);
-}
-
-/* Hero */
-.ht-hero {
-    background: rgba(12, 18, 28, 0.65);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 32px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
-}
-
-.ht-hero h1 {
-    font-size: 2.8rem;
-    margin: 0;
-}
-
-.ht-hero .sub {
-    color: #8E9AAB;
-    font-size: 0.9rem;
-}
-
-.ht-pills {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
-}
-
-.ht-pill {
-    background: rgba(255,255,255,0.05);
-    border: 0.5px solid rgba(255,255,255,0.1);
-    border-radius: 40px;
-    padding: 0.3rem 1rem;
-    font-size: 0.75rem;
-    color: #B0C4DE;
-}
-
-/* Input fields — modern, minimal */
 .stTextInput input, .stNumberInput input, textarea, select,
-.stSelectbox [data-baseweb="select"] {
-    background-color: rgba(20, 28, 38, 0.8) !important;
-    color: white !important;
-    border: 1px solid rgba(255,255,255,0.15) !important;
-    border-radius: 16px !important;
-    padding: 0.7rem 1rem !important;
-    font-size: 0.9rem !important;
-    transition: all 0.2s;
+.stSelectbox [data-baseweb="select"]{
+  background-color: rgba(255,255,255,0.04) !important;
+  color: var(--text) !important;
+  border: 1px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
 }
 
-.stTextInput input:focus, .stNumberInput input:focus {
-    border-color: #6C8BFF !important;
-    box-shadow: 0 0 0 2px rgba(108,139,255,0.2);
-}
-
-/* Sliders — Apple style */
+/* Sliders – gjør dem runde og premium */
 div[data-testid="stSlider"] {
-    padding: 0.5rem 0;
+  padding-top: 0.5rem;
 }
-
 div[data-baseweb="slider"] {
-    height: 4px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 10px;
+  margin-top: 0.5rem;
 }
-
+div[data-baseweb="slider"] > div {
+  height: 4px;
+  border-radius: 4px;
+}
 div[data-baseweb="slider"] div[role="slider"] {
-    background: white !important;
-    width: 18px !important;
-    height: 18px !important;
-    border-radius: 50% !important;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    border: 2px solid #6C8BFF !important;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: white;
+  border: 2px solid var(--accent);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  transition: transform 0.1s ease;
+}
+div[data-baseweb="slider"] div[role="slider"]:hover {
+  transform: scale(1.15);
 }
 
-div[data-baseweb="slider"] div[data-testid="slider-tick"] {
-    display: none;
+[data-testid="stExpander"] details{
+  background: rgba(15,23,42,.45) !important;
+  border: 1px solid var(--stroke) !important;
+  border-radius: var(--radius) !important;
+  overflow: hidden !important;
+}
+[data-testid="stExpander"] summary{
+  padding: 10px 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+[data-testid="stExpander"] summary:hover{
+  background: rgba(148,163,184,.06) !important;
 }
 
-/* Knapper */
-.stButton > button {
-    border-radius: 40px !important;
-    font-weight: 600 !important;
-    padding: 0.6rem 1.4rem !important;
-    transition: all 0.2s ease;
-    border: none !important;
-    background: rgba(30, 40, 55, 0.9) !important;
-    color: white !important;
-    backdrop-filter: blur(4px);
+[data-testid="stCheckbox"] input{ transform: scale(1.10); }
+[data-testid="stToggle"] input{ transform: scale(1.05); }
+
+.stButton > button[data-testid="baseButton-primary"]{
+  background: linear-gradient(135deg, #0EA5A3, #22C55E) !important;
+  color: #052e2b !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  padding: 10px 14px !important;
+  font-weight: 750 !important;
+  box-shadow: 0 14px 34px rgba(14,165,163,.18);
+}
+.stButton > button[data-testid="baseButton-primary"]:hover{
+  filter: brightness(0.97); transform: translateY(-1px);
+}
+.stButton > button[data-testid="baseButton-secondary"]{
+  background: rgba(255,255,255,0.03) !important;
+  border: 1.5px solid rgba(255,255,255,0.10) !important;
+  border-radius: 12px !important;
+  color: #E5E7EB !important;
+  font-weight: 600 !important;
+  white-space: pre-wrap !important;
+  min-height: 82px !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+.stButton > button[data-testid="baseButton-secondary"]:hover{
+  border-color: rgba(14,165,163,0.5) !important;
+  background: rgba(14,165,163,0.08) !important;
 }
 
-.stButton > button[data-testid="baseButton-primary"] {
-    background: linear-gradient(135deg, #6C8BFF, #4A6AEE) !important;
-    box-shadow: 0 4px 12px rgba(108,139,255,0.3);
-}
-
-.stButton > button[data-testid="baseButton-primary"]:hover {
-    transform: scale(0.98);
-    background: linear-gradient(135deg, #5A7AE8, #3A5AD8) !important;
-}
-
-.stButton > button[data-testid="baseButton-secondary"] {
-    background: rgba(255,255,255,0.05) !important;
-    border: 0.5px solid rgba(255,255,255,0.2) !important;
-}
-
-.stButton > button[data-testid="baseButton-secondary"]:hover {
-    background: rgba(255,255,255,0.1) !important;
-}
-
-/* Metrics / KPIs */
-div[data-testid="stMetric"] {
-    background: rgba(20, 28, 38, 0.6);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 28px;
-    padding: 1rem;
-    text-align: center;
-}
-
-div[data-testid="stMetric"] label {
-    color: #A0B0C0 !important;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-    font-size: 2rem;
-    font-weight: 700;
-    color: white;
-}
-
-/* Checkbox / toggle */
-[data-testid="stCheckbox"] input {
-    transform: scale(1.1);
-    accent-color: #6C8BFF;
-}
-
-[data-testid="stToggle"] input {
-    transform: scale(1.05);
-    accent-color: #6C8BFF;
-}
-
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background: rgba(10, 14, 20, 0.85);
-    backdrop-filter: blur(20px);
-    border-right: 0.5px solid rgba(255,255,255,0.08);
-}
-
-[data-testid="stSidebar"] .sidebar-content {
-    padding: 1rem;
-}
-
-/* Expander summary */
-[data-testid="stExpander"] summary {
-    font-weight: 600 !important;
-    padding: 0.8rem 1rem !important;
-    background: rgba(30,40,55,0.3);
-    border-radius: 20px;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .block-container {
-        padding: 1rem;
-    }
-    h1 {
-        font-size: 1.8rem;
-    }
-    .ht-hero h1 {
-        font-size: 2rem;
-    }
-    .stButton > button {
-        width: 100%;
-    }
+@media (max-width: 600px){
+  .main > div { padding-left: 10px !important; padding-right: 10px !important; }
+  .ht-hero h1{ font-size: 30px; }
+  .stButton > button { width: 100% !important; }
 }
 </style>
 """,
