@@ -44,6 +44,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
     GOLD   = HexColor("#D4AF7A")          # premium accent
     ACCENT = HexColor("#14B8A6")
     BLUE   = HexColor("#3B82F6")
+    GLOW   = HexColor("#38BDF8")          # spotlight blue, cover gradient
     GOOD   = HexColor("#22C55E")
     WARN   = HexColor("#F59E0B")
     BAD    = HexColor("#EF4444")
@@ -402,6 +403,9 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             c = self.canv
             c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
             c.setFillColor(self.accent); c.roundRect(0, 0, 5, self.h, 2, fill=1, stroke=0)
+            c.setFillAlpha(0.15); c.setFillColor(self.accent)
+            c.circle(self.w - 18, self.h - 16, 16, fill=1, stroke=0)
+            c.setFillAlpha(1.0)
             if self.num:
                 c.setFillColor(self.accent); c.setFont("Helvetica-Bold", 9)
                 c.drawString(16, self.h - 14, str(self.num))
@@ -427,7 +431,10 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 col = HexColor(col_s) if isinstance(col_s, str) else col_s
                 x = i * (cw + 6)
                 c.setFillColor(CARD); c.roundRect(x, 0, cw, ch, 8, fill=1, stroke=0)
+                c.setStrokeColor(STROKE); c.setLineWidth(0.6); c.roundRect(x, 0, cw, ch, 8, fill=0, stroke=1)
                 c.setFillColor(col); c.roundRect(x, ch - 4, cw, 4, 2, fill=1, stroke=0)
+                c.setFillAlpha(0.18); c.setFillColor(col); c.circle(x + cw - 14, ch - 16, 9, fill=1, stroke=0)
+                c.setFillAlpha(1.0); c.setFillColor(col); c.circle(x + cw - 14, ch - 16, 3.5, fill=1, stroke=0)
                 c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
                 c.drawString(x + 10, ch - 16, str(lbl).upper()[:24])
                 c.setFillColor(col); c.setFont("Helvetica-Bold", 17)
@@ -437,53 +444,63 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                     c.drawString(x + 10, ch - 50, str(sub)[:28])
 
     class CoverHero(Flowable):
-        """Premium dark cover hero block with gradient-style banding."""
+        """Premium dark cover hero with a radial spotlight glow + personalised tag."""
         def __init__(self, width=CONTENT_W):
-            super().__init__(); self.w = width; self.h = 250
+            super().__init__(); self.w = width; self.h = 260
         def wrap(self, aw, ah): return self.w, self.h
         def draw(self):
             c = self.canv; w = self.w; h = self.h
-            # layered "gradient" via stacked bands
-            steps = 24
-            for i in range(steps):
-                t = i / steps
-                r = int(0x08 + (0x14 - 0x08) * t)
-                g = int(0x0C + (0x3A - 0x0C) * t)
-                b = int(0x16 + (0x40 - 0x16) * t)
-                c.setFillColor(colors.Color(r/255, g/255, b/255))
-                c.rect(0, h - (i + 1) * (h / steps), w, h / steps + 1, fill=1, stroke=0)
+            # base
+            c.setFillColor(BG); c.roundRect(0, 0, w, h, 14, fill=1, stroke=0)
+            # radial spotlight glow, top-right, fading outward
+            c.saveState()
+            p = c.beginPath(); p.roundRect(0, 0, w, h, 14); c.clipPath(p, stroke=0, fill=0)
+            cx, cy = w * 0.82, h * 0.92
+            rings = 26
+            for i in range(rings, 0, -1):
+                t = i / rings
+                r = t * (w * 0.62)
+                alpha = (1 - t) ** 1.6 * 0.55
+                c.setFillColor(GLOW); c.setFillAlpha(alpha)
+                c.circle(cx, cy, r, fill=1, stroke=0)
+            c.setFillAlpha(1.0)
+            c.restoreState()
             c.setStrokeColor(GOLD); c.setLineWidth(1.2)
             c.roundRect(0, 0, w, h, 14, fill=0, stroke=1)
             # Confidential ribbon
             c.setFillColor(GOLD)
-            c.roundRect(w - 132, h - 28, 124, 18, 4, fill=1, stroke=0)
-            c.setFillColor(BG); c.setFont("Helvetica-Bold", 7.5)
-            c.drawCentredString(w - 70, h - 22, "CONFIDENTIAL · FOR YOUR EYES ONLY")
+            c.roundRect(w - 145, h - 28, 137, 18, 4, fill=1, stroke=0)
+            c.setFillColor(BG); c.setFont("Helvetica-Bold", 7)
+            c.drawCentredString(w - 76.5, h - 22, "CONFIDENTIAL · FOR YOUR EYES ONLY")
+            # Personalised tag, top-left
+            tag = f"INDIVIDUAL PLAN · {name_v.upper()}" if name_v else "INDIVIDUAL PLAN"
+            c.setFillColor(GLOW); c.setFont("Helvetica-Bold", 7.5)
+            c.drawString(16, h - 22, tag)
             # Title
-            c.setFillColor(white); c.setFont("Helvetica-Bold", 27)
-            c.drawCentredString(w/2, h - 70, "LONGEVITY")
-            c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 27)
-            c.drawCentredString(w/2, h - 100, "INTELLIGENCE REPORT")
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(w/2, h - 76, "LONGEVITY")
+            c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(w/2, h - 107, "INTELLIGENCE REPORT")
             c.setFillColor(MUTED); c.setFont("Helvetica", 10)
-            c.drawCentredString(w/2, h - 122, "Personal Precision Health Analysis · Built Entirely From Your Own Data")
+            c.drawCentredString(w/2, h - 130, "Personal Precision Health Analysis · Built Entirely From Your Own Data")
             # Recipient line
             display_name = name_v if name_v else "Your Personal Report"
-            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 13)
-            c.drawCentredString(w/2, h - 152, f"Prepared for {display_name}")
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 15)
+            c.drawCentredString(w/2, h - 160, f"Prepared exclusively for {display_name}")
             c.setFillColor(MUTED); c.setFont("Helvetica", 8)
-            c.drawCentredString(w/2, h - 166, f"Report ID {report_id}   ·   Generated {gen_v}")
+            c.drawCentredString(w/2, h - 174, f"Report ID {report_id}   ·   Generated {gen_v}")
             # divider
             c.setStrokeColor(STROKE); c.setLineWidth(0.6)
-            c.line(40, h - 180, w - 40, h - 180)
+            c.line(40, h - 190, w - 40, h - 190)
             # Bottom info strip
             cells = [("AGE", f"{age_v}"), ("SEX", f"{sex_v}"), ("HEIGHT", f"{h_v} cm"), ("WEIGHT", f"{w_v} kg")]
             cw_ = w / len(cells)
             for i, (lbl, val) in enumerate(cells):
-                cx = i * cw_ + cw_/2
+                cx2 = i * cw_ + cw_/2
                 c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
-                c.drawCentredString(cx, h - 200, lbl)
+                c.drawCentredString(cx2, h - 210, lbl)
                 c.setFillColor(white); c.setFont("Helvetica-Bold", 12)
-                c.drawCentredString(cx, h - 215, val)
+                c.drawCentredString(cx2, h - 225, val)
             c.setFillColor(MUTED); c.setFont("Helvetica-Oblique", 7.5)
             c.drawCentredString(w/2, 14, "Every page that follows is calculated from the numbers above — nothing here is generic.")
 
@@ -839,7 +856,8 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         canvas.setFillColor(GOLD); canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
         canvas.setFillColor(CARD2); canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
         canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5)
-        canvas.drawString(MARGIN_H, PAGE_H-15, "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL")
+        header_label = f"LONGEVITY INTELLIGENCE REPORT  ·  {name_v.upper()}'S PLAN" if name_v else "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL"
+        canvas.drawString(MARGIN_H, PAGE_H-15, header_label)
         canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8)
         canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
         canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
