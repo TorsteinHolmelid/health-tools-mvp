@@ -3415,6 +3415,7 @@ else:
             "triage_recommendations": _results_for_pdf.get("triage_recommendations"),
             "plan": _results_for_pdf.get("plan"),
             "exercise_log": st.session_state.get("exercise_last"),
+            "selected_activities": st.session_state.get("selected_activities", []),
         }
         # Legg til dette før pdf_bytes = ...
         
