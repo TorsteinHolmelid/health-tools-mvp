@@ -3259,7 +3259,7 @@ if results:
             unsafe_allow_html=True
         )
 
-        # ── Milestone roadmap (blur for free users) ──
+        # ── Milestone roadmap (blur for free users – first two weeks visible) ──
         milestones = plan.get("milestones", [])
         if milestones:
             st.markdown("#### 🗺️ Milestone roadmap")
@@ -3294,9 +3294,12 @@ if results:
                 if not _is_last:
                     _connector = '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
 
-                # Blur-effekt for ikkje-premium: alle radane blir uskarpe (bortsett frå kanskje første)
+                # Blur: for ikkje-premium – vis dei to første vekene klart, resten uskarpe
                 if not _is_premium:
-                    blur_style = "filter:blur(4px);user-select:none;"
+                    if i >= 2:   # rad 0 og 1 (veke 1 og 2) er klare
+                        blur_style = "filter:blur(4px);user-select:none;"
+                    else:
+                        blur_style = ""
                 else:
                     blur_style = ""
 
@@ -3327,15 +3330,14 @@ if results:
 """
                 st.markdown(_milestone_html, unsafe_allow_html=True)
 
-            # Viss ikkje premium, vis ein låse-melding under veikartet
-            if not _is_premium:
+            # Viss ikkje premium og det finst minst éin blura rad (dvs. 3+ milestones)
+            if not _is_premium and len(milestones) >= 3:
                 st.markdown(
                     '<div style="text-align:center;margin-top:10px;padding:8px;background:rgba(0,0,0,0.4);border-radius:12px;">'
-                    '<span style="color:#F59E0B;font-size:13px;">🔓 Unlock premium to see your full personalised milestone roadmap</span>'
+                    '<span style="color:#F59E0B;font-size:13px;">🔓 Unlock premium to see weeks 3+ of your personalised milestone roadmap</span>'
                     '</div>',
                     unsafe_allow_html=True
                 )
-
                 # ── Coach Insight ──
                 _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
                 _tw_coach = float(milestones[-1].get("Projected weight (kg)", weight_kg)) if milestones else float(weight_kg)
