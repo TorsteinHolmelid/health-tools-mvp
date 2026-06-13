@@ -56,7 +56,7 @@ def save_health_metrics(db: Client, weight=None, bmi=None, vo2max=None,
                         bio_age=None, weekly_activity_minutes=None, resting_hr=None):
     user_id = get_current_user_id()
     if not user_id:
-        raise Exception("Ikkje innlogga")
+        raise Exception("Not logged in")
     data = {
         "user_id": user_id,
         "weight": weight,
