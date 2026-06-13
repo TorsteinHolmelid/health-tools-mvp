@@ -3259,149 +3259,103 @@ if results:
             unsafe_allow_html=True
         )
 
-        # ── Milestone roadmap (preview — first milestone visible, rest blurred) ──
+        # ── Milestone roadmap ──
         milestones = plan.get("milestones", [])
         if milestones:
             st.markdown("#### 🗺️ Milestone roadmap")
             _start_w = float(weight_kg)
             _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
             _total_change = _end_w - _start_w
+            _losing = _total_change < 0
 
-            _focus_icons = {
-                "Build routine": "🏗️",
-                "Maintain consistency": "🔄",
-                "Review progress": "📊",
-                "Re-check and set next goal": "🏁",
-            }
-
-            # Build all milestone HTML rows but only fully display the first
-            _all_rows_html = ""
             for i, m in enumerate(milestones):
                 _wk = m.get("Week", i + 1)
                 _pw = float(m.get("Projected weight (kg)", _start_w))
                 _focus = m.get("Focus", "")
+                _done = i == len(milestones) - 1
+
+                # Progress toward goal
                 if abs(_total_change) > 0.01:
                     _prog = min(100, max(0, int(abs(_pw - _start_w) / abs(_total_change) * 100)))
                 else:
                     _prog = 100
+
                 _is_last = i == len(milestones) - 1
                 _dot_color = "#22C55E" if _is_last else "#3B82F6"
+                _focus_icons = {
+                    "Build routine": "🏗️",
+                    "Maintain consistency": "🔄",
+                    "Review progress": "📊",
+                    "Re-check and set next goal": "🏁",
+                }
                 _icon = next((v for k, v in _focus_icons.items() if k.lower() in str(_focus).lower()), "📍")
-                _connector = "" if _is_last else '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
-                _all_rows_html += f"""
+
+                _connector = ""
+                if not _is_last:
+                    _connector = '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
+
+                _milestone_html = f"""
 <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
   <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
-    <div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>
+    <div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>
     {_connector}
   </div>
-  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
+  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);
+  border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
       <div>
         <span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_pw:.1f} kg</span>
         <span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_icon} {_focus}</span>
       </div>
-      <div style="background:rgba(255,255,255,0.06);border-radius:999px;padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>
+      <div style="background:rgba(255,255,255,0.06);border-radius:999px;
+      padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>
     </div>
-    <div style="margin-top:7px;background:rgba(255,255,255,0.05);border-radius:999px;height:5px;overflow:hidden;">
+    <div style="margin-top:7px;background:rgba(255,255,255,0.05);
+    border-radius:999px;height:5px;overflow:hidden;">
       <div style="width:{_prog}%;background:{_dot_color};height:100%;border-radius:999px;"></div>
     </div>
   </div>
-</div>"""
+</div>
+"""
+                st.markdown(_milestone_html, unsafe_allow_html=True)
 
-            # Show first milestone clearly, the rest behind a blur/lock overlay
-            _m0 = milestones[0]
-            _m0_wk = _m0.get("Week", 1)
-            _m0_pw = float(_m0.get("Projected weight (kg)", _start_w))
-            _m0_focus = _m0.get("Focus", "")
-            _m0_prog = min(100, max(0, int(abs(_m0_pw - _start_w) / abs(_total_change) * 100))) if abs(_total_change) > 0.01 else 100
-            _m0_icon = next((v for k, v in _focus_icons.items() if k.lower() in str(_m0_focus).lower()), "📍")
-
-            _first_row_html = f"""
-<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
-  <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
-    <div style="width:28px;height:28px;border-radius:50%;background:#3B82F6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_m0_wk}</div>
-    <div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>
-  </div>
-  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-      <div>
-        <span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_m0_pw:.1f} kg</span>
-        <span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_m0_icon} {_m0_focus}</span>
-      </div>
-      <div style="background:rgba(255,255,255,0.06);border-radius:999px;padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_m0_wk} · {_m0_prog}%</div>
-    </div>
-    <div style="margin-top:7px;background:rgba(255,255,255,0.05);border-radius:999px;height:5px;overflow:hidden;">
-      <div style="width:{_m0_prog}%;background:#3B82F6;height:100%;border-radius:999px;"></div>
-    </div>
-  </div>
-</div>"""
-
-            # Remaining milestones as blurred preview
-            _remaining_count = len(milestones) - 1
-            _blur_rows = "".join([f"""
-<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;opacity:0.6;">
-  <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
-    <div style="width:28px;height:28px;border-radius:50%;background:#334155;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#94A3B8;flex-shrink:0;">{milestones[j].get('Week', j+1)}</div>
-    {'<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.1);margin-top:2px;"></div>' if j < len(milestones)-1 else ''}
-  </div>
-  <div style="background:rgba(15,23,42,0.4);border:1px solid rgba(148,163,184,0.06);border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
-    <div style="height:12px;background:rgba(148,163,184,0.15);border-radius:6px;width:70%;margin-bottom:8px;"></div>
-    <div style="height:5px;background:rgba(148,163,184,0.08);border-radius:999px;"></div>
-  </div>
-</div>""" for j in range(1, len(milestones))])
-
-            _milestone_preview_html = f"""
-<div style="position:relative;">
-  {_first_row_html}
-  <div style="position:relative;">
-    <div style="filter:blur(4px);pointer-events:none;user-select:none;">
-      {_blur_rows}
-    </div>
-    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(7,13,24,0) 0%,rgba(7,13,24,0.7) 30%,rgba(7,13,24,0.92) 100%);border-radius:12px;">
-      <div style="text-align:center;padding:16px;">
-        <div style="font-size:22px;margin-bottom:6px;">🔒</div>
-        <div style="color:#E5E7EB;font-weight:700;font-size:14px;margin-bottom:4px;">+{_remaining_count} more milestones in your full plan</div>
-        <div style="color:#94A3B8;font-size:12px;">Unlock the complete {len(milestones)}-week roadmap with Premium</div>
-      </div>
-    </div>
-  </div>
-</div>"""
-            st.markdown(_milestone_preview_html, unsafe_allow_html=True)
-
-            # ── Coach Insight (shown for the first milestone) ──
-            _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
-            _tw_coach = float(milestones[-1].get("Projected weight (kg)", weight_kg)) if milestones else float(weight_kg)
-            _wks_coach = int(plan_weeks) if plan_weeks else 12
-            if _rate < 0:
-                _coach_msg = (
-                    f"At {abs(_rate):.2f} kg/week, you are on a safe and sustainable fat loss trajectory. "
-                    f"You will reach {_tw_coach:.1f} kg in approximately {_wks_coach} weeks. "
-                    f"Consistency is your biggest advantage — small daily habits compound over time."
+                # ── Coach Insight ──
+                _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
+                _tw_coach = float(milestones[-1].get("Projected weight (kg)", weight_kg)) if milestones else float(weight_kg)
+                _wks_coach = int(plan_weeks) if plan_weeks else 12
+                if _rate < 0:
+                    _coach_msg = (
+                        f"At {abs(_rate):.2f} kg/week, you are on a safe and sustainable fat loss trajectory. "
+                        f"You will reach {_tw_coach:.1f} kg in approximately {_wks_coach} weeks. "
+                        f"Consistency is your biggest advantage — small daily habits compound over time."
+                    )
+                    _coach_icon = "🟢"
+                elif _rate > 0:
+                    _coach_msg = (
+                        f"You are in a controlled weight gain phase at {_rate:.2f} kg/week. "
+                        f"Target: {_tw_coach:.1f} kg in {_wks_coach} weeks. "
+                        f"Focus on strength training to maximise lean muscle gain."
+                    )
+                    _coach_icon = "🔵"
+                else:
+                    _coach_msg = (
+                        "You are at maintenance calories. "
+                        "Focus on body recomposition — building muscle while maintaining weight."
+                    )
+                    _coach_icon = "⚪"
+        
+                st.markdown(
+                    f'<div style="background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(34,197,94,0.08));'
+                    f'border:1px solid rgba(14,165,163,0.3);border-left:4px solid #0EA5A3;'
+                    f'border-radius:14px;padding:16px 18px;margin:14px 0;">'
+                    f'<div style="color:#0EA5A3;font-size:12px;font-weight:700;letter-spacing:0.08em;'
+                    f'text-transform:uppercase;margin-bottom:8px;">🧠 Coach Insight</div>'
+                    f'<div style="color:#E5E7EB;font-size:14px;line-height:1.7;">{_coach_icon} {_coach_msg}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
                 )
-                _coach_icon = "🟢"
-            elif _rate > 0:
-                _coach_msg = (
-                    f"You are in a controlled weight gain phase at {_rate:.2f} kg/week. "
-                    f"Target: {_tw_coach:.1f} kg in {_wks_coach} weeks. "
-                    f"Focus on strength training to maximise lean muscle gain."
-                )
-                _coach_icon = "🔵"
-            else:
-                _coach_msg = (
-                    "You are at maintenance calories. "
-                    "Focus on body recomposition — building muscle while maintaining weight."
-                )
-                _coach_icon = "⚪"
-            st.markdown(
-                f'<div style="background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(34,197,94,0.08));'
-                f'border:1px solid rgba(14,165,163,0.3);border-left:4px solid #0EA5A3;'
-                f'border-radius:14px;padding:16px 18px;margin:14px 0;">'
-                f'<div style="color:#0EA5A3;font-size:12px;font-weight:700;letter-spacing:0.08em;'
-                f'text-transform:uppercase;margin-bottom:8px;">🧠 Coach Insight</div>'
-                f'<div style="color:#E5E7EB;font-size:14px;line-height:1.7;">{_coach_icon} {_coach_msg}</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
 else:
     st.info("Click 'Calculate' / 'Generate report' to run the calculations")
  
@@ -3481,6 +3435,207 @@ if not _unlocked:
         '</div>',
         unsafe_allow_html=True
     )
+    # ── PDF Preview Section with progressive blur ─────────────────────────────
+    _preview_results = st.session_state.get("results", {})
+    _preview_age     = st.session_state.get("age", 35)
+    _preview_sex     = st.session_state.get("inp_sex", "Male")
+    _preview_weight  = st.session_state.get("inp_weight", 80)
+    _preview_plan    = (_preview_results.get("plan") or {}) if _preview_results else {}
+    _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
+    _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
+
+    # Build Week 1 sample rows (Mon–Wed fully visible, rest blurred progressively)
+    _days_sample = [
+        ("MON", "💪 Strength", "Full-body compound lifts — Squat, Romanian Deadlift, Push-up, Row", "45 min", "#22C55E20", "#22C55E"),
+        ("TUE", "🏃 Cardio", "Zone 2 steady-state — keep HR 120–135 bpm, conversational pace", "30 min", "#3B82F620", "#3B82F6"),
+        ("WED", "💪 Strength", "Upper/Lower split — Bench Press, Pull-up, Lunge, Shoulder Press", "50 min", "#22C55E20", "#22C55E"),
+        ("THU", "🔥 HIIT", "4 × 4 intervals — 4 min hard (RPE 9), 3 min easy, full warm-up", "40 min", "#F59E0B20", "#F59E0B"),
+        ("FRI", "💪 Strength", "Posterior chain focus — Deadlift, Hip Thrust, Pull-down, Plank", "50 min", "#22C55E20", "#22C55E"),
+        ("SAT", "🚴 Endurance", "Long slow distance — build aerobic base, HR below 135 bpm", "60 min", "#3B82F620", "#3B82F6"),
+        ("SUN", "😴 Recovery", "Full rest or 15 min mobility + foam rolling", "—",      "#64748B20", "#64748B"),
+    ]
+
+    _bmi_val   = _preview_bmi.get("value", "—")
+    _vo2_val   = _preview_vo2.get("value", "—")
+    _vo2_pct   = _preview_vo2.get("percentile", "—")
+    _bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
+
+    _preview_rows_html = ""
+    for i, (day, wtype, desc, dur, bg, accent) in enumerate(_days_sample):
+        # First 3 rows: clear. Row 4: slight blur. Row 5+: heavy blur.
+        if i < 3:
+            blur_style = ""
+            overlay    = ""
+        elif i == 3:
+            blur_style = "filter:blur(2px);user-select:none;"
+            overlay    = ""
+        else:
+            blur_style = "filter:blur(5px);user-select:none;"
+            overlay    = ""
+
+        _preview_rows_html += f"""
+        <tr style="border-bottom:1px solid #1E293B;">
+          <td style="padding:9px 10px;font-weight:700;font-size:11px;color:#94A3B8;white-space:nowrap;">{day}</td>
+          <td style="padding:9px 10px;{blur_style}">
+            <span style="background:{bg};border:1px solid {accent}44;color:{accent};
+              border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;">{wtype}</span>
+          </td>
+          <td style="padding:9px 10px;font-size:12px;color:#CBD5E1;{blur_style}">{desc}</td>
+          <td style="padding:9px 10px;font-size:12px;color:#94A3B8;white-space:nowrap;{blur_style}">{dur}</td>
+        </tr>"""
+
+    st.markdown(f"""
+<style>
+.pdf-preview-wrap {{
+  position:relative;
+  border:1px solid #1E3A5F;
+  border-radius:16px;
+  overflow:hidden;
+  background:#0D1B2E;
+  margin: 18px 0 10px 0;
+  box-shadow: 0 0 40px rgba(14,165,163,0.08);
+}}
+.pdf-preview-header {{
+  background: linear-gradient(90deg, #0EA5A344 0%, #3B82F622 100%);
+  border-bottom: 1px solid #1E3A5F;
+  padding: 14px 20px 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}}
+.pdf-badge {{
+  background: #D4AF7A22;
+  border: 1px solid #D4AF7A55;
+  color: #D4AF7A;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}}
+.pdf-preview-table {{
+  width: 100%;
+  border-collapse: collapse;
+}}
+.pdf-preview-blur-zone {{
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 210px;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    #0D1B2Ecc 40%,
+    #0D1B2Eff 100%
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 22px;
+  gap: 8px;
+}}
+.pdf-lock-icon {{
+  font-size: 28px;
+  margin-bottom: 2px;
+}}
+.pdf-lock-text {{
+  font-size: 15px;
+  font-weight: 700;
+  color: #F1F5F9;
+  text-align: center;
+}}
+.pdf-lock-sub {{
+  font-size: 12px;
+  color: #94A3B8;
+  text-align: center;
+  margin-bottom: 4px;
+}}
+.pdf-week-pills {{
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}}
+.pdf-week-pill {{
+  background: #1E293B;
+  border: 1px solid #334155;
+  color: #64748B;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 11px;
+}}
+.pdf-week-pill.active {{
+  background: #0EA5A322;
+  border-color: #0EA5A3;
+  color: #0EA5A3;
+}}
+</style>
+<div class="pdf-preview-wrap">
+  <div class="pdf-preview-header">
+    <span class="pdf-badge">PREVIEW</span>
+    <span style="color:#F1F5F9;font-weight:700;font-size:14px;">📋 Your 12-Week Training Plan</span>
+    <span style="margin-left:auto;color:#64748B;font-size:12px;">Week 1 of 12</span>
+  </div>
+  <!-- Metric strip -->
+  <div style="display:flex;gap:0;border-bottom:1px solid #1E293B;">
+    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
+      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BMI</div>
+      <div style="font-size:18px;font-weight:800;color:#0EA5A3;">{_bmi_val if _bmi_val != "—" else "—"}</div>
+    </div>
+    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
+      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">VO₂max</div>
+      <div style="font-size:18px;font-weight:800;color:#3B82F6;">{_vo2_val if _vo2_val != "—" else "—"}</div>
+    </div>
+    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
+      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">TOP %</div>
+      <div style="font-size:18px;font-weight:800;color:#D4AF7A;">{f"{_vo2_pct:.0f}%" if isinstance(_vo2_pct, float) else "—"}</div>
+    </div>
+    <div style="flex:1;padding:10px 14px;text-align:center;">
+      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BIO AGE</div>
+      <div style="font-size:18px;font-weight:800;color:#22C55E;">{_bio_age if _bio_age != "—" else "—"}</div>
+    </div>
+  </div>
+  <!-- Week pills -->
+  <div style="padding:10px 16px;border-bottom:1px solid #1E293B;display:flex;gap:6px;flex-wrap:wrap;">
+    <span style="font-size:11px;color:#64748B;margin-right:4px;line-height:24px;">12 weeks:</span>
+    <span class="pdf-week-pill active">W1</span>
+    <span class="pdf-week-pill">W2</span><span class="pdf-week-pill">W3</span>
+    <span class="pdf-week-pill">W4</span><span class="pdf-week-pill">W5</span>
+    <span class="pdf-week-pill">W6</span><span class="pdf-week-pill">W7</span>
+    <span class="pdf-week-pill">W8</span><span class="pdf-week-pill">W9</span>
+    <span class="pdf-week-pill">W10</span><span class="pdf-week-pill">W11</span>
+    <span class="pdf-week-pill">W12</span>
+  </div>
+  <!-- Training table -->
+  <div style="overflow:hidden;">
+    <table class="pdf-preview-table">
+      <thead>
+        <tr style="border-bottom:1px solid #1E3A5F;background:#0A1628;">
+          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DAY</th>
+          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">TYPE</th>
+          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">PRESCRIPTION</th>
+          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DURATION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {_preview_rows_html}
+      </tbody>
+    </table>
+  </div>
+  <!-- Fade + lock overlay -->
+  <div class="pdf-preview-blur-zone">
+    <div class="pdf-lock-icon">🔒</div>
+    <div class="pdf-lock-text">Weeks 2–12 are locked</div>
+    <div class="pdf-lock-sub">Plus: AI coach insights · calorie strategy · milestone tracking · full PDF</div>
+  </div>
+</div>
+<div style="text-align:center;margin:6px 0 14px 0;color:#64748B;font-size:11px;">
+  👆 This is a preview — Mon–Wed of Week 1. Your full plan covers all 12 weeks, personalized to your biomarkers.
+</div>
+""", unsafe_allow_html=True)
+
     stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
     st.link_button(
         "🔓 Unlock full report — 4,99 USD",
