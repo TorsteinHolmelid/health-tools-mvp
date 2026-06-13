@@ -3396,7 +3396,7 @@ if not _unlocked:
   </div>
   <div class="ht-compare-row">
     <div class="ht-compare-feature">AI Coach insights</div>
-    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell no">—</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
