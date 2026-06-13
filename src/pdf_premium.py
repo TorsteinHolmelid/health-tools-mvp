@@ -741,6 +741,90 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             for lbl, pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
                 c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + (pos/SMAX)*bw, by-8, lbl)
 
+    class ScoreHero(Flowable):
+        """Premium glowing hero panel: big score ring + 5-dimension gradient bars."""
+        def __init__(self, score, label, color, radar_dict, width=CONTENT_W):
+            super().__init__()
+            self.score = score; self.label = label; self.color = color
+            self.radar = radar_dict; self.w = width; self.h = 150
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(CARD); c.roundRect(0, 0, w, h, 12, fill=1, stroke=0)
+            c.setStrokeColor(STROKE); c.setLineWidth(0.7); c.roundRect(0, 0, w, h, 12, fill=0, stroke=1)
+            # soft glow behind the ring
+            c.saveState()
+            p = c.beginPath(); p.roundRect(0, 0, w, h, 12); c.clipPath(p, stroke=0, fill=0)
+            cx, cy = w*0.235, h*0.54
+            for i in range(18, 0, -1):
+                t = i/18; r = t*64
+                c.setFillColor(self.color); c.setFillAlpha((1-t)**1.7*0.35)
+                c.circle(cx, cy, r, fill=1, stroke=0)
+            c.setFillAlpha(1.0)
+            c.restoreState()
+            # ring
+            cx, cy, R = w*0.235, h*0.54, 38
+            c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
+            frac = self.score/100.0; steps = max(2, int(frac*72))
+            for i in range(steps):
+                a1 = math.pi/2 - (i/72)*2*math.pi
+                a2 = math.pi/2 - ((i+1)/72)*2*math.pi
+                c.setStrokeColor(self.color); c.setLineWidth(13); c.setLineCap(1)
+                c.line(cx + R*math.cos(a1), cy + R*math.sin(a1), cx + R*math.cos(a2), cy + R*math.sin(a2))
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(cx, cy + 5, str(self.score))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+            c.drawCentredString(cx, cy - 9, "/ 100")
+            c.setFillColor(self.color); c.setFont("Helvetica-Bold", 11)
+            c.drawCentredString(cx, 26, self.label.upper())
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawCentredString(cx, 13, "OVERALL LONGEVITY SCORE")
+            # divider
+            dx = w*0.45
+            c.setStrokeColor(STROKE); c.setLineWidth(0.6); c.line(dx, 14, dx, h-14)
+            # 5 dimension bars
+            bx = dx + 16; bw2 = w - bx - 16
+            dims = list(self.radar.items()); n = len(dims)
+            row_h = (h - 20) / n
+            for i, (dim, sc) in enumerate(dims):
+                ytop = h - 12 - i*row_h
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                by = ytop - row_h + 11
+                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 8.5)
+                c.drawString(bx, by + 11, dim)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold", 8.5)
+                c.drawRightString(bx + bw2, by + 11, f"{sc}/100")
+                c.setFillColor(STROKE); c.roundRect(bx, by, bw2, 5, 2.5, fill=1, stroke=0)
+                c.setFillColor(dc); c.roundRect(bx, by, max(6, (sc/100.0)*bw2), 5, 2.5, fill=1, stroke=0)
+
+    class DimensionRow(Flowable):
+        """A single insight row for one of the five longevity dimensions."""
+        def __init__(self, code, label, score, insight, width=CONTENT_W):
+            super().__init__()
+            self.code = code; self.label = label; self.score = score
+            self.insight = insight; self.w = width; self.h = 36
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            sc = self.score
+            dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+            c.setFillColor(CARD); c.roundRect(0, 0, w, h, 8, fill=1, stroke=0)
+            c.setFillColor(dc); c.roundRect(0, 0, 4, h, 2, fill=1, stroke=0)
+            # badge
+            bcx, bcy, br = 26, h/2, 13
+            c.setFillAlpha(0.18); c.setFillColor(dc); c.circle(bcx, bcy, br, fill=1, stroke=0)
+            c.setFillAlpha(1.0); c.setStrokeColor(dc); c.setLineWidth(1.2); c.circle(bcx, bcy, br, fill=0, stroke=1)
+            c.setFillColor(dc); c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(bcx, bcy - 3, self.code)
+            # label + score
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 9)
+            c.drawString(48, h - 13, self.label)
+            c.setFillColor(dc); c.setFont("Helvetica-Bold", 8)
+            c.drawRightString(w - 12, h - 12, f"{sc} / 100")
+            # insight text
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+            c.drawString(48, 8, self.insight)
+
     class WHRBox(Flowable):
         def __init__(self, whr_val, category, width=CONTENT_W):
             super().__init__(); self.whr = whr_val; self.cat = category; self.w = width; self.h = 56
@@ -1100,7 +1184,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
     story.append(SecHeader("02", "Your Biomarker Dashboard",
                             subtitle="A composite snapshot across five dimensions of healthy longevity"))
     story.append(VGap(8))
-    story.append(HealthScoreRing(health_score, score_label, score_col))
+    story.append(ScoreHero(health_score, score_label, score_col, radar))
     story.append(VGap(10))
 
     dash_metrics = []
@@ -1116,8 +1200,51 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         f"composite of body composition, cardio fitness, biological age, and activity volume. "
         f"Your weakest dimension right now is <b>{weakest_dim}</b> — this is where the next 12 "
         f"weeks of effort will pay off the most.",
-        S("dash_txt", size=9.5, lead=14, after=6)
+        S("dash_txt", size=9.5, lead=14, after=8)
     ))
+
+    # ── Five-dimension breakdown, in plain language ──
+    story.append(P("Dimension-by-dimension breakdown", S("dim_h", size=9.5, bold=True, color=ACCENT, after=4)))
+
+    dim_insights = {
+        "Body Comp": (
+            "BC",
+            f"BMI {bmi_v:.1f} ({bmi_cat}) — a healthy range. Let cardio and strength drive the "
+            f"next gains, not further weight changes."
+            if bmi_v is not None else "Body composition data not available for this report."
+        ),
+        "Cardio": (
+            "CV",
+            f"VO2max {vo2_v:.1f} — {vo2_pct:.0f}th percentile ({vo2_rat}). One of the strongest "
+            f"predictors of long-term health in this whole report."
+            if vo2_v is not None else "Cardio fitness data not available for this report."
+        ),
+        "Bio Age": (
+            "BA",
+            (f"Biological age {bio_v:.1f} yrs — {abs(bio_diff):.1f} yrs "
+             f"{'younger' if bio_diff < 0 else 'older'} than your calendar age. Your habits are "
+             f"{'paying off' if bio_diff < 0 else 'worth addressing'}.")
+            if bio_diff is not None else "Biological age data not available for this report."
+        ),
+        "Activity": (
+            "AC",
+            (f"{ex_total_min} min/week vs. the WHO target of 150 — closing this gap is your "
+             f"single biggest lever right now.")
+            if ex_total_min < 150 else
+            (f"{ex_total_min} min/week — at or above the WHO target of 150. Maintenance and "
+             f"consistency are now the priority.")
+        ),
+        "Lifestyle": (
+            "LS",
+            "Sleep, recovery and daily habits broadly support your results — protect this "
+            "rhythm as you push the other dimensions."
+        ),
+    }
+    for dim, sc in radar.items():
+        code, insight = dim_insights.get(dim, ("--", ""))
+        story.append(DimensionRow(code, dim, sc, insight))
+        story.append(VGap(4))
+
     story.append(PageBreak())
 
     # ── PAGE 4 — BODY COMPOSITION ────────────────────────────────────
