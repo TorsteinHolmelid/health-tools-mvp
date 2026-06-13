@@ -930,32 +930,71 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             c.drawString(gx, gy - 8, "0%")
             c.drawRightString(gx + gw, gy - 8, f"{BMAX:.0f}%+")
 
-
+    
+    class VO2Visual(Flowable):
         def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
             super().__init__()
-            self.vo2 = vo2_val; self.pct = float(percentile or 0); self.rat = rating; self.w = width; self.h = 90
-        def wrap(self, aw, ah): return self.w, self.h
+            self.vo2 = vo2_val
+            self.pct = float(percentile or 0)
+            self.rat = rating
+            self.w = width
+            self.h = 90
+    
+        def wrap(self, aw, ah):
+            return self.w, self.h
+    
         def draw(self):
-            c = self.canv; w = self.w; pct = self.pct
+            c = self.canv
+            w = self.w
+            pct = self.pct
             col = vo2_color(pct)
-            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 56, f"{self.vo2:.1f}")
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 46, "ml / kg / min")
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 10); c.drawString(14, 32, str(self.rat or "—"))
-            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 20, "Rating")
-            bx = w*0.44; bw2 = w*0.51; bh = 13; by = 48
-            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(bx, by+bh+6, "POPULATION PERCENTILE")
-            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
-            c.setFillColor(col); c.roundRect(bx, by, max(8, (pct/100)*bw2), bh, 4, fill=1, stroke=0)
-            c.setFillColor(col); c.setFont("Helvetica-Bold", 12); c.drawRightString(bx+bw2, by-14, f"{pct:.0f}th percentile")
-            zones = [(0,20,"#EF4444"),(20,40,"#F59E0B"),(40,60,"#3B82F6"),(60,80,"#22C55E"),(80,100,"#10B981")]
-            sz_y = 18; sz_h = 7
+            c.setFillColor(CARD)
+            c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(col)
+            c.setFont("Helvetica-Bold", 30)
+            c.drawString(14, 56, f"{self.vo2:.1f}")
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 7.5)
+            c.drawString(14, 46, "ml / kg / min")
+            c.setFillColor(col)
+            c.setFont("Helvetica-Bold", 10)
+            c.drawString(14, 32, str(self.rat or "—"))
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 7)
+            c.drawString(14, 20, "Rating")
+    
+            bx = w * 0.44
+            bw2 = w * 0.51
+            bh = 13
+            by = 48
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 6.5)
+            c.drawString(bx, by + bh + 6, "POPULATION PERCENTILE")
+            c.setFillColor(STROKE)
+            c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
+            c.setFillColor(col)
+            c.roundRect(bx, by, max(8, (pct / 100) * bw2), bh, 4, fill=1, stroke=0)
+            c.setFillColor(col)
+            c.setFont("Helvetica-Bold", 12)
+            c.drawRightString(bx + bw2, by - 14, f"{pct:.0f}th percentile")
+    
+            zones = [(0, 20, "#EF4444"), (20, 40, "#F59E0B"), (40, 60, "#3B82F6"),
+                     (60, 80, "#22C55E"), (80, 100, "#10B981")]
+            sz_y = 18
+            sz_h = 7
             for zs, ze, zc in zones:
-                c.setFillColor(HexColor(zc)); c.rect(bx + (zs/100)*bw2, sz_y, ((ze-zs)/100)*bw2, sz_h, fill=1, stroke=0)
-            c.setStrokeColor(white); c.setLineWidth(1.5); nx = bx + (pct/100)*bw2; c.line(nx, sz_y-2, nx, sz_y+sz_h+2)
-            zlabels = ["Low","Below avg","Average","Good","Excellent"]
+                c.setFillColor(HexColor(zc))
+                c.rect(bx + (zs / 100) * bw2, sz_y, ((ze - zs) / 100) * bw2, sz_h, fill=1, stroke=0)
+            c.setStrokeColor(white)
+            c.setLineWidth(1.5)
+            nx = bx + (pct / 100) * bw2
+            c.line(nx, sz_y - 2, nx, sz_y + sz_h + 2)
+    
+            zlabels = ["Low", "Below avg", "Average", "Good", "Excellent"]
             for j, (zl, (zs, ze, _)) in enumerate(zip(zlabels, zones)):
-                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + ((zs+ze)/200)*bw2, sz_y-8, zl)
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 5.5)
+                c.drawCentredString(bx + ((zs + ze) / 200) * bw2, sz_y - 8, zl)
 
     class RadarChart(Flowable):
         def __init__(self, scores_dict, width=CONTENT_W):
