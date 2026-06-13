@@ -3359,14 +3359,39 @@ if results:
 else:
     st.info("Click 'Calculate' / 'Generate report' to run the calculations")
  
-# ── Paywall / PDF ──── (0 innrykk — UTANFOR if results:)
+# ── Paywall / PDF ──── (kun for ikkje-premium brukarar)
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if _unlocked:
     st.success("✅ Report unlocked!")
+else:
+    # 1. Først: verdiforslag – "Unlock your full report"
+    st.markdown(
+        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
+        'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
+        'text-align:center;margin:10px 0;">'
+        '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
+        '🔒 Unlock your full report</div>'
+        '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
+        'Get your complete personalized health analysis as a premium PDF</div>'
+        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
+        '</div>'
+        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">4,99 USD</div>'
+        '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
-if not _unlocked:
+    # 2. Samanlikningstabell (Free vs Premium)
     st.markdown(
         '''<div class="ht-compare">
   <div class="ht-compare-row head">
@@ -3412,30 +3437,8 @@ if not _unlocked:
 </div>''',
         unsafe_allow_html=True
     )
-    st.markdown(
-        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
-        'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
-        'text-align:center;margin:10px 0;">'
-        '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
-        '🔒 Unlock your full report</div>'
-        '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
-        'Get your complete personalized health analysis as a premium PDF</div>'
-        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
-        '</div>'
-        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">4,99 USD</div>'
-        '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
-        '</div>',
-        unsafe_allow_html=True
-    )
-    # ── PDF Preview Section with progressive blur (bruk components.html) ──
+
+    # 3. Preview av 12‑vekers treningsplan (same som før, med blur)
     _preview_results = st.session_state.get("results", {})
     _preview_age     = st.session_state.get("age", 35)
     _preview_sex     = st.session_state.get("inp_sex", "Male")
@@ -3640,6 +3643,8 @@ if not _unlocked:
         use_container_width=True,
     )
     st.caption("After payment, you will return to the app")
+
+
 
 else:
     _results_for_pdf = st.session_state.get("results", {})
