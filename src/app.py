@@ -3435,7 +3435,7 @@ if not _unlocked:
         '</div>',
         unsafe_allow_html=True
     )
-    # ── PDF Preview Section with progressive blur ─────────────────────────────
+    # ── PDF Preview Section with progressive blur (bruk components.html) ──
     _preview_results = st.session_state.get("results", {})
     _preview_age     = st.session_state.get("age", 35)
     _preview_sex     = st.session_state.get("inp_sex", "Male")
@@ -3444,7 +3444,11 @@ if not _unlocked:
     _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
     _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
 
-    # Build Week 1 sample rows (Mon–Wed fully visible, rest blurred progressively)
+    _bmi_val   = _preview_bmi.get("value", "—")
+    _vo2_val   = _preview_vo2.get("value", "—")
+    _vo2_pct   = _preview_vo2.get("percentile", "—")
+    _bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
+
     _days_sample = [
         ("MON", "💪 Strength", "Full-body compound lifts — Squat, Romanian Deadlift, Push-up, Row", "45 min", "#22C55E20", "#22C55E"),
         ("TUE", "🏃 Cardio", "Zone 2 steady-state — keep HR 120–135 bpm, conversational pace", "30 min", "#3B82F620", "#3B82F6"),
@@ -3455,23 +3459,14 @@ if not _unlocked:
         ("SUN", "😴 Recovery", "Full rest or 15 min mobility + foam rolling", "—",      "#64748B20", "#64748B"),
     ]
 
-    _bmi_val   = _preview_bmi.get("value", "—")
-    _vo2_val   = _preview_vo2.get("value", "—")
-    _vo2_pct   = _preview_vo2.get("percentile", "—")
-    _bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
-
     _preview_rows_html = ""
     for i, (day, wtype, desc, dur, bg, accent) in enumerate(_days_sample):
-        # First 3 rows: clear. Row 4: slight blur. Row 5+: heavy blur.
         if i < 3:
             blur_style = ""
-            overlay    = ""
         elif i == 3:
             blur_style = "filter:blur(2px);user-select:none;"
-            overlay    = ""
         else:
             blur_style = "filter:blur(5px);user-select:none;"
-            overlay    = ""
 
         _preview_rows_html += f"""
         <tr style="border-bottom:1px solid #1E293B;">
@@ -3484,7 +3479,7 @@ if not _unlocked:
           <td style="padding:9px 10px;font-size:12px;color:#94A3B8;white-space:nowrap;{blur_style}">{dur}</td>
         </tr>"""
 
-    st.markdown(f"""
+    preview_html = f"""
 <style>
 .pdf-preview-wrap {{
   position:relative;
@@ -3609,7 +3604,7 @@ if not _unlocked:
     <span class="pdf-week-pill">W12</span>
   </div>
   <!-- Training table -->
-  <div style="overflow:hidden;">
+  <div style="overflow-x:auto;">
     <table class="pdf-preview-table">
       <thead>
         <tr style="border-bottom:1px solid #1E3A5F;background:#0A1628;">
@@ -3634,7 +3629,8 @@ if not _unlocked:
 <div style="text-align:center;margin:6px 0 14px 0;color:#64748B;font-size:11px;">
   👆 This is a preview — Mon–Wed of Week 1. Your full plan covers all 12 weeks, personalized to your biomarkers.
 </div>
-""", unsafe_allow_html=True)
+"""
+    components.html(preview_html, height=620, scrolling=True)
 
     stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
     st.link_button(
