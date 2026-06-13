@@ -113,6 +113,185 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
     ex_kcal_w = _sf(exlog.get("kcal_per_week")) or 0.0
     ex_total_min = int(ex_min or 0) * int(ex_sess or 0)
 
+    # ── 30-Day Training Plan — built only from the user's selected activities ──
+    ACT_CATEGORY = {
+        "Walking (casual)": "low", "Brisk walking": "low", "Yoga / Pilates": "low",
+        "Housework / Light chores": "low", "Gardening / Heavy yard work": "low",
+        "Cycling (leisure)": "cardio", "Cycling (vigorous)": "cardio", "Elliptical": "cardio",
+        "Rowing (moderate/vigorous)": "cardio", "Swimming": "cardio",
+        "Running/jogging": "cardio", "HIIT": "cardio", "Stair climbing / Stairmaster": "cardio",
+        "Basketball / Team sports": "sport", "Soccer (football)": "sport", "Tennis (casual)": "sport",
+        "Squash": "sport", "Badminton": "sport", "Table tennis (bordtennis)": "sport", "Dancing": "sport",
+        "Strength training (weights)": "strength", "Boxing / Martial arts": "strength",
+        "Rock climbing / Bouldering": "strength", "Hiking (incline)": "strength",
+    }
+    CAT_EMOJI = {"strength": "Strength", "cardio": "Cardio", "sport": "Sport", "low": "Low-impact"}
+
+    selected_acts = [a for a in (report.get("selected_activities") or []) if a]
+    _strength_sel = [a for a in selected_acts if ACT_CATEGORY.get(a) == "strength"]
+    _cardio_sel   = [a for a in selected_acts if ACT_CATEGORY.get(a) == "cardio"]
+    _sport_sel    = [a for a in selected_acts if ACT_CATEGORY.get(a) == "sport"]
+    _low_sel      = [a for a in selected_acts if ACT_CATEGORY.get(a) == "low"]
+    has_strength_act = bool(_strength_sel)
+    has_cardio_act   = bool(_cardio_sel)
+    has_sport_act    = bool(_sport_sel)
+    plan30_strength = _strength_sel or ["Strength training (weights)"]
+    plan30_cardio   = _cardio_sel or ["Running/jogging"]
+    plan30_sport    = _sport_sel or []
+    plan30_low      = _low_sel or ["Walking (casual)"]
+
+    def _strength_rx(week):
+        return {
+            1: ("45 min", "3 sets x 10-12 reps per exercise, RPE 6-7 - focus on full range of motion and clean technique."),
+            2: ("50 min", "3 sets x 10 reps, RPE 7 - add 2.5-5% load or 1-2 reps vs. last week on your main lifts."),
+            3: ("55 min", "4 sets x 8 reps, RPE 8 - your heaviest week. Add a drop-set on the final set of your last exercise."),
+            4: ("40 min", "3 sets x 8 reps, RPE 7 - slight taper in volume, keep the weight from week 3 to lock in gains."),
+        }[week]
+
+    def _cardio_easy_rx(week):
+        return {
+            1: ("30 min", "Zone 2 (conversational pace, ~60-70% HRmax) - build your aerobic base."),
+            2: ("35 min", "Zone 2 - 5 minutes longer than last week, same easy effort."),
+            3: ("35 min", "Zone 2, with 4 x 20-second relaxed pick-ups in the last 10 minutes."),
+            4: ("30 min", "Zone 2 - taper week, keep it genuinely easy."),
+        }[week]
+
+    def _cardio_interval_rx(week, pct):
+        if pct is not None and pct < 50:
+            return {
+                1: ("~25 min", "5 x 2 min moderately hard / 2 min easy (Zone 3-4) - build interval tolerance."),
+                2: ("~28 min", "6 x 2 min moderately hard / 2 min easy."),
+                3: ("~30 min", "6 x 3 min hard / 2 min easy - your toughest interval session this month."),
+                4: ("~22 min", "4 x 2 min hard / 2 min easy - taper, stay sharp."),
+            }[week]
+        return {
+            1: ("~28 min", "6 x 2 min hard (Zone 4-5) / 2 min easy recovery."),
+            2: ("~32 min", "6 x 3 min hard / 2 min easy."),
+            3: ("~35 min", "8 x 2 min hard / 90 sec easy - your hardest session this month."),
+            4: ("~24 min", "4 x 3 min hard / 2 min easy - taper, keep the legs snappy."),
+        }[week]
+
+    def _cardio_long_rx(week):
+        return {
+            1: ("50 min", "Steady, easy pace - pure volume, conversational effort throughout."),
+            2: ("60 min", "Steady, easy pace - 10 minutes longer than last week."),
+            3: ("70 min", "Steady pace, with the last 10 minutes slightly brisker than the rest."),
+            4: ("45 min", "Easy pace - taper week, shorter session, same comfortable effort."),
+        }[week]
+
+    def _sport_rx(week):
+        return {
+            1: ("30-35 min", "Technique focus - footwork drills, shadow strokes/touches and controlled rallies. Build consistency before power."),
+            2: ("40-45 min", "Tactical patterns and combinations at moderate intensity, with a few light practice points."),
+            3: ("50-60 min", "Competitive match play at full intensity - this is your peak week, push the pace."),
+            4: ("35-40 min", "Game-pace play but lighter volume - enjoy it, and notice how much sharper you feel vs. week 1."),
+        }[week]
+
+    def _low_rx(week):
+        return ("20-30 min", "Easy effort, heart rate below ~120 bpm - pure recovery, mobility and movement.")
+
+    STRENGTH_SPLITS = ["Full-Body Strength A - push emphasis", "Full-Body Strength B - pull emphasis", "Full-Body Strength C - lower-body emphasis"]
+
+    def _weekly_template(goal):
+        gl = (goal or "").lower()
+        if "muscle" in gl:
+            return [("Monday","strength"),("Tuesday","cardio_easy"),("Wednesday","strength"),
+                    ("Thursday","sport"),("Friday","strength"),("Saturday","cardio_long"),("Sunday","rest")]
+        if "fat" in gl:
+            return [("Monday","strength"),("Tuesday","cardio_easy"),("Wednesday","cardio_interval"),
+                    ("Thursday","strength"),("Friday","cardio_easy"),("Saturday","sport"),("Sunday","rest")]
+        return [("Monday","strength"),("Tuesday","cardio_easy"),("Wednesday","sport"),
+                ("Thursday","strength"),("Friday","cardio_interval"),("Saturday","sport"),("Sunday","rest")]
+
+    def _resolve_role(role):
+        if role == "strength" and not has_strength_act:
+            role = "sport" if has_sport_act else ("cardio_easy" if has_cardio_act else "low")
+        if role.startswith("cardio") and not has_cardio_act:
+            role = "sport" if has_sport_act else "low"
+        if role == "sport" and not has_sport_act:
+            role = "cardio_long" if has_cardio_act else "low"
+            if role.startswith("cardio") and not has_cardio_act:
+                role = "low"
+        return role
+
+    def build_30_day_plan(goal, pct):
+        template = _weekly_template(goal)
+        counters = {"strength": 0, "cardio": 0, "sport": 0, "low": 0}
+        weeks_out = []
+        for week in range(1, 5):
+            rows = []
+            for day_name, role in template:
+                r = _resolve_role(role)
+                if r == "rest":
+                    rows.append((day_name, "Rest", "Full rest, or light stretching / mobility work (10-15 min).", "—", "rest"))
+                    continue
+                if r == "strength":
+                    act = plan30_strength[counters["strength"] % len(plan30_strength)]
+                    split = STRENGTH_SPLITS[counters["strength"] % len(STRENGTH_SPLITS)]
+                    counters["strength"] += 1
+                    dur, rx = _strength_rx(week)
+                    rows.append((day_name, "Strength", f"{act} - {split}. {rx}", dur, "strength"))
+                elif r in ("cardio_easy", "cardio_interval", "cardio_long"):
+                    act = plan30_cardio[counters["cardio"] % len(plan30_cardio)]
+                    counters["cardio"] += 1
+                    if r == "cardio_easy":
+                        dur, rx = _cardio_easy_rx(week); label = "Cardio - Easy"
+                    elif r == "cardio_interval":
+                        dur, rx = _cardio_interval_rx(week, pct); label = "Cardio - Intervals"
+                    else:
+                        dur, rx = _cardio_long_rx(week); label = "Cardio - Long"
+                    rows.append((day_name, label, f"{act}: {rx}", dur, r))
+                elif r == "sport":
+                    act = plan30_sport[counters["sport"] % len(plan30_sport)]
+                    counters["sport"] += 1
+                    dur, rx = _sport_rx(week)
+                    rows.append((day_name, "Sport", f"{act} - {rx}", dur, "sport"))
+                else:
+                    act = plan30_low[counters["low"] % len(plan30_low)]
+                    counters["low"] += 1
+                    dur, rx = _low_rx(week)
+                    rows.append((day_name, "Active Recovery", f"{act} - {rx}", dur, "low"))
+            weeks_out.append(rows)
+        return weeks_out
+
+    WEEK_THEMES = {
+        1: ("Week 1 - Foundation", "Establish the rhythm and nail technique before adding load or intensity."),
+        2: ("Week 2 - Build", "Small, deliberate increases in volume and load across the board."),
+        3: ("Week 3 - Push", "Your hardest week - peak intensity across strength, cardio and sport."),
+        4: ("Week 4 - Taper & Reassess", "A slightly lighter week to absorb the adaptations before you re-test."),
+    }
+
+    ROLE_COLOR = {
+        "strength": BLUE, "cardio_easy": ACCENT, "cardio_interval": BAD,
+        "cardio_long": ACCENT, "sport": GOLD, "low": MUTED, "rest": DIM,
+    }
+
+    def make_week_table(rows):
+        data = [[P("DAY", S("p30h1", size=7, bold=True, color=MUTED)),
+                 P("FOCUS", S("p30h2", size=7, bold=True, color=MUTED)),
+                 P("SESSION DETAILS", S("p30h3", size=7, bold=True, color=MUTED)),
+                 P("TIME", S("p30h4", size=7, bold=True, color=MUTED, align=TA_CENTER))]]
+        for r_i, (day, label, detail, dur, role) in enumerate(rows):
+            col = ROLE_COLOR.get(role, MUTED)
+            data.append([
+                P(day, S(f"p30d_{r_i}", size=8.5, bold=True, color=TEXT)),
+                P(label, S(f"p30l_{r_i}", size=8, bold=True, color=col)),
+                P(detail, S(f"p30de_{r_i}", size=8, lead=12, color=MUTED)),
+                P(dur, S(f"p30du_{r_i}", size=8, color=MUTED, align=TA_CENTER)),
+            ])
+        t = Table(data, colWidths=[24*mm, 30*mm, None, 16*mm])
+        style_cmds = [
+            ("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, CARD2]),
+            ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.4, STROKE),
+            ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("LEFTPADDING", (0,0), (-1,-1), 7), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ]
+        for r_i, (day, label, detail, dur, role) in enumerate(rows, start=1):
+            style_cmds.append(("LINEBEFORE", (0, r_i), (0, r_i), 2.5, ROLE_COLOR.get(role, STROKE)))
+        t.setStyle(TableStyle(style_cmds))
+        return t
+
     # ── Colour helpers ─────────────────────────────────────────────
     def bmi_color(v):
         if v is None: return MUTED
@@ -1091,45 +1270,74 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                         S("ncp", size=9, color=MUTED, after=8)))
     story.append(PageBreak())
 
-    # ── PAGE 8/9 — TRAINING PLAN ─────────────────────────────────────
-    story.append(SecHeader("07", "Your Personalised Training Week",
-                            subtitle=f"Goal: {_goal} · Built around the activities you selected"))
+    # ── PAGE 8 — 30-DAY PERSONALISED TRAINING PLAN ───────────────────
+    story.append(SecHeader("07", "Your Personalised 30-Day Training Plan",
+                            subtitle=f"Goal: {_goal} · Built only from the activities you selected"))
     story.append(VGap(8))
 
-    interval_t = "Short intervals (4×4 min hard)" if vo2_pct < 60 else "Tempo / threshold session (25 min)"
-    plan_7 = [
-        ("Mon", "Easy cardio (Zone 2)", "35–45 min", "Aerobic base — should feel conversational"),
-        ("Tue", "Full-body strength", "30–40 min", "Muscle, metabolism, bone density"),
-        ("Wed", "Mobility + light walk", "20–30 min", "Active recovery, reduce stiffness"),
-        ("Thu", interval_t, "25–35 min", "Raises VO2max and your cardio ceiling"),
-        ("Fri", "Full-body strength", "30–40 min", "Progressive overload + posture"),
-        ("Sat", "Long easy walk / cycle", "50–75 min", "Weekly aerobic volume, kept easy"),
-        ("Sun", "Review + plan next week", "10–15 min", "Keeps progress sustainable"),
-    ]
-    if has_plan and kg_pw is not None:
-        plan_7[6] = ("Sun", "Review + meal prep", "20–30 min", "Aligns food plan with weekly goal")
-
-    day_rows = [[P("DAY", S("th",size=7.5,bold=True,color=MUTED)), P("SESSION", S("th",size=7.5,bold=True,color=MUTED)),
-                  P("DURATION", S("th",size=7.5,bold=True,color=MUTED,align=TA_CENTER)), P("WHY", S("th",size=7.5,bold=True,color=MUTED))]]
-    for d, sess, dur, why in plan_7:
-        day_rows.append([P(d, S("td",size=8.5,bold=True,color=GOLD)), P(sess, S("td2",size=8.5)),
-                          P(dur, S("td3",size=8.5,align=TA_CENTER,color=MUTED)), P(why, S("td4",size=8,color=MUTED))])
-    day_t = Table(day_rows, colWidths=[16*mm, 55*mm, 24*mm, None])
-    day_t.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD),
-        ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, CARD2]),
-        ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.4, STROKE),
-        ("TOPPADDING", (0,0), (-1,-1), 6), ("BOTTOMPADDING", (0,0), (-1,-1), 6),
-        ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
-    ]))
-    story.append(day_t)
-    story.append(VGap(10))
+    if selected_acts:
+        acts_str = ", ".join(selected_acts)
+    else:
+        acts_str = "strength training, running and easy walking (a balanced default mix)"
+    intro_name = f"{name_v}, " if name_v else ""
     story.append(P(
-        "This week is built using 80/20 principles: roughly 80% of your training stays easy, with "
-        "one focused hard effort to drive adaptation. Strength sessions target every major muscle "
-        "group twice weekly — the minimum effective dose shown to maintain muscle and bone density "
-        "(Schoenfeld et al., 2017; ACSM guidelines).",
-        S("evi", size=8.5, lead=13, after=8)
+        f"{intro_name}this plan is built specifically around <b>{acts_str}</b> — nothing generic. "
+        f"It runs across four progressive blocks over the next 30 days: Foundation, Build, Push, and "
+        f"Taper &amp; Reassess. Every session below names the exact activity you chose and tells you "
+        f"precisely what to do, for how long, and at what effort.",
+        S("plan30_intro", size=9.5, lead=14, after=8)
+    ))
+
+    if selected_acts:
+        story.append(P("Your Training DNA — what this plan is built from", S("dna_h", size=9.5, bold=True, color=ACCENT, after=4)))
+        dna_data = [[P("ACTIVITY", S("dnah1", size=7, bold=True, color=MUTED)),
+                      P("ROLE IN YOUR PLAN", S("dnah2", size=7, bold=True, color=MUTED, align=TA_CENTER))]]
+        for a in selected_acts:
+            cat = ACT_CATEGORY.get(a, "low")
+            col = ROLE_COLOR.get(cat if cat != "cardio" else "cardio_easy", MUTED)
+            dna_data.append([P(a, S(f"dna_a_{a}", size=8.5, color=TEXT)),
+                              P(CAT_EMOJI.get(cat, "Other"), S(f"dna_b_{a}", size=8.5, bold=True, color=col, align=TA_CENTER))])
+        dna_t = Table(dna_data, colWidths=[CONTENT_W*0.68, None])
+        dna_t.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, CARD2]),
+            ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.4, STROKE),
+            ("TOPPADDING", (0,0), (-1,-1), 5), ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+            ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ]))
+        story.append(dna_t)
+        story.append(VGap(10))
+
+    plan30 = build_30_day_plan(_goal, vo2_pct)
+    for wi, rows in enumerate(plan30, start=1):
+        title, desc = WEEK_THEMES[wi]
+        story.append(P(f"<b>{title}</b>  ·  Days {((wi-1)*7)+1}–{wi*7}",
+                        S(f"wt30_{wi}", size=10.5, bold=True, color=GOLD, after=2)))
+        story.append(P(desc, S(f"wd30_{wi}", size=8, color=MUTED, italic=True, after=4)))
+        story.append(make_week_table(rows))
+        story.append(VGap(10))
+        if wi == 2:
+            story.append(PageBreak())
+            story.append(SecHeader("07", "Your Personalised 30-Day Training Plan",
+                                    subtitle="Weeks 3-4 · Push, Taper & Reassess"))
+            story.append(VGap(8))
+
+    story.append(P("Days 29-30 — Reassessment", S("d2930h", size=10.5, bold=True, color=ACCENT, after=2)))
+    story.append(P(
+        "Day 29: repeat the same cardio test or timed effort you used to estimate your VO2max at "
+        "the start, under the same conditions. Day 30: re-take your measurements (weight, waist) "
+        "and notice how your selected activities feel compared to Day 1 — then re-run this "
+        "assessment to see your updated numbers.",
+        S("d2930b", size=8.5, lead=13, color=MUTED, after=6)
+    ))
+    story.append(VGap(4))
+    story.append(P(
+        "Why this works: every session is tagged by colour — blue for strength, teal for easy "
+        "cardio, red for intervals, gold for your sport, and grey for active recovery or rest. "
+        "Roughly 80% of the month stays easy-to-moderate, with one clearly harder session each "
+        "week to drive adaptation — the same principle elite endurance and strength athletes use "
+        "year-round.",
+        S("p30_evi", size=8.5, lead=13, after=6)
     ))
     story.append(P("If you stop seeing progress for 2–3 weeks: reduce volume by ~20% for one week "
                     "(a deload), check sleep and protein intake first, then resume normal volume.",
