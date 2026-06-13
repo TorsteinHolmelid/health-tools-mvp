@@ -54,7 +54,7 @@ if logged_in:
     )
 else:
     with st.sidebar.expander("🔐 Log in / Sign up", expanded=False):
-        st.caption("Logg inn for å lagre verdiane dine til neste gang.")
+        st.caption("Log in to save your values for next time.")
         tab1, tab2 = st.tabs(["Log in", "Sign up"])
 
         with tab1:
@@ -1685,7 +1685,7 @@ rockport_hr = 0
 
 # ── BMI inputs ────────────────────────────────────────────────────────────────
 if run_bmi:
-    with st.expander("BMI inputs and body composition", expanded=True):
+    with st.expander("📏 BMI inputs and body composition", expanded=False):
         st.markdown("BMI is a simple screening tool, not a diagnosis.")
         use_waist_hip = st.toggle("I don't know my waist & hip measurements", value=False, key="b_use_whr")
         if not use_waist_hip:
@@ -1700,15 +1700,17 @@ if run_bmi:
                                           format="%.1f", key="b_hip")
             st.session_state["global_waist_cm"] = waist_cm
             st.session_state["global_hip_cm"] = hip_cm
-        use_neck = st.toggle("I don't know my neck measurement", value=False, key="b_use_neck")
-        if not use_neck:
-            neck_cm = st.number_input("Neck (cm)", min_value=20.0, max_value=80.0,
-                                       value=38.0, format="%.1f", key="b_neck")
-        bodyfat_requested = st.checkbox("Estimate body fat (Navy method)", value=False, key="b_bodyfat")
+
+        with st.expander("⚙️ More options: body fat estimate (optional)", expanded=False):
+            use_neck = st.toggle("I don't know my neck measurement", value=False, key="b_use_neck")
+            if not use_neck:
+                neck_cm = st.number_input("Neck (cm)", min_value=20.0, max_value=80.0,
+                                           value=38.0, format="%.1f", key="b_neck")
+            bodyfat_requested = st.checkbox("Estimate body fat (Navy method)", value=False, key="b_bodyfat")
 
 # ── VO2 inputs ────────────────────────────────────────────────────────────────
 if run_vo2:
-    with st.expander("❤️ Cardio / VO2max", expanded=True):
+    with st.expander("❤️ Cardio / VO2max", expanded=False):
 
         # ── Activity level — visual card selector ──
         _act_options = ["Sedentary", "Light", "Moderate", "Active", "Very active", "Athlete"]
@@ -1786,42 +1788,42 @@ if run_vo2:
         st.markdown("---")
 
         # ── VO2 method ──
-        st.markdown("**🧪 VO2max calculation method**")
-        vo2_method = st.radio(
-            "Method",
-            ["Questionnaire", "Cooper (12-min)", "Rockport (1-mile)", "Measured value"],
-            index=0, key="vo2_method_select", horizontal=True,
-            label_visibility="collapsed"
-        )
-
-        _method_info = {
-            "Questionnaire": "📋 Estimated from activity level, HR and BMI. Good for general use.",
-            "Cooper (12-min)": "🏃 Run as far as possible in 12 min. Very accurate.",
-            "Rockport (1-mile)": "🚶 Walk 1 mile, record time and HR at finish.",
-            "Measured value": "⌚ Enter a value from Apple Watch, Garmin, or lab test.",
-        }
-        st.caption(_method_info.get(vo2_method, ""))
-
-        if vo2_method == "Cooper (12-min)":
-            vo2_distance_m = st.slider("Distance covered in 12 min (meters)",
-                    min_value=0, max_value=4000, value=2400, step=50,
-                    key="vo2_cooper_distance", format="%d m")
-            st.caption(f"Estimated VO2max: ~{(vo2_distance_m - 504.9) / 44.73:.1f} ml/kg/min" if vo2_distance_m > 504 else "Enter distance above")
-        elif vo2_method == "Rockport (1-mile)":
-            rockport_time_min = st.slider("1-mile walk time (minutes)",
-                    min_value=8.0, max_value=30.0, value=15.0, step=0.5,
-                    key="vo2_rockport_time", format="%.1f min")
-            rockport_hr = st.slider("Heart rate at finish (bpm)",
-                    min_value=60, max_value=200, value=140,
-                    key="vo2_rockport_hr")
-        elif vo2_method == "Measured value":
-            measured_vo2_input = st.slider(
-                "Your measured VO2max (ml/kg/min)",
-                min_value=10.0, max_value=90.0, value=40.0, step=0.5,
-                key="vo2_measured_input", format="%.1f ml/kg/min"
+        with st.expander("⚙️ More options: choose VO2max calculation method (optional)", expanded=False):
+            vo2_method = st.radio(
+                "Method",
+                ["Questionnaire", "Cooper (12-min)", "Rockport (1-mile)", "Measured value"],
+                index=0, key="vo2_method_select", horizontal=True,
+                label_visibility="collapsed"
             )
-        else:
-            measured_vo2_input = 0.0
+
+            _method_info = {
+                "Questionnaire": "📋 Estimated from activity level, HR and BMI. Good for general use.",
+                "Cooper (12-min)": "🏃 Run as far as possible in 12 min. Very accurate.",
+                "Rockport (1-mile)": "🚶 Walk 1 mile, record time and HR at finish.",
+                "Measured value": "⌚ Enter a value from Apple Watch, Garmin, or lab test.",
+            }
+            st.caption(_method_info.get(vo2_method, ""))
+
+            if vo2_method == "Cooper (12-min)":
+                vo2_distance_m = st.slider("Distance covered in 12 min (meters)",
+                        min_value=0, max_value=4000, value=2400, step=50,
+                        key="vo2_cooper_distance", format="%d m")
+                st.caption(f"Estimated VO2max: ~{(vo2_distance_m - 504.9) / 44.73:.1f} ml/kg/min" if vo2_distance_m > 504 else "Enter distance above")
+            elif vo2_method == "Rockport (1-mile)":
+                rockport_time_min = st.slider("1-mile walk time (minutes)",
+                        min_value=8.0, max_value=30.0, value=15.0, step=0.5,
+                        key="vo2_rockport_time", format="%.1f min")
+                rockport_hr = st.slider("Heart rate at finish (bpm)",
+                        min_value=60, max_value=200, value=140,
+                        key="vo2_rockport_hr")
+            elif vo2_method == "Measured value":
+                measured_vo2_input = st.slider(
+                    "Your measured VO2max (ml/kg/min)",
+                    min_value=10.0, max_value=90.0, value=40.0, step=0.5,
+                    key="vo2_measured_input", format="%.1f ml/kg/min"
+                )
+            else:
+                measured_vo2_input = 0.0
 
 # ── Exercise calories ─────────────────────────────────────────────────────────
 ACTIVITIES = {
@@ -1948,44 +1950,45 @@ with st.expander("🏃 Exercise log", expanded=True):
         f'</div>', unsafe_allow_html=True
     )
 
-    # ── RPE ──
-    st.markdown("**😤 Perceived exertion (RPE)**")
-    rpe = st.slider("RPE", 1, 10, 5, key="ui_rpe", label_visibility="collapsed")
-    _rpe_labels = {1:"😴 Rest",2:"🧘 Very easy",3:"🚶 Easy",4:"🚶‍♂️ Moderate",5:"🚴 Somewhat hard",
-                   6:"🏃 Hard",7:"🏃‍♂️ Very hard",8:"⚡ Very very hard",9:"🔥 Near max",10:"💀 Max effort"}
-    st.markdown(f'<div style="color:#94A3B8;font-size:12px;margin-top:-8px;">{_rpe_labels[rpe]}</div>',
-                unsafe_allow_html=True)
-    rpe_multiplier = 0.85 + (rpe - 1) * (0.4 / 9)
+    with st.expander("⚙️ More options: fine-tune calorie estimate (optional)", expanded=False):
+        # ── RPE ──
+        st.markdown("**😤 Perceived exertion (RPE)**")
+        rpe = st.slider("RPE", 1, 10, 5, key="ui_rpe", label_visibility="collapsed")
+        _rpe_labels = {1:"😴 Rest",2:"🧘 Very easy",3:"🚶 Easy",4:"🚶‍♂️ Moderate",5:"🚴 Somewhat hard",
+                       6:"🏃 Hard",7:"🏃‍♂️ Very hard",8:"⚡ Very very hard",9:"🔥 Near max",10:"💀 Max effort"}
+        st.markdown(f'<div style="color:#94A3B8;font-size:12px;margin-top:-8px;">{_rpe_labels[rpe]}</div>',
+                    unsafe_allow_html=True)
+        rpe_multiplier = 0.85 + (rpe - 1) * (0.4 / 9)
 
-    st.markdown("---")
+        st.markdown("---")
 
-    # ── HR refinement ──
-    default_avg = st.session_state.get("global_avg_hr")
-    avg_hr = default_avg if default_avg is not None else 130
-    st.session_state["global_avg_hr"] = int(avg_hr)
+        # ── HR refinement ──
+        default_avg = st.session_state.get("global_avg_hr")
+        avg_hr = default_avg if default_avg is not None else 130
+        st.session_state["global_avg_hr"] = int(avg_hr)
 
-    use_hr = st.toggle("❤️ Use average session HR to refine estimate", key="ui_use_hr")
-    avg_hr_for_calc = None
-    resting_hr_for_calc = None
-    if use_hr:
-        _hc1, _hc2 = st.columns(2)
-        with _hc1:
-            avg_hr_for_calc = st.slider("Avg session HR (bpm)", min_value=60, max_value=200,
-                                         value=int(avg_hr), key="ui_avg_hr_calc")
-        with _hc2:
-            resting_hr_for_calc = st.slider("Resting HR (bpm)", min_value=30, max_value=100,
-                                             value=int(st.session_state.get("global_resting_hr") or 60),
-                                             key="ui_resting_hr",
-                                             on_change=sync_from_calc)
-        _hr_reserve = avg_hr_for_calc - resting_hr_for_calc
-        st.caption(f"HR reserve used: {_hr_reserve} bpm — higher reserve = more accurate calorie estimate")
+        use_hr = st.toggle("❤️ Use average session HR to refine estimate", key="ui_use_hr")
+        avg_hr_for_calc = None
+        resting_hr_for_calc = None
+        if use_hr:
+            _hc1, _hc2 = st.columns(2)
+            with _hc1:
+                avg_hr_for_calc = st.slider("Avg session HR (bpm)", min_value=60, max_value=200,
+                                             value=int(avg_hr), key="ui_avg_hr_calc")
+            with _hc2:
+                resting_hr_for_calc = st.slider("Resting HR (bpm)", min_value=30, max_value=100,
+                                                 value=int(st.session_state.get("global_resting_hr") or 60),
+                                                 key="ui_resting_hr",
+                                                 on_change=sync_from_calc)
+            _hr_reserve = avg_hr_for_calc - resting_hr_for_calc
+            st.caption(f"HR reserve used: {_hr_reserve} bpm — higher reserve = more accurate calorie estimate")
 
-    manual_kcal = st.toggle("🔢 I know my exact kcal burn per session", key="ui_manual_kcal")
-    if manual_kcal:
-        manual_kcal_val = st.slider("kcal burned per session", min_value=0, max_value=2000,
-                                     value=300, step=10, key="ui_manual_kcal_val", format="%d kcal")
-    else:
-        manual_kcal_val = 0.0
+        manual_kcal = st.toggle("🔢 I know my exact kcal burn per session", key="ui_manual_kcal")
+        if manual_kcal:
+            manual_kcal_val = st.slider("kcal burned per session", min_value=0, max_value=2000,
+                                         value=300, step=10, key="ui_manual_kcal_val", format="%d kcal")
+        else:
+            manual_kcal_val = 0.0
 
     # ── Compute ──
     try:
@@ -3142,26 +3145,7 @@ if results:
                     '<div style="font-size:13px;color:#E5E7EB;line-height:1.6;">' + str(_r) + '</div>'
                     '</div>'
                 )
-            if _unlocked:
-                st.markdown("".join(_rec_cards_list), unsafe_allow_html=True)
-            else:
-                # Vis den første anbefalinga gratis som smakebit
-                st.markdown(_rec_cards_list[0], unsafe_allow_html=True)
-                _extra_recs = max(0, len(_rec_cards_list) - 1)
-                st.markdown(
-                    f'''<div class="ht-locked-card">
-  <div class="ht-locked-icon">🔒</div>
-  <div class="ht-locked-title">+{_extra_recs}  more personalized recommendations</div>
-  <div class="ht-locked-sub">Unlock the full analysis to see all recommendations tailored to your numbers.</div>
-  <div class="ht-locked-lines">
-    <div class="ht-locked-line"></div>
-    <div class="ht-locked-line"></div>
-    <div class="ht-locked-line short"></div>
-  </div>
-  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Unlock for $4.99</a>
-</div>''',
-                    unsafe_allow_html=True,
-                )
+            st.markdown("".join(_rec_cards_list), unsafe_allow_html=True)
         else:
             st.info(results.get("triage", {}).get("message", "No triage details."))
 
@@ -3230,24 +3214,7 @@ if results:
 
         # ── Milestone roadmap ──
         milestones = plan.get("milestones", [])
-        if milestones and not _unlocked:
-            st.markdown("#### 🗺️ Milestone roadmap")
-            st.markdown(
-                f'''<div class="ht-locked-card">
-  <div class="ht-locked-icon">🔒</div>
-  <div class="ht-locked-title">Your complete {len(milestones)}-week schedule</div>
-  <div class="ht-locked-sub">Unlock to see week-by-week milestones, progress towards your goal, and personalized coach insights..</div>
-  <div class="ht-locked-lines">
-    <div class="ht-locked-line"></div>
-    <div class="ht-locked-line"></div>
-    <div class="ht-locked-line"></div>
-    <div class="ht-locked-line short"></div>
-  </div>
-  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Unlock for $4.99</a>
-</div>''',
-                unsafe_allow_html=True,
-            )
-        if milestones and _unlocked:
+        if milestones:
             st.markdown("#### 🗺️ Milestone roadmap")
             _start_w = float(weight_kg)
             _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
@@ -3372,17 +3339,17 @@ if not _unlocked:
   </div>
   <div class="ht-compare-row">
     <div class="ht-compare-feature">All personalized recommendations</div>
-    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
     <div class="ht-compare-feature">Full 12-week plan & milestones</div>
-    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
     <div class="ht-compare-feature">AI Coach insights</div>
-    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
     <div class="ht-compare-cell yes">✅</div>
   </div>
   <div class="ht-compare-row">
