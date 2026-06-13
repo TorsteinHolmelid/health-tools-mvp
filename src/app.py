@@ -2620,7 +2620,7 @@ results = st.session_state.get("results", {})
 
 # Premium-status (brukt til å låse/vise seksjonar lenger nede)
 _unlocked = st.session_state.get("report_unlocked", False)
-stripe_link = "https://buy.stripe.com/test_fZu00kbeq6J50LsdYk1Fe02"
+stripe_link = "https://buy.stripe.com/test_8x2dRa2HU4AXam22fC1Fe03"
 
 if results:
         # --- BMI SEKSJON ---
