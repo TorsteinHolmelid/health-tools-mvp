@@ -3259,22 +3259,22 @@ if results:
             unsafe_allow_html=True
         )
 
-        # ── Milestone roadmap ──
+        # ── Milestone roadmap (blur for free users) ──
         milestones = plan.get("milestones", [])
         if milestones:
             st.markdown("#### 🗺️ Milestone roadmap")
             _start_w = float(weight_kg)
             _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
             _total_change = _end_w - _start_w
-            _losing = _total_change < 0
+
+            # Sjekk om brukaren har premium
+            _is_premium = st.session_state.get("report_unlocked", False)
 
             for i, m in enumerate(milestones):
                 _wk = m.get("Week", i + 1)
                 _pw = float(m.get("Projected weight (kg)", _start_w))
                 _focus = m.get("Focus", "")
-                _done = i == len(milestones) - 1
 
-                # Progress toward goal
                 if abs(_total_change) > 0.01:
                     _prog = min(100, max(0, int(abs(_pw - _start_w) / abs(_total_change) * 100)))
                 else:
@@ -3294,8 +3294,14 @@ if results:
                 if not _is_last:
                     _connector = '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
 
+                # Blur-effekt for ikkje-premium: alle radane blir uskarpe (bortsett frå kanskje første)
+                if not _is_premium:
+                    blur_style = "filter:blur(4px);user-select:none;"
+                else:
+                    blur_style = ""
+
                 _milestone_html = f"""
-<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
+<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;{blur_style}">
   <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
     <div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};
     display:flex;align-items:center;justify-content:center;
@@ -3320,6 +3326,15 @@ if results:
 </div>
 """
                 st.markdown(_milestone_html, unsafe_allow_html=True)
+
+            # Viss ikkje premium, vis ein låse-melding under veikartet
+            if not _is_premium:
+                st.markdown(
+                    '<div style="text-align:center;margin-top:10px;padding:8px;background:rgba(0,0,0,0.4);border-radius:12px;">'
+                    '<span style="color:#F59E0B;font-size:13px;">🔓 Unlock premium to see your full personalised milestone roadmap</span>'
+                    '</div>',
+                    unsafe_allow_html=True
+                )
 
                 # ── Coach Insight ──
                 _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
