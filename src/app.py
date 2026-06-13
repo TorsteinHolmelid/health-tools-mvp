@@ -3301,7 +3301,7 @@ if results:
                     "✨ This simulation is an estimate. Your **premium report** shows exactly how to reach these numbers "
                     "with a personalised 12‑week training plan, calorie strategy, and weekly milestones."
                 )
-                if st.button("📥 See the full plan →", type="primary", key="sim_cta"):
+                if st.button("📥 Scroll down to get access→", type="primary", key="sim_cta"):
                     st.session_state["scroll_to_paywall"] = True
                     st.rerun()
             else:
