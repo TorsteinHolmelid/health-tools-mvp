@@ -19,48 +19,23 @@ from reportlab.platypus import (
     Table, TableStyle, HRFlowable, Image as RLImage
 )
 import streamlit as st
-from db import sign_up, sign_in, is_authenticated, get_current_user_id, sign_out
+from db import (
+    sign_up, sign_in, is_authenticated, get_current_user_id, sign_out,
+    get_user_profile, save_user_profile,
+)
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
-# --- Innlogging / registrering ---
-if not is_authenticated():
-    st.title("🏥 Health Tools - Login")
-    
-    tab1, tab2 = st.tabs(["Log in", "Sign up"])
-    
-    with tab1:
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Log in"):
-            user, error = sign_in(email, password)
-            if error:
-                st.error(f"Login failed: {error}")
-            else:
-                st.session_state["authenticated"] = True
-                st.session_state["user_id"] = user.id
-                st.session_state["user_email"] = email   # <-- legg til denne linja
-                st.rerun()
-    
-    with tab2:
-        email = st.text_input("Email", key="signup_email")
-        password = st.text_input("Password", type="password", key="signup_password")
-        if st.button("Sign up"):
-            user, error = sign_up(email, password)
-            if error:
-                st.error(f"Signup failed: {error}")
-            else:
-                st.success("Account created! Please check your email to confirm (if required), then log in.")
-    
-    st.stop()  # Stopp her viss ikkje innlogga
+# --- Innlogging / registrering (no-blokkerande) ---
+logged_in = is_authenticated()
 
-# No kan resten av appen køyre som før, men med innlogga brukar
-st.sidebar.button("Log out", on_click=sign_out)
+if logged_in:
+    st.sidebar.button("Log out", on_click=sign_out)
 
-_user_email = st.session_state.get("user_email", "")
-_avatar_letter = (_user_email[0].upper() if _user_email else "U")
+    _user_email = st.session_state.get("user_email", "")
+    _avatar_letter = (_user_email[0].upper() if _user_email else "U")
 
-st.sidebar.markdown(
-    f"""
+    st.sidebar.markdown(
+        f"""
 <div class="ht-side-card">
   <div class="ht-side-user">
     <div class="ht-side-avatar">{_avatar_letter}</div>
@@ -75,8 +50,35 @@ st.sidebar.markdown(
   <div class="ht-side-feature">🔐 Your data — always yours alone</div>
 </div>
 """,
-    unsafe_allow_html=True,
-)
+        unsafe_allow_html=True,
+    )
+else:
+    with st.sidebar.expander("🔐 Log in / Sign up", expanded=False):
+        st.caption("Logg inn for å lagre verdiane dine til neste gang.")
+        tab1, tab2 = st.tabs(["Log in", "Sign up"])
+
+        with tab1:
+            email = st.text_input("Email", key="login_email")
+            password = st.text_input("Password", type="password", key="login_password")
+            if st.button("Log in"):
+                user, error = sign_in(email, password)
+                if error:
+                    st.error(f"Login failed: {error}")
+                else:
+                    st.session_state["authenticated"] = True
+                    st.session_state["user_id"] = user.id
+                    st.session_state["user_email"] = email
+                    st.rerun()
+
+        with tab2:
+            email = st.text_input("Email", key="signup_email")
+            password = st.text_input("Password", type="password", key="signup_password")
+            if st.button("Sign up"):
+                user, error = sign_up(email, password)
+                if error:
+                    st.error(f"Signup failed: {error}")
+                else:
+                    st.success("Account created! Please check your email to confirm (if required), then log in.")
 
 # --- Resten av din eksisterande kode i app.py (berre endre funksjonskall) ---
 # Merk: save_health_metrics() kallar du utan user_id-parameter no
@@ -126,7 +128,33 @@ CONTENT_W = PAGE_W - 2 * MARGIN_H
 def P(txt, style):
     return Paragraph(str(txt), style)
 
-# ── Streamlit Session State & Config ──────────────────────────────────────────
+# ── Last inn lagra profil-verdiar for innlogga brukar (ein gong per sesjon) ───
+PROFILE_KEYS = [
+    "basic_resting_hr", "age", "inp_sex", "inp_height", "inp_weight",
+    "s_bmi", "s_vo2", "b_use_whr", "b_waist", "b_hip", "b_use_neck", "b_neck",
+    "b_bodyfat", "v_activity", "v_weekly_minutes", "v_session_intensity",
+    "vo2_rhr_unknown", "vo2_rhr_value", "vo2_maxhr_unknown", "vo2_maxhr_val",
+    "vo2_method_select", "vo2_cooper_distance", "vo2_rockport_time",
+    "vo2_rockport_hr", "vo2_measured_input",
+    "global_resting_hr", "global_waist_cm", "global_hip_cm",
+]
+
+if logged_in and "profile_loaded" not in st.session_state:
+    _saved_profile = get_user_profile(db)
+    if _saved_profile:
+        for _k, _v in _saved_profile.items():
+            if _k in PROFILE_KEYS:
+                st.session_state[_k] = _v
+    st.session_state["profile_loaded"] = True
+
+def autosave_profile():
+    """Lagre alle dei viktigste input-verdiane for innlogga brukar."""
+    if not logged_in:
+        return
+    data = {k: st.session_state.get(k) for k in PROFILE_KEYS if k in st.session_state}
+    save_user_profile(db, data)
+
+
 if "generated" not in st.session_state:
     st.session_state.generated = False
 
@@ -2307,6 +2335,7 @@ if run_plan and run_bmi:
 # 1. Knappen gjør KUN én ting: slår på minnet i appen
 if st.button("📊 Calculate & Generate Report", type="primary", use_container_width=True):
     st.session_state.generated = True
+    autosave_profile()
 
 # 2. Hvis minnet er aktivert (brukeren har trykket), kjører alt dette:
 if st.session_state.generated:
