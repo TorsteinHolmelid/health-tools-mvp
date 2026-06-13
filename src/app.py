@@ -3695,7 +3695,7 @@ if not _unlocked:
     )
 
     # -------------------- 4. Lås opp-knapp (Stripe) --------------------
-    stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
+    stripe_link = "https://buy.stripe.com/test_8x2dRa2HU4AXam22fC1Fe03"
     st.link_button(
         "🔓 Unlock full report — 4,99 USD",
         stripe_link,
