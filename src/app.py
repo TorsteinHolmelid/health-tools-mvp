@@ -3235,15 +3235,15 @@ if results:
             st.markdown(
                 f'''<div class="ht-locked-card">
   <div class="ht-locked-icon">🔒</div>
-  <div class="ht-locked-title">Din fulle {len(milestones)}-vekers vekeplan</div>
-  <div class="ht-locked-sub">Lås opp for å sjå veke-for-veke milepælar, framdrift mot målet ditt og personlege coach-innsikter.</div>
+  <div class="ht-locked-title">Your complete {len(milestones)}-week schedule</div>
+  <div class="ht-locked-sub">Unlock to see week-by-week milestones, progress towards your goal, and personalized coach insights..</div>
   <div class="ht-locked-lines">
     <div class="ht-locked-line"></div>
     <div class="ht-locked-line"></div>
     <div class="ht-locked-line"></div>
     <div class="ht-locked-line short"></div>
   </div>
-  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Lås opp for 4,99 USD</a>
+  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Unlock for $4.99</a>
 </div>''',
                 unsafe_allow_html=True,
             )
