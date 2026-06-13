@@ -3644,9 +3644,7 @@ else:
     )
     st.caption("After payment, you will return to the app")
 
-
-
-else:
+    else:
     _results_for_pdf = st.session_state.get("results", {})
     if not _results_for_pdf:
         st.warning("⚠️ Run the calculations first (click 'Calculate'), then you can download the PDF report.")
