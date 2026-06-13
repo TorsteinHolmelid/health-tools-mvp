@@ -839,7 +839,98 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             c.setFillColor(cl); c.setFont("Helvetica-Bold", 9); c.drawRightString(self.w - 14, 24, str(self.cat or "—"))
             c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawRightString(self.w - 14, 12, "Cardiometabolic risk indicator")
 
-    class VO2Visual(Flowable):
+    class HealthyWeightRangeBar(Flowable):
+        """Personalised healthy-weight-range bar, in kg, for this person's height."""
+        def __init__(self, weight_kg, height_cm, width=CONTENT_W):
+            super().__init__()
+            self.weight = weight_kg; self.height_cm = height_cm; self.w = width; self.h = 88
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w
+            hm = self.height_cm / 100.0
+            lo = 18.5 * hm * hm; hi = 25.0 * hm * hm
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(14, self.h - 14, f"YOUR HEALTHY WEIGHT RANGE AT {self.height_cm:.0f} CM (BMI 18.5-25)")
+            c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 17)
+            c.drawString(14, self.h - 35, f"{lo:.1f} - {hi:.1f} kg")
+            bx = 14; by = 20; bh = 14; bw2 = w - 28
+            scale_lo = lo * 0.78; scale_hi = hi * 1.22; span = scale_hi - scale_lo
+            def X(val): return bx + ((val - scale_lo) / span) * bw2
+            c.setFillColor(HexColor("#3B82F6")); c.roundRect(bx, by, X(lo) - bx, bh, 3, fill=1, stroke=0)
+            c.setFillColor(GOOD); c.rect(X(lo), by, X(hi) - X(lo), bh, fill=1, stroke=0)
+            c.setFillColor(HexColor("#EF4444")); c.roundRect(X(hi), by, bx + bw2 - X(hi), bh, 3, fill=1, stroke=0)
+            c.setFillColor(CARD); c.rect(X(lo) - 0.1, by, 0.1, bh, fill=1, stroke=0)
+            mx = X(max(scale_lo, min(scale_hi, self.weight)))
+            c.setStrokeColor(white); c.setLineWidth(1.6); c.line(mx, by - 3, mx, by + bh + 3)
+            c.setFillColor(white); path = c.beginPath()
+            path.moveTo(mx, by + bh + 10); path.lineTo(mx - 5, by + bh + 3); path.lineTo(mx + 5, by + bh + 3); path.close()
+            c.drawPath(path, fill=1, stroke=0)
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(mx, by + bh + 13, f"You: {self.weight:.1f} kg")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6)
+            c.drawString(bx, by - 8, f"{scale_lo:.0f} kg")
+            c.drawRightString(bx + bw2, by - 8, f"{scale_hi:.0f} kg")
+
+    class BodyCompProfile(Flowable):
+        """Premium body-composition card: fat/lean donut + sex-specific body-fat gauge."""
+        def __init__(self, weight_kg, bf_pct, sex, width=CONTENT_W):
+            super().__init__()
+            self.weight = weight_kg; self.bf = bf_pct; self.sex = (sex or "M").upper()[:1]
+            self.w = width; self.h = 156
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(CARD); c.roundRect(0, 0, w, h, 12, fill=1, stroke=0)
+            c.setStrokeColor(STROKE); c.setLineWidth(0.7); c.roundRect(0, 0, w, h, 12, fill=0, stroke=1)
+            fat_mass = self.weight * self.bf / 100.0
+            lean_mass = self.weight - fat_mass
+            # donut — left
+            cx, cy, R = w * 0.18, h * 0.58, 38
+            c.setStrokeColor(STROKE); c.setLineWidth(14); c.circle(cx, cy, R, fill=0, stroke=1)
+            frac = self.bf / 100.0; steps = max(2, int(frac * 72))
+            for i in range(steps):
+                a1 = math.pi/2 - (i/72)*2*math.pi
+                a2 = math.pi/2 - ((i+1)/72)*2*math.pi
+                c.setStrokeColor(BLUE); c.setLineWidth(14); c.setLineCap(1)
+                c.line(cx + R*math.cos(a1), cy + R*math.sin(a1), cx + R*math.cos(a2), cy + R*math.sin(a2))
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 19)
+            c.drawCentredString(cx, cy + 4, f"{self.bf:.1f}%")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawCentredString(cx, cy - 9, "BODY FAT")
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 8.5)
+            c.drawCentredString(cx, 14, "Estimated composition")
+            # composition numbers placed to the right of the donut, top
+            gx = w * 0.40
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(gx, h - 16, "ESTIMATED BODY COMPOSITION")
+            c.setFillColor(BLUE); c.setFont("Helvetica-Bold", 12)
+            c.drawString(gx, h - 32, f"Fat mass: {fat_mass:.1f} kg")
+            c.setFillColor(GOOD); c.setFont("Helvetica-Bold", 12)
+            c.drawString(gx, h - 48, f"Lean mass: {lean_mass:.1f} kg")
+            # body-fat gauge with sex-specific bands
+            bands_m = [(0,6,"#3B82F6","Essential"),(6,14,"#10B981","Athletes"),(14,18,"#22C55E","Fitness"),(18,25,"#F59E0B","Average"),(25,40,"#EF4444","Obese")]
+            bands_f = [(0,14,"#3B82F6","Essential"),(14,21,"#10B981","Athletes"),(21,25,"#22C55E","Fitness"),(25,32,"#F59E0B","Average"),(32,45,"#EF4444","Obese")]
+            bands = bands_m if self.sex == "M" else bands_f
+            BMAX = bands[-1][1]
+            gw = w - gx - 16
+            gy = 28; gh = 13
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(gx, gy + gh + 22, f"WHERE YOU SIT — TYPICAL {('MEN' if self.sex=='M' else 'WOMEN')} RANGES")
+            for s, e, col, lbl in bands:
+                sx = gx + (s/BMAX)*gw; sw = ((e-s)/BMAX)*gw
+                c.setFillColor(HexColor(col)); c.rect(sx, gy, sw, gh, fill=1, stroke=0)
+                c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
+                c.drawCentredString(sx + sw/2, gy + 4.5, lbl)
+            mx = gx + min(1.0, self.bf/BMAX) * gw
+            c.setStrokeColor(white); c.setLineWidth(1.6); c.line(mx, gy - 3, mx, gy + gh + 3)
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(mx, gy + gh + 12, f"You: {self.bf:.1f}%")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 5.5)
+            c.drawString(gx, gy - 8, "0%")
+            c.drawRightString(gx + gw, gy - 8, f"{BMAX:.0f}%+")
+
+
         def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
             super().__init__()
             self.vo2 = vo2_val; self.pct = float(percentile or 0); self.rat = rating; self.w = width; self.h = 90
@@ -1255,6 +1346,11 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         story.append(BMIScale(bmi_v))
         story.append(VGap(8))
 
+    w_num = _sf(w_v); h_num = _sf(h_v)
+    if w_num is not None and h_num:
+        story.append(HealthyWeightRangeBar(w_num, h_num))
+        story.append(VGap(8))
+
     extra_metrics = []
     bf_val = _sf(bf_d.get("value")) if isinstance(bf_d, dict) else None
     whr_val = _sf(whr_d.get("value")) if isinstance(whr_d, dict) else None
@@ -1262,20 +1358,60 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
     if whr_val is not None:
         story.append(WHRBox(whr_val, whr_cat or "—"))
         story.append(VGap(8))
-    if bf_val is not None:
-        extra_metrics.append(("Body fat (Navy method)", f"{bf_val:.1f}%", "Estimated from circumference measurements", "#3B82F6"))
-    if extra_metrics:
+
+    if bf_val is not None and w_num is not None:
+        story.append(BodyCompProfile(w_num, bf_val, sex_v))
+        story.append(VGap(8))
+    elif extra_metrics:
         story.append(MetricCard(extra_metrics, card_h=56))
         story.append(VGap(8))
 
     bmi_txt, bmi_steps = insight_and_steps_body()
     if bmi_txt:
         story.append(P(bmi_txt, S("bmi_t", size=9.5, lead=14, after=8)))
-        story.append(ExpertInsightBox("Body Composition",
-            "BMI is a population screening tool — it doesn't account for muscle mass, bone density, "
-            "or fat distribution. Reading it alongside waist-to-hip ratio and body fat % (above) "
-            "gives a far more accurate picture of your actual metabolic health than any single "
-            "number. (Reference: WHO BMI classification; Lancet 2014 obesity series.)"))
+
+    # ── Personalised verdict, synthesising BMI + WHR + body fat ──
+    if bf_val is not None and w_num is not None and h_num:
+        fat_mass = w_num * bf_val / 100.0
+        lean_mass = w_num - fat_mass
+        bf_band_m = [(6,"essential"),(14,"athletic"),(18,"fitness"),(25,"average"),(999,"obese")]
+        bf_band_f = [(14,"essential"),(21,"athletic"),(25,"fitness"),(32,"average"),(999,"obese")]
+        bands_lbl = bf_band_m if (sex_v or "M").upper().startswith("M") else bf_band_f
+        bf_cat_lbl = next(lbl for thresh, lbl in bands_lbl if bf_val < thresh)
+        whr_phrase = (f"a waist-to-hip ratio of {whr_val:.2f} ({(whr_cat or '').lower()})"
+                       if whr_val is not None else "a waist-to-hip ratio that wasn't provided")
+        verdict = (
+            f"<b>Put together:</b> a BMI of {bmi_v:.1f} ({bmi_cat.lower()}), an estimated body fat "
+            f"of {bf_val:.1f}% (the '{bf_cat_lbl}' range for your sex), and {whr_phrase} all tell a "
+            f"consistent story — your roughly {lean_mass:.0f} kg of lean mass is doing the heavy "
+            f"lifting for your metabolism, while {fat_mass:.1f} kg is fat mass. "
+        )
+        if bf_cat_lbl in ("athletic", "fitness", "essential"):
+            verdict += (
+                "There's very little 'extra' to lose here — further restriction would risk losing "
+                "muscle along with fat. The highest-leverage move from here is building or "
+                "preserving lean mass through strength training, not chasing a lower scale number."
+            )
+        elif bf_cat_lbl == "average":
+            verdict += (
+                "A modest, gradual reduction in fat mass — alongside the strength work in your "
+                "training plan — would move you into the 'fitness' range without sacrificing "
+                "lean mass, as long as protein stays high throughout."
+            )
+        else:
+            verdict += (
+                "Prioritising a sustainable calorie deficit with high protein intake (see your "
+                "nutrition page) while keeping resistance training in your weekly plan will "
+                "protect lean mass as fat mass comes down."
+            )
+        story.append(P(verdict, S("bc_verdict", size=9.5, lead=14, after=8)))
+
+    story.append(ExpertInsightBox("Body Composition",
+        "BMI is a population screening tool — it doesn't account for muscle mass, bone density, "
+        "or fat distribution. Reading it alongside waist-to-hip ratio and body fat % (above) "
+        "gives a far more accurate picture of your actual metabolic health than any single "
+        "number. (Reference: WHO BMI classification; Lancet 2014 obesity series.)"))
+    if bmi_steps:
         story.append(VGap(6))
         story.append(ActionableMilestoneBox(bmi_steps))
     story.append(PageBreak())
