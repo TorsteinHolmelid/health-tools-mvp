@@ -3419,8 +3419,8 @@ if results and not st.session_state.get("report_unlocked", False):
             "with a personalised 12‑week training plan, calorie strategy, and weekly milestones."
         )
         if st.button("📥 See the full plan →", type="primary", key="sim_cta"):
-    st.session_state["scroll_to_paywall"] = True
-    st.rerun()
+        st.session_state["scroll_to_paywall"] = True
+        st.rerun()
             # Optional: smooth scroll to paywall – works only if we have an anchor
             st.markdown(
                 '<div id="paywall_anchor"></div>'
