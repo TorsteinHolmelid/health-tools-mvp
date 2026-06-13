@@ -3379,32 +3379,7 @@ st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if not _unlocked:
-    # -------------------- 1. Unlock your full report (verdiforslag) --------------------
-    st.markdown(
-        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
-        'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
-        'text-align:center;margin:10px 0;">'
-        '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
-        '🔒 Unlock your full report</div>'
-        '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
-        'Get your complete personalized health analysis as a premium PDF</div>'
-        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
-        '</div>'
-        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">4,99 USD</div>'
-        '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
-        '</div>',
-        unsafe_allow_html=True
-    )
-
-    # -------------------- 2. Sammenlikningstabell (Free vs Premium) --------------------
+    # -------------------- 1. Sammenlikningstabell (Free vs Premium) --------------------
     st.markdown(
         '''<div class="ht-compare">
   <div class="ht-compare-row head">
@@ -3451,7 +3426,7 @@ if not _unlocked:
         unsafe_allow_html=True
     )
 
-    # -------------------- 3. Preview av 12‑vekers treningsplan (med blur) --------------------
+    # -------------------- 2. Preview av 12‑vekers treningsplan (med blur) --------------------
     _preview_results = st.session_state.get("results", {})
     _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
     _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
@@ -3638,6 +3613,31 @@ if not _unlocked:
 </div>
 """
     components.html(preview_html, height=620, scrolling=True)
+
+    # -------------------- 3. Verdiforslag + betalingsboks (rett over knappen) --------------------
+    st.markdown(
+        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
+        'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
+        'text-align:center;margin:10px 0;">'
+        '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
+        '🔒 Unlock your full report</div>'
+        '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
+        'Get your complete personalized health analysis as a premium PDF</div>'
+        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
+        '</div>'
+        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">4,99 USD</div>'
+        '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
     # -------------------- 4. Lås opp-knapp (Stripe) --------------------
     stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
