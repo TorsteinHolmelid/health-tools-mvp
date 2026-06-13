@@ -3259,103 +3259,149 @@ if results:
             unsafe_allow_html=True
         )
 
-        # ── Milestone roadmap ──
+        # ── Milestone roadmap (preview — first milestone visible, rest blurred) ──
         milestones = plan.get("milestones", [])
         if milestones:
             st.markdown("#### 🗺️ Milestone roadmap")
             _start_w = float(weight_kg)
             _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
             _total_change = _end_w - _start_w
-            _losing = _total_change < 0
 
+            _focus_icons = {
+                "Build routine": "🏗️",
+                "Maintain consistency": "🔄",
+                "Review progress": "📊",
+                "Re-check and set next goal": "🏁",
+            }
+
+            # Build all milestone HTML rows but only fully display the first
+            _all_rows_html = ""
             for i, m in enumerate(milestones):
                 _wk = m.get("Week", i + 1)
                 _pw = float(m.get("Projected weight (kg)", _start_w))
                 _focus = m.get("Focus", "")
-                _done = i == len(milestones) - 1
-
-                # Progress toward goal
                 if abs(_total_change) > 0.01:
                     _prog = min(100, max(0, int(abs(_pw - _start_w) / abs(_total_change) * 100)))
                 else:
                     _prog = 100
-
                 _is_last = i == len(milestones) - 1
                 _dot_color = "#22C55E" if _is_last else "#3B82F6"
-                _focus_icons = {
-                    "Build routine": "🏗️",
-                    "Maintain consistency": "🔄",
-                    "Review progress": "📊",
-                    "Re-check and set next goal": "🏁",
-                }
                 _icon = next((v for k, v in _focus_icons.items() if k.lower() in str(_focus).lower()), "📍")
-
-                _connector = ""
-                if not _is_last:
-                    _connector = '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
-
-                _milestone_html = f"""
+                _connector = "" if _is_last else '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
+                _all_rows_html += f"""
 <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
   <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
-    <div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};
-    display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>
+    <div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>
     {_connector}
   </div>
-  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);
-  border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
+  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
       <div>
         <span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_pw:.1f} kg</span>
         <span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_icon} {_focus}</span>
       </div>
-      <div style="background:rgba(255,255,255,0.06);border-radius:999px;
-      padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>
+      <div style="background:rgba(255,255,255,0.06);border-radius:999px;padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>
     </div>
-    <div style="margin-top:7px;background:rgba(255,255,255,0.05);
-    border-radius:999px;height:5px;overflow:hidden;">
+    <div style="margin-top:7px;background:rgba(255,255,255,0.05);border-radius:999px;height:5px;overflow:hidden;">
       <div style="width:{_prog}%;background:{_dot_color};height:100%;border-radius:999px;"></div>
     </div>
   </div>
-</div>
-"""
-                st.markdown(_milestone_html, unsafe_allow_html=True)
+</div>"""
 
-                # ── Coach Insight ──
-                _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
-                _tw_coach = float(milestones[-1].get("Projected weight (kg)", weight_kg)) if milestones else float(weight_kg)
-                _wks_coach = int(plan_weeks) if plan_weeks else 12
-                if _rate < 0:
-                    _coach_msg = (
-                        f"At {abs(_rate):.2f} kg/week, you are on a safe and sustainable fat loss trajectory. "
-                        f"You will reach {_tw_coach:.1f} kg in approximately {_wks_coach} weeks. "
-                        f"Consistency is your biggest advantage — small daily habits compound over time."
-                    )
-                    _coach_icon = "🟢"
-                elif _rate > 0:
-                    _coach_msg = (
-                        f"You are in a controlled weight gain phase at {_rate:.2f} kg/week. "
-                        f"Target: {_tw_coach:.1f} kg in {_wks_coach} weeks. "
-                        f"Focus on strength training to maximise lean muscle gain."
-                    )
-                    _coach_icon = "🔵"
-                else:
-                    _coach_msg = (
-                        "You are at maintenance calories. "
-                        "Focus on body recomposition — building muscle while maintaining weight."
-                    )
-                    _coach_icon = "⚪"
-        
-                st.markdown(
-                    f'<div style="background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(34,197,94,0.08));'
-                    f'border:1px solid rgba(14,165,163,0.3);border-left:4px solid #0EA5A3;'
-                    f'border-radius:14px;padding:16px 18px;margin:14px 0;">'
-                    f'<div style="color:#0EA5A3;font-size:12px;font-weight:700;letter-spacing:0.08em;'
-                    f'text-transform:uppercase;margin-bottom:8px;">🧠 Coach Insight</div>'
-                    f'<div style="color:#E5E7EB;font-size:14px;line-height:1.7;">{_coach_icon} {_coach_msg}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
+            # Show first milestone clearly, the rest behind a blur/lock overlay
+            _m0 = milestones[0]
+            _m0_wk = _m0.get("Week", 1)
+            _m0_pw = float(_m0.get("Projected weight (kg)", _start_w))
+            _m0_focus = _m0.get("Focus", "")
+            _m0_prog = min(100, max(0, int(abs(_m0_pw - _start_w) / abs(_total_change) * 100))) if abs(_total_change) > 0.01 else 100
+            _m0_icon = next((v for k, v in _focus_icons.items() if k.lower() in str(_m0_focus).lower()), "📍")
+
+            _first_row_html = f"""
+<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
+  <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
+    <div style="width:28px;height:28px;border-radius:50%;background:#3B82F6;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_m0_wk}</div>
+    <div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>
+  </div>
+  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+      <div>
+        <span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_m0_pw:.1f} kg</span>
+        <span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_m0_icon} {_m0_focus}</span>
+      </div>
+      <div style="background:rgba(255,255,255,0.06);border-radius:999px;padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_m0_wk} · {_m0_prog}%</div>
+    </div>
+    <div style="margin-top:7px;background:rgba(255,255,255,0.05);border-radius:999px;height:5px;overflow:hidden;">
+      <div style="width:{_m0_prog}%;background:#3B82F6;height:100%;border-radius:999px;"></div>
+    </div>
+  </div>
+</div>"""
+
+            # Remaining milestones as blurred preview
+            _remaining_count = len(milestones) - 1
+            _blur_rows = "".join([f"""
+<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;opacity:0.6;">
+  <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
+    <div style="width:28px;height:28px;border-radius:50%;background:#334155;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#94A3B8;flex-shrink:0;">{milestones[j].get('Week', j+1)}</div>
+    {'<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.1);margin-top:2px;"></div>' if j < len(milestones)-1 else ''}
+  </div>
+  <div style="background:rgba(15,23,42,0.4);border:1px solid rgba(148,163,184,0.06);border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
+    <div style="height:12px;background:rgba(148,163,184,0.15);border-radius:6px;width:70%;margin-bottom:8px;"></div>
+    <div style="height:5px;background:rgba(148,163,184,0.08);border-radius:999px;"></div>
+  </div>
+</div>""" for j in range(1, len(milestones))])
+
+            _milestone_preview_html = f"""
+<div style="position:relative;">
+  {_first_row_html}
+  <div style="position:relative;">
+    <div style="filter:blur(4px);pointer-events:none;user-select:none;">
+      {_blur_rows}
+    </div>
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(7,13,24,0) 0%,rgba(7,13,24,0.7) 30%,rgba(7,13,24,0.92) 100%);border-radius:12px;">
+      <div style="text-align:center;padding:16px;">
+        <div style="font-size:22px;margin-bottom:6px;">🔒</div>
+        <div style="color:#E5E7EB;font-weight:700;font-size:14px;margin-bottom:4px;">+{_remaining_count} more milestones in your full plan</div>
+        <div style="color:#94A3B8;font-size:12px;">Unlock the complete {len(milestones)}-week roadmap with Premium</div>
+      </div>
+    </div>
+  </div>
+</div>"""
+            st.markdown(_milestone_preview_html, unsafe_allow_html=True)
+
+            # ── Coach Insight (shown for the first milestone) ──
+            _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
+            _tw_coach = float(milestones[-1].get("Projected weight (kg)", weight_kg)) if milestones else float(weight_kg)
+            _wks_coach = int(plan_weeks) if plan_weeks else 12
+            if _rate < 0:
+                _coach_msg = (
+                    f"At {abs(_rate):.2f} kg/week, you are on a safe and sustainable fat loss trajectory. "
+                    f"You will reach {_tw_coach:.1f} kg in approximately {_wks_coach} weeks. "
+                    f"Consistency is your biggest advantage — small daily habits compound over time."
                 )
+                _coach_icon = "🟢"
+            elif _rate > 0:
+                _coach_msg = (
+                    f"You are in a controlled weight gain phase at {_rate:.2f} kg/week. "
+                    f"Target: {_tw_coach:.1f} kg in {_wks_coach} weeks. "
+                    f"Focus on strength training to maximise lean muscle gain."
+                )
+                _coach_icon = "🔵"
+            else:
+                _coach_msg = (
+                    "You are at maintenance calories. "
+                    "Focus on body recomposition — building muscle while maintaining weight."
+                )
+                _coach_icon = "⚪"
+            st.markdown(
+                f'<div style="background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(34,197,94,0.08));'
+                f'border:1px solid rgba(14,165,163,0.3);border-left:4px solid #0EA5A3;'
+                f'border-radius:14px;padding:16px 18px;margin:14px 0;">'
+                f'<div style="color:#0EA5A3;font-size:12px;font-weight:700;letter-spacing:0.08em;'
+                f'text-transform:uppercase;margin-bottom:8px;">🧠 Coach Insight</div>'
+                f'<div style="color:#E5E7EB;font-size:14px;line-height:1.7;">{_coach_icon} {_coach_msg}</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 else:
     st.info("Click 'Calculate' / 'Generate report' to run the calculations")
  
