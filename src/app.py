@@ -3374,14 +3374,12 @@ if results:
 else:
     st.info("Click 'Calculate' / 'Generate report' to run the calculations")
  
-# ── Paywall / PDF ──── (kun for ikkje-premium brukarar)
+# ── Paywall / PDF ──────────────────────────────────────────────
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
-if _unlocked:
-    st.success("✅ Report unlocked!")
-else:
-    # 1. Først: verdiforslag – "Unlock your full report"
+if not _unlocked:
+    # -------------------- 1. Unlock your full report (verdiforslag) --------------------
     st.markdown(
         '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
         'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
@@ -3406,7 +3404,7 @@ else:
         unsafe_allow_html=True
     )
 
-    # 2. Samanlikningstabell (Free vs Premium)
+    # -------------------- 2. Sammenlikningstabell (Free vs Premium) --------------------
     st.markdown(
         '''<div class="ht-compare">
   <div class="ht-compare-row head">
@@ -3453,15 +3451,10 @@ else:
         unsafe_allow_html=True
     )
 
-    # 3. Preview av 12‑vekers treningsplan (same som før, med blur)
+    # -------------------- 3. Preview av 12‑vekers treningsplan (med blur) --------------------
     _preview_results = st.session_state.get("results", {})
-    _preview_age     = st.session_state.get("age", 35)
-    _preview_sex     = st.session_state.get("inp_sex", "Male")
-    _preview_weight  = st.session_state.get("inp_weight", 80)
-    _preview_plan    = (_preview_results.get("plan") or {}) if _preview_results else {}
-    _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
     _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
-
+    _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
     _bmi_val   = _preview_bmi.get("value", "—")
     _vo2_val   = _preview_vo2.get("value", "—")
     _vo2_pct   = _preview_vo2.get("percentile", "—")
@@ -3495,7 +3488,7 @@ else:
           </td>
           <td style="padding:9px 10px;font-size:12px;color:#CBD5E1;{blur_style}">{desc}</td>
           <td style="padding:9px 10px;font-size:12px;color:#94A3B8;white-space:nowrap;{blur_style}">{dur}</td>
-        </tr>"""
+        <tr>"""
 
     preview_html = f"""
 <style>
@@ -3591,7 +3584,6 @@ else:
     <span style="color:#F1F5F9;font-weight:700;font-size:14px;">📋 Your 12-Week Training Plan</span>
     <span style="margin-left:auto;color:#64748B;font-size:12px;">Week 1 of 12</span>
   </div>
-  <!-- Metric strip -->
   <div style="display:flex;gap:0;border-bottom:1px solid #1E293B;">
     <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
       <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BMI</div>
@@ -3610,7 +3602,6 @@ else:
       <div style="font-size:18px;font-weight:800;color:#22C55E;">{_bio_age if _bio_age != "—" else "—"}</div>
     </div>
   </div>
-  <!-- Week pills -->
   <div style="padding:10px 16px;border-bottom:1px solid #1E293B;display:flex;gap:6px;flex-wrap:wrap;">
     <span style="font-size:11px;color:#64748B;margin-right:4px;line-height:24px;">12 weeks:</span>
     <span class="pdf-week-pill active">W1</span>
@@ -3621,7 +3612,6 @@ else:
     <span class="pdf-week-pill">W10</span><span class="pdf-week-pill">W11</span>
     <span class="pdf-week-pill">W12</span>
   </div>
-  <!-- Training table -->
   <div style="overflow-x:auto;">
     <table class="pdf-preview-table">
       <thead>
@@ -3637,7 +3627,6 @@ else:
       </tbody>
     </table>
   </div>
-  <!-- Fade + lock overlay -->
   <div class="pdf-preview-blur-zone">
     <div class="pdf-lock-icon">🔒</div>
     <div class="pdf-lock-text">Weeks 2–12 are locked</div>
@@ -3650,6 +3639,7 @@ else:
 """
     components.html(preview_html, height=620, scrolling=True)
 
+    # -------------------- 4. Lås opp-knapp (Stripe) --------------------
     stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
     st.link_button(
         "🔓 Unlock full report — 4,99 USD",
@@ -3660,11 +3650,11 @@ else:
     st.caption("After payment, you will return to the app")
 
 else:
+    # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
     _results_for_pdf = st.session_state.get("results", {})
     if not _results_for_pdf:
         st.warning("⚠️ Run the calculations first (click 'Calculate'), then you can download the PDF report.")
     else:
-        # 1. Bygg rapport-data
         report = {
             "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
             "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
@@ -3680,15 +3670,11 @@ else:
             "exercise_log": st.session_state.get("exercise_last"),
             "selected_activities": st.session_state.get("selected_activities", []),
         }
-        # Legg til dette før pdf_bytes = ...
-        
-        # 2. Generer PDF og vis rapporten på skjermen
         try:
             pdf_bytes = create_pdf_bytes_ultimate(report)
             with st.container(border=True):
                 st.subheader("✅ Your Premium Health Report is ready")
                 st.markdown("We have analyzed your biomarkers and generated a tailored 30-day protocol designed to optimize your health.")
-                
                 st.download_button(
                     label="📥 Download your PDF Report (4.99 USD)",
                     data=pdf_bytes,
@@ -3698,6 +3684,5 @@ else:
                     use_container_width=True
                 )
                 st.caption("Your purchase is secured with 100% encryption.")
-                
         except Exception as e:
             st.error(f"Error generating report: {e}")
