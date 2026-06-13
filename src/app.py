@@ -3258,54 +3258,7 @@ if results:
             f'transition:width 0.4s;"></div></div>',
             unsafe_allow_html=True
         )
-# ── SIMULATION SLIDER (only for non-premium users) ──────────────────
-if results and not st.session_state.get("report_unlocked", False):
-    st.markdown("---")
-    st.markdown("### 🔮 What if you added more activity?")
-    st.caption("See how extra weekly movement could improve your fitness — then unlock your full plan to make it happen.")
 
-    current_vo2 = results.get("vo2", {}).get("value")
-    current_bio_age = results.get("bio_age", {}).get("value")
-    current_chron_age = float(age) if age else None
-
-    if current_vo2 is not None and current_bio_age is not None and current_chron_age is not None:
-        extra_min = st.slider(
-            "➕ Extra minutes of moderate‑to‑vigorous activity per week",
-            min_value=0, max_value=300, value=30, step=10,
-            help="Based on scientific estimates: every +50 min/week → +1 ml/kg/min VO₂max, and -0.5 years biological age."
-        )
-        vo2_boost = extra_min / 50.0
-        bio_boost = vo2_boost * 0.5
-        new_vo2 = current_vo2 + vo2_boost
-        new_bio_age = current_bio_age - bio_boost
-        bio_diff = new_bio_age - current_chron_age
-        diff_text = f"{abs(bio_diff):.1f} years {'younger' if bio_diff < 0 else 'older'}" if bio_diff != 0 else "same as calendar"
-
-        col_sim1, col_sim2 = st.columns(2)
-        with col_sim1:
-            st.metric(
-                "📈 Projected VO₂max",
-                f"{new_vo2:.1f} ml/kg/min",
-                delta=f"+{vo2_boost:.1f}" if vo2_boost > 0 else None,
-                delta_color="normal"
-            )
-        with col_sim2:
-            st.metric(
-                "🧬 Projected biological age",
-                f"{new_bio_age:.1f} yrs",
-                delta=f"‑{bio_boost:.1f}" if bio_boost > 0 else None,
-                delta_color="inverse" if bio_boost > 0 else "off"
-            )
-            st.caption(f"Chronological age: {current_chron_age:.0f} yrs → {diff_text}")
-        st.info(
-            "✨ This simulation is an estimate. Your **premium report** shows exactly how to reach these numbers "
-            "with a personalised 12‑week training plan, calorie strategy, and weekly milestones."
-        )
-        if st.button("📥 See the full plan →", type="primary", key="sim_cta"):
-            st.session_state["scroll_to_paywall"] = True
-            st.rerun()
-    else:
-        st.caption("Complete the calculation above to see how extra activity could improve your numbers.")
         # ── Milestone roadmap (blur for free users – first two weeks visible) ──
         milestones = plan.get("milestones", [])
         if milestones:
