@@ -83,6 +83,29 @@ def has_premium_access(db: Client) -> bool:
     response = db.table("premium_access").select("*").eq("user_id", user_id).execute()
     return len(response.data) > 0
 
+def get_user_profile(db: Client):
+    """Hent lagra input-verdiar (siste innstillingar) for innlogga brukar."""
+    user_id = get_current_user_id()
+    if not user_id:
+        return None
+    try:
+        response = db.table("profiles").select("data").eq("user_id", user_id).execute()
+    except Exception:
+        return None
+    if response.data:
+        return response.data[0].get("data")
+    return None
+
+def save_user_profile(db: Client, data: dict):
+    """Lagre/oppdater input-verdiane til innlogga brukar (upsert)."""
+    user_id = get_current_user_id()
+    if not user_id:
+        return None
+    try:
+        return db.table("profiles").upsert({"user_id": user_id, "data": data}).execute()
+    except Exception:
+        return None
+
 def save_premium_access(db: Client, stripe_session_id: str):
     user_id = get_current_user_id()
     if not user_id:
