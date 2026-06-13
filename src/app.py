@@ -3414,28 +3414,40 @@ if results and not st.session_state.get("report_unlocked", False):
                 delta_color="inverse" if bio_boost > 0 else "off"
             )
             st.caption(f"Chronological age: {current_chron_age:.0f} yrs → {diff_text}")
+
         st.info(
             "✨ This simulation is an estimate. Your **premium report** shows exactly how to reach these numbers "
             "with a personalised 12‑week training plan, calorie strategy, and weekly milestones."
         )
+
         if st.button("📥 See the full plan →", type="primary", key="sim_cta"):
-        st.session_state["scroll_to_paywall"] = True
-        st.rerun()
-            # Optional: smooth scroll to paywall – works only if we have an anchor
-            st.markdown(
-                '<div id="paywall_anchor"></div>'
-                '<script>document.getElementById("paywall_anchor").scrollIntoView({behavior:"smooth"});</script>',
-                unsafe_allow_html=True
-            )
+            st.session_state["scroll_to_paywall"] = True
+            st.rerun()
     else:
         st.caption("Complete the calculation above to see how extra activity could improve your numbers.")
-        st.markdown('<div id="paywall"></div>', unsafe_allow_html=True)
+
+
 # ── Paywall / PDF ──────────────────────────────────────────────
+# Add an anchor that we can scroll to
+st.markdown('<div id="paywall_anchor"></div>', unsafe_allow_html=True)
+
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if not _unlocked:
-    # -------------------- 1. Sammenlikningstabell (Free vs Premium) --------------------
+    # Scroll if requested (must be after anchor is in DOM)
+    if st.session_state.get("scroll_to_paywall", False):
+        st.markdown(
+            """
+            <script>
+            document.getElementById('paywall_anchor').scrollIntoView({behavior: 'smooth'});
+            </script>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.session_state["scroll_to_paywall"] = False
+
+    # -------------------- 1. Comparison table Free vs Premium --------------------
     st.markdown(
         '''<div class="ht-compare">
   <div class="ht-compare-row head">
@@ -3482,7 +3494,7 @@ if not _unlocked:
         unsafe_allow_html=True
     )
 
-    # -------------------- 2. Preview av 12‑vekers treningsplan (med blur) --------------------
+    # -------------------- 2. Preview of 12‑week training plan (with blur) --------------------
     _preview_results = st.session_state.get("results", {})
     _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
     _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
@@ -3519,7 +3531,7 @@ if not _unlocked:
           </td>
           <td style="padding:9px 10px;font-size:12px;color:#CBD5E1;{blur_style}">{desc}</td>
           <td style="padding:9px 10px;font-size:12px;color:#94A3B8;white-space:nowrap;{blur_style}">{dur}</td>
-        <tr>"""
+        </tr>"""
 
     preview_html = f"""
 <style>
@@ -3670,7 +3682,7 @@ if not _unlocked:
 """
     components.html(preview_html, height=620, scrolling=True)
 
-    # -------------------- 3. Verdiforslag + betalingsboks (rett over knappen) --------------------
+    # -------------------- 3. Value proposition + payment box --------------------
     st.markdown(
         '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
         'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
@@ -3694,17 +3706,8 @@ if not _unlocked:
         '</div>',
         unsafe_allow_html=True
     )
-if st.session_state.get("scroll_to_paywall"):
-    st.markdown(
-        """
-        <script>
-        document.getElementById('paywall').scrollIntoView({behavior: 'smooth'});
-        </script>
-        """,
-        unsafe_allow_html=True,
-    )
-    st.session_state["scroll_to_paywall"] = False   # nullstill
-    # -------------------- 4. Lås opp-knapp (Stripe) --------------------
+
+    # -------------------- 4. Stripe unlock button --------------------
     stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
     st.link_button(
         "🔓 Unlock full report — 4,99 USD",
@@ -3715,7 +3718,7 @@ if st.session_state.get("scroll_to_paywall"):
     st.caption("After payment, you will return to the app")
 
 else:
-    # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
+    # -------------------- Premium: show PDF download button --------------------
     _results_for_pdf = st.session_state.get("results", {})
     if not _results_for_pdf:
         st.warning("⚠️ Run the calculations first (click 'Calculate'), then you can download the PDF report.")
