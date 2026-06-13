@@ -3419,6 +3419,8 @@ if results and not st.session_state.get("report_unlocked", False):
             "with a personalised 12‑week training plan, calorie strategy, and weekly milestones."
         )
         if st.button("📥 See the full plan →", type="primary", key="sim_cta"):
+    st.session_state["scroll_to_paywall"] = True
+    st.rerun()
             # Optional: smooth scroll to paywall – works only if we have an anchor
             st.markdown(
                 '<div id="paywall_anchor"></div>'
@@ -3426,7 +3428,8 @@ if results and not st.session_state.get("report_unlocked", False):
                 unsafe_allow_html=True
             )
     else:
-        st.caption("Complete the calculation above to see how extra activity could improve your numbers.") 
+        st.caption("Complete the calculation above to see how extra activity could improve your numbers.")
+        st.markdown('<div id="paywall"></div>', unsafe_allow_html=True)
 # ── Paywall / PDF ──────────────────────────────────────────────
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
@@ -3691,7 +3694,16 @@ if not _unlocked:
         '</div>',
         unsafe_allow_html=True
     )
-
+if st.session_state.get("scroll_to_paywall"):
+    st.markdown(
+        """
+        <script>
+        document.getElementById('paywall').scrollIntoView({behavior: 'smooth'});
+        </script>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.session_state["scroll_to_paywall"] = False   # nullstill
     # -------------------- 4. Lås opp-knapp (Stripe) --------------------
     stripe_link = "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02"
     st.link_button(
