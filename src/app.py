@@ -99,6 +99,7 @@ if logged_in:
             except Exception as e:
                 st.caption(f"Could not load progress chart: {e}")
 
+else:
     with st.sidebar.expander("🔐 Log in / Sign up", expanded=False):
         st.caption("Log in to save your values for next time.")
         tab1, tab2 = st.tabs(["Log in", "Sign up"])
@@ -3292,47 +3293,6 @@ if results:
                 _connector = ""
                 if not _is_last:
                     _connector = '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
-
-                if i > 0 and not _unlocked:
-                    # ── Blurred preview for week 2+ (locked) ──
-                    _milestone_html = f"""
-<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
-  <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
-    <div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};
-    display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>
-    {_connector}
-  </div>
-  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);
-  border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;
-  filter:blur(5px);user-select:none;pointer-events:none;">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-      <div>
-        <span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_pw:.1f} kg</span>
-        <span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_icon} {_focus}</span>
-      </div>
-      <div style="background:rgba(255,255,255,0.06);border-radius:999px;
-      padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>
-    </div>
-    <div style="margin-top:7px;background:rgba(255,255,255,0.05);
-    border-radius:999px;height:5px;overflow:hidden;">
-      <div style="width:{_prog}%;background:{_dot_color};height:100%;border-radius:999px;"></div>
-    </div>
-  </div>
-</div>
-"""
-                    st.markdown(_milestone_html, unsafe_allow_html=True)
-                    if i == 1:
-                        st.markdown(
-                            f'''<div class="ht-locked-card">
-  <div class="ht-locked-icon">🔒</div>
-  <div class="ht-locked-title">Weeks 2–{len(milestones)} of your roadmap</div>
-  <div class="ht-locked-sub">Unlock the full {len(milestones)}-week plan to see every weekly milestone, your projected weight curve, and the complete coach insights.</div>
-  <a href="{stripe_link}" target="_blank" class="ht-locked-cta">🔓 Unlock for $4.99</a>
-</div>''',
-                            unsafe_allow_html=True,
-                        )
-                    continue
 
                 _milestone_html = f"""
 <div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;">
