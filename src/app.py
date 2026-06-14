@@ -116,6 +116,7 @@ else:
                     st.session_state["user_id"] = user.id
                     st.session_state["user_email"] = email
                     st.session_state["premium_checked"] = False  # ← legg til denne
+                    st.session_state["profile_loaded"] = False  # ← legg til denne
                     st.rerun()
 
         with tab2:
@@ -2602,6 +2603,7 @@ if _params.get("payment") == "success" and _params.get("uid"):
     st.session_state["user_id"] = _uid
     st.session_state["premium_checked"] = False
     st.session_state["report_unlocked"] = False
+    st.session_state["profile_loaded"] = False  # ← legg til denne
 
 # Sjekk premium frå Supabase (sikker)
 if not st.session_state.get("premium_checked"):
