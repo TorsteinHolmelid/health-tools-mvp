@@ -39,6 +39,9 @@ def sign_in(email: str, password: str):
     client = get_db_client()
     try:
         response = client.auth.sign_in_with_password({"email": email, "password": password})
+        # ----- LIME INN DENNE LINJA HER -----
+        st.session_state["premium_checked"] = False
+        # ------------------------------------
         return response.user, None
     except Exception as e:
         return None, str(e)
