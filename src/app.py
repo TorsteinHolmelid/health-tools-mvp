@@ -199,7 +199,7 @@ PROFILE_KEYS = [
     "plan_create", "plan_type", "protein_toggle",
 ]
 
-if logged_in and "profile_loaded" not in st.session_state:
+if logged_in and not st.session_state.get("profile_loaded"):
     _saved_profile = get_user_profile(db)
     if _saved_profile:
         for _k, _v in _saved_profile.items():
