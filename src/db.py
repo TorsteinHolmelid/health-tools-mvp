@@ -97,12 +97,15 @@ def get_user_profile(db: Client):
     return None
 
 def save_user_profile(db: Client, data: dict):
-    """Lagre/oppdater input-verdiane til innlogga brukar (upsert)."""
     user_id = get_current_user_id()
     if not user_id:
         return None
     try:
-        return db.table("profiles").upsert({"user_id": user_id, "data": data}).execute()
+        existing = db.table("profiles").select("user_id").eq("user_id", user_id).execute()
+        if existing.data:
+            return db.table("profiles").update({"data": data}).eq("user_id", user_id).execute()
+        else:
+            return db.table("profiles").insert({"user_id": user_id, "data": data}).execute()
     except Exception:
         return None
 
