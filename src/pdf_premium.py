@@ -1947,7 +1947,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             c.setFillColor(DIM); c.setFont("Helvetica-Oblique", 6)
             c.drawString(14, 4, "Reference: ACSM VO2max norms by age and sex (ml/kg/min).")
 
-
+    class FactorBars(Flowable):
         def __init__(self, factors, width=CONTENT_W):
             super().__init__()
             self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta", 0))), reverse=True)[:8]
