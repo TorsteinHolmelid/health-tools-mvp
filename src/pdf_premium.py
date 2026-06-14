@@ -2219,9 +2219,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
     if bf_val is not None and w_num is not None:
         story.append(BodyCompProfile(w_num, bf_val, sex_v))
         story.append(VGap(12))
-    elif extra_metrics:
-        story.append(MetricCard(extra_metrics, card_h=56))
-        story.append(VGap(12))
+   
 
     bmi_txt, bmi_steps = insight_and_steps_body()
     if bmi_txt:
