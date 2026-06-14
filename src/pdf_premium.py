@@ -1695,30 +1695,78 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 c.drawCentredString(bx + ((zs + ze) / 200) * bw2, sz_y - 8, zl)
 
     class RadarChart(Flowable):
+        """Større radar chart for bedre synlighet."""
         def __init__(self, scores_dict, width=CONTENT_W):
-            super().__init__(); self.scores = scores_dict; self.w = width; self.h = 190  # Økt høyde
-        def wrap(self, aw, ah): return self.w, self.h
+            super().__init__()
+            self.scores = scores_dict
+            self.w = width
+            self.h = 220  # Økt høyde
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
         def draw(self):
-            c = self.canv; cx = self.w/2; cy = self.h/2 + 12; R = 60
-            labels = list(self.scores.keys()); vals = [self.scores[k]/100.0 for k in labels]; n = len(labels)
-            def pt(i, r): ang = math.pi/2 + 2*math.pi*i/n; return cx + r*math.cos(ang), cy + r*math.sin(ang)
+            c = self.canv
+            cx = self.w / 2
+            cy = self.h / 2 + 12
+            R = 75  # Større radius
+            labels = list(self.scores.keys())
+            vals = [self.scores[k] / 100.0 for k in labels]
+            n = len(labels)
+
+            def pt(i, r):
+                ang = math.pi / 2 + 2 * math.pi * i / n
+                return cx + r * math.cos(ang), cy + r * math.sin(ang)
+
+            # Tegn rutenett
             for ring in [0.25, 0.5, 0.75, 1.0]:
-                pts = [pt(i, ring*R) for i in range(n)]
-                c.setStrokeColor(STROKE); c.setLineWidth(0.5); path = c.beginPath(); path.moveTo(*pts[0])
-                for p in pts[1:]: path.lineTo(*p)
-                path.close(); c.drawPath(path, fill=0, stroke=1)
+                pts = [pt(i, ring * R) for i in range(n)]
+                c.setStrokeColor(STROKE)
+                c.setLineWidth(0.5)
+                path = c.beginPath()
+                path.moveTo(*pts[0])
+                for p in pts[1:]:
+                    path.lineTo(*p)
+                path.close()
+                c.drawPath(path, fill=0, stroke=1)
+
+            # Linjer fra sentrum
             for i in range(n):
-                ox, oy = pt(i, R); c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(cx, cy, ox, oy)
-            poly = [pt(i, vals[i]*R) for i in range(n)]; c.setFillColor(ACCENT); path = c.beginPath(); path.moveTo(*poly[0])
-            for p in poly[1:]: path.lineTo(*p)
-            path.close(); c.setFillAlpha(0.25); c.drawPath(path, fill=1, stroke=0); c.setFillAlpha(1.0)
-            c.setStrokeColor(ACCENT); c.setLineWidth(1.5); c.drawPath(path, fill=0, stroke=1)
+                ox, oy = pt(i, R)
+                c.setStrokeColor(STROKE)
+                c.setLineWidth(0.5)
+                c.line(cx, cy, ox, oy)
+
+            # Polylinje for brukerens verdier
+            poly = [pt(i, vals[i] * R) for i in range(n)]
+            c.setFillColor(ACCENT)
+            path = c.beginPath()
+            path.moveTo(*poly[0])
+            for p in poly[1:]:
+                path.lineTo(*p)
+            path.close()
+            c.setFillAlpha(0.25)
+            c.drawPath(path, fill=1, stroke=0)
+            c.setFillAlpha(1.0)
+            c.setStrokeColor(ACCENT)
+            c.setLineWidth(1.5)
+            c.drawPath(path, fill=0, stroke=1)
+
+            # Punkter og etiketter
             for i, (lbl, val) in enumerate(zip(labels, vals)):
-                px, py = pt(i, val*R); c.setFillColor(ACCENT); c.circle(px, py, 3.5, fill=1, stroke=0)
-                lx, ly = pt(i, R+16); sc = int(val*100)
+                px, py = pt(i, val * R)
+                c.setFillColor(ACCENT)
+                c.circle(px, py, 4, fill=1, stroke=0)
+                # Plasser etiketter lengre ut
+                lx, ly = pt(i, R + 20)
+                sc = int(val * 100)
                 dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
-                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 7.5); c.drawCentredString(lx, ly+4, lbl)
-                c.setFillColor(dc); c.setFont("Helvetica-Bold", 8.5); c.drawCentredString(lx, ly-6, str(sc))
+                c.setFillColor(TEXT)
+                c.setFont("Helvetica-Bold", 8.5)
+                c.drawCentredString(lx, ly + 6, lbl)
+                c.setFillColor(dc)
+                c.setFont("Helvetica-Bold", 10)
+                c.drawCentredString(lx, ly - 6, str(sc))
 
     class BioAgeBar(Flowable):
         def __init__(self, bio_val, chron_val, width=CONTENT_W):
@@ -1740,10 +1788,14 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 c.setFillColor(cl); c.roundRect(bx, bar_y, (val/max_age)*bw2, 8, 3, fill=1, stroke=0)
 
     class HeartRateZonesBox(Flowable):
+        """Premium HR zones panel — større og med bedre luft."""
         def __init__(self, age, vo2_pct, width=CONTENT_W):
             super().__init__()
-            self.age = age; self.vo2_pct = vo2_pct; self.w = width
-            hr_max = 220 - int(age); self.hr_max = hr_max
+            self.age = age
+            self.vo2_pct = vo2_pct
+            self.w = width
+            hr_max = 220 - int(age)
+            self.hr_max = hr_max
             self.zones = [
                 (1, "Zone 1", "Active Recovery",    int(hr_max*0.50), int(hr_max*0.60), "#64748B", "Warm-up, cool-down, rest days"),
                 (2, "Zone 2", "Aerobic Base",        int(hr_max*0.60), int(hr_max*0.70), "#22C55E", "Fat burning, conversational — most of your easy sessions"),
@@ -1751,40 +1803,84 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 (4, "Zone 4", "Lactate Threshold",   int(hr_max*0.80), int(hr_max*0.90), "#F59E0B", "Hard — interval reps, race-pace efforts"),
                 (5, "Zone 5", "VO2max / Neuromuscular", int(hr_max*0.90), hr_max,        "#EF4444", "Maximum effort — short sprints only"),
             ]
-            self.h = 40 + len(self.zones) * 32 + 20  # Mer luft
-        def wrap(self, aw, ah): return self.w, self.h
+            # Økt høyde betydelig
+            self.h = 50 + len(self.zones) * 36 + 20
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
         def draw(self):
-            c = self.canv; w = self.w; h = self.h
-            c.setFillColor(CARD); c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
-            c.setStrokeColor(STROKE); c.setLineWidth(0.6); c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
-            c.setFillColor(GOLD); c.roundRect(0, h-26, w, 26, 6, fill=1, stroke=0)
-            c.rect(0, h-26, w*0.5, 26, fill=1, stroke=0)
-            c.setFillColor(BG); c.setFont("Helvetica-Bold", 8.5)
-            c.drawString(14, h-17, f"YOUR TRAINING HEART RATE ZONES  ·  HRmax = {self.hr_max} bpm  ·  Age {int(self.age)}")
-            c.setFillColor(MUTED); c.setFont("Helvetica", 6)
-            c.drawString(14,  h-38, "ZONE"); c.drawString(52, h-38, "NAME")
-            c.drawString(170, h-38, "BPM RANGE"); c.drawString(250, h-38, "USE THIS FOR")
-            c.setStrokeColor(STROKE); c.setLineWidth(0.4); c.line(10, h-42, w-10, h-42)
+            c = self.canv
+            w = self.w
+            h = self.h
+            c.setFillColor(CARD)
+            c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setStrokeColor(STROKE)
+            c.setLineWidth(0.6)
+            c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
+
+            # Toppbanner
+            c.setFillColor(GOLD)
+            c.roundRect(0, h-30, w, 30, 6, fill=1, stroke=0)
+            c.rect(0, h-30, w*0.6, 30, fill=1, stroke=0)
+            c.setFillColor(BG)
+            c.setFont("Helvetica-Bold", 9)
+            c.drawString(14, h-20, f"YOUR TRAINING HEART RATE ZONES  ·  HRmax = {self.hr_max} bpm  ·  Age {int(self.age)}")
+
+            # Kolonneoverskrifter
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 6.5)
+            c.drawString(14, h-44, "ZONE")
+            c.drawString(58, h-44, "NAME")
+            c.drawString(170, h-44, "BPM RANGE")
+            c.drawString(250, h-44, "USE THIS FOR")
+            c.setStrokeColor(STROKE)
+            c.setLineWidth(0.4)
+            c.line(10, h-48, w-10, h-48)
+
             for i, (z, name, label, lo, hi, col, use) in enumerate(self.zones):
-                y = h - 56 - i*32  # Mer plass mellom radene
-                c.setFillColor(HexColor(col)); c.roundRect(14, y+2, 26, 16, 4, fill=1, stroke=0)
-                c.setFillColor(white); c.setFont("Helvetica-Bold", 8); c.drawCentredString(27, y+7, f"Z{z}")
-                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 8.5); c.drawString(52, y+10, name)
-                c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(52, y+1, label)
-                c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold", 10)
+                y = h - 64 - i * 36   # mer luft mellom radene
+                # sirkelmerke
+                c.setFillColor(HexColor(col))
+                c.roundRect(14, y+2, 26, 16, 4, fill=1, stroke=0)
+                c.setFillColor(white)
+                c.setFont("Helvetica-Bold", 8)
+                c.drawCentredString(27, y+7, f"Z{z}")
+                # navn + label
+                c.setFillColor(TEXT)
+                c.setFont("Helvetica-Bold", 9)
+                c.drawString(52, y+10, name)
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 7)
+                c.drawString(52, y+1, label)
+                # bpm
+                c.setFillColor(HexColor(col))
+                c.setFont("Helvetica-Bold", 10)
                 c.drawString(170, y+4, f"{lo}–{hi} bpm")
-                bx = 245; bw2 = w - bx - 14; bar_frac = (hi - lo) / self.hr_max
+                # bjelke
+                bx = 245
+                bw2 = w - bx - 14
+                bar_frac = (hi - lo) / self.hr_max
                 bar_off = lo / self.hr_max
-                c.setFillColor(STROKE); c.roundRect(bx, y+8, bw2, 8, 2, fill=1, stroke=0)
-                c.setFillColor(HexColor(col)); c.setFillAlpha(0.35)
+                c.setFillColor(STROKE)
+                c.roundRect(bx, y+8, bw2, 8, 2, fill=1, stroke=0)
+                c.setFillColor(HexColor(col))
+                c.setFillAlpha(0.35)
                 c.roundRect(bx + bar_off*bw2, y+8, bar_frac*bw2, 8, 2, fill=1, stroke=0)
                 c.setFillAlpha(1.0)
-                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
-                c.drawString(bx, y+1, use)
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 6.5)
+                c.drawString(bx, y+1, use[:50])
                 if i < len(self.zones)-1:
-                    c.setStrokeColor(STROKE); c.setLineWidth(0.3); c.line(10, y-2, w-10, y-2)
-            c.setFillColor(DIM); c.setFont("Helvetica-Oblique", 6)
-            c.drawString(14, 6, f"HRmax estimated as 220 − age. Zones may vary ±5–10 bpm individually. Confirm with a ramp test for precision.")
+                    c.setStrokeColor(STROKE)
+                    c.setLineWidth(0.3)
+                    c.line(10, y-4, w-10, y-4)
+
+            # Fotnote
+            c.setFillColor(DIM)
+            c.setFont("Helvetica-Oblique", 6.5)
+            c.drawString(14, 8, f"HRmax estimated as 220 − age. Zones may vary ±5–10 bpm individually. Confirm with a ramp test for precision.")
+
 
     class SleepCalculatorBox(Flowable):
         def __init__(self, age, width=CONTENT_W):
