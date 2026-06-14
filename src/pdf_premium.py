@@ -1,10 +1,6 @@
 """
 Premium Longevity Intelligence Report — PDF generator (English, premium edition)
 Drop-in replacement for create_pdf_bytes_ultimate(report).
-
-Usage in app.py:
-    from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
-(or simply rename the call site to create_pdf_bytes_premium)
 """
 
 from __future__ import annotations
@@ -34,17 +30,17 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
     doc = SimpleDocTemplate(
         buffer, pagesize=A4,
         leftMargin=MARGIN_H, rightMargin=MARGIN_H,
-        topMargin=32 * mm, bottomMargin=22 * mm,  # Økt topp- og bunnmargin
+        topMargin=32 * mm, bottomMargin=22 * mm,
     )
 
     # ── Theme ──────────────────────────────────────────────────────
     BG     = HexColor("#080C16")
     CARD   = HexColor("#121C32")
     CARD2  = HexColor("#0E1729")
-    GOLD   = HexColor("#D4AF7A")          # premium accent
+    GOLD   = HexColor("#D4AF7A")
     ACCENT = HexColor("#14B8A6")
     BLUE   = HexColor("#3B82F6")
-    GLOW   = HexColor("#38BDF8")          # spotlight blue, cover gradient
+    GLOW   = HexColor("#38BDF8")
     GOOD   = HexColor("#22C55E")
     WARN   = HexColor("#F59E0B")
     BAD    = HexColor("#EF4444")
@@ -72,14 +68,12 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         except Exception:
             return None
 
-    # ── Pull data out of report ──────────────────────────────────
     inp   = report.get("inputs", {}) or {}
     age_v = inp.get("age", "—")
     sex_v = inp.get("sex", "—")
     h_v   = inp.get("height_cm", "—")
     w_v   = inp.get("weight_kg", "—")
     name_v = inp.get("name") or report.get("user_name") or ""
-
     gen_v = report.get("generated", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
     report_id = report.get("report_id") or f"HT-{uuid.uuid4().hex[:8].upper()}"
 
