@@ -3429,11 +3429,9 @@ else:
     st.info("Click 'Calculate' / 'Generate report' to run the calculations")
 
 # ── Paywall / PDF ──────────────────────────────────────────────
-# Add an anchor that we can scroll to
-# ── Anchor for scrolling (must be placed right before paywall) ──
+# Anchor for scrolling (must be placed right before paywall)
 st.markdown('<div id="paywall_anchor"></div>', unsafe_allow_html=True)
 
-# ── Paywall / PDF ──────────────────────────────────────────────
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
@@ -3673,7 +3671,7 @@ if not _unlocked:
 """
     components.html(preview_html, height=620, scrolling=True)
 
-    # -------------------- 3. Verdiforslag + betalingsboks (rett over knappen) --------------------
+    # -------------------- 3. Verdiforslag + betalingsboks --------------------
     st.markdown(
         '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
         'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
@@ -3698,7 +3696,7 @@ if not _unlocked:
         unsafe_allow_html=True
     )
 
-    # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) --------------------
+    # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – FIXED --------------------
     _uid = get_current_user_id() or ""
     _user_email = st.session_state.get("user_email", "")
 
@@ -3721,10 +3719,18 @@ if not _unlocked:
                     },
                     timeout=10,
                 )
-                    _data = _resp.json()
-                    if "url" in _data:
-                        st.markdown(f'<meta http-equiv="refresh" content="0;url={_data["url"]}">', unsafe_allow_html=True)
-                        st.markdown(f"[Click here if not redirected automatically]({_data['url']})")
+                _data = _resp.json()
+                if "url" in _data:
+                    # FIX: Bruk JavaScript for å opne i top-level vindauge (unngår iframe-problemet)
+                    st.markdown(
+                        f"""
+                        <script>
+                            window.top.location.href = "{_data["url"]}";
+                        </script>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    st.info("Redirecting to payment... If nothing happens, [click here]({})".format(_data["url"]))
                 else:
                     st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
             except Exception as _e:
@@ -3769,7 +3775,7 @@ else:
         except Exception as e:
             st.error(f"Error generating report: {e}")
 
-# -------------------- Scroll script (køyrer etter at paywall er lasta) --------------------
+# -------------------- Scroll script --------------------
 if st.session_state.get("scroll_to_paywall"):
     st.markdown(
         """
