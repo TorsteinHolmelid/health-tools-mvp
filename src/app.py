@@ -2619,6 +2619,22 @@ with col_save2:
 results = st.session_state.get("results", {})
 
 # Premium-status (brukt til å låse/vise seksjonar lenger nede)
+# Sjekk premium frå Supabase (sikker)
+if not st.session_state.get("premium_checked"):
+    if is_authenticated():
+        from db import has_premium_access
+        _db_unlocked = has_premium_access(db)
+        st.session_state["report_unlocked"] = _db_unlocked
+    st.session_state["premium_checked"] = True
+
+# Handter return frå Stripe
+_params = st.query_params
+if _params.get("payment") == "success" and is_authenticated():
+    if not st.session_state.get("report_unlocked"):
+        import time; time.sleep(2)
+        st.session_state["premium_checked"] = False
+        st.rerun()
+
 _unlocked = st.session_state.get("report_unlocked", False)
 stripe_link = "https://buy.stripe.com/test_8x2dRa2HU4AXam22fC1Fe03"
 
