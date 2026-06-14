@@ -115,8 +115,6 @@ else:
                     st.session_state["authenticated"] = True
                     st.session_state["user_id"] = user.id
                     st.session_state["user_email"] = email
-                    st.session_state["premium_checked"] = False  # ← legg til denne
-                    st.session_state["profile_loaded"] = False  # ← legg til denne
                     st.rerun()
 
         with tab2:
@@ -2603,7 +2601,6 @@ if _params.get("payment") == "success" and _params.get("uid"):
     st.session_state["user_id"] = _uid
     st.session_state["premium_checked"] = False
     st.session_state["report_unlocked"] = False
-    st.session_state["profile_loaded"] = False  # ← legg til denne
 
 # Sjekk premium frå Supabase (sikker)
 if not st.session_state.get("premium_checked"):
@@ -3711,7 +3708,8 @@ if not _unlocked:
                 )
                 _data = _resp.json()
                 if "url" in _data:
-                    st.link_button("👉 Proceed to checkout", _data["url"], type="primary", use_container_width=True)
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={_data["url"]}">', unsafe_allow_html=True)
+                    st.markdown(f"[Click here if not redirected automatically]({_data['url']})")
                 else:
                     st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
             except Exception as _e:
