@@ -2617,11 +2617,11 @@ if _params.get("payment") == "success" and _params.get("uid"):
     st.session_state["report_unlocked"] = False
 
 # Sjekk premium frå Supabase (sikker)
-if not st.session_state.get("premium_checked"):
-    if is_authenticated():
-        from db import has_premium_access
-        st.session_state["report_unlocked"] = has_premium_access(db)
-    st.session_state["premium_checked"] = True
+# Sjekk premium frå Supabase – alltid når brukaren er innlogga
+if is_authenticated():
+    st.session_state["report_unlocked"] = has_premium_access(db)
+else:
+    st.session_state["report_unlocked"] = False
 
 _unlocked = st.session_state.get("report_unlocked", False)
 
