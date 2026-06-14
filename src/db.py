@@ -97,6 +97,7 @@ def get_user_profile(db: Client):
     return None
 
 def save_user_profile(db: Client, data: dict):
+    """Lagre/oppdater input-verdiane til innlogga brukar."""
     user_id = get_current_user_id()
     if not user_id:
         return None
