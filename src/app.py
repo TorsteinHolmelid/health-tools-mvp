@@ -398,33 +398,7 @@ class PremiumRadarChart(Flowable):
         return self.w, self.h
 
 
-# ── Stripe Query Param Sjekk ──────────────────────────────────────────────────
-_session_id = None
-try:
-    _session_id = st.query_params.get("session_id")
-except Exception:
-    try:
-        _raw = st.experimental_get_query_params().get("session_id")
-        _session_id = _raw[0] if isinstance(_raw, list) else _raw
-    except Exception:
-        _session_id = None
-
-if isinstance(_session_id, list):
-    _session_id = _session_id[0] if _session_id else None
-
-if _session_id and (
-    str(_session_id).startswith("cs_live_") or
-    str(_session_id).startswith("cs_test_")
-):
-    st.session_state["report_unlocked"] = True
-    st.session_state["stripe_session_id"] = _session_id
-
-if st.session_state.get("stripe_session_id"):
-    _sid = st.session_state["stripe_session_id"]
-    st.sidebar.markdown(
-        f"""<div class="ht-side-badge-verified">✅ Premium activated · ID …{_sid[-6:]}</div>""",
-        unsafe_allow_html=True,
-    )
+# ── Stripe Query Param Sjekk (sikker – berre via Supabase) ───────────────────
     
 # ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
 st.markdown(
@@ -2619,24 +2593,23 @@ with col_save2:
 results = st.session_state.get("results", {})
 
 # Premium-status (brukt til å låse/vise seksjonar lenger nede)
+# Handter return frå Stripe – gjenopprett session og tving ny Supabase-sjekk
+_params = st.query_params
+if _params.get("payment") == "success" and _params.get("uid"):
+    _uid = _params.get("uid")
+    st.session_state["authenticated"] = True
+    st.session_state["user_id"] = _uid
+    st.session_state["premium_checked"] = False
+    st.session_state["report_unlocked"] = False
+
 # Sjekk premium frå Supabase (sikker)
 if not st.session_state.get("premium_checked"):
     if is_authenticated():
         from db import has_premium_access
-        _db_unlocked = has_premium_access(db)
-        st.session_state["report_unlocked"] = _db_unlocked
+        st.session_state["report_unlocked"] = has_premium_access(db)
     st.session_state["premium_checked"] = True
 
-# Handter return frå Stripe
-_params = st.query_params
-if _params.get("payment") == "success" and is_authenticated():
-    if not st.session_state.get("report_unlocked"):
-        import time; time.sleep(2)
-        st.session_state["premium_checked"] = False
-        st.rerun()
-
 _unlocked = st.session_state.get("report_unlocked", False)
-stripe_link = "https://buy.stripe.com/test_8x2dRa2HU4AXam22fC1Fe03"
 
 if results:
         # --- BMI SEKSJON ---
@@ -3447,26 +3420,6 @@ st.markdown('<div id="paywall_anchor"></div>', unsafe_allow_html=True)
 
 # ── Paywall / PDF ──────────────────────────────────────────────
 st.markdown("---")
-# Gjenopprett session frå URL-parameter (etter Stripe redirect)
-_params = st.query_params
-if _params.get("payment") == "success" and _params.get("uid"):
-    _uid = _params.get("uid")
-    # Gjenopprett session
-    st.session_state["authenticated"] = True
-    st.session_state["user_id"] = _uid
-    # Tving ny Supabase-sjekk alltid
-    st.session_state["premium_checked"] = False
-    st.session_state["report_unlocked"] = False
-
-# Sjekk premium frå Supabase
-if not st.session_state.get("premium_checked"):
-    if is_authenticated():
-        from db import has_premium_access
-        st.session_state["report_unlocked"] = has_premium_access(db)
-    st.session_state["premium_checked"] = True
-
-_unlocked = st.session_state.get("report_unlocked", False)
-
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if not _unlocked:
@@ -3732,8 +3685,8 @@ if not _unlocked:
 
     # -------------------- 4. Lås opp-knapp (Stripe) --------------------
     _uid = get_current_user_id() or ""
-    _app_url = "https://health-tools.streamlit.app"  # ingen slash
-    stripe_link = f"https://buy.stripe.com/test_8x2dRa2HU4AXam22fC1Fe03?client_reference_id={_uid}&success_url={_app_url}/?payment=success%26uid={_uid}"
+    _app_url = "https://health-tools.streamlit.app"
+    stripe_link = f"https://buy.stripe.com/test_8x2dRa2HU4AXam22fC1Fe03?client_reference_id={_uid}&success_url={_app_url}%2F%3Fpayment%3Dsuccess%26uid%3D{_uid}"
     st.link_button(
         "🔓 Unlock full report — 4,99 USD",
         stripe_link,
