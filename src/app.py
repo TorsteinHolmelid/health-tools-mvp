@@ -2623,7 +2623,7 @@ if is_authenticated():
 else:
     st.session_state["report_unlocked"] = False
 
-_unlocked = st.session_state.get("report_unlocked", False)
+    _unlocked = st.session_state.get("report_unlocked", False)
 
 if results:
         # --- BMI SEKSJON ---
