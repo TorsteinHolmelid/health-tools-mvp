@@ -3709,7 +3709,7 @@ if not _unlocked:
                 )
                 _data = _resp.json()
                 if "url" in _data:
-                    st.link_button("👉 Fortsett til betaling", _data["url"], type="primary", use_container_width=True)
+                    st.link_button("👉 Proceed to checkout", _data["url"], type="primary", use_container_width=True)
                 else:
                     st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
             except Exception as _e:
