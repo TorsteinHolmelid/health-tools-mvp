@@ -48,7 +48,31 @@ st.markdown("# 📈 My Progress")
 
 if not is_premium:
     st.warning("This is a premium feature. Please upgrade to see your progress charts.")
-    st.link_button("Unlock for 4.99 USD", "https://buy.stripe.com/fZu00kbeq6J50LsdYk1Fe02")
+    if st.button("🔓 Unlock full report — 4,99 USD", type="primary"):
+    import requests as _requests
+    _uid = st.session_state.get("user_id", "")
+    _email = st.session_state.get("user_email", "")
+    _supabase_url = st.secrets.get("SUPABASE_URL", "")
+    _anon_key = st.secrets.get("SUPABASE_KEY", "")
+    _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
+    try:
+        _resp = _requests.post(
+            _fn_url,
+            json={"user_id": _uid, "email": _email},
+            headers={
+                "apikey": _anon_key,
+                "Authorization": f"Bearer {_anon_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=10,
+        )
+        _data = _resp.json()
+        if "url" in _data:
+            st.link_button("👉 Fortsett til betaling", _data["url"], type="primary")
+        else:
+            st.error("Kunne ikkje opprette betaling")
+    except Exception as _e:
+        st.error(f"Feil: {_e}")
     st.stop()
 
 # --- Hent data ---
