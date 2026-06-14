@@ -179,13 +179,63 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             4: ("45 min", "Easy pace - taper week, shorter session, same comfortable effort."),
         }[week]
 
-    def _sport_rx(week):
-        return {
-            1: ("30-35 min", "Technique focus - footwork drills, shadow strokes/touches and controlled rallies. Build consistency before power."),
-            2: ("40-45 min", "Tactical patterns and combinations at moderate intensity, with a few light practice points."),
-            3: ("50-60 min", "Competitive match play at full intensity - this is your peak week, push the pace."),
-            4: ("35-40 min", "Game-pace play but lighter volume - enjoy it, and notice how much sharper you feel vs. week 1."),
-        }[week]
+    def _sport_rx(week, day_idx=0):
+        """
+        day_idx: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat
+        Each week has a theme, but the session TYPE rotates across days so no two
+        consecutive days have identical prescriptions.
+        """
+        # session types rotate across days: technique / drills / match / intervals / tactical / long rally
+        day_types = {
+            0: "technique",   # Monday
+            1: "drills",      # Tuesday
+            2: "intervals",   # Wednesday
+            3: "tactical",    # Thursday
+            4: "match",       # Friday
+            5: "long_rally",  # Saturday
+        }
+        dtype = day_types.get(day_idx % 6, "technique")
+
+        prescriptions = {
+            # week 1 — Foundation: low intensity, quality > quantity
+            1: {
+                "technique":  ("30 min", "Slow-ball technique work — focus on consistent stroke mechanics and contact point. No pace, pure form."),
+                "drills":     ("30 min", "Multiball forehand & backhand drill alternations — 20 balls per set, rest 60 s. Precision over speed."),
+                "intervals":  ("30 min", "Short rally bursts: 10 strokes at 60% pace, 30 s rest × 8 sets. Learn the rhythm, not the pace."),
+                "tactical":   ("30 min", "Serve & 3rd-ball attack patterns at half pace — pick one serve variation and repeat until automatic."),
+                "match":      ("35 min", "Friendly practice match — play full points but at 70% intensity. Focus on placement, not winning."),
+                "long_rally": ("35 min", "Long-rally endurance sets: keep the ball in play as long as possible, both players aiming for 20+ shot rallies."),
+            },
+            # week 2 — Build: moderate intensity, add combinations
+            2: {
+                "technique":  ("35 min", "Technique refinement — add topspin to forehand drives. 3 sets × 15 reps each side, coach or multiball."),
+                "drills":     ("40 min", "Combination drill: FH cross-court → BH cross-court → FH down-the-line. Rotate every 15 balls."),
+                "intervals":  ("35 min", "Pressure drills: 15 strokes at 75% pace, 20 s rest × 10 sets. Slightly shorter rest than week 1."),
+                "tactical":   ("40 min", "2-point tactical patterns — serve short, attack long; or push long, attack on the return. Pick 2 patterns."),
+                "match":      ("40 min", "Practice match at 80% — play best of 5 games, track your own unforced errors per game."),
+                "long_rally": ("40 min", "Stamina rally sets: aim for 30+ shot rallies. Focus on footwork recovery between strokes."),
+            },
+            # week 3 — Push: peak intensity
+            3: {
+                "technique":  ("45 min", "Power technique — maximum topspin on FH loop. 4 sets × 12 reps, full hip rotation, push the pace."),
+                "drills":     ("50 min", "High-speed combination drills at 90%+ pace — FH loop, BH block, FH counter-loop sequence × 12 sets."),
+                "intervals":  ("50 min", "Max-intensity interval sets: 20 strokes at 95% pace, 15 s rest × 12 sets. This is your hardest session this month."),
+                "tactical":   ("50 min", "Full tactical pressure: serve variation, attack, recover — play against a strong opponent or coach feeding fast balls."),
+                "match":      ("55 min", "Competitive match play at full intensity — treat every point as a tournament point."),
+                "long_rally": ("55 min", "Peak endurance: 40+ shot rallies, full court movement, no mercy on footwork. Finish with 10 min of full-speed multiball."),
+            },
+            # week 4 — Taper: sharpen, don't grind
+            4: {
+                "technique":  ("30 min", "Light technique review — smooth strokes at 65% pace. Feel the form, don't force it."),
+                "drills":     ("30 min", "Favourite drill from week 3, half the volume. Remind your muscles what good feels like."),
+                "intervals":  ("25 min", "Short sharp sets: 10 strokes at 80% pace, 30 s rest × 6. Stay snappy but don't fatigue."),
+                "tactical":   ("30 min", "One tactical pattern only — your strongest serve + attack combination. Groove it in."),
+                "match":      ("35 min", "Relaxed practice match — enjoy it and notice how much sharper you feel vs. week 1."),
+                "long_rally": ("35 min", "Easy long-rally session — keep it flowing and light. Active recovery, not a workout."),
+            },
+        }
+        dur, rx = prescriptions[week][dtype]
+        return dur, rx
 
     def _low_rx(week):
         return ("20-30 min", "Easy effort, heart rate below ~120 bpm - pure recovery, mobility and movement.")
@@ -220,10 +270,12 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         weeks_out = []
         for week in range(1, 5):
             rows = []
+            day_idx = 0  # tracks position within the week for day-varied prescriptions
             for day_name, role in template:
                 r = _resolve_role(role)
                 if r == "rest":
                     rows.append((day_name, "Rest", "Full rest, or light stretching / mobility work (10-15 min).", "—", "rest"))
+                    day_idx += 1
                     continue
                 if r == "strength":
                     act = plan30_strength[counters["strength"] % len(plan30_strength)]
@@ -244,13 +296,14 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 elif r == "sport":
                     act = plan30_sport[counters["sport"] % len(plan30_sport)]
                     counters["sport"] += 1
-                    dur, rx = _sport_rx(week)
+                    dur, rx = _sport_rx(week, day_idx)
                     rows.append((day_name, "Sport", f"{act} - {rx}", dur, "sport"))
                 else:
                     act = plan30_low[counters["low"] % len(plan30_low)]
                     counters["low"] += 1
                     dur, rx = _low_rx(week)
                     rows.append((day_name, "Active Recovery", f"{act} - {rx}", dur, "low"))
+                day_idx += 1
             weeks_out.append(rows)
         return weeks_out
 
@@ -1660,7 +1713,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                             S("mrt", size=10, bold=True, after=8)))
         m_cols = ["#3B82F6", "#0EA5A3", "#22C55E", "#F59E0B"]
         for i, m in enumerate(milestones):
-            try: pw = float(m.get("Weight", m.get("weight", start_w or 0)))
+            try: pw = float(m.get("Projected weight (kg)", m.get("Weight", m.get("weight", start_w or 0))))
             except Exception: pw = start_w or 0
             prog = (i + 1) / len(milestones) * 100
             story.append(MilestoneRow(m.get("Week", i + 1), pw, str(m.get("Focus", m.get("focus",""))),
