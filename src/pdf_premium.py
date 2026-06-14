@@ -2368,13 +2368,19 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         story.append(VGap(8))
         story.append(VO2Visual(vo2_v, vo2_pct, vo2_rat))
         story.append(VGap(8))
+        if age_f is not None:
+            story.append(VO2PopComparisonBox(vo2_v, vo2_pct, age_f, sex_v))
+            story.append(VGap(8))
         vo2_txt, vo2_steps = insight_and_steps_vo2()
         story.append(P(vo2_txt, S("vo2_t", size=9.5, lead=14, after=8)))
+        if age_f is not None:
+            story.append(HeartRateZonesBox(age_f, vo2_pct))
+            story.append(VGap(8))
         story.append(ExpertInsightBox("Cardio Fitness — VO2max",
-            "Mandsager et al., JAMA Network Open 2018, found that cardiorespiratory fitness in the "
-            "top quartile was associated with roughly 45% lower all-cause mortality compared to the "
-            "lowest quartile — a larger effect than smoking cessation, diabetes, or heart disease "
-            "history. VO2max is trainable at any age."))
+            "Mandsager et al., JAMA Network Open 2018 (doi:10.1001/jamanetworkopen.2018.3605) found "
+            "that cardiorespiratory fitness in the top quartile was associated with roughly 45% lower "
+            "all-cause mortality vs. the lowest quartile — a larger effect than smoking cessation, "
+            "diabetes, or heart disease history. VO2max is trainable at any age."))
         story.append(VGap(6))
         story.append(ActionableMilestoneBox(vo2_steps))
         story.append(PageBreak())
@@ -2394,6 +2400,9 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             story.append(VGap(4))
             story.append(P("Green bars are working in your favour. Amber/red bars add years — start with the longest one.",
                             S("fbl", size=7.5, color=MUTED, italic=True, after=8)))
+    if age_f is not None:
+        story.append(SleepCalculatorBox(age_f))
+        story.append(VGap(8))
     story.append(P("Your 5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)))
     story.append(RadarChart(radar))
     story.append(VGap(4))
@@ -2402,10 +2411,10 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
     if bio_v is not None and age_f is not None:
         story.append(VGap(6))
         story.append(ExpertInsightBox("Biological Age",
-            "Biological-age models popularised by researchers such as Steve Horvath and Morgan "
-            "Levine use measurable biomarkers and lifestyle factors to estimate how your body is "
-            "ageing relative to the calendar. Unlike your date of birth, this number moves — in "
-            "either direction — based on the choices in this report."))
+            "Biological-age models developed by researchers such as Steve Horvath (doi:10.1186/"
+            "gb-2013-14-10-r115) and Morgan Levine use measurable biomarkers and lifestyle factors "
+            "to estimate how your body ages relative to the calendar. Unlike your date of birth, "
+            "this number moves — in either direction — based on the choices in this report."))
         story.append(VGap(6))
         story.append(ActionableMilestoneBox(bio_steps))
     story.append(PageBreak())
@@ -2452,6 +2461,17 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         story.append(P("Macros are estimated from Mifflin-St Jeor + standard ratios for your goal. "
                         "Re-check every 2–3 weeks against real-world progress, not the formula.",
                         S("dn", size=7.5, color=MUTED, italic=True, after=6)))
+        # Protein per meal breakdown
+        meal_count = 4
+        protein_per_meal = protein_g // meal_count
+        chicken_g = int(protein_per_meal / 0.31)   # ~31 g protein per 100 g chicken breast
+        eggs_count = round(protein_per_meal / 6.3)  # ~6.3 g protein per egg
+        story.append(P(
+            f"🍗 <b>Protein per meal:</b> {protein_g} g/day ÷ {meal_count} meals = "
+            f"<b>{protein_per_meal} g per meal</b> — e.g. {chicken_g} g chicken breast "
+            f"or {eggs_count} eggs per sitting.",
+            S("ppm", size=8.5, lead=13, color=TEXT, after=6)
+        ))
 
         hydration_l = round(wt * 0.033, 1)
         story.append(P(f"💧 Hydration target: roughly <b>{hydration_l} litres/day</b>, more on training days "
@@ -2466,9 +2486,11 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             story.append(MetricCard(ex_metrics, card_h=60))
             story.append(VGap(6))
         story.append(ExpertInsightBox("Nutrition", nut_txt[:0] + (
-            "Calorie needs were estimated using the Mifflin-St Jeor equation, adjusted for your "
-            "logged activity (TDEE). This is one of the most validated resting-metabolism formulas "
-            "in clinical use, typically accurate within 10% for most adults."
+            "Calorie needs were estimated using the Mifflin-St Jeor equation (doi:10.1093/ajcn/"
+            "51.2.241), adjusted for your logged activity (TDEE). This is one of the most validated "
+            "resting-metabolism formulas in clinical use, typically accurate within 10% for most "
+            "adults. Protein target of 1.8 g/kg/day is supported by Morton et al., BJSM 2018 "
+            "(doi:10.1136/bjsports-2017-097608)."
         )))
         story.append(VGap(6))
         story.append(ActionableMilestoneBox(nut_steps))
@@ -2564,13 +2586,29 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         if start_w is not None:
             story.append(P(f"Starting weight: <b>{start_w:.1f} kg</b>  →  Target: <b>{end_w:.1f} kg</b>",
                             S("mrt", size=10, bold=True, after=8)))
+        # Pad to 12 weeks if the app only returned fewer milestones
+        full_milestones = list(milestones)
+        if len(full_milestones) < 12 and start_w is not None and end_w is not None:
+            last = full_milestones[-1] if full_milestones else {}
+            try: last_w = float(last.get("Projected weight (kg)", last.get("Weight", last.get("weight", end_w))))
+            except Exception: last_w = end_w
+            weekly_delta = (end_w - last_w) / max(1, 12 - len(full_milestones))
+            phase_labels = ["Consolidate", "Build strength", "Refine nutrition", "Push cardio",
+                            "Maintain deficit", "Build habits", "Reassess & adjust",
+                            "Progressive overload", "Fine-tune macros", "Peak week",
+                            "Taper & test", "Final reassessment"]
+            for extra_i in range(12 - len(full_milestones)):
+                wk = len(full_milestones) + extra_i + 1
+                proj_w = last_w + weekly_delta * (extra_i + 1)
+                focus = phase_labels[min(extra_i, len(phase_labels) - 1)]
+                full_milestones.append({"Week": wk, "Projected weight (kg)": round(proj_w, 1), "Focus": focus})
         m_cols = ["#3B82F6", "#0EA5A3", "#22C55E", "#F59E0B"]
-        for i, m in enumerate(milestones):
+        for i, m in enumerate(full_milestones):
             try: pw = float(m.get("Projected weight (kg)", m.get("Weight", m.get("weight", start_w or 0))))
             except Exception: pw = start_w or 0
-            prog = (i + 1) / len(milestones) * 100
+            prog = (i + 1) / len(full_milestones) * 100
             story.append(MilestoneRow(m.get("Week", i + 1), pw, str(m.get("Focus", m.get("focus",""))),
-                                       prog, m_cols[i % len(m_cols)], (i == len(milestones) - 1)))
+                                       prog, m_cols[i % len(m_cols)], (i == len(full_milestones) - 1)))
         story.append(VGap(8))
         story.append(P("If you fall off track for a week — that's normal. Resume at your last "
                         "completed milestone rather than trying to 'catch up'. Consistency over a "
