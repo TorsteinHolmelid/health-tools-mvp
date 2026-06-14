@@ -115,6 +115,7 @@ else:
                     st.session_state["authenticated"] = True
                     st.session_state["user_id"] = user.id
                     st.session_state["user_email"] = email
+                    st.session_state["premium_checked"] = False  # ← legg til denne
                     st.rerun()
 
         with tab2:
