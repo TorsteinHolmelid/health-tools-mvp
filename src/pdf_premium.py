@@ -1801,7 +1801,153 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 bar_y = 14 + j*16; c.setFillColor(STROKE); c.roundRect(bx, bar_y, bw2, 8, 3, fill=1, stroke=0)
                 c.setFillColor(cl); c.roundRect(bx, bar_y, (val/max_age)*bw2, 8, 3, fill=1, stroke=0)
 
-    class FactorBars(Flowable):
+    class HeartRateZonesBox(Flowable):
+        """Premium HR zones panel — calculates real bpm from age and displays 5 zones."""
+        def __init__(self, age, vo2_pct, width=CONTENT_W):
+            super().__init__()
+            self.age = age; self.vo2_pct = vo2_pct; self.w = width
+            hr_max = 220 - int(age)
+            self.hr_max = hr_max
+            self.zones = [
+                (1, "Zone 1", "Active Recovery",    int(hr_max*0.50), int(hr_max*0.60), "#64748B", "Warm-up, cool-down, rest days"),
+                (2, "Zone 2", "Aerobic Base",        int(hr_max*0.60), int(hr_max*0.70), "#22C55E", "Fat burning, conversational — most of your easy sessions"),
+                (3, "Zone 3", "Aerobic Power",       int(hr_max*0.70), int(hr_max*0.80), "#3B82F6", "Comfortably hard — tempo runs, sustained efforts"),
+                (4, "Zone 4", "Lactate Threshold",   int(hr_max*0.80), int(hr_max*0.90), "#F59E0B", "Hard — interval reps, race-pace efforts"),
+                (5, "Zone 5", "VO2max / Neuromuscular", int(hr_max*0.90), hr_max,        "#EF4444", "Maximum effort — short sprints only"),
+            ]
+            self.h = 30 + len(self.zones) * 28 + 20
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(CARD); c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setStrokeColor(STROKE); c.setLineWidth(0.6); c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
+            # header
+            c.setFillColor(GOLD); c.roundRect(0, h-26, w, 26, 6, fill=1, stroke=0)
+            c.rect(0, h-26, w*0.5, 26, fill=1, stroke=0)
+            c.setFillColor(BG); c.setFont("Helvetica-Bold", 8.5)
+            c.drawString(14, h-17, f"YOUR TRAINING HEART RATE ZONES  ·  HRmax = {self.hr_max} bpm  ·  Age {int(self.age)}")
+            # column headers
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6)
+            c.drawString(14,  h-38, "ZONE"); c.drawString(52, h-38, "NAME")
+            c.drawString(170, h-38, "BPM RANGE"); c.drawString(250, h-38, "USE THIS FOR")
+            c.setStrokeColor(STROKE); c.setLineWidth(0.4); c.line(10, h-42, w-10, h-42)
+            for i, (z, name, label, lo, hi, col, use) in enumerate(self.zones):
+                y = h - 56 - i*28
+                # zone pill
+                c.setFillColor(HexColor(col)); c.roundRect(14, y+2, 26, 16, 4, fill=1, stroke=0)
+                c.setFillColor(white); c.setFont("Helvetica-Bold", 8); c.drawCentredString(27, y+7, f"Z{z}")
+                # name + label
+                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 8.5); c.drawString(52, y+10, name)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(52, y+1, label)
+                # bpm
+                c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold", 10)
+                c.drawString(170, y+4, f"{lo}–{hi} bpm")
+                # bar
+                bx = 245; bw2 = w - bx - 14; bar_frac = (hi - lo) / self.hr_max
+                bar_off = lo / self.hr_max
+                c.setFillColor(STROKE); c.roundRect(bx, y+8, bw2, 8, 2, fill=1, stroke=0)
+                c.setFillColor(HexColor(col)); c.setFillAlpha(0.35)
+                c.roundRect(bx + bar_off*bw2, y+8, bar_frac*bw2, 8, 2, fill=1, stroke=0)
+                c.setFillAlpha(1.0)
+                # use text
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+                c.drawString(bx, y+1, use)
+                if i < len(self.zones)-1:
+                    c.setStrokeColor(STROKE); c.setLineWidth(0.3); c.line(10, y-2, w-10, y-2)
+            # footnote
+            c.setFillColor(DIM); c.setFont("Helvetica-Oblique", 6)
+            c.drawString(14, 6, f"HRmax estimated as 220 − age. Zones may vary ±5–10 bpm individually. Confirm with a ramp test for precision.")
+
+    class SleepCalculatorBox(Flowable):
+        """Premium sleep window calculator based on age."""
+        def __init__(self, age, width=CONTENT_W):
+            super().__init__()
+            self.age = int(age); self.w = width; self.h = 108
+            if age < 26: self.rec_h = 9
+            elif age < 65: self.rec_h = 8
+            else: self.rec_h = 7
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(HexColor("#04080F")); c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setStrokeColor(GLOW); c.setLineWidth(0.8); c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
+            c.setFillColor(GLOW); c.roundRect(0, 0, 4, h, 2, fill=1, stroke=0)
+            # icon + header
+            c.setFillColor(GLOW); c.setFont("Helvetica-Bold", 8); c.drawString(14, h-16, "🌙  SLEEP OPTIMISATION CALCULATOR")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+            c.drawString(14, h-28, f"For a {self.age}-year-old, the recommended sleep duration is {self.rec_h}–{self.rec_h+1} hours per night (NSF guidelines).")
+            # windows
+            wake_times = ["05:30", "06:00", "06:30", "07:00", "07:30"]
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(14, h-44, "IF YOU WAKE AT")
+            c.drawString(130, h-44, f"GO TO BED BY ({self.rec_h}h sleep)")
+            c.setStrokeColor(STROKE); c.setLineWidth(0.3); c.line(14, h-48, w-14, h-48)
+            for i, wake in enumerate(wake_times):
+                wh, wm = int(wake[:2]), int(wake[3:])
+                bh2 = (wh - self.rec_h) % 24; bm2 = wm
+                bed_str = f"{bh2:02d}:{bm2:02d}"
+                y = h - 60 - i*10
+                is_ideal = i == 2
+                col2 = GLOW if is_ideal else MUTED
+                c.setFillColor(col2); c.setFont("Helvetica-Bold" if is_ideal else "Helvetica", 7.5)
+                c.drawString(14, y, wake + ("  ← ideal" if is_ideal else ""))
+                c.drawString(130, y, bed_str + ("  ← target bedtime" if is_ideal else ""))
+            c.setFillColor(DIM); c.setFont("Helvetica-Oblique", 6)
+            c.drawString(14, 6, "Consistent timing (same bedtime ± 30 min every night) matters as much as duration for biological age.")
+
+    class VO2PopComparisonBox(Flowable):
+        """Shows user's VO2max vs population average for their age/sex."""
+        def __init__(self, vo2_val, percentile, age, sex, width=CONTENT_W):
+            super().__init__()
+            self.vo2 = vo2_val; self.pct = float(percentile or 0)
+            self.age = int(age); self.sex = str(sex).upper(); self.w = width; self.h = 90
+            # ACSM age/sex VO2max norms (ml/kg/min), 20–29 through 60–69
+            norms_m = {(20,29):44.0,(30,39):42.4,(40,49):40.0,(50,59):36.7,(60,69):33.1}
+            norms_f = {(20,29):38.6,(30,39):36.3,(40,49):33.1,(50,59):29.7,(60,69):26.5}
+            norms = norms_m if self.sex.startswith("M") else norms_f
+            self.pop_avg = next((v for (lo,hi),v in norms.items() if lo <= self.age <= hi), 38.0)
+            self.pop_good = self.pop_avg * 1.15
+            self.pop_exc  = self.pop_avg * 1.30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(CARD2); c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
+            col = vo2_color(self.pct)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(14, h-14, f"VO2MAX COMPARISON  ·  {self.sex} AGE {self.age}")
+            # three columns: You / Population avg / Your target
+            cols_data = [
+                ("You",               f"{self.vo2:.1f}",    "ml/kg/min", col),
+                (f"Avg ({self.sex} {self.age}s)", f"{self.pop_avg:.1f}", "ml/kg/min", MUTED),
+                ("Good threshold",    f"{self.pop_good:.1f}","ml/kg/min", GOOD),
+                ("Excellent",         f"{self.pop_exc:.1f}", "ml/kg/min", ACCENT),
+            ]
+            cw4 = (w - 20) / 4
+            for i, (lbl, val, unit, cl) in enumerate(cols_data):
+                x = 10 + i*cw4
+                c.setFillColor(cl); c.setFont("Helvetica-Bold", 14); c.drawString(x+4, h-38, val)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawString(x+4, h-48, unit)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(x+4, h-59, lbl)
+                if i < 3:
+                    c.setStrokeColor(STROKE); c.setLineWidth(0.4); c.line(x+cw4, h-20, x+cw4, h-65)
+            # visual bar comparing user to average
+            bx = 14; bw2 = w - 28; by = 16; bh2 = 10
+            max_v = max(self.vo2, self.pop_exc) * 1.1
+            # avg line
+            ax = bx + (self.pop_avg / max_v) * bw2
+            c.setStrokeColor(MUTED); c.setLineWidth(1); c.line(ax, by-4, ax, by+bh2+4)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(ax, by-8, "Avg")
+            # good line
+            gx = bx + (self.pop_good / max_v) * bw2
+            c.setStrokeColor(GOOD); c.setLineWidth(0.8); c.line(gx, by-4, gx, by+bh2+4)
+            # user bar
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh2, 3, fill=1, stroke=0)
+            ux = bx + (self.vo2 / max_v) * bw2
+            c.setFillColor(col); c.roundRect(bx, by, max(8, ux-bx), bh2, 3, fill=1, stroke=0)
+            c.setFillColor(DIM); c.setFont("Helvetica-Oblique", 6)
+            c.drawString(14, 4, "Reference: ACSM VO2max norms by age and sex (ml/kg/min).")
+
+
         def __init__(self, factors, width=CONTENT_W):
             super().__init__()
             self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta", 0))), reverse=True)[:8]
