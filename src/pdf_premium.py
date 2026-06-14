@@ -140,44 +140,500 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
     plan30_sport    = _sport_sel or []
     plan30_low      = _low_sel or ["Walking (casual)"]
 
-    def _strength_rx(week):
-        return {
-            1: ("45 min", "3 sets x 10-12 reps per exercise, RPE 6-7 - focus on full range of motion and clean technique."),
-            2: ("50 min", "3 sets x 10 reps, RPE 7 - add 2.5-5% load or 1-2 reps vs. last week on your main lifts."),
-            3: ("55 min", "4 sets x 8 reps, RPE 8 - your heaviest week. Add a drop-set on the final set of your last exercise."),
-            4: ("40 min", "3 sets x 8 reps, RPE 7 - slight taper in volume, keep the weight from week 3 to lock in gains."),
-        }[week]
+    def _strength_rx(week, day_idx=0, activity=""):
+        """
+        Per-activity, per-day, per-week strength prescriptions.
+        Day types: 0=push, 1=pull, 2=legs/core, 3=push, 4=pull, 5=full-body
+        (mirrors the existing STRENGTH_SPLITS rotation but adds activity-specific cues)
+        """
+        day_types = {0: "push", 1: "pull", 2: "legs", 3: "push", 4: "pull", 5: "full"}
+        dtype = day_types.get(day_idx % 6, "push")
+        act = activity.lower()
 
-    def _cardio_easy_rx(week):
-        return {
-            1: ("30 min", "Zone 2 (conversational pace, ~60-70% HRmax) - build your aerobic base."),
-            2: ("35 min", "Zone 2 - 5 minutes longer than last week, same easy effort."),
-            3: ("35 min", "Zone 2, with 4 x 20-second relaxed pick-ups in the last 10 minutes."),
-            4: ("30 min", "Zone 2 - taper week, keep it genuinely easy."),
-        }[week]
+        # ── STRENGTH TRAINING (WEIGHTS) ──────────────────────────────────────────
+        if "strength training" in act or "weights" in act:
+            P = {
+                1: {
+                    "push":  ("45 min", "Bench press 3×10, overhead press 3×10, tricep dips 3×12. RPE 6 — nail the form, no grinding reps."),
+                    "pull":  ("45 min", "Barbell row 3×10, lat pulldown 3×10, face pulls 3×15. RPE 6 — full stretch at the bottom of every rep."),
+                    "legs":  ("45 min", "Squat 3×10, Romanian deadlift 3×10, leg press 3×12. RPE 6 — controlled tempo, 3 s down."),
+                    "full":  ("45 min", "Deadlift 3×8, push-up 3×15, goblet squat 3×12, plank 3×45 s. Full-body primer, moderate load."),
+                },
+                2: {
+                    "push":  ("50 min", "Bench press 3×10 (+2.5 kg vs W1), incline DB press 3×10, lateral raises 3×15. RPE 7."),
+                    "pull":  ("50 min", "Barbell row 3×10 (+2.5 kg), pull-ups 3×8, seated cable row 3×12. RPE 7 — squeeze the scapula."),
+                    "legs":  ("50 min", "Squat 3×10 (+2.5 kg), hip thrust 3×12, walking lunges 3×10 each leg. RPE 7."),
+                    "full":  ("50 min", "Deadlift 3×8 (+5 kg), dips 3×10, Bulgarian split squat 3×10, plank 3×60 s. Progressive load."),
+                },
+                3: {
+                    "push":  ("55 min", "Bench press 4×8 (heaviest weight this month), OHP 4×8, cable fly 3×12 drop-set on last set. RPE 8."),
+                    "pull":  ("55 min", "Barbell row 4×8 (heavy), weighted pull-ups 4×6, face pulls 3×15. RPE 8 — peak week, push the load."),
+                    "legs":  ("55 min", "Squat 4×8 (heaviest), stiff-leg deadlift 4×8, leg press 4×10 drop-set. RPE 8."),
+                    "full":  ("55 min", "Deadlift 4×6 (heaviest), push-press 3×8, front squat 3×8, ab wheel 3×10. Peak intensity full-body."),
+                },
+                4: {
+                    "push":  ("40 min", "Bench press 3×8 (same weight as W3, no new PR), OHP 3×8, triceps 2×12. RPE 7 — lock in, don't push."),
+                    "pull":  ("40 min", "Row 3×8 (W3 weight), lat pulldown 3×10, face pulls 2×15. RPE 7 — taper, protect the gains."),
+                    "legs":  ("40 min", "Squat 3×8 (W3 weight), hip thrust 3×10, leg curl 2×12. RPE 7 — legs fresh for reassessment."),
+                    "full":  ("40 min", "Deadlift 3×5 (W3 weight), push-up 2×15, goblet squat 2×10, plank 2×45 s. Light full-body flush."),
+                },
+            }
 
-    def _cardio_interval_rx(week, pct):
-        if pct is not None and pct < 50:
+        # ── BOXING / MARTIAL ARTS ────────────────────────────────────────────────
+        elif "boxing" in act or "martial arts" in act:
+            P = {
+                1: {
+                    "push":  ("40 min", "Jab–cross technique on bag: 3×3 min rounds, 60 s rest. Focus on hip rotation and punch extension, not power."),
+                    "pull":  ("40 min", "Defensive movement: slip, roll, parry drills with a partner or mirror × 3×3 min. Build the habit."),
+                    "legs":  ("40 min", "Footwork fundamentals: in/out, lateral, pivot × 4×3 min. Stance, balance and weight transfer."),
+                    "push":  ("40 min", "Combination work: 1-2, 1-2-3, 1-2-3-2 on bag × 4×2 min. Clean technique at 60% power."),
+                    "pull":  ("40 min", "Clinch and grappling defence drills × 3×3 min. Posture, head position, hand control."),
+                    "full":  ("40 min", "Shadow boxing: 4×3 min continuous movement, mix offence and defence. Aerobic base session."),
+                },
+                2: {
+                    "push":  ("45 min", "Power combinations on bag: 1-2-hook, uppercut combos × 5×3 min, 60 s rest. 75% power."),
+                    "pull":  ("45 min", "Defensive combinations: slip-cross, roll-hook, parry-jab counter × 4×3 min. Speed up the defence."),
+                    "legs":  ("45 min", "Footwork + punch combos: step in/out with each combo × 4×3 min. Punches come from the feet."),
+                    "push":  ("45 min", "Pad work or bag: 4×3 min moderate intensity — vary combo length from 2 to 6 punches."),
+                    "pull":  ("45 min", "Sparring technique (light): 4×2 min controlled sparring or partner drills at 50% contact."),
+                    "full":  ("45 min", "Shadow boxing + bag superset: 2 min shadow, 2 min bag × 5 rounds. Build work capacity."),
+                },
+                3: {
+                    "push":  ("50 min", "Heavy bag power rounds: 6×3 min at 90% effort, 45 s rest. Hardest hitting session this month."),
+                    "pull":  ("50 min", "Defensive gauntlet: partner throws combos, you slip/roll continuously × 6×2 min. Max reaction speed."),
+                    "legs":  ("50 min", "Footwork hell: lateral shuffle + pivot + sprint × 8×2 min. 90% effort. Test the legs."),
+                    "push":  ("50 min", "Pad work peak: 6×3 min at near-competition intensity. No holding back."),
+                    "pull":  ("50 min", "Full sparring or hard partner drills: 5×3 min. Treat this as a real fight."),
+                    "full":  ("50 min", "Full fight simulation: 8×3 min shadow + bag alternating. Cardio and technique at peak intensity."),
+                },
+                4: {
+                    "push":  ("35 min", "Easy bag work: 4×2 min light combinations at 60% — feel sharp, not fatigued."),
+                    "pull":  ("35 min", "Slow defensive drills: slips and rolls at 65% — groove the movements, no pressure."),
+                    "legs":  ("35 min", "Light footwork: 4×2 min easy patterns, stay loose and mobile."),
+                    "push":  ("35 min", "Light pad work: 3×2 min easy combos. Taper, stay sharp."),
+                    "pull":  ("35 min", "Technical shadow boxing: 4×2 min — visualise the perfect defence and counter."),
+                    "full":  ("35 min", "Easy shadow boxing: 4×2 min continuous. Aerobic flush, finish feeling fresh."),
+                },
+            }
+
+        # ── ROCK CLIMBING / BOULDERING ───────────────────────────────────────────
+        elif "climbing" in act or "bouldering" in act:
+            P = {
+                1: {
+                    "push":  ("45 min", "Slab climbing technique: 4 easy-grade routes focusing on footwork precision and quiet feet. No overgripping."),
+                    "pull":  ("45 min", "Hangboard protocol: 7 s on / 3 s off × 6 reps per hold, 3 hold types at 60% effort. Build finger tendon tolerance."),
+                    "legs":  ("45 min", "Footwork drills: climb 3 routes using only slab technique — no pulling with arms. Legs do the work."),
+                    "push":  ("45 min", "Overhang exploration: 3 easy overhangs at 60% effort — practice body positioning and hip-to-wall proximity."),
+                    "pull":  ("45 min", "Dead-hang endurance: 10 s hang / 50 s rest × 8 sets on a jug. Gentle finger loading."),
+                    "full":  ("45 min", "Volume day: 6 easy routes top-to-bottom without resting on the wall. Build movement fluency."),
+                },
+                2: {
+                    "push":  ("50 min", "Technical slab: 5 moderate-grade routes — focus on precise foot placement, trust the rubber."),
+                    "pull":  ("50 min", "Hangboard build: 10 s on / 5 s off × 6 reps, add one harder hold type vs. week 1."),
+                    "legs":  ("50 min", "Dynamic movement: 3 moderate overhangs practising hip flags and drop-knees. Control the swing."),
+                    "push":  ("50 min", "Problem-solving: 5 moderate-grade boulders you haven't sent — read the route before pulling on."),
+                    "pull":  ("50 min", "Lock-off training: 3 s lock-off at 90°, 120°, 150° × 5 reps each arm. Build pulling strength."),
+                    "full":  ("50 min", "Circuit day: 8 moderate routes, 3 min rest between each. Volume with moderate difficulty."),
+                },
+                3: {
+                    "push":  ("55 min", "Hard project attempts: 3 routes at your limit — 5 attempts each with full rest between. Peak week."),
+                    "pull":  ("55 min", "Hangboard peak: 10 s on / 5 s off × 8 reps on crimps and slopers. Heaviest finger loading this month."),
+                    "legs":  ("55 min", "Powerful dynamics: campus ladder moves or hard boulders with dynamic throws × 6 problems. Max intensity."),
+                    "push":  ("55 min", "Redpoint attempts: your hardest project, fresh skin, 6 attempts. This is your peak climbing session."),
+                    "pull":  ("55 min", "Max pulling: weighted pull-ups or system board on hardest holds × 4×5 reps. Peak strength session."),
+                    "full":  ("55 min", "Hard circuit: 6 near-limit routes, full rest, maximum quality. Push the ceiling."),
+                },
+                4: {
+                    "push":  ("40 min", "Easy slab cruising: 4 easy routes at 65% — enjoy the movement, no projecting."),
+                    "pull":  ("40 min", "Light hangboard: 7 s on / 53 s off × 4 reps on jugs only. Maintain, don't stress the tendons."),
+                    "legs":  ("40 min", "Gentle traversing: low wall traverse for 20 min — footwork focus, easy effort."),
+                    "push":  ("40 min", "Relaxed bouldering: 4 easy problems — notice how much more automatic the movement feels."),
+                    "pull":  ("40 min", "Easy lock-offs: 2 s hold, 3 hold positions × 3 reps each arm. Taper, stay fresh."),
+                    "full":  ("40 min", "Fun climbing: pick 4 routes you enjoy at easy grade. Taper week — finish smiling."),
+                },
+            }
+
+        # ── HIKING (INCLINE) ─────────────────────────────────────────────────────
+        elif "hiking" in act:
+            P = {
+                1: {
+                    "push":  ("45 min", "Incline treadmill or hill walk at 6–8% gradient, 5 km/h — focus on upright posture and heel-to-toe strike."),
+                    "pull":  ("45 min", "Descent practice: find a 15–20% downhill and walk down slowly, 4 × 5 min. Quad load, controlled pace."),
+                    "legs":  ("45 min", "Uneven terrain walk: forest path or trail at easy effort — ankle stability and ground feel are the focus."),
+                    "push":  ("45 min", "Weighted pack introduction: 5 kg pack, flat-to-moderate trail, 45 min. Posture over pace."),
+                    "pull":  ("45 min", "Step-up strength: find stairs or a step, 3×15 each leg with a controlled 3 s up / 3 s down tempo."),
+                    "full":  ("50 min", "Long easy hike: 50 min continuous at conversational pace, mixed terrain if possible."),
+                },
+                2: {
+                    "push":  ("50 min", "Incline hike at 8–10% gradient — push the pace slightly vs. week 1, same 5 km/h but steeper."),
+                    "pull":  ("50 min", "Descent intervals: 6 × 5 min fast descent, 3 min flat recovery. Build eccentric quad tolerance."),
+                    "legs":  ("50 min", "Trail run-walk: alternate 3 min easy jog / 5 min hike × 5 rounds on mixed terrain."),
+                    "push":  ("50 min", "Weighted pack build: 8 kg pack, moderate incline trail, 50 min at steady pace."),
+                    "pull":  ("50 min", "Step-up + calf raise superset: 3×12 each leg, add 5 kg weight vest if available."),
+                    "full":  ("60 min", "Endurance hike: 60 min continuous, mixed gradient — include at least 2 sustained uphills."),
+                },
+                3: {
+                    "push":  ("60 min", "Steep incline hike: 10–15% gradient, 55 min sustained effort. Hardest ascent session this month."),
+                    "pull":  ("55 min", "Descent power session: 8 × 5 min fast downhill, 2 min flat rest. Max eccentric loading."),
+                    "legs":  ("55 min", "Trail intervals: 5 × 4 min hard uphill effort, walk 3 min down for recovery. Push the VO2max."),
+                    "push":  ("60 min", "Heavy pack hike: 10–12 kg pack, sustained incline trail, 55 min. Peak load this month."),
+                    "pull":  ("55 min", "Single-leg strength peak: pistol squat progressions or step-ups with max load × 4×10 each leg."),
+                    "full":  ("70 min", "Long hard hike: 70 min, max elevation gain you can find. This is your peak endurance session."),
+                },
+                4: {
+                    "push":  ("40 min", "Easy incline walk: 5% gradient, 4.5 km/h, 40 min — legs fresh, lungs easy."),
+                    "pull":  ("35 min", "Gentle descent walk: easy grade, slow pace, 30 min. Flush out the legs."),
+                    "legs":  ("40 min", "Flat trail walk: 40 min conversational pace — active recovery, no hills."),
+                    "push":  ("40 min", "Light pack walk: 4 kg pack, flat-moderate terrain, 40 min. Taper, stay mobile."),
+                    "pull":  ("35 min", "Easy step-ups: 2×10 each leg, bodyweight only. Stay loose, don't tire."),
+                    "full":  ("45 min", "Easy nature hike: 45 min at your own comfortable pace. Enjoy it — notice how strong you feel."),
+                },
+            }
+
+        # ── GENERIC STRENGTH FALLBACK ─────────────────────────────────────────────
+        else:
+            P = {
+                1: {
+                    "push":  ("45 min", "Push movements (press, push-up, dip): 3×10 at RPE 6 — establish the baseline, clean form only."),
+                    "pull":  ("45 min", "Pull movements (row, pull-up, curl): 3×10 at RPE 6 — full range, slow eccentric."),
+                    "legs":  ("45 min", "Leg movements (squat, hinge, lunge): 3×10 at RPE 6 — 3 s tempo on the way down."),
+                    "full":  ("45 min", "Full-body circuit: one push + one pull + one leg + one core exercise, 3 rounds. Moderate load."),
+                },
+                2: {
+                    "push":  ("50 min", "Push movements: 3×10, add 2.5–5% load vs. week 1. RPE 7."),
+                    "pull":  ("50 min", "Pull movements: 3×10, add load or 1–2 reps vs. week 1. RPE 7."),
+                    "legs":  ("50 min", "Leg movements: 3×10 (+load), add one unilateral exercise. RPE 7."),
+                    "full":  ("50 min", "Full-body circuit: increase load or reps by 5–10% across all exercises. RPE 7."),
+                },
+                3: {
+                    "push":  ("55 min", "Push movements: 4×8 at heaviest load this month. RPE 8 — push hard, technique must hold."),
+                    "pull":  ("55 min", "Pull movements: 4×8 heavy. Drop-set on the final set of your last exercise. RPE 8."),
+                    "legs":  ("55 min", "Leg movements: 4×8 heavy. Add a drop-set or paused reps on squats/hinges. RPE 8."),
+                    "full":  ("55 min", "Full-body peak: 4 rounds, max load you can handle with good form. Hardest session this month."),
+                },
+                4: {
+                    "push":  ("40 min", "Push movements: 3×8, same weight as week 3 — no new PRs. RPE 7. Taper."),
+                    "pull":  ("40 min", "Pull movements: 3×8, maintain week 3 load. RPE 7. Protect the gains."),
+                    "legs":  ("40 min", "Leg movements: 3×8 at week 3 weight. Keep legs fresh for reassessment."),
+                    "full":  ("40 min", "Light full-body flush: 2 rounds, moderate load — finish feeling good, not drained."),
+                },
+            }
+
+        dur, rx = P[week][dtype]
+        return dur, rx
+
+    def _cardio_easy_rx(week, activity=""):
+        """Activity-specific easy cardio prescriptions with weekly progression."""
+        act = activity.lower()
+
+        if "running" in act or "jogging" in act:
             return {
-                1: ("~25 min", "5 x 2 min moderately hard / 2 min easy (Zone 3-4) - build interval tolerance."),
-                2: ("~28 min", "6 x 2 min moderately hard / 2 min easy."),
-                3: ("~30 min", "6 x 3 min hard / 2 min easy - your toughest interval session this month."),
-                4: ("~22 min", "4 x 2 min hard / 2 min easy - taper, stay sharp."),
+                1: ("30 min", "Easy run at conversational pace (~65% HRmax) — you should be able to say full sentences. No watching pace."),
+                2: ("35 min", "Easy run, 5 min longer than week 1 — same effort, let pace come naturally."),
+                3: ("35 min", "Easy run with 4 × 20 s relaxed strides in the final 10 min — accelerate gently, don't sprint."),
+                4: ("30 min", "Easy run, taper week — genuinely easy, arrive at next session fresh."),
             }[week]
-        return {
-            1: ("~28 min", "6 x 2 min hard (Zone 4-5) / 2 min easy recovery."),
-            2: ("~32 min", "6 x 3 min hard / 2 min easy."),
-            3: ("~35 min", "8 x 2 min hard / 90 sec easy - your hardest session this month."),
-            4: ("~24 min", "4 x 3 min hard / 2 min easy - taper, keep the legs snappy."),
-        }[week]
 
-    def _cardio_long_rx(week):
-        return {
-            1: ("50 min", "Steady, easy pace - pure volume, conversational effort throughout."),
-            2: ("60 min", "Steady, easy pace - 10 minutes longer than last week."),
-            3: ("70 min", "Steady pace, with the last 10 minutes slightly brisker than the rest."),
-            4: ("45 min", "Easy pace - taper week, shorter session, same comfortable effort."),
-        }[week]
+        elif "cycling" in act:
+            return {
+                1: ("30 min", "Zone 2 ride at ~65% HRmax — flat or gentle rolling terrain, cadence 80–90 rpm, comfortable gear."),
+                2: ("35 min", "Zone 2, 5 min longer — same easy effort, focus on smooth pedal stroke throughout."),
+                3: ("35 min", "Zone 2 with 4 × 30 s relaxed cadence increases (100+ rpm) in the final 10 min. Keep effort easy."),
+                4: ("30 min", "Easy Zone 2 spin — taper week, shorter session, same comfortable effort."),
+            }[week]
+
+        elif "swimming" in act:
+            return {
+                1: ("30 min", "Easy freestyle at ~65% effort — focus on stroke length and bilateral breathing. No splits, just feel."),
+                2: ("35 min", "Easy swim, 5 min longer — alternate 100 m freestyle / 50 m backstroke to vary the load."),
+                3: ("35 min", "Easy swim with 4 × 25 m relaxed tempo increases mid-session. Stroke quality must hold at speed."),
+                4: ("30 min", "Easy mixed strokes — taper week, focus on feel and flow, not distance."),
+            }[week]
+
+        elif "rowing" in act:
+            return {
+                1: ("30 min", "Easy row at 18–20 spm, damper 4–5, ~65% effort — focus on sequencing: legs → body → arms each stroke."),
+                2: ("35 min", "Easy row, 5 min longer — maintain the sequencing, add 1 spm if it still feels comfortable."),
+                3: ("35 min", "Easy row with 4 × 1 min at 22 spm in the final 10 min — rate goes up, effort stays easy."),
+                4: ("30 min", "Easy row at 18 spm — taper week, smooth technique, arrive fresh at the next session."),
+            }[week]
+
+        elif "elliptical" in act:
+            return {
+                1: ("30 min", "Easy elliptical at ~65% HRmax — zero incline, moderate resistance, focus on full push-pull arm drive."),
+                2: ("35 min", "Easy elliptical, 5 min longer — add 1 resistance level if heart rate feels too low."),
+                3: ("35 min", "Easy elliptical with 4 × 30 s higher cadence bursts in the last 10 min. Effort stays easy."),
+                4: ("30 min", "Easy elliptical — taper week, comfortable resistance, shorter session."),
+            }[week]
+
+        elif "stair" in act:
+            return {
+                1: ("25 min", "Stairmaster or stair walk at level 4–6 (~65% effort) — upright posture, don't lean on the rails."),
+                2: ("30 min", "Stair walk, 5 min longer — add 1 level if heart rate stays below 70% HRmax."),
+                3: ("30 min", "Stair walk with 4 × 1 min at +2 levels in the last 10 min. Return to base level to recover."),
+                4: ("25 min", "Easy stair walk — taper week, base level, comfortable effort."),
+            }[week]
+
+        elif "hiit" in act:
+            return {
+                1: ("20 min", "Active recovery HIIT day — 30 s easy bodyweight movement / 30 s complete rest × 10 rounds. Very low effort."),
+                2: ("20 min", "Easy movement circuit — jumping jacks, march in place, arm circles × 10 min. Flush the legs."),
+                3: ("20 min", "Gentle mobility flow: 5 min easy movement, 10 min static/dynamic stretching, 5 min cool-down walk."),
+                4: ("20 min", "Full rest-day movement: 20 min easy walk or gentle yoga. No cardio stress."),
+            }[week]
+
+        else:
+            return {
+                1: ("30 min", "Zone 2 effort (~65% HRmax) — conversational pace, build the aerobic base."),
+                2: ("35 min", "Zone 2, 5 min longer than last week, same easy effort."),
+                3: ("35 min", "Zone 2 with 4 × 20 s relaxed pick-ups in the last 10 min."),
+                4: ("30 min", "Zone 2 taper — keep it genuinely easy, shorter session."),
+            }[week]
+
+    def _cardio_interval_rx(week, pct, activity=""):
+        """Activity-specific interval prescriptions scaled by VO2max percentile."""
+        act = activity.lower()
+        low_fit = pct is not None and pct < 50
+
+        if "running" in act or "jogging" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min at a pace that feels 'comfortably hard' (Zone 3), 2 min easy jog recovery. Build the engine."),
+                    2: ("28 min", "6 × 2 min hard effort / 2 min easy jog. Same pace as week 1 — add one rep."),
+                    3: ("30 min", "6 × 3 min hard / 2 min easy jog — your toughest run this month. Push the pace."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy jog — taper, stay sharp."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min at Zone 4–5 (hard but controlled) / 2 min easy jog recovery."),
+                2: ("32 min", "6 × 3 min hard / 2 min easy jog. Add 1 min to each rep vs. week 1."),
+                3: ("35 min", "8 × 2 min hard / 90 s easy jog — hardest run this month. Race-effort reps."),
+                4: ("24 min", "4 × 3 min hard / 2 min easy jog — taper, keep the legs snappy."),
+            }[week]
+
+        elif "cycling" in act:
+            if low_fit:
+                return {
+                    1: ("28 min", "5 × 2 min hard effort (Zone 3, ~80% HRmax) / 2 min easy spin. Build power tolerance."),
+                    2: ("30 min", "6 × 2 min hard / 2 min easy spin. Same effort, one extra rep."),
+                    3: ("32 min", "6 × 3 min hard / 2 min easy — peak interval session. Push the watts."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy spin — taper, stay sharp."),
+                }[week]
+            return {
+                1: ("30 min", "6 × 2 min at ~90% HRmax / 2 min easy spin. Hard but not all-out."),
+                2: ("34 min", "6 × 3 min hard / 2 min easy spin. Watts should feel unsustainable past 4 min."),
+                3: ("36 min", "8 × 2 min max effort / 90 s easy — hardest bike session this month."),
+                4: ("24 min", "4 × 3 min hard / 2 min easy spin — taper, keep the power."),
+            }[week]
+
+        elif "swimming" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 50 m hard / 60 s rest at wall — controlled speed, focus on stroke not thrashing."),
+                    2: ("28 min", "6 × 50 m hard / 50 s rest. Push the pace slightly vs. week 1."),
+                    3: ("30 min", "6 × 75 m hard / 60 s rest — toughest swim session this month."),
+                    4: ("20 min", "4 × 50 m controlled fast / 60 s rest — taper, feel sharp."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 50 m near-max / 45 s rest at wall. Strong stroke throughout."),
+                2: ("30 min", "6 × 75 m hard / 50 s rest. Increase distance per rep vs. week 1."),
+                3: ("32 min", "8 × 50 m max effort / 30 s rest — hardest swim this month."),
+                4: ("22 min", "4 × 75 m controlled fast / 45 s rest — taper, stay sharp."),
+            }[week]
+
+        elif "rowing" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min at 22–24 spm, hard effort / 2 min easy row. Keep sequencing clean under fatigue."),
+                    2: ("28 min", "6 × 2 min hard / 2 min easy. Add 1 spm vs. week 1 if form holds."),
+                    3: ("30 min", "6 × 3 min at 24 spm / 2 min easy — your hardest row this month."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy — taper, strong finish each rep."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min at 26 spm, ~90% effort / 2 min easy row."),
+                2: ("32 min", "6 × 3 min at 26–28 spm / 2 min easy. Each 500 m split should hurt."),
+                3: ("35 min", "8 × 2 min at 28 spm / 90 s easy — hardest rowing session this month."),
+                4: ("24 min", "4 × 3 min at 26 spm / 2 min easy — taper, snappy catch each stroke."),
+            }[week]
+
+        elif "elliptical" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min high resistance / 2 min easy glide. Push stride rate up on the hard intervals."),
+                    2: ("28 min", "6 × 2 min hard / 2 min easy. Same resistance, add one rep."),
+                    3: ("30 min", "6 × 3 min hard / 2 min easy — peak elliptical session."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy — taper, keep the power."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min max resistance / 2 min easy. Arms and legs fully engaged."),
+                2: ("32 min", "6 × 3 min hard / 2 min easy glide. Add +1 resistance vs. week 1."),
+                3: ("35 min", "8 × 2 min all-out / 90 s easy — hardest elliptical session this month."),
+                4: ("24 min", "4 × 3 min hard / 2 min easy — taper, stay explosive."),
+            }[week]
+
+        elif "stair" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min at +3 levels above base / 2 min base level recovery. Build stair power."),
+                    2: ("28 min", "6 × 2 min hard / 2 min base recovery. Add 1 level vs. week 1."),
+                    3: ("30 min", "6 × 3 min at highest level you can hold / 2 min base — peak stair session."),
+                    4: ("22 min", "4 × 2 min hard / 2 min base — taper, legs sharp."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min at near-max level / 2 min base level recovery."),
+                2: ("32 min", "6 × 3 min hard / 2 min base. Push level higher than week 1."),
+                3: ("35 min", "8 × 2 min max level / 90 s base — hardest stair session this month."),
+                4: ("24 min", "4 × 3 min hard / 2 min base — taper, finish each rep strong."),
+            }[week]
+
+        elif "hiit" in act:
+            if low_fit:
+                return {
+                    1: ("20 min", "5 rounds: 30 s work (burpee or squat jump) / 90 s rest. Full recovery between rounds."),
+                    2: ("22 min", "6 rounds: 30 s work / 75 s rest. Add one round vs. week 1."),
+                    3: ("25 min", "6 rounds: 40 s work / 60 s rest — hardest HIIT session this month."),
+                    4: ("18 min", "4 rounds: 30 s work / 90 s rest — taper, stay sharp."),
+                }[week]
+            return {
+                1: ("22 min", "6 rounds: 40 s max-effort (burpee, squat jump, or sprint) / 80 s rest."),
+                2: ("25 min", "7 rounds: 40 s max-effort / 70 s rest. Shorten rest vs. week 1."),
+                3: ("28 min", "8 rounds: 40 s max / 60 s rest — hardest HIIT session this month."),
+                4: ("20 min", "5 rounds: 30 s max / 90 s rest — taper, explosive quality over quantity."),
+            }[week]
+
+        else:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min moderately hard / 2 min easy (Zone 3-4) — build interval tolerance."),
+                    2: ("28 min", "6 × 2 min moderately hard / 2 min easy."),
+                    3: ("30 min", "6 × 3 min hard / 2 min easy — your toughest interval session this month."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy — taper, stay sharp."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min hard (Zone 4-5) / 2 min easy recovery."),
+                2: ("32 min", "6 × 3 min hard / 2 min easy."),
+                3: ("35 min", "8 × 2 min hard / 90 s easy — your hardest session this month."),
+                4: ("24 min", "4 × 3 min hard / 2 min easy — taper, keep the legs snappy."),
+            }[week]
+
+    def _cardio_long_rx(week, activity=""):
+        """Activity-specific long aerobic session prescriptions."""
+        act = activity.lower()
+
+        if "running" in act or "jogging" in act:
+            return {
+                1: ("50 min", "Long easy run — pure volume at conversational pace. Don't watch splits. This is your aerobic foundation."),
+                2: ("60 min", "Long easy run, 10 min longer than week 1 — same effort, let pace drift naturally."),
+                3: ("70 min", "Long run with the final 10 min slightly brisker — still aerobic, just a hint of tempo at the end."),
+                4: ("45 min", "Easy long run, taper week — shorter and genuinely comfortable. Arrive at reassessment fresh."),
+            }[week]
+
+        elif "cycling" in act:
+            return {
+                1: ("60 min", "Long Zone 2 ride — flat or rolling route, 80–90 rpm, completely conversational. Build the aerobic engine."),
+                2: ("75 min", "Long ride, 15 min longer — add a small hill mid-ride but keep overall effort easy."),
+                3: ("85 min", "Long ride with the final 15 min at a slightly brisker pace (Zone 3). Push gently at the end."),
+                4: ("55 min", "Easy long ride, taper — comfortable effort, enjoy the route."),
+            }[week]
+
+        elif "swimming" in act:
+            return {
+                1: ("40 min", "Continuous easy swim — mix strokes every 200 m, focus on relaxed breathing and stroke efficiency."),
+                2: ("50 min", "Long swim, 10 min longer — alternate freestyle and backstroke every 4 lengths to vary muscle load."),
+                3: ("55 min", "Long swim with the final 10 min as a slightly harder tempo — controlled speed, technique must hold."),
+                4: ("40 min", "Easy long swim, taper — relax in the water, focus on feel not distance."),
+            }[week]
+
+        elif "rowing" in act:
+            return {
+                1: ("50 min", "Long easy row at 18–20 spm — focus on sequencing consistency the whole session. Pure aerobic base."),
+                2: ("60 min", "Long row, 10 min longer — maintain 18–20 spm, let the metres accumulate naturally."),
+                3: ("70 min", "Long row with the final 10 min at 22 spm — lift the rate, keep the effort sustainable."),
+                4: ("45 min", "Easy long row — taper week, comfortable pace, finish feeling good."),
+            }[week]
+
+        elif "elliptical" in act:
+            return {
+                1: ("55 min", "Long easy elliptical — moderate resistance, full arm engagement, completely conversational effort."),
+                2: ("65 min", "Long elliptical, 10 min longer — add 1 resistance level mid-session if heart rate drops below Zone 2."),
+                3: ("75 min", "Long elliptical with the final 10 min at +2 resistance — sustained aerobic push at the end."),
+                4: ("50 min", "Easy long elliptical — taper week, comfortable resistance, shorter duration."),
+            }[week]
+
+        elif "stair" in act:
+            return {
+                1: ("40 min", "Long stair session at base level — steady continuous effort, no intervals, build leg endurance."),
+                2: ("50 min", "Long stair, 10 min longer — add 1 level vs. week 1 if heart rate is still comfortable."),
+                3: ("55 min", "Long stair with final 10 min at +2 levels — sustained effort, don't hold the rails."),
+                4: ("35 min", "Easy stair endurance — taper week, comfortable level, finish fresh."),
+            }[week]
+
+        elif "hiit" in act:
+            return {
+                1: ("35 min", "Active recovery: 35 min continuous low-intensity bodyweight circuit — squats, lunges, push-ups at easy pace."),
+                2: ("40 min", "Low-intensity circuit, 5 min longer — add one exercise but keep the effort genuinely easy."),
+                3: ("40 min", "Aerobic circuit: 8 exercises × 40 s on / 20 s rest, 2 rounds. Moderate pace — complement the HIIT days."),
+                4: ("35 min", "Easy movement circuit — taper week, flush the body, arrive at reassessment ready."),
+            }[week]
+
+        else:
+            return {
+                1: ("50 min", "Steady, easy pace — pure volume, conversational effort throughout."),
+                2: ("60 min", "Steady, easy pace — 10 minutes longer than last week."),
+                3: ("70 min", "Steady pace, with the last 10 minutes slightly brisker than the rest."),
+                4: ("45 min", "Easy pace — taper week, shorter session, same comfortable effort."),
+            }[week]
+
+    def _low_rx(week, activity=""):
+        """Activity-specific low-impact prescriptions with weekly progression."""
+        act = activity.lower()
+
+        if "brisk walking" in act:
+            return {
+                1: ("25 min", "Brisk walk at ~5.5 km/h — arms swinging, purposeful stride, heart rate ~110–120 bpm. Warm up 5 min easy first."),
+                2: ("30 min", "Brisk walk, 5 min longer — push the pace slightly, aim for 6 km/h if it feels comfortable."),
+                3: ("35 min", "Brisk walk with 3 × 3 min at near-power-walk pace mid-session. Recover to normal brisk pace between."),
+                4: ("25 min", "Brisk walk taper — comfortable pace, finish feeling energised not tired."),
+            }[week]
+
+        elif "walking" in act:
+            return {
+                1: ("25 min", "Easy casual walk at comfortable pace — fresh air, low heart rate (~100 bpm), active recovery mindset."),
+                2: ("30 min", "Easy walk, 5 min longer — add a gentle hill if possible to vary the stimulus."),
+                3: ("30 min", "Easy walk with 2 × 5 min slightly faster pace — not brisk, just a shade quicker than your normal stroll."),
+                4: ("25 min", "Easy walk — taper week, purely for movement and fresh air."),
+            }[week]
+
+        elif "yoga" in act or "pilates" in act:
+            return {
+                1: ("30 min", "Foundation session — 5 min breathwork, 20 min basic poses or Pilates fundamentals, 5 min savasana/rest."),
+                2: ("35 min", "Build session — add 2–3 new poses or Pilates progressions. Hold each pose 5 s longer than week 1."),
+                3: ("40 min", "Challenge session — attempt your hardest pose or sequence. Full class or flow at 75% effort."),
+                4: ("30 min", "Restorative session — yin yoga or gentle Pilates. Passive holds, deep breathing, full recovery."),
+            }[week]
+
+        elif "housework" in act or "chores" in act:
+            return {
+                1: ("30 min", "30 min of active chores (vacuuming, mopping, scrubbing) — keep moving continuously, no sitting breaks."),
+                2: ("35 min", "35 min of active chores — increase the pace or tackle a more physical task (moving furniture, deep clean)."),
+                3: ("40 min", "40 min active chores at a slightly higher tempo — combine upper and lower body tasks back-to-back."),
+                4: ("30 min", "30 min light chores — taper week, nothing heavy."),
+            }[week]
+
+        elif "gardening" in act or "yard" in act:
+            return {
+                1: ("30 min", "30 min of active gardening — digging, raking or weeding continuously. Good compound movement."),
+                2: ("35 min", "35 min — tackle a heavier task: wheelbarrow loads, shifting compost, or digging a new bed."),
+                3: ("40 min", "40 min of your most physically demanding garden task — sustained effort the whole time."),
+                4: ("30 min", "30 min light gardening — planting, light weeding, easy tasks. Taper week."),
+            }[week]
+
+        else:
+            return {
+                1: ("25 min", "Easy effort activity, heart rate below ~120 bpm — pure recovery, mobility and movement."),
+                2: ("30 min", "Easy effort, 5 min longer — gentle progression, still very comfortable."),
+                3: ("30 min", "Easy effort with 2 × 3 min slightly livelier pace mid-session. Return to easy after each."),
+                4: ("25 min", "Easy recovery activity — taper week, arrive at reassessment feeling fresh."),
+            }[week]
 
     def _sport_rx(week, day_idx=0, activity=""):
         """
@@ -491,9 +947,6 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         dur, rx = P[week][dtype]
         return dur, rx
 
-    def _low_rx(week):
-        return ("20-30 min", "Easy effort, heart rate below ~120 bpm - pure recovery, mobility and movement.")
-
     STRENGTH_SPLITS = ["Full-Body Strength A - push emphasis", "Full-Body Strength B - pull emphasis", "Full-Body Strength C - lower-body emphasis"]
 
     def _weekly_template(goal):
@@ -535,17 +988,17 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                     act = plan30_strength[counters["strength"] % len(plan30_strength)]
                     split = STRENGTH_SPLITS[counters["strength"] % len(STRENGTH_SPLITS)]
                     counters["strength"] += 1
-                    dur, rx = _strength_rx(week)
+                    dur, rx = _strength_rx(week, day_idx, activity=act)
                     rows.append((day_name, "Strength", f"{act} - {split}. {rx}", dur, "strength"))
                 elif r in ("cardio_easy", "cardio_interval", "cardio_long"):
                     act = plan30_cardio[counters["cardio"] % len(plan30_cardio)]
                     counters["cardio"] += 1
                     if r == "cardio_easy":
-                        dur, rx = _cardio_easy_rx(week); label = "Cardio - Easy"
+                        dur, rx = _cardio_easy_rx(week, activity=act); label = "Cardio - Easy"
                     elif r == "cardio_interval":
-                        dur, rx = _cardio_interval_rx(week, pct); label = "Cardio - Intervals"
+                        dur, rx = _cardio_interval_rx(week, pct, activity=act); label = "Cardio - Intervals"
                     else:
-                        dur, rx = _cardio_long_rx(week); label = "Cardio - Long"
+                        dur, rx = _cardio_long_rx(week, activity=act); label = "Cardio - Long"
                     rows.append((day_name, label, f"{act}: {rx}", dur, r))
                 elif r == "sport":
                     act = plan30_sport[counters["sport"] % len(plan30_sport)]
@@ -555,7 +1008,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 else:
                     act = plan30_low[counters["low"] % len(plan30_low)]
                     counters["low"] += 1
-                    dur, rx = _low_rx(week)
+                    dur, rx = _low_rx(week, activity=act)
                     rows.append((day_name, "Active Recovery", f"{act} - {rx}", dur, "low"))
                 day_idx += 1
             weeks_out.append(rows)
