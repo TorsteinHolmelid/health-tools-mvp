@@ -3683,17 +3683,38 @@ if not _unlocked:
         unsafe_allow_html=True
     )
 
-    # -------------------- 4. Lås opp-knapp (Stripe) --------------------
+    # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) --------------------
     _uid = get_current_user_id() or ""
-    _app_url = "https://health-tools.streamlit.app"
-    stripe_link = f"https://buy.stripe.com/test_8x2dRa2HU4AXam22fC1Fe03?client_reference_id={_uid}&success_url={_app_url}%2F%3Fpayment%3Dsuccess%26uid%3D{_uid}"
-    st.link_button(
-        "🔓 Unlock full report — 4,99 USD",
-        stripe_link,
-        type="primary",
-        use_container_width=True,
-    )
-    st.caption("After payment, you will return to the app")
+    _user_email = st.session_state.get("user_email", "")
+
+    if not _uid:
+        st.warning("⚠️ Please log in before purchasing.")
+    else:
+        if st.button("🔓 Unlock full report — 4,99 USD", type="primary", use_container_width=True):
+            import requests as _requests
+            _supabase_url = st.secrets.get("SUPABASE_URL", "")
+            _anon_key = st.secrets.get("SUPABASE_KEY", "")
+            _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
+            try:
+                _resp = _requests.post(
+                    _fn_url,
+                    json={"user_id": _uid, "email": _user_email},
+                    headers={
+                        "apikey": _anon_key,
+                        "Authorization": f"Bearer {_anon_key}",
+                        "Content-Type": "application/json",
+                    },
+                    timeout=10,
+                )
+                _data = _resp.json()
+                if "url" in _data:
+                    st.markdown(f'<meta http-equiv="refresh" content="0;url={_data["url"]}">', unsafe_allow_html=True)
+                    st.markdown(f"[Click here if not redirected automatically]({_data['url']})")
+                else:
+                    st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
+            except Exception as _e:
+                st.error(f"Payment error: {_e}")
+    st.caption("After payment, you will return to the app automatically")
 
 else:
     # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
