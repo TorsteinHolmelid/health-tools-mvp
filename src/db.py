@@ -15,10 +15,13 @@ def get_supabase_key() -> str:
         return os.getenv("SUPABASE_KEY", "")
 
 def get_db_client() -> Client:
+    # Returner den lagra klienten hvis den finnes, ellers opprett ny (anonym)
+    if "supabase_client" in st.session_state:
+        return st.session_state["supabase_client"]
     url = get_supabase_url()
     key = get_supabase_key()
     if not url or not key:
-        raise Exception("Supabase credentials missing. Set SUPABASE_URL and SUPABASE_KEY in .env or Streamlit secrets.")
+        raise Exception("Supabase credentials missing.")
     return create_client(url, key)
 
 def get_current_user_id() -> str:
@@ -39,21 +42,20 @@ def sign_in(email: str, password: str):
     client = get_db_client()
     try:
         response = client.auth.sign_in_with_password({"email": email, "password": password})
-        # ----- LIME INN DENNE LINJA HER -----
+        st.session_state["supabase_client"] = client   # <-- LAGRE autentisert klient
+        st.session_state["user_id"] = response.user.id
+        st.session_state["authenticated"] = True
         st.session_state["premium_checked"] = False
-        # ------------------------------------
         return response.user, None
     except Exception as e:
         return None, str(e)
 
 def sign_out():
-    client = get_db_client()
-    try:
-        client.auth.sign_out()
-    except:
-        pass
+    # Også fjern den lagra klienten
+    st.session_state.pop("supabase_client", None)
     st.session_state["authenticated"] = False
     st.session_state["user_id"] = None
+    # evt. sign out fra klienten
 
 def save_health_metrics(db: Client, weight=None, bmi=None, vo2max=None, 
                         bio_age=None, weekly_activity_minutes=None, resting_hr=None):
