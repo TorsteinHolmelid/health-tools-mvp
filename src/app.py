@@ -22,6 +22,7 @@ import streamlit as st
 from db import (
     sign_up, sign_in, is_authenticated, get_current_user_id, sign_out,
     get_user_profile, save_user_profile, get_db_client, get_user_history,
+    has_premium_access,   # <-- legg til denne
 )
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
