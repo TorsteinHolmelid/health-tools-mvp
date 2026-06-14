@@ -178,12 +178,22 @@ def P(txt, style):
 # ── Last inn lagra profil-verdiar for innlogga brukar (ein gong per sesjon) ───
 PROFILE_KEYS = [
     "basic_resting_hr", "age", "inp_sex", "inp_height", "inp_weight",
-    "s_bmi", "s_vo2", "b_use_whr", "b_waist", "b_hip", "b_use_neck", "b_neck",
-    "b_bodyfat", "v_activity", "v_weekly_minutes", "v_session_intensity",
+    "s_bmi", "s_vo2", "s_bio", "s_conditions", "s_plan",
+    "b_use_whr", "b_waist", "b_hip", "b_use_neck", "b_neck", "b_bodyfat",
+    "v_activity", "v_weekly_minutes", "v_session_intensity",
     "vo2_rhr_unknown", "vo2_rhr_value", "vo2_maxhr_unknown", "vo2_maxhr_val",
     "vo2_method_select", "vo2_cooper_distance", "vo2_rockport_time",
     "vo2_rockport_hr", "vo2_measured_input",
     "global_resting_hr", "global_waist_cm", "global_hip_cm",
+    "ui_act_group", "ui_sessions_per_week", "ui_minutes", "ui_rpe",
+    "ui_use_hr", "ui_avg_hr_calc", "ui_resting_hr", "ui_manual_kcal", "ui_manual_kcal_val",
+    "bio_smoker", "bio_diabetes", "bio_menopause", "bio_family_hist",
+    "bio_bp_unknown", "bio_bp_val", "bio_chol_unknown", "bio_chol_val",
+    "bio_rhr_unknown", "bio_rhr_val", "bio_sleep_unknown", "bio_sleep_val",
+    "bio_alc_unknown", "bio_alc_val", "bio_fv", "bio_stress",
+    "bio_grip_unknown", "bio_grip_val", "bio_waist_unknown", "bio_waist_val", "bio_hip_val",
+    "cond_select", "cond_custom", "cond_goal",
+    "plan_create", "plan_type", "protein_toggle",
 ]
 
 if logged_in and "profile_loaded" not in st.session_state:
@@ -200,6 +210,10 @@ def autosave_profile():
         return
     data = {k: st.session_state.get(k) for k in PROFILE_KEYS if k in st.session_state}
     save_user_profile(db, data)
+
+# Autosave kvar gong appen køyrer (ikkje berre ved Calculate)
+if logged_in and st.session_state.get("profile_loaded"):
+    autosave_profile()
 
 
 if "generated" not in st.session_state:
@@ -1659,15 +1673,15 @@ except Exception:
 
 c1, c2 = st.columns(2)
 with c1:
-    sex = st.selectbox("Sex", ["M", "F"], index=0, key="inp_sex")
+    sex = st.selectbox("Sex", ["M", "F"], index=0 if st.session_state.get("inp_sex", "M") == "M" else 1, key="inp_sex")
 with c2:
     pass  # placeholder
 
 c3, c4 = st.columns(2)
 with c3:
-    height_cm = st.number_input("Height (cm)", min_value=50, max_value=250, value=170, key="inp_height")
+    height_cm = st.number_input("Height (cm)", min_value=50, max_value=250, value=int(st.session_state.get("inp_height", 170)), key="inp_height")
 with c4:
-    weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=70.0,
+    weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=float(st.session_state.get("inp_weight", 70.0)),
                                  format="%.1f", key="inp_weight")
 st.markdown("</div>", unsafe_allow_html=True)
 
