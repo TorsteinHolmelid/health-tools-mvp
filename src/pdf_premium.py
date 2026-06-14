@@ -17,7 +17,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer,
-    Table, TableStyle, HRFlowable,
+    Table, TableStyle, HRFlowable, KeepTogether,
 )
 
 
@@ -2170,15 +2170,48 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         canvas.restoreState()
 
     # ════════════════════════════════════════════════════════════════
-    # STORY
+    # STORY  — balanced premium layout
+    # One page = one focused topic. Nothing squeezed, nothing empty.
     # ════════════════════════════════════════════════════════════════
     story = []
 
-    # ── PAGE 1 — COVER ──────────────────────────────────────────────
-    story.append(VGap(6))
-    story.append(CoverHero())
-    story.append(VGap(14))
+    # Shared pre-computations
+    G = 10
+    w_num = _sf(w_v); h_num = _sf(h_v)
+    try: wt = float(w_v or 70)
+    except Exception: wt = 70.0
+    bf_val  = _sf(bf_d.get("value"))  if isinstance(bf_d, dict) else None
+    whr_val = _sf(whr_d.get("value")) if isinstance(whr_d, dict) else None
+    whr_cat = whr_d.get("category")   if isinstance(whr_d, dict) else None
+    protein_g = fat_g = carb_g = 0
+    if cur_kcal and rec_kcal:
+        protein_g = int(wt * 1.8)
+        fat_g     = int(int(rec_kcal) * 0.28 / 9)
+        carb_g    = max(0, int((int(rec_kcal) - protein_g*4 - fat_g*9) / 4))
 
+    dim_insights = {
+        "Body Comp": ("BC",
+            f"BMI {bmi_v:.1f} ({bmi_cat}) — let cardio and strength drive the next gains."
+            if bmi_v else "Body composition data not available."),
+        "Cardio": ("CV",
+            f"VO2max {vo2_v:.1f} — {vo2_pct:.0f}th percentile ({vo2_rat}). Strongest longevity predictor in this report."
+            if vo2_v else "Cardio fitness data not available."),
+        "Bio Age": ("BA",
+            f"Biological age {bio_v:.1f} yrs — {abs(bio_diff):.1f} yrs {'younger' if bio_diff<0 else 'older'} than calendar."
+            if bio_diff is not None else "Biological age data not available."),
+        "Activity": ("AC",
+            f"{ex_total_min} min/week — closing this gap is your single biggest lever."
+            if ex_total_min < 150 else
+            f"{ex_total_min} min/week — at or above WHO 150 target. Maintain and be consistent."),
+        "Lifestyle": ("LS",
+            "Sleep, recovery and daily habits broadly support your results — protect this rhythm."),
+    }
+
+    # ── PAGE 1 — COVER ──────────────────────────────────────────────
+    story.append(VGap(4))
+    story.append(CoverHero())
+    story.append(VGap(16))
+    story.append(P("AT A GLANCE", S("ag", size=9, bold=True, color=GOLD, after=6, align=TA_CENTER)))
     summary_metrics = []
     if bmi_v is not None:
         summary_metrics.append(("BMI", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
@@ -2188,321 +2221,289 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         summary_metrics.append(("Biological age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} vs calendar", bio_col.hexval()))
     if cur_kcal and rec_kcal:
         d_k = int(rec_kcal - cur_kcal)
-        summary_metrics.append(("Daily calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day", "#22C55E" if d_k < 0 else "#3B82F6"))
-
-    story.append(P("AT A GLANCE", S("ag", size=9, bold=True, color=GOLD, after=4, align=TA_CENTER)))
+        summary_metrics.append(("Daily calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day",
+                                 "#22C55E" if d_k < 0 else "#3B82F6"))
     if summary_metrics:
-        story.append(MetricCard(summary_metrics[:4], card_h=72))
-    story.append(VGap(12))
+        story.append(MetricCard(summary_metrics[:4], card_h=74))
+    story.append(VGap(14))
     story.append(P(
         f"This report was generated exclusively from the data you provided on {gen_v}. "
         f"Every chart, score, and recommendation on the following pages is calculated against "
-        f"<i>your</i> numbers — not population averages presented as advice. Treat it as a working "
-        f"document: print it, annotate it, and bring it to your next check-up.",
-        S("cov_intro", size=9, lead=14, color=MUTED, align=TA_CENTER, after=6)
+        f"<i>your</i> numbers — not population averages presented as advice. "
+        f"Treat it as a working document: print it, annotate it, and bring it to your next check-up.",
+        S("cov_intro", size=9, lead=14, color=MUTED, align=TA_CENTER, after=0)
     ))
     story.append(PageBreak())
 
     # ── PAGE 2 — EXECUTIVE SUMMARY ──────────────────────────────────
     story.append(SecHeader("01", "Executive Summary",
                             subtitle="Your personal cheat sheet — review this page every week"))
-    story.append(VGap(12))
+    story.append(VGap(G))
     story.append(ExecutiveSummaryPanel(stop_items, start_items, keep_items, biggest_lever, lever_why))
-    story.append(VGap(16))
+    story.append(VGap(G + 4))
     story.append(CompoundingEffectBox())
-    story.append(VGap(12))
+    story.append(VGap(G))
     story.append(P(
         "How to use this report: pages 3–8 break down each marker individually with the science "
         "behind it and exactly what to do next. Page 9 turns everything into a week-by-week "
         "training plan, and the final pages give you a 12-week roadmap and a one-page action "
         "card for tomorrow morning.",
-        S("howto", size=8.5, lead=13, color=MUTED, italic=True, after=4)
+        S("howto", size=8.5, lead=13, color=MUTED, italic=True, after=0)
     ))
     story.append(PageBreak())
 
     # ── PAGE 3 — BIOMARKER DASHBOARD ────────────────────────────────
     story.append(SecHeader("02", "Your Biomarker Dashboard",
                             subtitle="A composite snapshot across five dimensions of healthy longevity"))
-    story.append(VGap(12))
+    story.append(VGap(G))
     story.append(ScoreHero(health_score, score_label, score_col, radar))
-    story.append(VGap(16))
-
+    story.append(VGap(G))
     dash_metrics = []
-    if bmi_v is not None: dash_metrics.append(("Body Mass Index", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
-    if vo2_v is not None: dash_metrics.append(("Cardio (VO2max)", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th percentile · {vo2_rat}", vo2_col.hexval()))
-    if bio_diff is not None: dash_metrics.append(("Biological Age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} yrs vs calendar", bio_col.hexval()))
+    if bmi_v is not None:
+        dash_metrics.append(("Body Mass Index", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
+    if vo2_v is not None:
+        dash_metrics.append(("Cardio (VO2max)", f"{vo2_v:.1f}",
+                              f"{vo2_pct:.0f}th percentile · {vo2_rat}", vo2_col.hexval()))
+    if bio_diff is not None:
+        dash_metrics.append(("Biological Age", f"{bio_v:.1f} yrs",
+                              f"{bio_diff:+.1f} yrs vs calendar", bio_col.hexval()))
     if dash_metrics:
-        story.append(MetricCard(dash_metrics[:3], card_h=82))
-        story.append(VGap(12))
-
+        story.append(MetricCard(dash_metrics[:3], card_h=74))
+        story.append(VGap(G))
     story.append(P(
         f"Your overall score of <b>{health_score}/100</b> ({score_label.lower()}) is a weighted "
         f"composite of body composition, cardio fitness, biological age, and activity volume. "
         f"Your weakest dimension right now is <b>{weakest_dim}</b> — this is where the next 12 "
         f"weeks of effort will pay off the most.",
-        S("dash_txt", size=9.5, lead=14, after=8)
+        S("dash_txt", size=9.5, lead=14, after=6)
     ))
-
-    story.append(P("Dimension-by-dimension breakdown", S("dim_h", size=9.5, bold=True, color=ACCENT, after=4)))
-
-    dim_insights = {
-        "Body Comp": (
-            "BC",
-            f"BMI {bmi_v:.1f} ({bmi_cat}) — a healthy range. Let cardio and strength drive the "
-            f"next gains, not further weight changes."
-            if bmi_v is not None else "Body composition data not available for this report."
-        ),
-        "Cardio": (
-            "CV",
-            f"VO2max {vo2_v:.1f} — {vo2_pct:.0f}th percentile ({vo2_rat}). One of the strongest "
-            f"predictors of long-term health in this whole report."
-            if vo2_v is not None else "Cardio fitness data not available for this report."
-        ),
-        "Bio Age": (
-            "BA",
-            (f"Biological age {bio_v:.1f} yrs — {abs(bio_diff):.1f} yrs "
-             f"{'younger' if bio_diff < 0 else 'older'} than your calendar age. Your habits are "
-             f"{'paying off' if bio_diff < 0 else 'worth addressing'}.")
-            if bio_diff is not None else "Biological age data not available for this report."
-        ),
-        "Activity": (
-            "AC",
-            (f"{ex_total_min} min/week vs. the WHO target of 150 — closing this gap is your "
-             f"single biggest lever right now.")
-            if ex_total_min < 150 else
-            (f"{ex_total_min} min/week — at or above the WHO target of 150. Maintenance and "
-             f"consistency are now the priority.")
-        ),
-        "Lifestyle": (
-            "LS",
-            "Sleep, recovery and daily habits broadly support your results — protect this "
-            "rhythm as you push the other dimensions."
-        ),
-    }
+    story.append(P("Dimension-by-dimension breakdown",
+                    S("dim_h", size=9.5, bold=True, color=ACCENT, after=4)))
     for dim, sc in radar.items():
         code, insight = dim_insights.get(dim, ("--", ""))
         story.append(DimensionRow(code, dim, sc, insight))
-        story.append(VGap(6))
-
+        story.append(VGap(4))
     story.append(PageBreak())
 
     # ── PAGE 4 — BODY COMPOSITION ────────────────────────────────────
     story.append(SecHeader("03", "Body Composition",
                             subtitle="BMI, body fat, and waist-to-hip ratio — read together, not alone"))
-    story.append(VGap(12))
+    story.append(VGap(G))
     if bmi_v is not None:
         story.append(BMIScale(bmi_v))
-        story.append(VGap(12))
-
-    w_num = _sf(w_v); h_num = _sf(h_v)
+        story.append(VGap(G))
     if w_num is not None and h_num:
         story.append(HealthyWeightRangeBar(w_num, h_num))
-        story.append(VGap(12))
-
-    bf_val = _sf(bf_d.get("value")) if isinstance(bf_d, dict) else None
-    whr_val = _sf(whr_d.get("value")) if isinstance(whr_d, dict) else None
-    whr_cat = whr_d.get("category") if isinstance(whr_d, dict) else None
+        story.append(VGap(G))
     if whr_val is not None:
         story.append(WHRBox(whr_val, whr_cat or "—"))
-        story.append(VGap(12))
-
+        story.append(VGap(G))
     if bf_val is not None and w_num is not None:
         story.append(BodyCompProfile(w_num, bf_val, sex_v))
-        story.append(VGap(12))
-   
-
+        story.append(VGap(G))
     bmi_txt, bmi_steps = insight_and_steps_body()
     if bmi_txt:
-        story.append(P(bmi_txt, S("bmi_t", size=9.5, lead=14, after=8)))
-
+        story.append(P(bmi_txt, S("bmi_t", size=9.5, lead=14, after=6)))
     if bf_val is not None and w_num is not None and h_num:
         fat_mass = w_num * bf_val / 100.0; lean_mass = w_num - fat_mass
         bf_band_m = [(6,"essential"),(14,"athletic"),(18,"fitness"),(25,"average"),(999,"obese")]
         bf_band_f = [(14,"essential"),(21,"athletic"),(25,"fitness"),(32,"average"),(999,"obese")]
         bands_lbl = bf_band_m if (sex_v or "M").upper().startswith("M") else bf_band_f
         bf_cat_lbl = next(lbl for thresh, lbl in bands_lbl if bf_val < thresh)
-        whr_phrase = (f"a waist-to-hip ratio of {whr_val:.2f} ({(whr_cat or '').lower()})"
-                       if whr_val is not None else "a waist-to-hip ratio that wasn't provided")
-        verdict = (f"<b>Put together:</b> a BMI of {bmi_v:.1f} ({bmi_cat.lower()}), an estimated body fat "
-                   f"of {bf_val:.1f}% (the '{bf_cat_lbl}' range for your sex), and {whr_phrase} all tell a "
-                   f"consistent story — your roughly {lean_mass:.0f} kg of lean mass is doing the heavy "
-                   f"lifting for your metabolism, while {fat_mass:.1f} kg is fat mass. ")
-        if bf_cat_lbl in ("athletic", "fitness", "essential"):
-            verdict += ("There's very little 'extra' to lose here — further restriction would risk losing "
-                        "muscle along with fat. The highest-leverage move from here is building or "
-                        "preserving lean mass through strength training, not chasing a lower scale number.")
+        whr_phrase = (f"waist-to-hip ratio {whr_val:.2f} ({(whr_cat or '').lower()})"
+                       if whr_val is not None else "waist-to-hip ratio not provided")
+        verdict = (
+            f"<b>Put together:</b> BMI {bmi_v:.1f} ({bmi_cat.lower()}), estimated body fat "
+            f"{bf_val:.1f}% ('{bf_cat_lbl}' range), and {whr_phrase} — "
+            f"~{lean_mass:.0f} kg lean mass and {fat_mass:.1f} kg fat mass. "
+        )
+        if bf_cat_lbl in ("athletic","fitness","essential"):
+            verdict += "Very little to lose here — prioritise building lean mass through strength training."
         elif bf_cat_lbl == "average":
-            verdict += ("A modest, gradual reduction in fat mass — alongside the strength work in your "
-                        "training plan — would move you into the 'fitness' range without sacrificing "
-                        "lean mass, as long as protein stays high throughout.")
+            verdict += "A modest deficit plus strength training will move you into the 'fitness' range."
         else:
-            verdict += ("Prioritising a sustainable calorie deficit with high protein intake (see your "
-                        "nutrition page) while keeping resistance training in your weekly plan will "
-                        "protect lean mass as fat mass comes down.")
-        story.append(P(verdict, S("bc_verdict", size=9.5, lead=14, after=8)))
-
-    story.append(ExpertInsightBox("Body Composition",
-        "BMI is a population screening tool — it doesn't account for muscle mass, bone density, "
-        "or fat distribution. Reading it alongside waist-to-hip ratio and body fat % (above) "
-        "gives a far more accurate picture of your actual metabolic health than any single "
-        "number. (Reference: WHO BMI classification; Lancet 2014 obesity series.)"))
-    if bmi_steps:
-        story.append(VGap(8))
-        story.append(ActionableMilestoneBox(bmi_steps))
+            verdict += "A sustainable calorie deficit with high protein protects lean mass as fat comes down."
+        story.append(P(verdict, S("bc_verdict", size=9, lead=13, after=6)))
+    story.append(KeepTogether([
+        ExpertInsightBox("Body Composition",
+            "BMI is a population screening tool — it doesn't account for muscle mass, bone density, "
+            "or fat distribution. Reading it alongside waist-to-hip ratio and body fat % gives a far "
+            "more accurate picture of metabolic health. (WHO BMI classification; Lancet 2014.)"),
+        VGap(6),
+        ActionableMilestoneBox(bmi_steps) if bmi_steps else VGap(0),
+    ]))
     story.append(PageBreak())
 
     # ── PAGE 5 — CARDIO FITNESS ──────────────────────────────────────
     if vo2_v is not None:
         story.append(SecHeader("04", "Cardio Fitness — VO2max",
                                 subtitle="The single strongest predictor of long-term health and longevity"))
-        story.append(VGap(12))
+        story.append(VGap(G))
         story.append(VO2Visual(vo2_v, vo2_pct, vo2_rat))
-        story.append(VGap(12))
+        story.append(VGap(G))
         if age_f is not None:
             story.append(VO2PopComparisonBox(vo2_v, vo2_pct, age_f, sex_v))
-            story.append(VGap(12))
+            story.append(VGap(G))
         vo2_txt, vo2_steps = insight_and_steps_vo2()
-        story.append(P(vo2_txt, S("vo2_t", size=9.5, lead=14, after=8)))
+        story.append(P(vo2_txt, S("vo2_t", size=9.5, lead=14, after=G)))
         if age_f is not None:
             story.append(HeartRateZonesBox(age_f, vo2_pct))
-            story.append(VGap(12))
-        story.append(ExpertInsightBox("Cardio Fitness — VO2max",
-            "Mandsager et al., JAMA Network Open 2018 (doi:10.1001/jamanetworkopen.2018.3605) found "
-            "that cardiorespiratory fitness in the top quartile was associated with roughly 45% lower "
-            "all-cause mortality vs. the lowest quartile — a larger effect than smoking cessation, "
-            "diabetes, or heart disease history. VO2max is trainable at any age."))
-        story.append(VGap(8))
-        story.append(ActionableMilestoneBox(vo2_steps))
+            story.append(VGap(G))
+        story.append(KeepTogether([
+            ExpertInsightBox("Cardio Fitness — VO2max",
+                "Mandsager et al., JAMA Network Open 2018 (doi:10.1001/jamanetworkopen.2018.3605) "
+                "found that cardiorespiratory fitness in the top quartile was associated with ~45% "
+                "lower all-cause mortality vs. the lowest quartile — larger than smoking cessation, "
+                "diabetes, or heart disease history. VO2max is trainable at any age."),
+            VGap(6),
+            ActionableMilestoneBox(vo2_steps),
+        ]))
         story.append(PageBreak())
 
-    # ── PAGE 6 — BIOLOGICAL AGE + RADAR ─────────────────────────────
+    # ── PAGE 6 — BIOLOGICAL AGE & RADAR ─────────────────────────────
     story.append(SecHeader("05", "Biological Age & Whole-Body Radar",
                             subtitle="A heuristic estimate — directional, not a clinical measurement"))
-    story.append(VGap(12))
+    story.append(VGap(G))
     if bio_v is not None and age_f is not None:
         story.append(BioAgeBar(bio_v, age_f))
-        story.append(VGap(12))
+        story.append(VGap(G))
         bio_txt, bio_steps = insight_and_steps_bioage()
-        story.append(P(bio_txt, S("bio_t", size=9.5, lead=14, after=8)))
+        story.append(P(bio_txt, S("bio_t", size=9.5, lead=14, after=6)))
         if factors:
-            story.append(P("What's driving your biological age estimate", S("fbh", size=9.5, bold=True, color=ACCENT, after=4)))
-            story.append(FactorBars(factors))
-            story.append(VGap(6))
-            story.append(P("Green bars are working in your favour. Amber/red bars add years — start with the longest one.",
-                            S("fbl", size=7.5, color=MUTED, italic=True, after=8)))
+            story.append(KeepTogether([
+                P("What's driving your biological age estimate",
+                  S("fbh", size=9.5, bold=True, color=ACCENT, after=4)),
+                FactorBars(factors),
+                VGap(4),
+                P("Green bars are working in your favour. Amber/red bars add years — start with the longest one.",
+                  S("fbl", size=7.5, color=MUTED, italic=True, after=6)),
+            ]))
     if age_f is not None:
         story.append(SleepCalculatorBox(age_f))
-        story.append(VGap(12))
-    story.append(P("Your 5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)))
-    story.append(RadarChart(radar))
-    story.append(VGap(8))
-    story.append(P("70+ = strong. 45–70 = room to improve. Below 45 = priority area for the next 12 weeks.",
-                    S("rl", size=7.5, color=MUTED, italic=True, after=4)))
+        story.append(VGap(G))
+    story.append(KeepTogether([
+        P("Your 5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)),
+        RadarChart(radar),
+        P("70+ = strong.  45–70 = room to improve.  Below 45 = priority area for the next 12 weeks.",
+          S("rl", size=7.5, color=MUTED, italic=True, after=6)),
+    ]))
     if bio_v is not None and age_f is not None:
-        story.append(VGap(8))
-        story.append(ExpertInsightBox("Biological Age",
-            "Biological-age models developed by researchers such as Steve Horvath (doi:10.1186/"
-            "gb-2013-14-10-r115) and Morgan Levine use measurable biomarkers and lifestyle factors "
-            "to estimate how your body ages relative to the calendar. Unlike your date of birth, "
-            "this number moves — in either direction — based on the choices in this report."))
-        story.append(VGap(8))
-        story.append(ActionableMilestoneBox(bio_steps))
+        story.append(KeepTogether([
+            ExpertInsightBox("Biological Age",
+                "Biological-age models developed by Steve Horvath (doi:10.1186/gb-2013-14-10-r115) "
+                "and Morgan Levine use measurable biomarkers and lifestyle factors to estimate how "
+                "your body ages relative to the calendar. Unlike your date of birth, this number "
+                "moves — in either direction — based on your choices in this report."),
+            VGap(6),
+            ActionableMilestoneBox(bio_steps),
+        ]))
     story.append(PageBreak())
 
-    # ── PAGE 7 — NUTRITION & MACROS ─────────────────────────────────
+    # ── PAGE 7 — NUTRITION & CALORIE STRATEGY ───────────────────────
     story.append(SecHeader("06", "Nutrition & Calorie Strategy",
                             subtitle="Energy balance is the foundation everything else is built on"))
-    story.append(VGap(12))
+    story.append(VGap(G))
     if cur_kcal and rec_kcal:
         story.append(CalorieBar(cur_kcal, rec_kcal, kg_pw))
-        story.append(VGap(12))
+        story.append(VGap(G))
         nut_txt, nut_steps = insight_and_steps_nutrition()
-        story.append(P(nut_txt, S("nut_t", size=9.5, lead=14, after=8)))
-
-        try: wt = float(w_v or 70)
-        except Exception: wt = 70.0
-        protein_g = int(wt * 1.8)
-        fat_g = int(int(rec_kcal) * 0.28 / 9)
-        carb_g = max(0, int((int(rec_kcal) - protein_g*4 - fat_g*9) / 4))
-
-        story.append(P("Your Daily Macro Targets", S("mach", size=10.5, bold=True, color=GOLD, after=4)))
+        story.append(P(nut_txt, S("nut_t", size=9.5, lead=14, after=6)))
+        story.append(P("Your Daily Macro Targets",
+                        S("mach", size=10, bold=True, color=GOLD, after=4)))
         macro_data = [
-            [P("MACRO", S("mh",size=7,color=MUTED,bold=True)), P("GRAMS", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)),
-             P("KCAL", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)), P("RATIO", S("mh",size=7,color=MUTED,bold=True,align=TA_CENTER)),
-             P("WHY IT MATTERS FOR YOU", S("mh",size=7,color=MUTED,bold=True))],
-            [P("Protein", S("pr",size=9,bold=True,color=BLUE)), P(f"{protein_g} g", S("pv",size=9,align=TA_CENTER)),
-             P(f"{protein_g*4}", S("pv",size=9,align=TA_CENTER)), P("~30%", S("pv",size=9,align=TA_CENTER)),
-             P("Preserves muscle while you change body composition; keeps you full longer", S("pw",size=8,color=MUTED))],
-            [P("Fat", S("fr",size=9,bold=True,color=WARN)), P(f"{fat_g} g", S("fv",size=9,align=TA_CENTER)),
-             P(f"{fat_g*9}", S("fv",size=9,align=TA_CENTER)), P("~28%", S("fv",size=9,align=TA_CENTER)),
-             P("Hormone production, brain function, fat-soluble vitamin absorption", S("fw",size=8,color=MUTED))],
-            [P("Carbohydrates", S("cr",size=9,bold=True,color=GOOD)), P(f"{carb_g} g", S("cv",size=9,align=TA_CENTER)),
-             P(f"{carb_g*4}", S("cv",size=9,align=TA_CENTER)), P("~42%", S("cv",size=9,align=TA_CENTER)),
-             P("Fuels your training sessions and supports recovery and focus", S("cw",size=8,color=MUTED))],
+            [P("MACRO",  S("mh", size=7, color=MUTED, bold=True)),
+             P("GRAMS",  S("mh", size=7, color=MUTED, bold=True, align=TA_CENTER)),
+             P("KCAL",   S("mh", size=7, color=MUTED, bold=True, align=TA_CENTER)),
+             P("RATIO",  S("mh", size=7, color=MUTED, bold=True, align=TA_CENTER)),
+             P("WHY IT MATTERS FOR YOU", S("mh", size=7, color=MUTED, bold=True))],
+            [P("Protein",       S("pr", size=9, bold=True, color=BLUE)),
+             P(f"{protein_g} g",  S("pv", size=9, align=TA_CENTER)),
+             P(f"{protein_g*4}",  S("pv", size=9, align=TA_CENTER)),
+             P("~30%",            S("pv", size=9, align=TA_CENTER)),
+             P("Preserves muscle while changing body composition; keeps you full longer",
+               S("pw", size=8, color=MUTED))],
+            [P("Fat",          S("fr", size=9, bold=True, color=WARN)),
+             P(f"{fat_g} g",   S("fv", size=9, align=TA_CENTER)),
+             P(f"{fat_g*9}",   S("fv", size=9, align=TA_CENTER)),
+             P("~28%",          S("fv", size=9, align=TA_CENTER)),
+             P("Hormone production, brain function, fat-soluble vitamin absorption",
+               S("fw", size=8, color=MUTED))],
+            [P("Carbohydrates", S("cr", size=9, bold=True, color=GOOD)),
+             P(f"{carb_g} g",  S("cv", size=9, align=TA_CENTER)),
+             P(f"{carb_g*4}",  S("cv", size=9, align=TA_CENTER)),
+             P("~42%",          S("cv", size=9, align=TA_CENTER)),
+             P("Fuels training sessions and supports recovery and focus",
+               S("cw", size=8, color=MUTED))],
         ]
-        mac_t = Table(macro_data, colWidths=[35*mm,22*mm,20*mm,18*mm,None])
+        mac_t = Table(macro_data, colWidths=[35*mm, 22*mm, 20*mm, 18*mm, None])
         mac_t.setStyle(TableStyle([
-            ("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD),
-            ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.5, STROKE),
-            ("TOPPADDING", (0,0), (-1,-1), 8), ("BOTTOMPADDING", (0,0), (-1,-1), 8),
-            ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "TOP"),
+            ("BACKGROUND",    (0,0), (-1,0),  CARD2),
+            ("BACKGROUND",    (0,1), (-1,-1), CARD),
+            ("BOX",           (0,0), (-1,-1), 1,   STROKE),
+            ("INNERGRID",     (0,0), (-1,-1), 0.5, STROKE),
+            ("TOPPADDING",    (0,0), (-1,-1), 7),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+            ("LEFTPADDING",   (0,0), (-1,-1), 8),
+            ("VALIGN",        (0,0), (-1,-1), "TOP"),
         ]))
-        story.append(mac_t); story.append(VGap(8))
-        story.append(P("Macros are estimated from Mifflin-St Jeor + standard ratios for your goal. "
-                        "Re-check every 2–3 weeks against real-world progress, not the formula.",
-                        S("dn", size=7.5, color=MUTED, italic=True, after=6)))
+        story.append(mac_t)
+        story.append(VGap(5))
+        story.append(P(
+            "Macros estimated from Mifflin-St Jeor + standard ratios. Re-check every 2–3 weeks.",
+            S("dn", size=7.5, color=MUTED, italic=True, after=5)
+        ))
         meal_count = 4
         protein_per_meal = protein_g // meal_count
         chicken_g = int(protein_per_meal / 0.31)
         eggs_count = round(protein_per_meal / 6.3)
         story.append(P(
-            f"🍗 <b>Protein per meal:</b> {protein_g} g/day ÷ {meal_count} meals = "
+            f"🍗 <b>Protein per meal:</b> {protein_g} g ÷ {meal_count} meals = "
             f"<b>{protein_per_meal} g per meal</b> — e.g. {chicken_g} g chicken breast "
             f"or {eggs_count} eggs per sitting.",
-            S("ppm", size=8.5, lead=13, color=TEXT, after=6)
+            S("ppm", size=8.5, lead=13, color=TEXT, after=4)
         ))
         hydration_l = round(wt * 0.033, 1)
-        story.append(P(f"💧 Hydration target: roughly <b>{hydration_l} litres/day</b>, more on training days "
-                        f"or in hot weather.", S("hyd", size=8.5, color=MUTED, after=6)))
+        story.append(P(
+            f"💧 <b>Hydration target:</b> roughly <b>{hydration_l} litres/day</b>, "
+            f"more on training days or in hot weather.",
+            S("hyd", size=8.5, lead=13, color=MUTED, after=6)
+        ))
         if exlog:
-            story.append(VGap(6))
-            story.append(P("Your Logged Activity", S("exh", size=9.5, bold=True, color=ACCENT, after=4)))
-            ex_metrics = [("Weekly minutes", f"{ex_total_min} min", "vs WHO 150 min/week", "#22C55E" if ex_total_min >= 150 else "#F59E0B"),
-                          ("Sessions / week", f"{exlog.get('sessions_per_week','—')}", str(exlog.get("activity","")), "#3B82F6"),
+            story.append(P("Your Logged Activity",
+                            S("exh", size=9.5, bold=True, color=ACCENT, after=4)))
+            ex_metrics = [
+                ("Weekly minutes",  f"{ex_total_min} min",
+                 "vs WHO 150 min/week", "#22C55E" if ex_total_min >= 150 else "#F59E0B"),
+                ("Sessions / week", f"{exlog.get('sessions_per_week','—')}",
+                 str(exlog.get("activity", "")), "#3B82F6"),
                           ("Calories / week", f"{ex_kcal_w:.0f}", "from training alone", "#94A3B8")]
             story.append(MetricCard(ex_metrics, card_h=60))
-            story.append(VGap(8))
-        story.append(ExpertInsightBox("Nutrition", nut_txt[:0] + (
-            "Calorie needs were estimated using the Mifflin-St Jeor equation (doi:10.1093/ajcn/"
-            "51.2.241), adjusted for your logged activity (TDEE). This is one of the most validated "
-            "resting-metabolism formulas in clinical use, typically accurate within 10% for most "
-            "adults. Protein target of 1.8 g/kg/day is supported by Morton et al., BJSM 2018 "
-            "(doi:10.1136/bjsports-2017-097608)."
-        )))
-        story.append(VGap(8))
-        story.append(ActionableMilestoneBox(nut_steps))
+            story.append(VGap(6))
+        story.append(KeepTogether([
+            ExpertInsightBox("Nutrition",
+                "Calorie needs estimated via Mifflin-St Jeor (doi:10.1093/ajcn/51.2.241), adjusted "
+                "for logged activity (TDEE). Protein target of 1.8 g/kg/day supported by Morton et al., "
+                "BJSM 2018 (doi:10.1136/bjsports-2017-097608)."),
+            VGap(6),
+            ActionableMilestoneBox(nut_steps),
+        ]))
     else:
-        story.append(P("A personalised calorie plan wasn't generated for this report — "
-                        "complete the nutrition step in the app to unlock this section.",
+        story.append(P("A personalised calorie plan wasn't generated — complete the nutrition step "
+                        "in the app to unlock this section.",
                         S("ncp", size=9, color=MUTED, after=8)))
     story.append(PageBreak())
 
-    # ── PAGE 8 — 30-DAY PERSONALISED TRAINING PLAN ───────────────────
+    # ── PAGE 8+9 — 30-DAY TRAINING PLAN ────────────────────────────
     story.append(SecHeader("07", "Your Personalised 30-Day Training Plan",
                             subtitle=f"Goal: {_goal} · Built only from the activities you selected"))
-    story.append(VGap(12))
-
-    if selected_acts:
-        acts_str = ", ".join(selected_acts)
-    else:
-        acts_str = "strength training, running and easy walking (a balanced default mix)"
+    story.append(VGap(G))
+    acts_str = ", ".join(selected_acts) if selected_acts else "strength training, running and easy walking"
     intro_name = f"{name_v}, " if name_v else ""
     story.append(P(
         f"{intro_name}this plan is built specifically around <b>{acts_str}</b> — nothing generic. "
-        f"It runs across four progressive blocks over the next 30 days: Foundation, Build, Push, and "
-        f"Taper &amp; Reassess. Every session below names the exact activity you chose and tells you "
-        f"precisely what to do, for how long, and at what effort.",
-        S("plan30_intro", size=9.5, lead=14, after=8)
+        f"Four progressive blocks over 30 days: Foundation, Build, Push, and Taper &amp; Reassess. "
+        f"Every session names the exact activity you chose with precise duration and effort.",
+        S("plan30_intro", size=9.5, lead=14, after=6)
     ))
 
     if selected_acts:
