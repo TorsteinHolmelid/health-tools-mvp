@@ -7,6 +7,17 @@ import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from db import get_db_client, get_user_history, has_premium_access, is_authenticated, sign_out
+# Bevar widget-keys frå hovudsida
+from db import get_db_client, get_user_history, has_premium_access, is_authenticated, sign_out, get_user_profile
+
+db_preserve = get_db_client()
+if is_authenticated() and not st.session_state.get("profile_preserved"):
+    _profile = get_user_profile(db_preserve)
+    if _profile:
+        for _k, _v in _profile.items():
+            if _k not in st.session_state:
+                st.session_state[_k] = _v
+    st.session_state["profile_preserved"] = True
 
 # --- Sidekonfigurasjon ---
 st.set_page_config(
