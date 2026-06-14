@@ -121,7 +121,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         "Rowing (moderate/vigorous)": "cardio", "Swimming": "cardio",
         "Running/jogging": "cardio", "HIIT": "cardio", "Stair climbing / Stairmaster": "cardio",
         "Basketball / Team sports": "sport", "Soccer (football)": "sport", "Tennis (casual)": "sport",
-        "Squash": "sport", "Badminton": "sport", "Table tennis (bordtennis)": "sport", "Dancing": "sport",
+        "Squash": "sport", "Badminton": "sport", "Table tennis": "sport", "Dancing": "sport",
         "Strength training (weights)": "strength", "Boxing / Martial arts": "strength",
         "Rock climbing / Bouldering": "strength", "Hiking (incline)": "strength",
     }
