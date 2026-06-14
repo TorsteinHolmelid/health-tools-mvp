@@ -3728,7 +3728,7 @@ if not _unlocked:
 
     # -------------------- 4. Lås opp-knapp (Stripe) --------------------
     _uid = get_current_user_id() or ""
-    _app_url = "https://din-app.streamlit.app"
+    _app_url = "https://health-tools.streamlit.app/"
     stripe_link = f"https://buy.stripe.com/test_8x2dRa2HU4AXam22fC1Fe03?client_reference_id={_uid}&success_url={_app_url}/?payment=success%26uid={_uid}"
     st.link_button(
         "🔓 Unlock full report — 4,99 USD",
