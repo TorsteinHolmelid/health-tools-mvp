@@ -59,11 +59,9 @@ def sign_in(email: str, password: str):
         return None, str(e)
 
 def sign_out():
-    # Også fjern den lagra klienten
     st.session_state.pop("supabase_client", None)
     st.session_state["authenticated"] = False
     st.session_state["user_id"] = None
-    # evt. sign out fra klienten
 
 def save_health_metrics(db: Client, weight=None, bmi=None, vo2max=None, 
                         bio_age=None, weekly_activity_minutes=None, resting_hr=None):
@@ -92,7 +90,7 @@ def get_user_history(db: Client):
 def has_premium_access(db: Client = None) -> bool:
     """
     Sjekk om innlogget bruker har premiumtilgang.
-    Bruker først medfølgende db-klient (eller henter en vanlig klient).
+    Bruker først medfølgende db-klient (eller henter vanlig klient).
     Hvis det ikke fungerer (f.eks. uautentisert klient), fallback til service role.
     """
     user_id = get_current_user_id()
@@ -114,11 +112,10 @@ def has_premium_access(db: Client = None) -> bool:
         resp = admin_client.table("premium_access").select("*").eq("user_id", user_id).execute()
         return len(resp.data) > 0
     except Exception as e:
-        print(f"Premium fallback feilet: {e}")  # eller logg
+        print(f"Premium fallback feilet: {e}")  # eller bruk st.error i appen
         return False
 
 def get_user_profile(db: Client):
-    """Hent lagra input-verdiar (siste innstillingar) for innlogga brukar."""
     user_id = get_current_user_id()
     if not user_id:
         return None
@@ -131,7 +128,6 @@ def get_user_profile(db: Client):
     return None
 
 def save_user_profile(db: Client, data: dict):
-    """Lagre/oppdater input-verdiane til innlogga brukar."""
     user_id = get_current_user_id()
     if not user_id:
         return None
