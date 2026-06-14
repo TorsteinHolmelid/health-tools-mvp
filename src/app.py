@@ -115,9 +115,6 @@ else:
                     st.session_state["authenticated"] = True
                     st.session_state["user_id"] = user.id
                     st.session_state["user_email"] = email
-                    st.session_state["premium_checked"] = False
-                    st.session_state["profile_loaded"] = False
-                    st.session_state["report_unlocked"] = False
                     st.rerun()
 
         with tab2:
@@ -188,7 +185,7 @@ PROFILE_KEYS = [
     "vo2_method_select", "vo2_cooper_distance", "vo2_rockport_time",
     "vo2_rockport_hr", "vo2_measured_input",
     "global_resting_hr", "global_waist_cm", "global_hip_cm",
-    "ui_act_group", "ui_sessions_per_week", "ui_minutes", "ui_rpe",
+    "ui_act_group", "ui_activity_type", "ui_intensity", "ui_sessions_per_week", "ui_minutes", "ui_rpe",
     "ui_use_hr", "ui_avg_hr_calc", "ui_resting_hr", "ui_manual_kcal", "ui_manual_kcal_val",
     "bio_smoker", "bio_diabetes", "bio_menopause", "bio_family_hist",
     "bio_bp_unknown", "bio_bp_val", "bio_chol_unknown", "bio_chol_val",
@@ -199,7 +196,7 @@ PROFILE_KEYS = [
     "plan_create", "plan_type", "protein_toggle",
 ]
 
-if logged_in and not st.session_state.get("profile_loaded"):
+if logged_in and "profile_loaded" not in st.session_state:
     _saved_profile = get_user_profile(db)
     if _saved_profile:
         for _k, _v in _saved_profile.items():
@@ -1972,10 +1969,10 @@ with st.expander("🏃 Exercise log", expanded=True):
     _vc1, _vc2 = st.columns(2)
     with _vc1:
         sessions_per_week = st.slider("Sessions per week", min_value=0, max_value=14,
-                                       value=3, step=1, key="ui_sessions_per_week")
+                                       value=int(st.session_state.get("ui_sessions_per_week", 3)), step=1, key="ui_sessions_per_week")
     with _vc2:
         minutes_per_session = st.slider("Minutes per session", min_value=5, max_value=180,
-                                         value=45, step=5, key="ui_minutes", format="%d min")
+                                         value=int(st.session_state.get("ui_minutes", 45)), step=5, key="ui_minutes", format="%d min")
 
     _total_min = sessions_per_week * minutes_per_session
     _who_ex = "✅ Meets WHO guidelines" if _total_min >= 150 else f"⚠️ {150 - _total_min} min/week below WHO target"
@@ -2024,7 +2021,7 @@ with st.expander("🏃 Exercise log", expanded=True):
         manual_kcal = st.toggle("🔢 I know my exact kcal burn per session", key="ui_manual_kcal")
         if manual_kcal:
             manual_kcal_val = st.slider("kcal burned per session", min_value=0, max_value=2000,
-                                         value=300, step=10, key="ui_manual_kcal_val", format="%d kcal")
+                                         value=int(st.session_state.get("ui_manual_kcal_val", 300)), step=10, key="ui_manual_kcal_val", format="%d kcal")
         else:
             manual_kcal_val = 0.0
 
@@ -2103,14 +2100,14 @@ if run_bioage:
             if not bp_unknown:
                 bp_systolic = st.number_input(
                     "Systolic blood pressure (mmHg)",
-                    min_value=70.0, max_value=260.0, value=120.0, key="bio_bp_val"
+                    min_value=70.0, max_value=260.0, value=float(st.session_state.get("bio_bp_val", 120.0)), key="bio_bp_val"
                 )
 
             chol_unknown = st.toggle("I don't know my cholesterol", value=False, key="bio_chol_unknown")
             if not chol_unknown:
                 cholesterol = st.number_input(
                     "Cholesterol (mg/dL)",
-                    min_value=50.0, max_value=500.0, value=180.0, key="bio_chol_val"
+                    min_value=50.0, max_value=500.0, value=float(st.session_state.get("bio_chol_val", 180.0)), key="bio_chol_val"
                 )
 
             _bio_rhr_known = st.session_state.get("global_resting_hr")
@@ -2130,23 +2127,23 @@ if run_bioage:
             if not sleep_unknown:
                 sleep_hours = st.number_input(
                     "Average sleep per night (hours)",
-                    min_value=0.0, max_value=24.0, value=7.0, format="%.1f", key="bio_sleep_val"
+                    min_value=0.0, max_value=24.0, value=float(st.session_state.get("bio_sleep_val", 7.0)), format="%.1f", key="bio_sleep_val"
                 )
 
             alcohol_unknown = st.toggle("I don't know my alcohol intake", value=False, key="bio_alc_unknown")
             if not alcohol_unknown:
                 alcohol_units = st.number_input(
                     "Alcohol units per week",
-                    min_value=0, max_value=300, value=0, key="bio_alc_val"
+                    min_value=0, max_value=300, value=int(st.session_state.get("bio_alc_val", 0)), key="bio_alc_val"
                 )
 
             fruit_veg = st.number_input(
                 "Daily fruit & vegetable servings",
-                min_value=0, max_value=20, value=3, key="bio_fv"
+                min_value=0, max_value=20, value=int(st.session_state.get("bio_fv", 3)), key="bio_fv"
             )
             perceived_stress = st.slider(
                 "Perceived stress (1 low – 10 high)",
-                min_value=1, max_value=10, value=5, key="bio_stress"
+                min_value=1, max_value=10, value=int(st.session_state.get("bio_stress", 5)), key="bio_stress"
             )
 
         with t_body:
@@ -2155,7 +2152,7 @@ if run_bioage:
             if not grip_unknown:
                 grip_strength = st.number_input(
                     "Grip strength (kg)",
-                    min_value=0.0, max_value=100.0, value=30.0, format="%.1f", key="bio_grip_val"
+                    min_value=0.0, max_value=100.0, value=float(st.session_state.get("bio_grip_val", 30.0)), format="%.1f", key="bio_grip_val"
                 )
 
             bio_waist_unknown = st.toggle("I don't know my waist-to-hip ratio", value=False, key="bio_waist_unknown")
