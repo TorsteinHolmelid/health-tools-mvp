@@ -14,8 +14,16 @@ def get_supabase_key() -> str:
     except:
         return os.getenv("SUPABASE_KEY", "")
 
+def get_service_client() -> Client:
+    """Returnerer en admin-klient med service role (full tilgang)."""
+    url = get_supabase_url()
+    key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or st.secrets.get("SUPABASE_SERVICE_ROLE_KEY")
+    if not key:
+        raise Exception("Service role key missing. Legg til SUPABASE_SERVICE_ROLE_KEY i secrets.")
+    return create_client(url, key)
+
 def get_db_client() -> Client:
-    # Returner den lagra klienten hvis den finnes, ellers opprett ny (anonym)
+    """Returner lagret autentisert klient hvis den finnes, ellers opprett ny (anonym)."""
     if "supabase_client" in st.session_state:
         return st.session_state["supabase_client"]
     url = get_supabase_url()
@@ -81,12 +89,33 @@ def get_user_history(db: Client):
     response = db.table("health_metrics").select("*").eq("user_id", user_id).order("created_at").execute()
     return response.data
 
-def has_premium_access(db: Client) -> bool:
+def has_premium_access(db: Client = None) -> bool:
+    """
+    Sjekk om innlogget bruker har premiumtilgang.
+    Bruker først medfølgende db-klient (eller henter en vanlig klient).
+    Hvis det ikke fungerer (f.eks. uautentisert klient), fallback til service role.
+    """
     user_id = get_current_user_id()
     if not user_id:
         return False
-    response = db.table("premium_access").select("*").eq("user_id", user_id).execute()
-    return len(response.data) > 0
+
+    # Prøv først med vanlig klient (autentisert eller anonym)
+    try:
+        client = db if db is not None else get_db_client()
+        resp = client.table("premium_access").select("*").eq("user_id", user_id).execute()
+        if resp.data:
+            return True
+    except Exception:
+        pass
+
+    # Fallback: service role (krever SUPABASE_SERVICE_ROLE_KEY i secrets)
+    try:
+        admin_client = get_service_client()
+        resp = admin_client.table("premium_access").select("*").eq("user_id", user_id).execute()
+        return len(resp.data) > 0
+    except Exception as e:
+        print(f"Premium fallback feilet: {e}")  # eller logg
+        return False
 
 def get_user_profile(db: Client):
     """Hent lagra input-verdiar (siste innstillingar) for innlogga brukar."""
