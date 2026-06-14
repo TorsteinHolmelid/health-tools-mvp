@@ -121,7 +121,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
         "Rowing (moderate/vigorous)": "cardio", "Swimming": "cardio",
         "Running/jogging": "cardio", "HIIT": "cardio", "Stair climbing / Stairmaster": "cardio",
         "Basketball / Team sports": "sport", "Soccer (football)": "sport", "Tennis (casual)": "sport",
-        "Squash": "sport", "Badminton": "sport", "Table tennis": "sport", "Dancing": "sport",
+        "Squash": "sport", "Badminton": "sport", "Table tennis (bordtennis)": "sport", "Dancing": "sport",
         "Strength training (weights)": "strength", "Boxing / Martial arts": "strength",
         "Rock climbing / Bouldering": "strength", "Hiking (incline)": "strength",
     }
@@ -179,62 +179,316 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             4: ("45 min", "Easy pace - taper week, shorter session, same comfortable effort."),
         }[week]
 
-    def _sport_rx(week, day_idx=0):
+    def _sport_rx(week, day_idx=0, activity=""):
         """
-        day_idx: 0=Mon, 1=Tue, 2=Wed, 3=Thu, 4=Fri, 5=Sat
-        Each week has a theme, but the session TYPE rotates across days so no two
-        consecutive days have identical prescriptions.
+        Returns (duration, prescription) specific to the sport, week theme, and day of the week.
+        day_idx: 0=Mon … 5=Sat  (Sunday is always rest, never reaches here)
+        week: 1=Foundation, 2=Build, 3=Push, 4=Taper
+        activity: the exact activity string from ACT_CATEGORY, used to pick sport-specific cues.
+        Day types rotate so every session within a week is different:
+          0=technique, 1=drills, 2=intervals, 3=tactical, 4=match, 5=conditioning
         """
-        # session types rotate across days: technique / drills / match / intervals / tactical / long rally
-        day_types = {
-            0: "technique",   # Monday
-            1: "drills",      # Tuesday
-            2: "intervals",   # Wednesday
-            3: "tactical",    # Thursday
-            4: "match",       # Friday
-            5: "long_rally",  # Saturday
-        }
+        day_types = {0: "technique", 1: "drills", 2: "intervals",
+                     3: "tactical",  4: "match",  5: "conditioning"}
         dtype = day_types.get(day_idx % 6, "technique")
 
-        prescriptions = {
-            # week 1 — Foundation: low intensity, quality > quantity
-            1: {
-                "technique":  ("30 min", "Slow-ball technique work — focus on consistent stroke mechanics and contact point. No pace, pure form."),
-                "drills":     ("30 min", "Multiball forehand & backhand drill alternations — 20 balls per set, rest 60 s. Precision over speed."),
-                "intervals":  ("30 min", "Short rally bursts: 10 strokes at 60% pace, 30 s rest × 8 sets. Learn the rhythm, not the pace."),
-                "tactical":   ("30 min", "Serve & 3rd-ball attack patterns at half pace — pick one serve variation and repeat until automatic."),
-                "match":      ("35 min", "Friendly practice match — play full points but at 70% intensity. Focus on placement, not winning."),
-                "long_rally": ("35 min", "Long-rally endurance sets: keep the ball in play as long as possible, both players aiming for 20+ shot rallies."),
-            },
-            # week 2 — Build: moderate intensity, add combinations
-            2: {
-                "technique":  ("35 min", "Technique refinement — add topspin to forehand drives. 3 sets × 15 reps each side, coach or multiball."),
-                "drills":     ("40 min", "Combination drill: FH cross-court → BH cross-court → FH down-the-line. Rotate every 15 balls."),
-                "intervals":  ("35 min", "Pressure drills: 15 strokes at 75% pace, 20 s rest × 10 sets. Slightly shorter rest than week 1."),
-                "tactical":   ("40 min", "2-point tactical patterns — serve short, attack long; or push long, attack on the return. Pick 2 patterns."),
-                "match":      ("40 min", "Practice match at 80% — play best of 5 games, track your own unforced errors per game."),
-                "long_rally": ("40 min", "Stamina rally sets: aim for 30+ shot rallies. Focus on footwork recovery between strokes."),
-            },
-            # week 3 — Push: peak intensity
-            3: {
-                "technique":  ("45 min", "Power technique — maximum topspin on FH loop. 4 sets × 12 reps, full hip rotation, push the pace."),
-                "drills":     ("50 min", "High-speed combination drills at 90%+ pace — FH loop, BH block, FH counter-loop sequence × 12 sets."),
-                "intervals":  ("50 min", "Max-intensity interval sets: 20 strokes at 95% pace, 15 s rest × 12 sets. This is your hardest session this month."),
-                "tactical":   ("50 min", "Full tactical pressure: serve variation, attack, recover — play against a strong opponent or coach feeding fast balls."),
-                "match":      ("55 min", "Competitive match play at full intensity — treat every point as a tournament point."),
-                "long_rally": ("55 min", "Peak endurance: 40+ shot rallies, full court movement, no mercy on footwork. Finish with 10 min of full-speed multiball."),
-            },
-            # week 4 — Taper: sharpen, don't grind
-            4: {
-                "technique":  ("30 min", "Light technique review — smooth strokes at 65% pace. Feel the form, don't force it."),
-                "drills":     ("30 min", "Favourite drill from week 3, half the volume. Remind your muscles what good feels like."),
-                "intervals":  ("25 min", "Short sharp sets: 10 strokes at 80% pace, 30 s rest × 6. Stay snappy but don't fatigue."),
-                "tactical":   ("30 min", "One tactical pattern only — your strongest serve + attack combination. Groove it in."),
-                "match":      ("35 min", "Relaxed practice match — enjoy it and notice how much sharper you feel vs. week 1."),
-                "long_rally": ("35 min", "Easy long-rally session — keep it flowing and light. Active recovery, not a workout."),
-            },
-        }
-        dur, rx = prescriptions[week][dtype]
+        # ── TABLE TENNIS ─────────────────────────────────────────────────────────
+        if "table tennis" in activity.lower() or "bordtennis" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Slow-ball stroke mechanics — focus on contact point and consistent racket angle. No pace, pure form."),
+                    "drills":        ("30 min", "Multiball FH & BH alternations — 20 balls per set, 60 s rest. Precision over speed."),
+                    "intervals":     ("30 min", "Rally bursts: 10 strokes at 60% pace, 30 s rest × 8 sets. Learn the rhythm, not the pace."),
+                    "tactical":      ("30 min", "Serve + 3rd-ball attack at half pace — one serve variation, repeat until automatic."),
+                    "match":         ("35 min", "Friendly practice match at 70% — focus on placement, not winning."),
+                    "conditioning":  ("35 min", "Long-rally endurance: both players aim for 20+ shot rallies, full footwork recovery between points."),
+                },
+                2: {
+                    "technique":     ("35 min", "Add topspin to FH drives — 3 sets × 15 reps each side, full hip rotation."),
+                    "drills":        ("40 min", "Combo drill: FH cross-court → BH cross-court → FH down-the-line. Rotate every 15 balls."),
+                    "intervals":     ("35 min", "Pressure drills: 15 strokes at 75% pace, 20 s rest × 10 sets."),
+                    "tactical":      ("40 min", "2-point tactical patterns — serve short/attack long or push long/attack return."),
+                    "match":         ("40 min", "Practice match at 80% — best of 5, track unforced errors per game."),
+                    "conditioning":  ("40 min", "Stamina rallies: aim for 30+ shots. Prioritise footwork recovery after each point."),
+                },
+                3: {
+                    "technique":     ("45 min", "Power FH loop — maximum topspin, 4 sets × 12 reps, full hip drive."),
+                    "drills":        ("50 min", "High-speed combos at 90%+: FH loop → BH block → FH counter-loop × 12 sets."),
+                    "intervals":     ("50 min", "Max-intensity bursts: 20 strokes at 95% pace, 15 s rest × 12 sets. Hardest session this month."),
+                    "tactical":      ("50 min", "Full tactical pressure — varied serves, immediate attack, strong opponent or fast multiball feed."),
+                    "match":         ("55 min", "Competitive match at full intensity — treat every point as a tournament point."),
+                    "conditioning":  ("55 min", "Peak endurance: 40+ shot rallies, full court movement. Finish with 10 min full-speed multiball."),
+                },
+                4: {
+                    "technique":     ("30 min", "Light stroke review at 65% — feel the form, don't force it."),
+                    "drills":        ("30 min", "Best drill from week 3, half the volume. Remind muscles what good feels like."),
+                    "intervals":     ("25 min", "Short sharp sets: 10 strokes at 80%, 30 s rest × 6. Snappy but not fatiguing."),
+                    "tactical":      ("30 min", "One pattern only — your strongest serve + attack combo. Groove it in."),
+                    "match":         ("35 min", "Relaxed practice match — notice how much sharper you feel vs. week 1."),
+                    "conditioning":  ("35 min", "Easy long-rally flow — light active recovery, not a workout."),
+                },
+            }
+
+        # ── TENNIS ───────────────────────────────────────────────────────────────
+        elif "tennis" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Groundstroke mechanics — slow-feed rallies focusing on swing path and follow-through. No pace."),
+                    "drills":        ("35 min", "Cross-court FH & BH rally drill, 3 sets each side × 10 min. Consistent depth over power."),
+                    "intervals":     ("30 min", "Baseline sprint-and-recover: sprint to ball, reset to centre, repeat × 10 min. Build footwork habit."),
+                    "tactical":      ("30 min", "Serve + 1 rally shot patterns at 60% — pick one serve target and repeat."),
+                    "match":         ("35 min", "Practice sets at 70% — focus on getting the ball in play, not hitting winners."),
+                    "conditioning":  ("35 min", "Long crosscourt rallies both sides — sustain 15+ shots, track rally length."),
+                },
+                2: {
+                    "technique":     ("40 min", "Add topspin to BH — 3 sets of slow-to-medium feeds, exaggerate the low-to-high swing."),
+                    "drills":        ("40 min", "Inside-out FH drill + BH down-the-line combo — 20 min each. Moderate pace."),
+                    "intervals":     ("35 min", "Approach-shot sprint: short ball → move in → volley finish. 8 reps each side, 45 s rest."),
+                    "tactical":      ("40 min", "Serve + return patterns: focus on 2-3 specific tactical constructions per set."),
+                    "match":         ("45 min", "Practice match at 80% — play tiebreaks to build pressure tolerance."),
+                    "conditioning":  ("40 min", "Sustained baseline rally sets — 20+ shots, keep feet moving the whole time."),
+                },
+                3: {
+                    "technique":     ("45 min", "Full-power groundstrokes — max pace with controlled direction. 4 sets each side × 8 balls."),
+                    "drills":        ("50 min", "High-tempo combo: FH inside-out → BH cross-court → approach → volley. 12 reps, full intensity."),
+                    "intervals":     ("50 min", "Side-to-side defensive scramble: wide ball left, recover, wide ball right × 15 reps. Hardest session."),
+                    "tactical":      ("50 min", "Match-simulation: specific patterns under score pressure, coach calling out game situations."),
+                    "match":         ("55 min", "Full competitive set play at 100% — treat every game like a tournament match."),
+                    "conditioning":  ("55 min", "Peak baseline endurance: 25+ shot rallies, maximum footwork, no slowing down."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy groundstroke flow at 65% — smooth rhythm, no forcing."),
+                    "drills":        ("30 min", "Favourite drill from week 3 at half volume. Stay loose and confident."),
+                    "intervals":     ("25 min", "Light lateral sprints: 6 reps each side, 45 s rest. Stay sharp, not tired."),
+                    "tactical":      ("30 min", "One serving pattern only — groove your best serve + first-strike combo."),
+                    "match":         ("35 min", "Relaxed hitting session — play points but enjoy it, notice the improvement."),
+                    "conditioning":  ("35 min", "Easy cross-court rallies — light aerobic flow, finish feeling fresh."),
+                },
+            }
+
+        # ── SQUASH ───────────────────────────────────────────────────────────────
+        elif "squash" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Solo wall-hitting: straight drives both sides, focus on smooth swing and consistent height on the front wall."),
+                    "drills":        ("30 min", "Boast & drive drill with a partner — feeder boasts, you drive straight, 10 min each side."),
+                    "intervals":     ("30 min", "Ghost movement drill: 6-point ghost pattern × 6 reps, 60 s rest. Build court-movement habit."),
+                    "tactical":      ("30 min", "Length game — rally to a back-corner target, penalise anything short. 70% pace."),
+                    "match":         ("35 min", "Practice game at 70% — focus on length and width, not winning."),
+                    "conditioning":  ("35 min", "Sustained straight-drive pairs: keep 15+ shot rallies going, both corners, recover position each time."),
+                },
+                2: {
+                    "technique":     ("35 min", "Add disguise — same swing path for drive and drop. 3 sets of 10 drives + 2 drop-shot variations."),
+                    "drills":        ("40 min", "3-shot combo: boast → cross-court drive → volley drop. 8 min on, 2 min rest × 3."),
+                    "intervals":     ("35 min", "Court sprints: T-position → front corner → back corner → T. 10 reps, 30 s rest. Moderate effort."),
+                    "tactical":      ("40 min", "Width game — rally wide to side walls, force the weak volley return, attack the short ball."),
+                    "match":         ("45 min", "Practice games at 80% — best of 5, count unforced errors."),
+                    "conditioning":  ("40 min", "Long rally pairs: 20+ shots each rally, high pace, full recovery to T after every shot."),
+                },
+                3: {
+                    "technique":     ("45 min", "Attack from length — drive deep, step in on the short reply, hit a hard winner. 4 × 8 reps."),
+                    "drills":        ("50 min", "High-speed 3-shot combo at 90%: boast → nick → straight drive. 12 reps, 20 s rest. Peak drill intensity."),
+                    "intervals":     ("50 min", "Max-intensity ghost: 9-point ghost × 8 reps, 45 s rest. Hardest movement session this month."),
+                    "tactical":      ("50 min", "Full match pressure drills — coach feeds random feeds, you construct a winner from any position."),
+                    "match":         ("55 min", "Competitive games at 100% — no mercy, treat every point as a match point."),
+                    "conditioning":  ("55 min", "Peak endurance rally: 25+ shots at near-match pace. Push the aerobic ceiling."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy solo wall-hitting at 65% — fluent rhythm, no forcing."),
+                    "drills":        ("30 min", "Boast & drive at moderate pace — half the reps of week 3. Keep it clean."),
+                    "intervals":     ("25 min", "Light 6-point ghost × 5 reps, 60 s rest. Stay sharp, don't fatigue."),
+                    "tactical":      ("30 min", "Length game only — groove the bread-and-butter straight drive. One pattern, perfect execution."),
+                    "match":         ("35 min", "Easy practice game — play freely and notice how automatic the movement feels."),
+                    "conditioning":  ("35 min", "Relaxed straight-drive pairs — easy aerobic flow, finish feeling fresh."),
+                },
+            }
+
+        # ── BADMINTON ────────────────────────────────────────────────────────────
+        elif "badminton" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Clear & drop mechanics — slow feeds, focus on high contact point and wrist snap on the clear."),
+                    "drills":        ("30 min", "Multi-shuttle feed: clear → drop → net lift sequence. 10 shuttles per set × 6 sets."),
+                    "intervals":     ("30 min", "Footwork ladder: 6-point movement pattern around the court × 8 reps, 45 s rest."),
+                    "tactical":      ("30 min", "Serve + attack pattern at 65% — short serve, net kill or push, reset. One pattern only."),
+                    "match":         ("35 min", "Practice games at 70% — play to 15, focus on shuttle placement not smash speed."),
+                    "conditioning":  ("35 min", "Sustained clears: both players trade high clears to the back line for 8+ shots, track rally length."),
+                },
+                2: {
+                    "technique":     ("35 min", "Add deceptive net drops — same wrist position as the clear until the last moment. 3 sets × 12 reps."),
+                    "drills":        ("40 min", "Attack-defence rotation: smash → block → lift → smash. 10 min on, 2 min rest × 3."),
+                    "intervals":     ("35 min", "Pressure footwork: random 4-corner feeds at moderate pace × 10 reps, 30 s rest."),
+                    "tactical":      ("40 min", "Double-attack patterns: push to BH side → attack the weak return. Two patterns, alternate."),
+                    "match":         ("45 min", "Practice games at 80% — best of 3 to 21, note where errors come from."),
+                    "conditioning":  ("40 min", "Rally pairs: mix clears and drops, sustain 12+ shots, full court recovery each point."),
+                },
+                3: {
+                    "technique":     ("45 min", "Full-power smash mechanics — jump smash technique, 4 sets × 8 reps, max racket speed."),
+                    "drills":        ("50 min", "High-speed 4-shot combo at 90%: smash → block → lift → re-smash × 12 reps. Hardest drill this month."),
+                    "intervals":     ("50 min", "Max-intensity random feeds: 6-corner random at 90%+ speed × 10 reps, 20 s rest."),
+                    "tactical":      ("50 min", "Full match-pressure tactics: serve rotation, attack construction, forced errors under score pressure."),
+                    "match":         ("55 min", "Full competitive games at 100% — tournament mindset every point."),
+                    "conditioning":  ("55 min", "Peak endurance: sustained fast-tempo rallies 15+ shots, push aerobic limit the whole session."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy clear & drop at 65% — fluid motion, no forcing."),
+                    "drills":        ("30 min", "Multi-shuttle feed at half volume — stay clean, not fast."),
+                    "intervals":     ("25 min", "Light 4-corner feeds × 6 reps, 45 s rest. Sharp, not tired."),
+                    "tactical":      ("30 min", "One serve + first-attack pattern — automate your strongest opener."),
+                    "match":         ("35 min", "Relaxed practice game — enjoy the rhythm, notice the improvement since week 1."),
+                    "conditioning":  ("35 min", "Easy clear rally pairs — light aerobic flow, finish fresh."),
+                },
+            }
+
+        # ── BASKETBALL / TEAM SPORTS ─────────────────────────────────────────────
+        elif "basketball" in activity.lower() or "team sports" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Ball-handling & dribbling fundamentals — stationary and moving, both hands, 70% speed."),
+                    "drills":        ("35 min", "Shooting form drill: 5 spots around the key, 5 shots each, slow and deliberate."),
+                    "intervals":     ("30 min", "Defensive slide intervals: slide baseline-to-baseline × 8 reps, 45 s rest. Build lateral habit."),
+                    "tactical":      ("30 min", "Pick-and-roll read drill at walk-through pace — identify the coverage and make the correct pass."),
+                    "match":         ("35 min", "3-on-3 half-court scrimmage at 70% — focus on decisions, not athleticism."),
+                    "conditioning":  ("35 min", "Full-court light transition runs: walk back, jog forward × 15 laps."),
+                },
+                2: {
+                    "technique":     ("40 min", "Mid-range shooting off the dribble — jab-step pull-up, 3 sets × 10 reps each side."),
+                    "drills":        ("40 min", "2-man passing & cutting drill: give-and-go, back-cut, 10 min each pattern."),
+                    "intervals":     ("35 min", "Suicide sprints: half-court × 6 reps, full-court × 4 reps, 60 s rest between sets."),
+                    "tactical":      ("40 min", "Transition offence drill: rebound → outlet → layup. 3 reps then switch roles. Moderate pace."),
+                    "match":         ("45 min", "4-on-4 half-court at 80% — call your own fouls, emphasise communication."),
+                    "conditioning":  ("40 min", "Full-court aerobic runs: steady pace with ball, change direction every 30 s."),
+                },
+                3: {
+                    "technique":     ("45 min", "Contested shooting under fatigue — shoot immediately after a sprint to the spot. 4 sets × 8 reps."),
+                    "drills":        ("50 min", "High-intensity 3-man weave full-court × 12 reps — max speed, no mistakes. Hardest drill this month."),
+                    "intervals":     ("50 min", "Game-speed suicides: full-court × 8 reps, 30 s rest. Peak conditioning session."),
+                    "tactical":      ("50 min", "5-on-5 half-court with coach calling plays — execute under real pressure."),
+                    "match":         ("55 min", "Full 5-on-5 scrimmage at 100% — game pace, tournament mindset."),
+                    "conditioning":  ("55 min", "Full-court interval runs: 10 sprints, 10 jog-backs. Finish with 10 min defensive slides."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy shooting around — free throws and elbow jumpers at 65% effort."),
+                    "drills":        ("30 min", "Light passing and cutting — half the volume of week 3, relaxed pace."),
+                    "intervals":     ("25 min", "Half-court slides only × 6 reps, 60 s rest. Stay mobile, not exhausted."),
+                    "tactical":      ("30 min", "Walk-through of your best play set — mental reps, no full-speed execution."),
+                    "match":         ("35 min", "3-on-3 light scrimmage — enjoy it, notice how sharp your reads feel."),
+                    "conditioning":  ("35 min", "Easy full-court jog with ball — light aerobic flush, finish feeling fresh."),
+                },
+            }
+
+        # ── SOCCER / FOOTBALL ────────────────────────────────────────────────────
+        elif "soccer" in activity.lower() or "football" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "First-touch control drill — 50 touches each foot with a wall or partner feed at 60% pace."),
+                    "drills":        ("35 min", "Passing triangle: 3-player 5m triangle, one-touch passes × 10 min, then two-touch × 10 min."),
+                    "intervals":     ("30 min", "Agility ladder footwork: 6 patterns × 5 reps each, 45 s rest. Build movement habit."),
+                    "tactical":      ("30 min", "Positional rondo: 4v2 in a 10m square, focus on movement off the ball, not pace."),
+                    "match":         ("35 min", "Small-sided game 4v4 at 70% — emphasis on passing combinations, not goals."),
+                    "conditioning":  ("35 min", "Aerobic endurance run: 30 min at conversational pace, then 5 min cool-down dribble."),
+                },
+                2: {
+                    "technique":     ("40 min", "Shooting technique — driven shot and placed finish from the edge of the box, 3 sets × 8 reps each."),
+                    "drills":        ("40 min", "1-2 combination + finish: wall pass into a shot, 10 reps each side. Moderate pace."),
+                    "intervals":     ("35 min", "High-intensity runs: 20m sprint → jog back × 10 reps, 30 s rest. Build sprint capacity."),
+                    "tactical":      ("40 min", "Pressing drill: 6v6 with a pressing trigger — compact shape, immediate press on back-pass."),
+                    "match":         ("45 min", "7v7 match at 80% — call out tactical patterns as they happen."),
+                    "conditioning":  ("40 min", "Fartlek run: alternate 1 min hard / 2 min easy for 30 min. Ball optional."),
+                },
+                3: {
+                    "technique":     ("45 min", "Power shooting under pressure — shoot immediately after a sprint, both feet, 4 sets × 8 reps."),
+                    "drills":        ("50 min", "High-tempo possession drill: 6v3 rondo at full pace × 12 min, 2 min rest × 3. Hardest drill this month."),
+                    "intervals":     ("50 min", "Match-intensity sprints: 30m × 10, 20 s rest. Plus 4 × 4 min hard runs, 3 min easy. Peak session."),
+                    "tactical":      ("50 min", "Full 11v11 tactical shape practice — transitions, set-pieces and pressing under match intensity."),
+                    "match":         ("55 min", "Full 11-a-side scrimmage at 100% — tournament intensity every minute."),
+                    "conditioning":  ("55 min", "High-intensity intervals: 8 × 3 min at 90%+ effort with 2 min active recovery. Push the aerobic ceiling."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy first-touch and passing at 65% — clean and confident, no forcing."),
+                    "drills":        ("30 min", "Light passing triangle, half volume — keep it flowing and relaxed."),
+                    "intervals":     ("25 min", "6 × 20m strides at 80% — stay sharp without accumulating fatigue."),
+                    "tactical":      ("30 min", "Walk-through of your team's best attacking pattern at slow pace."),
+                    "match":         ("35 min", "4v4 light game — enjoy it and notice how your positioning has improved."),
+                    "conditioning":  ("35 min", "Easy aerobic jog 25 min — active recovery, arrive at the next session fresh."),
+                },
+            }
+
+        # ── DANCING ──────────────────────────────────────────────────────────────
+        elif "dancing" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Isolations & footwork fundamentals — body rolls, hip isolation, weight shifts. Mirror work at 50% speed."),
+                    "drills":        ("30 min", "8-count phrase repetition: learn one 8-count combo, repeat 20× until automatic."),
+                    "intervals":     ("30 min", "Cardio rhythm session: freestyle to 3 min tracks × 6 rounds, 60 s rest. Easy effort, stay musical."),
+                    "tactical":      ("30 min", "Musicality training — listen to 5 different tracks, mark the beat and phrase changes with movement."),
+                    "match":         ("35 min", "Freestyle floor session at 70% — dance to 8 random tracks, focus on connection to the music."),
+                    "conditioning":  ("35 min", "Choreography run-through at half pace — build the sequence from start to finish without stopping."),
+                },
+                2: {
+                    "technique":     ("35 min", "Add dynamics — contrast sharp hits with smooth flows in the same 8-count. 3 × 10 min phrase work."),
+                    "drills":        ("40 min", "Partner or mirror drill: call-and-response, one leads 4 counts then switch. 20 min each role."),
+                    "intervals":     ("35 min", "Cardio bursts: 4 min freestyle at 75% effort, 1 min rest × 6. Keep the groove through the fatigue."),
+                    "tactical":      ("40 min", "Stylistic training — pick one style (heels, hip-hop, latin) and drill its specific technique × 30 min."),
+                    "match":         ("40 min", "Performance run-through at 80%: film yourself, review once, identify one thing to fix."),
+                    "conditioning":  ("40 min", "Full choreography × 3 run-throughs with 2 min rest — build performance endurance."),
+                },
+                3: {
+                    "technique":     ("45 min", "Power & precision — execute each move at full expression and energy. 4 sets of your hardest phrase."),
+                    "drills":        ("50 min", "High-tempo combo drills at 90%: full-speed 8-count phrases × 15 reps, 30 s rest. Hardest drill this month."),
+                    "intervals":     ("50 min", "Peak cardio: 5 min freestyle at 90% effort, 90 s rest × 6. Push the aerobic ceiling."),
+                    "tactical":      ("50 min", "Performance-pressure session: dance in front of others or film every run — simulate the real thing."),
+                    "match":         ("55 min", "Full performance at 100% — every track as if it's show night."),
+                    "conditioning":  ("55 min", "Endurance choreo: full routine × 5 run-throughs, 90 s rest. Test what you're made of."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy isolation flow at 65% — feel the movement, no forcing."),
+                    "drills":        ("30 min", "Favourite 8-count from week 3, half the reps. Stay loose and musical."),
+                    "intervals":     ("25 min", "Light freestyle: 3 min easy dance, 1 min rest × 5. Enjoy the rhythm."),
+                    "tactical":      ("30 min", "Musicality review — one track, full attention on phrasing and dynamics. No stress."),
+                    "match":         ("35 min", "Relaxed floor session — dance for fun and notice how much more natural it feels."),
+                    "conditioning":  ("35 min", "Easy choreo run-through × 2 — light active recovery, arrive at the next session fresh."),
+                },
+            }
+
+        # ── GENERIC SPORT FALLBACK ───────────────────────────────────────────────
+        else:
+            P = {
+                1: {
+                    "technique":     ("30 min", "Skill fundamentals at 60% intensity — focus on clean movement patterns and form over speed."),
+                    "drills":        ("30 min", "Repetition drill: choose one core skill, 6 sets × 10 reps, 60 s rest. Quality over quantity."),
+                    "intervals":     ("30 min", "Effort bursts: 30 s at 70% / 60 s easy × 8 rounds. Build work capacity."),
+                    "tactical":      ("30 min", "Decision-making drill at half pace — slow down the game to understand the patterns."),
+                    "match":         ("35 min", "Practice session at 70% — play points / situations, focus on execution not outcome."),
+                    "conditioning":  ("35 min", "Sustained aerobic activity in your sport: 30 min easy, track how your breathing settles."),
+                },
+                2: {
+                    "technique":     ("35 min", "Technique refinement — add one layer of complexity to the skill you drilled in week 1."),
+                    "drills":        ("40 min", "Combination drill: link two skills together, 4 sets × 8 reps, moderate pace."),
+                    "intervals":     ("35 min", "Effort bursts: 30 s at 80% / 45 s easy × 10 rounds. Push slightly harder than week 1."),
+                    "tactical":      ("40 min", "2-option tactical reads — read one cue, pick the correct response. Moderate speed."),
+                    "match":         ("45 min", "Practice session at 80% — track one error pattern and work to eliminate it."),
+                    "conditioning":  ("40 min", "Sustained sport-specific aerobic effort: 35 min with 3 short harder bursts woven in."),
+                },
+                3: {
+                    "technique":     ("45 min", "Full-speed skill execution under fatigue — perform the skill immediately after a sprint. 4 × 8 reps."),
+                    "drills":        ("50 min", "High-speed combo drills at 90%+ — link 3 skills, full intensity × 12 reps. Hardest drill session."),
+                    "intervals":     ("50 min", "Peak effort intervals: 40 s at 90-95% / 30 s easy × 12 rounds. Push the aerobic ceiling."),
+                    "tactical":      ("50 min", "Full match-pressure tactical drill — random scenarios, fast decisions, no thinking time."),
+                    "match":         ("55 min", "Full-intensity practice at 100% — treat every rep or point as competition."),
+                    "conditioning":  ("55 min", "Peak endurance: 45 min sustained sport effort at the highest pace you can maintain."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy skill flow at 65% — feel the movement, no forcing."),
+                    "drills":        ("30 min", "Best drill from week 3 at half volume — clean reps, relaxed pace."),
+                    "intervals":     ("25 min", "Light effort bursts: 20 s at 75% / 60 s easy × 6. Snappy but not fatiguing."),
+                    "tactical":      ("30 min", "One tactical pattern only — automate your strongest play."),
+                    "match":         ("35 min", "Relaxed practice session — enjoy it and notice how much sharper everything feels."),
+                    "conditioning":  ("35 min", "Easy aerobic activity: 30 min at conversational pace. Active recovery, arrive at next session fresh."),
+                },
+            }
+
+        dur, rx = P[week][dtype]
         return dur, rx
 
     def _low_rx(week):
@@ -296,7 +550,7 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 elif r == "sport":
                     act = plan30_sport[counters["sport"] % len(plan30_sport)]
                     counters["sport"] += 1
-                    dur, rx = _sport_rx(week, day_idx)
+                    dur, rx = _sport_rx(week, day_idx, activity=act)
                     rows.append((day_name, "Sport", f"{act} - {rx}", dur, "sport"))
                 else:
                     act = plan30_low[counters["low"] % len(plan30_low)]
