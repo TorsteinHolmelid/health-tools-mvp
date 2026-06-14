@@ -3721,10 +3721,10 @@ if not _unlocked:
                     },
                     timeout=10,
                 )
-                _data = _resp.json()
-                if "url" in _data:
-                    st.markdown(f'<meta http-equiv="refresh" content="0;url={_data["url"]}">', unsafe_allow_html=True)
-                    st.markdown(f"[Click here if not redirected automatically]({_data['url']})")
+                    _data = _resp.json()
+                    if "url" in _data:
+                        st.markdown(f'<meta http-equiv="refresh" content="0;url={_data["url"]}">', unsafe_allow_html=True)
+                        st.markdown(f"[Click here if not redirected automatically]({_data['url']})")
                 else:
                     st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
             except Exception as _e:
