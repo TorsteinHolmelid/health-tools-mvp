@@ -26,15 +26,22 @@ from db import (
 )
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-68ZCX624Z4"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
+# --- Google tag (gtag.js) ---
+components.html(
+    """
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-68ZCX624Z4"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
 
-  gtag('config', 'G-68ZCX624Z4');
-</script>
+      gtag('config', 'G-68ZCX624Z4');
+    </script>
+    """,
+    height=0,
+    width=0,
+)
 
 # --- Innlogging / registrering (no-blokkerande) ---
 logged_in = is_authenticated()
