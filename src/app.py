@@ -25,6 +25,7 @@ from db import (
     has_premium_access,   # <-- legg til denne
 )
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
+
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-68ZCX624Z4"></script>
 <script>
