@@ -241,8 +241,12 @@ if "generated" not in st.session_state:
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = None
 
+_LOGO_ICON_B64 = "PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDQ0IDQ0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWN0IHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCIgcng9IjExIiBmaWxsPSIjMEVDOEM0Ii8+CiAgPHBhdGggZD0iTTggMjJIMTRMMTcgMTRMMjIgMzBMMjUgMjJIMzYiIHN0cm9rZT0iIzA0MDcwRCIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K"
+_LOGO_ICON_DATA_URI = f"data:image/svg+xml;base64,{_LOGO_ICON_B64}"
+
 st.set_page_config(
-    page_title="Health Tools MVP",
+    page_title="MyHealthTools",
+    page_icon=_LOGO_ICON_DATA_URI,
     layout="centered",
     initial_sidebar_state="collapsed",
 )
@@ -985,7 +989,7 @@ st.markdown(
     """
 <div class="ht-hero">
   <div class="ht-badge">🔐 SECURE • GDPR • ENCRYPTED</div>
-  <h1>My Health Tools</h1>
+  <h1 style="display:flex;align-items:center;gap:14px;"><img src="{logo}" alt="MyHealthTools logo" style="height:1em;width:1em;border-radius:22%;"> My Health Tools</h1>
   <div class="sub">Your private health dashboard — science‑based insights, zero data sharing.</div>
   <div class="ht-pills">
     <span class="ht-pill">🧬 Biological age</span>
@@ -994,7 +998,7 @@ st.markdown(
     <span class="ht-pill">🔒 Only you see data</span>
   </div>
 </div>
-""",
+""".format(logo=_LOGO_ICON_DATA_URI),
     unsafe_allow_html=True,
 )
 # ── Consent & Privacy Sjekk ───────────────────────────────────────────────────
