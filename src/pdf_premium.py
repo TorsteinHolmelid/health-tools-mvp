@@ -1415,21 +1415,32 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             tag = f"INDIVIDUAL PLAN · {name_v.upper()}" if name_v else "INDIVIDUAL PLAN"
             c.setFillColor(GLOW); c.setFont("Helvetica-Bold", 7.5)
             c.drawString(16, h - 22, tag)
-            c.drawImage(_get_logo_image_reader(), w/2 - 14, h - 56, width=28, height=28,
+            logo_my, logo_tools = "MyHealth", "Tools"
+            c.setFont("Helvetica-Bold", 13)
+            tw_my = c.stringWidth(logo_my, "Helvetica-Bold", 13)
+            tw_tools = c.stringWidth(logo_tools, "Helvetica-Bold", 13)
+            icon_size = 16; lockup_gap = 6
+            total_w = icon_size + lockup_gap + tw_my + tw_tools
+            lockup_x = w/2 - total_w/2
+            icon_y = h - 50
+            c.drawImage(_get_logo_image_reader(), lockup_x, icon_y, width=icon_size, height=icon_size,
                         preserveAspectRatio=True, mask='auto')
+            text_y = icon_y + icon_size/2 - 4.6
+            c.setFillColor(white); c.drawString(lockup_x + icon_size + lockup_gap, text_y, logo_my)
+            c.setFillColor(GLOW); c.drawString(lockup_x + icon_size + lockup_gap + tw_my, text_y, logo_tools)
             c.setFillColor(white); c.setFont("Helvetica-Bold", 28)
-            c.drawCentredString(w/2, h - 76, "LONGEVITY")
+            c.drawCentredString(w/2, h - 80, "LONGEVITY")
             c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 28)
-            c.drawCentredString(w/2, h - 107, "INTELLIGENCE REPORT")
+            c.drawCentredString(w/2, h - 111, "INTELLIGENCE REPORT")
             c.setFillColor(MUTED); c.setFont("Helvetica", 10)
-            c.drawCentredString(w/2, h - 130, "Personal Precision Health Analysis · Built Entirely From Your Own Data")
+            c.drawCentredString(w/2, h - 134, "Personal Precision Health Analysis · Built Entirely From Your Own Data")
             display_name = name_v if name_v else "Your Personal Report"
             c.setFillColor(white); c.setFont("Helvetica-Bold", 15)
-            c.drawCentredString(w/2, h - 160, f"Prepared exclusively for {display_name}")
+            c.drawCentredString(w/2, h - 164, f"Prepared exclusively for {display_name}")
             c.setFillColor(MUTED); c.setFont("Helvetica", 8)
-            c.drawCentredString(w/2, h - 174, f"Report ID {report_id}   ·   Generated {gen_v}")
+            c.drawCentredString(w/2, h - 178, f"Report ID {report_id}   ·   Generated {gen_v}")
             c.setStrokeColor(STROKE); c.setLineWidth(0.6)
-            c.line(40, h - 190, w - 40, h - 190)
+            c.line(40, h - 194, w - 40, h - 194)
             cells = [("AGE", f"{age_v}"), ("SEX", f"{sex_v}"), ("HEIGHT", f"{h_v} cm"), ("WEIGHT", f"{w_v} kg")]
             cw_ = w / len(cells)
             for i, (lbl, val) in enumerate(cells):
