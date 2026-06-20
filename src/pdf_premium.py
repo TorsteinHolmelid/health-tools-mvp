@@ -7,7 +7,18 @@ from __future__ import annotations
 import io
 import math
 import uuid
+import base64
 from datetime import datetime, timezone
+from reportlab.lib.utils import ImageReader
+
+# Embedded MyHealthTools logo mark (PNG, 192x192) so the PDF never depends on
+# external image files being present on disk.
+_LOGO_PNG_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAE9ElEQVR4nO3dvU7caBiGYQ/aKgXHkyLS1nvEqSNRcDwUadliNxEBz2CPv18/11VFKRgzvLe/1wGFyzKJx+en197XwHYvX79del/DFkNepGE/pxGjGOKCDHymEYLoegEGn2XpG0LzFzb03NI6hmYvZvDZo1UI1V/E4HNE7RAean5ww89RtWeoSl0GnxpqnAbFTwDDTy01ZqtoAIaf2krPWJEjxeDTQ4mV6PAJYPjppcTsHQrA8NPb0Rm8OwDDzyiOzOJdARh+RnPvTO4OwPAzqntmc1cAhp/R7Z3Rqj8KAaPbHIC7P7PYM6ubAjD8zGbrzH4agOFnVltm1zMA0W4G4O7P7D6b4asBGH7O4tYsW4GIthqAuz9nc22mnQBE+xCAuz9ntTbbTgCiCYBofwRg/eHs3s+4E4BovwNw9yfF21l3AhBNAEQTANEelsX+T55fM+8EIJoAiCYAogmAaBcPwCRzAhBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARDtr94XMLqff//z4e++/Pje4UqowQlww9rw3/p75iOAKz4bchGcgwBWbB1uEcxPAEQTANEE8M7etcYaNDcBEE0ARBPAG/euM9ageQmAaAL4n7t4JgEUIqA5CYBoAljcvZMJoCAhzUcARIsPwF07W3wAZIsOoMbd34kyl+gAQABEiw1gz6ry5cf3Xf8ThDVoHrEBwLIIgHCRAexdf9b+XPI16CcyAPglLgB3Zt6KC2CPtZXHGnQuAiBaVAD3PvxyXlEBlGINOg8BEC0mAOsPa2ICKM0adA7df0VSi19BdJYBnP3XNY14/ZfH56fXXi8+4mDWurMf/UKP+F6V0jOCbivQGb6grdagM7xXt/T8/LoEMOoXtPdxvGbU96q0Xp+nh2CiCeCgEU8NthNAQ3790ngEQLQuAYy4Nox2TWl3/17vf7cTYKSBO3otvit8TOT3AZZljAhGuIZkvd//7j8K0fsNGJEf3GvHQ3Ah1qA5CYBoAhiM9actARRkDZqPAAYiivYEMCnrTxkCKMwaNBcBDMLDbx8CIJoAKrAGzUMAA7D+9CMAogmgkhp3anf/8gRANAEQTQAVlVxZrD91CIBoAiCaACZg/alHAJUZ3rEJYHACqksARBNAA+7i4xLAwIRTnwCIJoBG3M3HJIBBCaYNARBNAEQTANEE0NDWvd7+344AGvtsuA1/WwLo4NqQG/72Lo/PT6+9LwJ6cQIQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQ7eHl67dL74uAHl6+frs4AYgmAKIJgGgCINrDsvz3MND7QqClXzPvBCCaAIgmAKL9DsBzACnezroTgGh/BOAU4Ozez7gTgGgCINqHAKxBnNXabDsBiLYagFOAs7k2004Aol0NwCnAWdya5ZsngAiY3WczbAUi2qcBOAWY1ZbZ3XQCiIDZbJ3ZzSuQCJjFnln1DEC0XQE4BRjd3hndfQKIgFHdM5t3rUAiYDT3zuTdzwAiYBRHZvHQQ7AI6O3oDB7+VyAR0EuJ2Ss6vI/PT68lPx6sKXnTLfp9AKcBtZWeseLfCBMBtdSYrarDaiWihJo31ao/CuE04KjaM9RsQJ0G7NHq5tn8Di0Ebmm9NXRdUcTAsvRdlYfY0YWQaYRnxO4XsEYQ5zTCwL833AVdI4q5jDjsa/4FaaKQH5DHuFsAAAAASUVORK5CYII="
+)
+
+def _get_logo_image_reader():
+    return ImageReader(io.BytesIO(base64.b64decode(_LOGO_PNG_B64)))
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
@@ -1404,6 +1415,8 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
             tag = f"INDIVIDUAL PLAN · {name_v.upper()}" if name_v else "INDIVIDUAL PLAN"
             c.setFillColor(GLOW); c.setFont("Helvetica-Bold", 7.5)
             c.drawString(16, h - 22, tag)
+            c.drawImage(_get_logo_image_reader(), w/2 - 14, h - 56, width=28, height=28,
+                        preserveAspectRatio=True, mask='auto')
             c.setFillColor(white); c.setFont("Helvetica-Bold", 28)
             c.drawCentredString(w/2, h - 76, "LONGEVITY")
             c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 28)
@@ -2153,14 +2166,18 @@ def create_pdf_bytes_premium(report: dict) -> bytes:
                 if l2: c.drawCentredString(x+cw/2, self.h-50, l2)
 
     # ── Page chrome ──────────────────────────────────────────────────
+    _logo_img = _get_logo_image_reader()
+
     def draw_page(canvas, doc_):
         canvas.saveState()
         canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
         canvas.setFillColor(GOLD); canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
         canvas.setFillColor(CARD2); canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
+        canvas.drawImage(_logo_img, MARGIN_H, PAGE_H-19, width=13, height=13,
+                          preserveAspectRatio=True, mask='auto')
         canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5)
         header_label = f"LONGEVITY INTELLIGENCE REPORT  ·  {name_v.upper()}'S PLAN" if name_v else "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL"
-        canvas.drawString(MARGIN_H, PAGE_H-15, header_label)
+        canvas.drawString(MARGIN_H + 18, PAGE_H-15, header_label)
         canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8)
         canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
         canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
