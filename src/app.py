@@ -29,35 +29,18 @@ from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
-# når Python-backend-en direkte. Dette JS-snippetet flytter dem over til
-# query-parametre (?access_token=...) og laster siden på nytt ÉN gang,
-# slik at st.query_params kan plukke dem opp nedenfor.
-st.markdown(
-    '<div style="background:red;color:white;font-size:24px;padding:20px;">TESTBLOKK SYNLIG</div>',
-    unsafe_allow_html=True,
-)
-st.write("DEBUG query_params:", dict(st.query_params))
-st.markdown(
-    """
-    <div id="hashDebug" style="background:blue;color:white;font-size:16px;padding:14px;word-break:break-all;">
-      Laster hash...
-    </div>
-    <script>
-    document.getElementById("hashDebug").innerText =
-        "window.location.hash = [" + window.location.hash + "] | window.top.location.hash = [" +
-        (function(){ try { return window.top.location.hash; } catch(e) { return "BLOCKED: " + e; } })() + "]";
-    </script>
-    """,
-    unsafe_allow_html=True,
-)
-
+# når Python-backend-en direkte. components.html() rendrer i en egen
+# iframe der <script>-tags faktisk kjøres (st.markdown gjør IKKE dette).
+# Vi viser en synlig knapp inni iframen (et ekte brukerklikk på en
+# target="_top"-lenke navigerer alltid, selv fra en sandboxed iframe),
+# og prøver i tillegg automatisk navigasjon som en bonus.
 if "access_token" not in st.query_params and "mlr" not in st.query_params:
-    st.markdown(
+    components.html(
         """
-        <div id="mlrContainer"></div>
+        <div id="mlrContainer" style="font-family:sans-serif;"></div>
         <script>
         (function() {
-            const hash = window.location.hash || (window.top && window.top.location.hash);
+            const hash = window.location.hash;
             if (hash && hash.includes("access_token")) {
                 const params = new URLSearchParams(hash.substring(1));
                 const accessToken = params.get("access_token");
@@ -74,20 +57,18 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
                     url.searchParams.set("refresh_token", refreshToken);
                     url.searchParams.set("mlr", "1");
 
-                    const container = document.getElementById("mlrContainer");
-                    container.innerHTML =
-                        '<div style="background:#0EA5A3;border-radius:10px;padding:18px;text-align:center;margin-bottom:12px;">' +
+                    document.getElementById("mlrContainer").innerHTML =
+                        '<div style="background:#0EA5A3;border-radius:10px;padding:18px;text-align:center;">' +
                         '<a href="' + url.toString() + '" target="_top" style="color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;">' +
-                        '✅ Click here to log in and continue</a></div>';
+                        'Click here to log in and continue &rarr;</a></div>';
 
-                    // Forsøk automatisk navigasjon i tillegg, men knappen er alltid synlig som fallback
                     try { window.top.location.href = url.toString(); } catch (e) {}
                 }
             }
         })();
         </script>
         """,
-        unsafe_allow_html=True,
+        height=90,
     )
 
 if "access_token" in st.query_params and not is_authenticated():
