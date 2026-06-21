@@ -23,6 +23,7 @@ from db import (
     sign_up, sign_in, is_authenticated, get_current_user_id, sign_out,
     get_user_profile, save_user_profile, get_db_client, get_user_history,
     has_premium_access,   # <-- legg til denne
+    get_supabase_url, get_supabase_key,  # CHANGED: works on Railway (env vars) too
 )
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
@@ -3752,8 +3753,8 @@ if not _unlocked:
         disabled=not _email_valid,
     ):
         import requests as _requests
-        _supabase_url = st.secrets.get("SUPABASE_URL", "")
-        _anon_key = st.secrets.get("SUPABASE_KEY", "")
+        _supabase_url = get_supabase_url()
+        _anon_key = get_supabase_key()
         _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
         try:
             _resp = _requests.post(
