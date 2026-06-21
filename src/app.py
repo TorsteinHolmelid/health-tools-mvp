@@ -27,19 +27,16 @@ from db import (
 )
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
-st.write("DEBUG query_params:", dict(st.query_params))
-
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
 # når Python-backend-en direkte. components.html() rendrer i en egen
 # iframe der <script>-tags faktisk kjøres (st.markdown gjør IKKE dette).
-# Vi viser en synlig knapp inni iframen (et ekte brukerklikk på en
-# target="_top"-lenke navigerer alltid, selv fra en sandboxed iframe),
-# og prøver i tillegg automatisk navigasjon som en bonus.
+# Scriptet leser browserens hash, og hvis det finner et token, skriver
+# det en synlig lenke DIREKTE i hoveddokumentets DOM (ikke i iframen) —
+# dette er DOM-manipulasjon, ikke navigasjon, og er derfor IKKE underlagt
+# iframens sandbox-restriksjon på top-navigasjon (som blokkerer all
+# automatisk/JS-styrt navigasjon fra denne typen iframe).
 if "access_token" not in st.query_params and "mlr" not in st.query_params:
-    _mlr_placeholder = st.empty()
-    with _mlr_placeholder.container():
-        st.info("⏳ Logging you in from your email link...")
     components.html(
         """
         <script>
@@ -67,9 +64,6 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
                     url.searchParams.set("refresh_token", refreshToken);
                     url.searchParams.set("mlr", "1");
 
-                    // Skriv lenken direkte inn i HOVEDDOKUMENTET (ikke i denne iframen).
-                    // Dette er DOM-manipulasjon, ikke navigasjon, og er derfor IKKE
-                    // underlagt iframens sandbox-restriksjon på top-navigasjon.
                     try {
                         const doc = window.top.document;
                         let box = doc.getElementById("mlrTopContainer");
@@ -84,6 +78,7 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
                             box.style.padding = "16px";
                             box.style.background = "#0EA5A3";
                             box.style.textAlign = "center";
+                            box.style.fontFamily = "sans-serif";
                             doc.body.prepend(box);
                         }
                         box.innerHTML =
