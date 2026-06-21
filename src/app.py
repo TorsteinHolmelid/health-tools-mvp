@@ -33,7 +33,7 @@ from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 # query-parametre (?access_token=...) og laster siden på nytt ÉN gang,
 # slik at st.query_params kan plukke dem opp nedenfor.
 if "access_token" not in st.query_params and "mlr" not in st.query_params:
-    components.html(
+    st.markdown(
         """
         <script>
         (function() {
@@ -48,14 +48,13 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
                     url.searchParams.set("access_token", accessToken);
                     url.searchParams.set("refresh_token", refreshToken);
                     url.searchParams.set("mlr", "1");
-                    window.top.location.replace(url.toString());
+                    window.top.location.href = url.toString();
                 }
             }
         })();
         </script>
         """,
-        height=0,
-        width=0,
+        unsafe_allow_html=True,
     )
 
 if "access_token" in st.query_params and not is_authenticated():
