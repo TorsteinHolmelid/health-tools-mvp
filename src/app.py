@@ -33,27 +33,36 @@ from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 # query-parametre (?access_token=...) og laster siden på nytt ÉN gang,
 # slik at st.query_params kan plukke dem opp nedenfor.
 if "access_token" not in st.query_params and "mlr" not in st.query_params:
-    st.markdown("🔍 DEBUG: token-script block reached", unsafe_allow_html=False)
     st.markdown(
         """
+        <div id="mlrContainer"></div>
         <script>
         (function() {
-            const hash = window.location.hash || window.top.location.hash;
+            const hash = window.location.hash || (window.top && window.top.location.hash);
             if (hash && hash.includes("access_token")) {
                 const params = new URLSearchParams(hash.substring(1));
                 const accessToken = params.get("access_token");
                 const refreshToken = params.get("refresh_token");
                 if (accessToken && refreshToken) {
-                    const base = window.top.location.origin + window.top.location.pathname;
+                    let base;
+                    try {
+                        base = window.top.location.origin + window.top.location.pathname;
+                    } catch (e) {
+                        base = window.location.origin + window.location.pathname;
+                    }
                     const url = new URL(base);
                     url.searchParams.set("access_token", accessToken);
                     url.searchParams.set("refresh_token", refreshToken);
                     url.searchParams.set("mlr", "1");
-                    try {
-                        window.top.location.href = url.toString();
-                    } catch (e) {
-                        document.write('<a id="mlrFallback" href="' + url.toString() + '" target="_top">Click here to continue</a>');
-                    }
+
+                    const container = document.getElementById("mlrContainer");
+                    container.innerHTML =
+                        '<div style="background:#0EA5A3;border-radius:10px;padding:18px;text-align:center;margin-bottom:12px;">' +
+                        '<a href="' + url.toString() + '" target="_top" style="color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;">' +
+                        '✅ Click here to log in and continue</a></div>';
+
+                    // Forsøk automatisk navigasjon i tillegg, men knappen er alltid synlig som fallback
+                    try { window.top.location.href = url.toString(); } catch (e) {}
                 }
             }
         })();
