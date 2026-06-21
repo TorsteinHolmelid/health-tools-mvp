@@ -36,6 +36,20 @@ st.markdown(
     '<div style="background:red;color:white;font-size:24px;padding:20px;">TESTBLOKK SYNLIG</div>',
     unsafe_allow_html=True,
 )
+st.write("DEBUG query_params:", dict(st.query_params))
+st.markdown(
+    """
+    <div id="hashDebug" style="background:blue;color:white;font-size:16px;padding:14px;word-break:break-all;">
+      Laster hash...
+    </div>
+    <script>
+    document.getElementById("hashDebug").innerText =
+        "window.location.hash = [" + window.location.hash + "] | window.top.location.hash = [" +
+        (function(){ try { return window.top.location.hash; } catch(e) { return "BLOCKED: " + e; } })() + "]";
+    </script>
+    """,
+    unsafe_allow_html=True,
+)
 
 if "access_token" not in st.query_params and "mlr" not in st.query_params:
     st.markdown(
