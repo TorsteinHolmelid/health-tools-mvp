@@ -27,14 +27,7 @@ from db import (
 )
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
-st.markdown(
-    '<div style="background:red;color:white;font-size:20px;padding:14px;">RØD: st.markdown kjører</div>',
-    unsafe_allow_html=True,
-)
-components.html(
-    '<div style="background:lime;color:black;font-size:20px;padding:14px;">GRØNN: components.html kjører</div>',
-    height=60,
-)
+st.write("DEBUG query_params:", dict(st.query_params))
 
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
@@ -49,7 +42,20 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
         <div id="mlrContainer" style="font-family:sans-serif;"></div>
         <script>
         (function() {
-            const hash = window.location.hash;
+            let hash = "";
+            let topAccessible = true;
+            try {
+                hash = window.top.location.hash;
+            } catch (e) {
+                topAccessible = false;
+                hash = window.location.hash;
+            }
+
+            const container = document.getElementById("mlrContainer");
+            container.innerHTML =
+                '<div style="background:#334155;color:#fff;font-size:13px;padding:10px;word-break:break-all;">' +
+                'DEBUG hash=[' + hash + '] topAccessible=' + topAccessible + '</div>';
+
             if (hash && hash.includes("access_token")) {
                 const params = new URLSearchParams(hash.substring(1));
                 const accessToken = params.get("access_token");
@@ -66,7 +72,7 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
                     url.searchParams.set("refresh_token", refreshToken);
                     url.searchParams.set("mlr", "1");
 
-                    document.getElementById("mlrContainer").innerHTML =
+                    container.innerHTML =
                         '<div style="background:#0EA5A3;border-radius:10px;padding:18px;text-align:center;">' +
                         '<a href="' + url.toString() + '" target="_top" style="color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;">' +
                         'Click here to log in and continue &rarr;</a></div>';
@@ -77,7 +83,7 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
         })();
         </script>
         """,
-        height=90,
+        height=120,
     )
 
 if "access_token" in st.query_params and not is_authenticated():
