@@ -58,6 +58,29 @@ def sign_in(email: str, password: str):
     except Exception as e:
         return None, str(e)
 
+def sign_in_with_tokens(access_token: str, refresh_token: str):
+    """
+    Logg inn brukeren ved hjelp av et access_token + refresh_token-par
+    (f.eks. fra en magic link-redirect). Setter session_state akkurat
+    som sign_in() gjør ved vanlig e-post/passord-innlogging.
+    """
+    url = get_supabase_url()
+    key = get_supabase_key()
+    if not url or not key:
+        return None, "Supabase credentials missing."
+
+    client = create_client(url, key)
+    try:
+        response = client.auth.set_session(access_token, refresh_token)
+        st.session_state["supabase_client"] = client
+        st.session_state["user_id"] = response.user.id
+        st.session_state["user_email"] = response.user.email
+        st.session_state["authenticated"] = True
+        st.session_state["premium_checked"] = False
+        return response.user, None
+    except Exception as e:
+        return None, str(e)
+
 def sign_out():
     st.session_state.pop("supabase_client", None)
     st.session_state["authenticated"] = False
