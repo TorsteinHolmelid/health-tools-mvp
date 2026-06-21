@@ -81,6 +81,22 @@ def sign_in_with_tokens(access_token: str, refresh_token: str):
     except Exception as e:
         return None, str(e)
 
+def set_user_password(password: str):
+    """
+    Sett (eller endre) passordet til den innloggede brukeren.
+    Krever en aktiv, innlogget Supabase-sesjon (vanlig innlogging
+    eller via magic link). Lar brukeren senere logge inn med
+    e-post/passord i stedet for å måtte be om en ny magic link hver gang.
+    """
+    if not is_authenticated():
+        return None, "Not logged in"
+    client = get_db_client()
+    try:
+        response = client.auth.update_user({"password": password})
+        return response.user, None
+    except Exception as e:
+        return None, str(e)
+
 def sign_out():
     st.session_state.pop("supabase_client", None)
     st.session_state["authenticated"] = False
