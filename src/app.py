@@ -33,22 +33,27 @@ from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 # query-parametre (?access_token=...) og laster siden på nytt ÉN gang,
 # slik at st.query_params kan plukke dem opp nedenfor.
 if "access_token" not in st.query_params and "mlr" not in st.query_params:
+    st.markdown("🔍 DEBUG: token-script block reached", unsafe_allow_html=False)
     st.markdown(
         """
         <script>
         (function() {
-            const hash = window.top.location.hash;
+            const hash = window.location.hash || window.top.location.hash;
             if (hash && hash.includes("access_token")) {
                 const params = new URLSearchParams(hash.substring(1));
                 const accessToken = params.get("access_token");
                 const refreshToken = params.get("refresh_token");
                 if (accessToken && refreshToken) {
-                    const url = new URL(window.top.location.href);
-                    url.hash = "";
+                    const base = window.top.location.origin + window.top.location.pathname;
+                    const url = new URL(base);
                     url.searchParams.set("access_token", accessToken);
                     url.searchParams.set("refresh_token", refreshToken);
                     url.searchParams.set("mlr", "1");
-                    window.top.location.href = url.toString();
+                    try {
+                        window.top.location.href = url.toString();
+                    } catch (e) {
+                        document.write('<a id="mlrFallback" href="' + url.toString() + '" target="_top">Click here to continue</a>');
+                    }
                 }
             }
         })();
