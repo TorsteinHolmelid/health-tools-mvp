@@ -106,6 +106,7 @@ if "access_token" in st.query_params and not is_authenticated():
         st.query_params.clear()
         st.query_params["payment"] = "success"
         if not _mlr_err:
+            st.session_state["show_set_password_prompt"] = True
             st.rerun()
 
 # Vis kun "sjekk e-posten din"-meldingen rett etter Stripe-betaling, før
@@ -139,6 +140,40 @@ components.html(
 logged_in = is_authenticated()
 
 if logged_in:
+    # ── Synlig prompt i hovedinnholdet: vises kun rett etter at brukeren
+    # nettopp logget inn via en magic link-e-post, så de ikke går glipp av
+    # muligheten til å sette et passord (sidebaren er lett å overse). ──
+    if (
+        st.session_state.get("show_set_password_prompt", False)
+        and not st.session_state.get("password_just_set", False)
+    ):
+        with st.container(border=True):
+            _pw_col1, _pw_col2 = st.columns([5, 1])
+            with _pw_col1:
+                st.markdown("**🔑 Want to skip the email link next time?**")
+                st.caption("Set a password now, or just close this — you can always log in with a fresh email link instead.")
+            with _pw_col2:
+                if st.button("✕", key="dismiss_password_prompt"):
+                    st.session_state["show_set_password_prompt"] = False
+                    st.rerun()
+
+            _main_new_pw = st.text_input("New password", type="password", key="main_set_pw_input")
+            _main_new_pw_confirm = st.text_input("Confirm password", type="password", key="main_set_pw_confirm")
+            if st.button("Save password", key="main_set_pw_button", type="primary"):
+                if not _main_new_pw or len(_main_new_pw) < 6:
+                    st.error("Password must be at least 6 characters.")
+                elif _main_new_pw != _main_new_pw_confirm:
+                    st.error("Passwords don't match.")
+                else:
+                    _main_pw_user, _main_pw_err = set_user_password(_main_new_pw)
+                    if _main_pw_err:
+                        st.error(f"Could not set password: {_main_pw_err}")
+                    else:
+                        st.session_state["password_just_set"] = True
+                        st.session_state["show_set_password_prompt"] = False
+                        st.success("✅ Password set! You can log in with it next time.")
+                        st.rerun()
+
     st.sidebar.button("Log out", on_click=sign_out)
 
     _user_email = st.session_state.get("user_email", "")
