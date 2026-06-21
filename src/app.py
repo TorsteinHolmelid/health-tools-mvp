@@ -20,7 +20,7 @@ from reportlab.platypus import (
 )
 import streamlit as st
 from db import (
-    sign_up, sign_in, sign_in_with_tokens, is_authenticated, get_current_user_id, sign_out,
+    sign_up, sign_in, sign_in_with_tokens, set_user_password, is_authenticated, get_current_user_id, sign_out,
     get_user_profile, save_user_profile, get_db_client, get_user_history,
     has_premium_access,   # <-- legg til denne
     get_supabase_url, get_supabase_key,  # CHANGED: works on Railway (env vars) too
@@ -162,6 +162,31 @@ if logged_in:
 """,
         unsafe_allow_html=True,
     )
+
+    # ── 🔑 Optional: set a password (so login doesn't always require a new email link) ──
+    if not st.session_state.get("password_just_set", False):
+        with st.sidebar.expander("🔑 Set a password (optional)", expanded=False):
+            st.caption(
+                "You logged in with an email link. Set a password here if you'd "
+                "rather log in directly next time, without checking your email."
+            )
+            _new_pw = st.text_input("New password", type="password", key="set_pw_input")
+            _new_pw_confirm = st.text_input("Confirm password", type="password", key="set_pw_confirm")
+            if st.button("Save password", key="set_pw_button"):
+                if not _new_pw or len(_new_pw) < 6:
+                    st.error("Password must be at least 6 characters.")
+                elif _new_pw != _new_pw_confirm:
+                    st.error("Passwords don't match.")
+                else:
+                    _pw_user, _pw_err = set_user_password(_new_pw)
+                    if _pw_err:
+                        st.error(f"Could not set password: {_pw_err}")
+                    else:
+                        st.session_state["password_just_set"] = True
+                        st.success("✅ Password set! You can log in with it next time.")
+                        st.rerun()
+    else:
+        st.sidebar.success("✅ Password set for next time.")
 
     # ── 📈 My Progress (history graphs) ──
     with st.sidebar.expander("📈 My Progress", expanded=False):
