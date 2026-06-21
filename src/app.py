@@ -108,6 +108,16 @@ if "access_token" in st.query_params and not is_authenticated():
         if not _mlr_err:
             st.rerun()
 
+# Vis kun "sjekk e-posten din"-meldingen rett etter Stripe-betaling, før
+# brukeren har logget seg inn via magic link. Når innlogging skjer, blir
+# is_authenticated() True og meldingen forsvinner automatisk — selv om
+# ?payment=success fortsatt ligger i URL-en.
+if st.query_params.get("payment") == "success" and not is_authenticated():
+    st.success(
+        "✅ Payment received! Check your email (and spam/junk folder) for a "
+        "login link to access your full report."
+    )
+
 # --- Google tag (gtag.js) ---
 components.html(
     """
@@ -3850,16 +3860,49 @@ if not _unlocked:
             )
             _data = _resp.json()
             if "url" in _data:
-                # FIX: Bruk JavaScript for å opne i top-level vindauge (unngår iframe-problemet)
-                st.markdown(
+                _checkout_url = _data["url"]
+                # Samme robuste metode som magic-link-innloggingen: skriv en
+                # synlig, klikkbar lenke direkte i hoveddokumentet via
+                # components.html. Automatisk window.top-navigasjon via
+                # st.markdown sin <script> kjøres ikke i Streamlit, og
+                # window.top.location-skriving blokkeres av iframe-sandkassen
+                # uansett — derfor er en ekte lenke i hoveddokumentet eneste
+                # pålitelige vei.
+                components.html(
                     f"""
                     <script>
-                        window.top.location.href = "{_data["url"]}";
+                    (function() {{
+                        try {{
+                            const doc = window.top.document;
+                            let box = doc.getElementById("checkoutRedirectBox");
+                            if (!box) {{
+                                box = doc.createElement("div");
+                                box.id = "checkoutRedirectBox";
+                                box.style.position = "fixed";
+                                box.style.top = "0";
+                                box.style.left = "0";
+                                box.style.right = "0";
+                                box.style.zIndex = "999999";
+                                box.style.padding = "16px";
+                                box.style.background = "#0EA5A3";
+                                box.style.textAlign = "center";
+                                box.style.fontFamily = "sans-serif";
+                                doc.body.prepend(box);
+                            }}
+                            box.innerHTML =
+                                '<a href="{_checkout_url}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
+                                '💳 Click here to continue to payment &rarr;</a>';
+                            // Forsøk automatisk navigasjon i tillegg, i fall den faktisk fungerer i noen nettlesere
+                            try {{ window.top.location.href = "{_checkout_url}"; }} catch (e) {{}}
+                        }} catch (e) {{
+                            console.error("Could not show checkout redirect link:", e);
+                        }}
+                    }})();
                     </script>
                     """,
-                    unsafe_allow_html=True
+                    height=0,
                 )
-                st.info("Redirecting to payment... If nothing happens, [click here]({})".format(_data["url"]))
+                st.info("💳 Click the green bar at the top of the page to continue to payment.")
             else:
                 st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
         except Exception as _e:
