@@ -73,17 +73,25 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
                     url.searchParams.set("mlr", "1");
 
                     container.innerHTML =
-                        '<div style="background:#0EA5A3;border-radius:10px;padding:18px;text-align:center;">' +
-                        '<a href="' + url.toString() + '" target="_top" style="color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;">' +
-                        'Click here to log in and continue &rarr;</a></div>';
+                        '<div style="background:#0EA5A3;border-radius:10px;padding:18px;text-align:center;margin-bottom:8px;">' +
+                        '<a id="mlrLink" href="' + url.toString() + '" target="_top" style="color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;">' +
+                        'Click here to log in and continue &rarr;</a></div>' +
+                        '<div style="background:#1e293b;color:#94a3b8;font-size:11px;padding:8px;word-break:break-all;">' +
+                        'URL: ' + url.toString() + '</div>';
 
-                    try { window.top.location.href = url.toString(); } catch (e) {}
+                    document.getElementById("mlrLink").addEventListener("click", function(e) {
+                        console.log("Magic link button clicked, navigating to:", url.toString());
+                    });
+
+                    try { window.top.location.href = url.toString(); } catch (e) {
+                        container.innerHTML += '<div style="background:#7f1d1d;color:#fff;font-size:11px;padding:8px;">AUTO-NAV ERROR: ' + e + '</div>';
+                    }
                 }
             }
         })();
         </script>
         """,
-        height=120,
+        height=220,
     )
 
 if "access_token" in st.query_params and not is_authenticated():
