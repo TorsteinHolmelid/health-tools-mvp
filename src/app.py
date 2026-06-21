@@ -32,6 +32,11 @@ from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 # når Python-backend-en direkte. Dette JS-snippetet flytter dem over til
 # query-parametre (?access_token=...) og laster siden på nytt ÉN gang,
 # slik at st.query_params kan plukke dem opp nedenfor.
+st.markdown(
+    '<div style="background:red;color:white;font-size:24px;padding:20px;">TESTBLOKK SYNLIG</div>',
+    unsafe_allow_html=True,
+)
+
 if "access_token" not in st.query_params and "mlr" not in st.query_params:
     st.markdown(
         """
