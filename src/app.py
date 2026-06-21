@@ -27,6 +27,15 @@ from db import (
 )
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
+st.markdown(
+    '<div style="background:red;color:white;font-size:20px;padding:14px;">RØD: st.markdown kjører</div>',
+    unsafe_allow_html=True,
+)
+components.html(
+    '<div style="background:lime;color:black;font-size:20px;padding:14px;">GRØNN: components.html kjører</div>',
+    height=60,
+)
+
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
 # når Python-backend-en direkte. components.html() rendrer i en egen
