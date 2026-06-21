@@ -37,24 +37,19 @@ st.write("DEBUG query_params:", dict(st.query_params))
 # target="_top"-lenke navigerer alltid, selv fra en sandboxed iframe),
 # og prøver i tillegg automatisk navigasjon som en bonus.
 if "access_token" not in st.query_params and "mlr" not in st.query_params:
+    _mlr_placeholder = st.empty()
+    with _mlr_placeholder.container():
+        st.info("⏳ Logging you in from your email link...")
     components.html(
         """
-        <div id="mlrContainer" style="font-family:sans-serif;"></div>
         <script>
         (function() {
             let hash = "";
-            let topAccessible = true;
             try {
                 hash = window.top.location.hash;
             } catch (e) {
-                topAccessible = false;
                 hash = window.location.hash;
             }
-
-            const container = document.getElementById("mlrContainer");
-            container.innerHTML =
-                '<div style="background:#334155;color:#fff;font-size:13px;padding:10px;word-break:break-all;">' +
-                'DEBUG hash=[' + hash + '] topAccessible=' + topAccessible + '</div>';
 
             if (hash && hash.includes("access_token")) {
                 const params = new URLSearchParams(hash.substring(1));
@@ -72,26 +67,37 @@ if "access_token" not in st.query_params and "mlr" not in st.query_params:
                     url.searchParams.set("refresh_token", refreshToken);
                     url.searchParams.set("mlr", "1");
 
-                    container.innerHTML =
-                        '<div style="background:#0EA5A3;border-radius:10px;padding:18px;text-align:center;margin-bottom:8px;">' +
-                        '<a id="mlrLink" href="' + url.toString() + '" target="_top" style="color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;">' +
-                        'Click here to log in and continue &rarr;</a></div>' +
-                        '<div style="background:#1e293b;color:#94a3b8;font-size:11px;padding:8px;word-break:break-all;">' +
-                        'URL: ' + url.toString() + '</div>';
-
-                    document.getElementById("mlrLink").addEventListener("click", function(e) {
-                        console.log("Magic link button clicked, navigating to:", url.toString());
-                    });
-
-                    try { window.top.location.href = url.toString(); } catch (e) {
-                        container.innerHTML += '<div style="background:#7f1d1d;color:#fff;font-size:11px;padding:8px;">AUTO-NAV ERROR: ' + e + '</div>';
+                    // Skriv lenken direkte inn i HOVEDDOKUMENTET (ikke i denne iframen).
+                    // Dette er DOM-manipulasjon, ikke navigasjon, og er derfor IKKE
+                    // underlagt iframens sandbox-restriksjon på top-navigasjon.
+                    try {
+                        const doc = window.top.document;
+                        let box = doc.getElementById("mlrTopContainer");
+                        if (!box) {
+                            box = doc.createElement("div");
+                            box.id = "mlrTopContainer";
+                            box.style.position = "fixed";
+                            box.style.top = "0";
+                            box.style.left = "0";
+                            box.style.right = "0";
+                            box.style.zIndex = "999999";
+                            box.style.padding = "16px";
+                            box.style.background = "#0EA5A3";
+                            box.style.textAlign = "center";
+                            doc.body.prepend(box);
+                        }
+                        box.innerHTML =
+                            '<a href="' + url.toString() + '" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
+                            '✅ Click here to log in and continue &rarr;</a>';
+                    } catch (e) {
+                        console.error("Could not write to top document:", e);
                     }
                 }
             }
         })();
         </script>
         """,
-        height=220,
+        height=0,
     )
 
 if "access_token" in st.query_params and not is_authenticated():
