@@ -2632,11 +2632,21 @@ results = st.session_state.get("results", {})
 # Handter return frå Stripe – gjenopprett session og tving ny Supabase-sjekk
 _params = st.query_params
 if _params.get("payment") == "success" and _params.get("uid"):
+    # Old flow: already-logged-in user paid, uid is in the URL.
     _uid = _params.get("uid")
     st.session_state["authenticated"] = True
     st.session_state["user_id"] = _uid
     st.session_state["premium_checked"] = False
     st.session_state["report_unlocked"] = False
+elif _params.get("payment") == "success" and _params.get("email"):
+    # CHANGED: guest checkout flow. We know they paid, but they're not
+    # logged in yet on this device — the account + access was created by the
+    # stripe-webhook function, and a magic link was emailed to them.
+    st.session_state["guest_payment_email"] = _params.get("email")
+    st.success(
+        f"✅ Payment received! We've sent a login link to **{_params.get('email')}** — "
+        "check your inbox (and spam folder) to access your full report."
+    )
 
 # Sjekk premium frå Supabase (sikker)
 # Sjekk premium frå Supabase – alltid når brukaren er innlogga
@@ -3717,46 +3727,65 @@ if not _unlocked:
         unsafe_allow_html=True
     )
 
-    # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – FIXED --------------------
+    # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
+    # CHANGED: no longer requires login first. Logged-in users skip the email
+    # field (we already know their email); anonymous visitors just type their
+    # email and go straight to Stripe. The account gets created automatically
+    # after payment by the stripe-webhook function.
     _uid = get_current_user_id() or ""
     _user_email = st.session_state.get("user_email", "")
 
     if not _uid:
-        st.warning("⚠️ Please log in before purchasing.")
-    else:
-        if st.button("🔓 Unlock full report — 4,99 USD", type="primary", use_container_width=True):
-            import requests as _requests
-            _supabase_url = st.secrets.get("SUPABASE_URL", "")
-            _anon_key = st.secrets.get("SUPABASE_KEY", "")
-            _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
-            try:
-                _resp = _requests.post(
-                    _fn_url,
-                    json={"user_id": _uid, "email": _user_email},
-                    headers={
-                        "apikey": _anon_key,
-                        "Authorization": f"Bearer {_anon_key}",
-                        "Content-Type": "application/json",
-                    },
-                    timeout=10,
+        _user_email = st.text_input(
+            "Your email (to receive your report + access link)",
+            value=_user_email,
+            key="guest_checkout_email",
+            placeholder="you@example.com",
+        )
+
+    _email_valid = "@" in _user_email and "." in _user_email.split("@")[-1]
+
+    if st.button(
+        "🔓 Unlock full report — 4,99 USD",
+        type="primary",
+        use_container_width=True,
+        disabled=not _email_valid,
+    ):
+        import requests as _requests
+        _supabase_url = st.secrets.get("SUPABASE_URL", "")
+        _anon_key = st.secrets.get("SUPABASE_KEY", "")
+        _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
+        try:
+            _resp = _requests.post(
+                _fn_url,
+                json={"user_id": _uid or None, "email": _user_email},
+                headers={
+                    "apikey": _anon_key,
+                    "Authorization": f"Bearer {_anon_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=10,
+            )
+            _data = _resp.json()
+            if "url" in _data:
+                # FIX: Bruk JavaScript for å opne i top-level vindauge (unngår iframe-problemet)
+                st.markdown(
+                    f"""
+                    <script>
+                        window.top.location.href = "{_data["url"]}";
+                    </script>
+                    """,
+                    unsafe_allow_html=True
                 )
-                _data = _resp.json()
-                if "url" in _data:
-                    # FIX: Bruk JavaScript for å opne i top-level vindauge (unngår iframe-problemet)
-                    st.markdown(
-                        f"""
-                        <script>
-                            window.top.location.href = "{_data["url"]}";
-                        </script>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    st.info("Redirecting to payment... If nothing happens, [click here]({})".format(_data["url"]))
-                else:
-                    st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
-            except Exception as _e:
-                st.error(f"Payment error: {_e}")
-    st.caption("After payment, you will return to the app automatically")
+                st.info("Redirecting to payment... If nothing happens, [click here]({})".format(_data["url"]))
+            else:
+                st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
+        except Exception as _e:
+            st.error(f"Payment error: {_e}")
+
+    if not _email_valid and _user_email:
+        st.caption("⚠️ Enter a valid email to continue")
+    st.caption("After payment, you'll get an email with a link to log in and download your report.")
 
 else:
     # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
