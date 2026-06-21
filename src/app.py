@@ -20,12 +20,56 @@ from reportlab.platypus import (
 )
 import streamlit as st
 from db import (
-    sign_up, sign_in, is_authenticated, get_current_user_id, sign_out,
+    sign_up, sign_in, sign_in_with_tokens, is_authenticated, get_current_user_id, sign_out,
     get_user_profile, save_user_profile, get_db_client, get_user_history,
     has_premium_access,   # <-- legg til denne
     get_supabase_url, get_supabase_key,  # CHANGED: works on Railway (env vars) too
 )
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
+
+# --- Magic link-innlogging: fang opp access_token/refresh_token ---
+# Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
+# når Python-backend-en direkte. Dette JS-snippetet flytter dem over til
+# query-parametre (?access_token=...) og laster siden på nytt ÉN gang,
+# slik at st.query_params kan plukke dem opp nedenfor.
+if "access_token" not in st.query_params and "mlr" not in st.query_params:
+    components.html(
+        """
+        <script>
+        (function() {
+            const hash = window.top.location.hash;
+            if (hash && hash.includes("access_token")) {
+                const params = new URLSearchParams(hash.substring(1));
+                const accessToken = params.get("access_token");
+                const refreshToken = params.get("refresh_token");
+                if (accessToken && refreshToken) {
+                    const url = new URL(window.top.location.href);
+                    url.hash = "";
+                    url.searchParams.set("access_token", accessToken);
+                    url.searchParams.set("refresh_token", refreshToken);
+                    url.searchParams.set("mlr", "1");
+                    window.top.location.replace(url.toString());
+                }
+            }
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+if "access_token" in st.query_params and not is_authenticated():
+    _mlr_access_token = st.query_params.get("access_token")
+    _mlr_refresh_token = st.query_params.get("refresh_token")
+    if _mlr_access_token and _mlr_refresh_token:
+        _mlr_user, _mlr_err = sign_in_with_tokens(_mlr_access_token, _mlr_refresh_token)
+        if _mlr_err:
+            st.error(f"Could not complete login from email link: {_mlr_err}")
+        # Rydd tokens fra URL-en uansett utfall, så de ikke ligger synlige i adressefeltet
+        st.query_params.clear()
+        st.query_params["payment"] = "success"
+        if not _mlr_err:
+            st.rerun()
 
 # --- Google tag (gtag.js) ---
 components.html(
