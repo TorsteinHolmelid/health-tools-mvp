@@ -3619,76 +3619,70 @@ st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if not _unlocked:
-    # -------------------- Unified premium upgrade card --------------------
-    _preview_results = st.session_state.get("results", {})
-    _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
-    _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
-    _bmi_val   = _preview_bmi.get("value", "—")
-    _vo2_val   = _preview_vo2.get("value", "—")
-    _vo2_pct   = _preview_vo2.get("percentile", "—")
-    _bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
+# -------------------- Unified premium upgrade card --------------------
+_preview_results = st.session_state.get("results", {})
+_preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
+_preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
+_bmi_val   = _preview_bmi.get("value", "—")
+_vo2_val   = _preview_vo2.get("value", "—")
+_vo2_pct   = _preview_vo2.get("percentile", "—")
+_bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
 
-    _days_sample = [
-        ("MON", "Strength",  "Full-body compound lifts — Squat, Romanian Deadlift, Push-up, Row", "45 min", "#22C55E"),
-        ("TUE", "Cardio",    "Zone 2 steady-state — keep HR 120–135 bpm, conversational pace",    "30 min", "#3B82F6"),
-        ("WED", "Strength",  "Upper/Lower split — Bench Press, Pull-up, Lunge, Shoulder Press",   "50 min", "#22C55E"),
-        ("THU", "HIIT",      "4 × 4 intervals — 4 min hard (RPE 9), 3 min easy, full warm-up",   "40 min", "#F59E0B"),
-        ("FRI", "Strength",  "Posterior chain focus — Deadlift, Hip Thrust, Pull-down, Plank",    "50 min", "#22C55E"),
-        ("SAT", "Endurance", "Long slow distance — build aerobic base, HR below 135 bpm",         "60 min", "#3B82F6"),
-        ("SUN", "Recovery",  "Full rest or 15 min mobility + foam rolling",                       "—",      "#64748B"),
-    ]
+_days_sample = [
+    ("MON", "Strength",  "Full‑body compound lifts — Squat, RDL, Push‑up, Row", "45 min", "#22C55E"),
+    ("TUE", "Cardio",    "Zone 2 steady‑state — HR 120–135 bpm, conversational",    "30 min", "#3B82F6"),
+    ("WED", "Strength",  "Upper/Lower split — Bench, Pull‑up, Lunge, OHP",   "50 min", "#22C55E"),
+    ("THU", "HIIT",      "4×4 intervals — 4 min hard (RPE 9), 3 min easy",   "40 min", "#F59E0B"),
+    ("FRI", "Strength",  "Posterior chain — Deadlift, Hip Thrust, Pull‑down, Plank",    "50 min", "#22C55E"),
+    ("SAT", "Endurance", "Long slow distance — aerobic base, HR <135 bpm",         "60 min", "#3B82F6"),
+    ("SUN", "Recovery",  "Rest or 15 min mobility + foam rolling",                       "—",      "#64748B"),
+]
 
-    _type_icons = {"Strength":"💪","Cardio":"🏃","HIIT":"🔥","Endurance":"🚴","Recovery":"😴"}
+_type_icons = {"Strength":"💪","Cardio":"🏃","HIIT":"🔥","Endurance":"🚴","Recovery":"😴"}
 
-    _preview_rows_html = ""
-    for i, (day, wtype, desc, dur, accent) in enumerate(_days_sample):
-        if i < 3:
-            row_blur = ""
-            opacity  = "1"
-        elif i == 3:
-            row_blur = "filter:blur(3px);pointer-events:none;"
-            opacity  = "0.6"
-        else:
-            row_blur = "filter:blur(6px);pointer-events:none;"
-            opacity  = "0.3"
-        icon = _type_icons.get(wtype, "")
-        _preview_rows_html += f"""
-        <tr style="border-bottom:1px solid rgba(30,41,59,0.8);{row_blur}opacity:{opacity};transition:opacity 0.2s;">
-          <td style="padding:11px 14px;font-weight:700;font-size:11px;color:#64748B;letter-spacing:0.08em;white-space:nowrap;">{day}</td>
-          <td style="padding:11px 14px;">
-            <span style="background:{accent}18;border:1px solid {accent}40;color:{accent};
-              border-radius:6px;padding:4px 11px;font-size:11px;font-weight:700;white-space:nowrap;letter-spacing:0.04em;">{icon} {wtype.upper()}</span>
-          </td>
-          <td style="padding:11px 14px;font-size:12px;color:#94A3B8;line-height:1.5;">{desc}</td>
-          <td style="padding:11px 14px;font-size:12px;color:#64748B;white-space:nowrap;font-variant-numeric:tabular-nums;">{dur}</td>
-        </tr>"""
+_preview_rows_html = ""
+for i, (day, wtype, desc, dur, accent) in enumerate(_days_sample):
+    if i < 3:
+        row_blur = ""
+        opacity  = "1"
+    elif i == 3:
+        row_blur = "filter:blur(3px);pointer-events:none;"
+        opacity  = "0.6"
+    else:
+        row_blur = "filter:blur(6px);pointer-events:none;"
+        opacity  = "0.3"
+    icon = _type_icons.get(wtype, "")
+    _preview_rows_html += f"""
+    <tr style="border-bottom:1px solid rgba(30,41,59,0.8);{row_blur}opacity:{opacity};">
+      <td style="padding:12px 16px;font-weight:700;font-size:13px;color:#94A3B8;letter-spacing:0.04em;white-space:nowrap;">{day}</td>
+      <td style="padding:12px 16px;">
+        <span style="background:{accent}18;border:1px solid {accent}40;color:{accent};
+          border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;white-space:nowrap;">{icon} {wtype}</span>
+      </td>
+      <td style="padding:12px 16px;font-size:13px;color:#CBD5E1;line-height:1.5;">{desc}</td>
+      <td style="padding:12px 16px;font-size:13px;color:#64748B;white-space:nowrap;text-align:right;">{dur}</td>
+    </tr>"""
 
-    _bmi_display   = f"{_bmi_val:.1f}" if isinstance(_bmi_val, (int, float)) else str(_bmi_val)
-    _vo2_display   = f"{_vo2_val:.0f}" if isinstance(_vo2_val, (int, float)) else str(_vo2_val)
-    _pct_display   = f"Top {100-int(_vo2_pct)}%" if isinstance(_vo2_pct, float) else "—"
-    _age_display   = f"{_bio_age}" if _bio_age != "—" else "—"
+_bmi_display   = f"{_bmi_val:.1f}" if isinstance(_bmi_val, (int, float)) else str(_bmi_val)
+_vo2_display   = f"{_vo2_val:.0f}" if isinstance(_vo2_val, (int, float)) else str(_vo2_val)
+_pct_display   = f"Top {100-int(_vo2_pct)}%" if isinstance(_vo2_pct, float) else "—"
+_age_display   = f"{_bio_age}" if _bio_age != "—" else "—"
 
-    upgrade_card_html = f"""
+upgrade_card_html = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-* {{ box-sizing: border-box; margin: 0; padding: 0; }}
-
 .uc-wrap {{
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', system-ui, sans-serif;
   background: #080F1C;
   border: 1px solid #1E3A5F;
   border-radius: 20px;
   overflow: hidden;
-  box-shadow:
-    0 0 0 1px rgba(14,165,163,0.08),
-    0 4px 6px -1px rgba(0,0,0,0.5),
-    0 24px 60px -12px rgba(0,0,0,0.7),
-    inset 0 1px 0 rgba(255,255,255,0.04);
-  position: relative;
+  box-shadow: 0 0 0 1px rgba(14,165,163,0.08), 0 24px 60px -12px rgba(0,0,0,0.7);
+  margin: 1.5rem 0;
 }}
 
-/* ── Tabs ── */
+/* Tabs */
 .uc-tabs {{
   display: flex;
   border-bottom: 1px solid #1E293B;
@@ -3696,15 +3690,14 @@ if not _unlocked:
 }}
 .uc-tab {{
   flex: 1;
-  padding: 14px 20px;
-  font-size: 13px;
+  padding: 16px 20px;
+  font-size: 14px;
   font-weight: 600;
   color: #475569;
   cursor: pointer;
   text-align: center;
-  letter-spacing: 0.02em;
-  transition: all 0.2s;
   border-bottom: 2px solid transparent;
+  transition: all 0.2s;
   user-select: none;
 }}
 .uc-tab:hover {{ color: #94A3B8; }}
@@ -3714,30 +3707,32 @@ if not _unlocked:
   background: rgba(14,165,163,0.06);
 }}
 
-/* ── Panels ── */
-.uc-panel {{ display: none; }}
+/* Panels */
+.uc-panel {{ display: none; padding: 0; }}
 .uc-panel.active {{ display: block; }}
 
-/* ── Compare table ── */
+/* Compare table */
 .uc-compare-table {{
   width: 100%;
   border-collapse: collapse;
 }}
 .uc-compare-table th {{
-  padding: 10px 16px 10px 20px;
-  font-size: 10px;
+  padding: 14px 20px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: #475569;
   background: #060D18;
   border-bottom: 1px solid #1E293B;
+  text-align: left;
 }}
-.uc-compare-table th.col-free {{ color: #64748B; text-align:center; width: 110px; }}
+.uc-compare-table th.col-free, .uc-compare-table th.col-premium {{
+  text-align: center;
+  width: 120px;
+}}
 .uc-compare-table th.col-premium {{
   color: #0EA5A3;
-  text-align: center;
-  width: 110px;
   background: rgba(14,165,163,0.06);
   border-left: 1px solid rgba(14,165,163,0.15);
 }}
@@ -3748,16 +3743,16 @@ if not _unlocked:
 .uc-row-feature {{
   display: flex;
   align-items: center;
-  padding: 13px 20px;
-  font-size: 13px;
+  padding: 14px 20px;
+  font-size: 14px;
   color: #CBD5E1;
   font-weight: 500;
 }}
 .uc-row-free, .uc-row-premium {{
-  width: 110px;
+  width: 120px;
   text-align: center;
-  padding: 13px 16px;
-  font-size: 12px;
+  padding: 14px 20px;
+  font-size: 14px;
 }}
 .uc-row-free {{ color: #64748B; }}
 .uc-row-premium {{
@@ -3766,14 +3761,11 @@ if not _unlocked:
   border-left: 1px solid rgba(14,165,163,0.10);
   font-weight: 600;
 }}
-.uc-check {{ color: #0EA5A3; font-size: 16px; }}
-.uc-check-free {{ color: #334155; font-size: 16px; }}
-.uc-row-premium-only {{
-  background: rgba(14,165,163,0.03);
-}}
+.uc-check {{ color: #0EA5A3; font-size: 18px; }}
+.uc-check-free {{ color: #334155; font-size: 18px; }}
 .uc-row-premium-only .uc-row-feature {{ color: #E2E8F0; }}
 
-/* ── Preview panel ── */
+/* Preview panel */
 .uc-preview-inner {{
   position: relative;
   overflow: hidden;
@@ -3785,13 +3777,13 @@ if not _unlocked:
 }}
 .uc-metric {{
   flex: 1;
-  padding: 12px 10px;
+  padding: 14px 10px;
   text-align: center;
   border-right: 1px solid #1E293B;
 }}
 .uc-metric:last-child {{ border-right: none; }}
 .uc-metric-label {{
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -3799,33 +3791,33 @@ if not _unlocked:
   margin-bottom: 4px;
 }}
 .uc-metric-value {{
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.2;
 }}
 .uc-weeks-bar {{
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 10px 16px;
+  gap: 6px;
+  padding: 12px 16px;
   border-bottom: 1px solid #1E293B;
   flex-wrap: wrap;
   background: #060D18;
 }}
 .uc-weeks-label {{
-  font-size: 10px;
+  font-size: 11px;
   color: #475569;
   font-weight: 600;
   letter-spacing: 0.08em;
-  margin-right: 2px;
+  margin-right: 4px;
 }}
 .uc-week-pill {{
   background: #0F1E35;
   border: 1px solid #1E3A5F;
   color: #334155;
   border-radius: 999px;
-  padding: 2px 10px;
-  font-size: 10px;
+  padding: 3px 12px;
+  font-size: 11px;
   font-weight: 600;
 }}
 .uc-week-pill.active {{
@@ -3846,141 +3838,34 @@ if not _unlocked:
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding-bottom: 20px;
-  gap: 6px;
+  padding-bottom: 24px;
+  gap: 8px;
   pointer-events: none;
 }}
 .uc-lock-badge {{
   background: rgba(14,165,163,0.12);
   border: 1px solid rgba(14,165,163,0.35);
-  border-radius: 10px;
-  padding: 8px 18px;
+  border-radius: 12px;
+  padding: 10px 24px;
   text-align: center;
 }}
 .uc-lock-title {{
-  font-size: 13px;
-  font-weight: 700;
-  color: #F1F5F9;
-  margin-bottom: 3px;
-}}
-.uc-lock-sub {{
-  font-size: 11px;
-  color: #64748B;
-}}
-
-/* ── CTA footer — always visible ── */
-.uc-cta {{
-  border-top: 1px solid #1E293B;
-  background: linear-gradient(180deg, #060D18 0%, #080F1C 100%);
-  padding: 22px 24px 20px 24px;
-}}
-.uc-cta-header {{
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 14px;
-  gap: 12px;
-}}
-.uc-cta-title {{
   font-size: 15px;
   font-weight: 700;
   color: #F1F5F9;
-  line-height: 1.3;
+  margin-bottom: 4px;
 }}
-.uc-cta-subtitle {{
+.uc-lock-sub {{
   font-size: 12px;
-  color: #64748B;
-  margin-top: 3px;
-  font-weight: 400;
-}}
-.uc-price-block {{
-  text-align: right;
-  flex-shrink: 0;
-}}
-.uc-price {{
-  font-size: 26px;
-  font-weight: 900;
-  color: #0EA5A3;
-  letter-spacing: -0.02em;
-  line-height: 1;
-}}
-.uc-price-note {{
-  font-size: 10px;
-  color: #475569;
-  margin-top: 3px;
-  white-space: nowrap;
-}}
-.uc-pills {{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-bottom: 16px;
-}}
-.uc-pill {{
-  background: rgba(34,197,94,0.10);
-  border: 1px solid rgba(34,197,94,0.25);
-  color: #4ADE80;
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}}
-.uc-input {{
-  width: 100%;
-  background: #0F1E35;
-  border: 1px solid #1E3A5F;
-  border-radius: 10px;
-  color: #E2E8F0;
-  font-size: 13px;
-  padding: 11px 14px;
-  margin-bottom: 10px;
-  outline: none;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}}
-.uc-input::placeholder {{ color: #334155; }}
-.uc-input:focus {{ border-color: #0EA5A3; }}
-.uc-btn {{
-  width: 100%;
-  padding: 14px;
-  border-radius: 10px;
-  border: none;
-  font-size: 14px;
-  font-weight: 700;
-  cursor: pointer;
-  letter-spacing: 0.02em;
-  transition: all 0.2s;
-  font-family: inherit;
-  background: linear-gradient(135deg, #0EA5A3 0%, #0891B2 100%);
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(14,165,163,0.35);
-}}
-.uc-btn:hover {{
-  background: linear-gradient(135deg, #14B8A6 0%, #0EA5E0 100%);
-  box-shadow: 0 6px 28px rgba(14,165,163,0.5);
-  transform: translateY(-1px);
-}}
-.uc-btn:disabled {{
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}}
-.uc-cta-foot {{
-  text-align: center;
-  font-size: 11px;
-  color: #334155;
-  margin-top: 10px;
+  color: #94A3B8;
 }}
 </style>
 
 <div class="uc-wrap">
-
   <!-- Tabs -->
   <div class="uc-tabs">
-    <div class="uc-tab active" onclick="ucTab(this,'compare')" id="uc-tab-compare">Free vs Premium</div>
-    <div class="uc-tab" onclick="ucTab(this,'preview')" id="uc-tab-preview">12-week plan preview</div>
+    <div class="uc-tab active" onclick="ucTab(this,'compare')">Free vs Premium</div>
+    <div class="uc-tab" onclick="ucTab(this,'preview')">12‑week plan preview</div>
   </div>
 
   <!-- Compare panel -->
@@ -3988,7 +3873,7 @@ if not _unlocked:
     <table class="uc-compare-table">
       <thead>
         <tr>
-          <th style="text-align:left;">Feature</th>
+          <th>Feature</th>
           <th class="col-free">Free</th>
           <th class="col-premium">Premium</th>
         </tr>
@@ -4010,8 +3895,8 @@ if not _unlocked:
           <td class="uc-row-premium"><span class="uc-check">✓</span></td>
         </tr>
         <tr class="uc-row-premium-only">
-          <td class="uc-row-feature">Full 12-week plan &amp; milestones</td>
-          <td class="uc-row-free" style="font-size:11px;">1 week only</td>
+          <td class="uc-row-feature">Full 12‑week plan &amp; milestones</td>
+          <td class="uc-row-free" style="font-size:12px;">1 week only</td>
           <td class="uc-row-premium"><span class="uc-check">✓</span></td>
         </tr>
         <tr class="uc-row-premium-only">
@@ -4071,10 +3956,10 @@ if not _unlocked:
         <table class="uc-preview-table">
           <thead>
             <tr style="background:#060D18;border-bottom:1px solid #1E293B;">
-              <th style="padding:9px 14px;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Day</th>
-              <th style="padding:9px 14px;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Type</th>
-              <th style="padding:9px 14px;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Prescription</th>
-              <th style="padding:9px 14px;font-size:9px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Duration</th>
+              <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Day</th>
+              <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Type</th>
+              <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Prescription</th>
+              <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:right;">Duration</th>
             </tr>
           </thead>
           <tbody>
@@ -4086,79 +3971,77 @@ if not _unlocked:
       <div class="uc-blur-overlay">
         <div class="uc-lock-badge">
           <div class="uc-lock-title">🔒 Weeks 2–12 are locked</div>
-          <div class="uc-lock-sub">AI coach insights · calorie strategy · milestone tracking · full PDF</div>
+          <div class="uc-lock-sub">AI coach · calorie strategy · milestones · full PDF</div>
         </div>
       </div>
     </div>
   </div>
-
-  <!-- ── CTA footer – always shown regardless of active tab ── -->
-  <div class="uc-cta" id="uc-cta-section">
-    <div class="uc-cta-header">
-      <div>
-        <div class="uc-cta-title">Unlock your full report</div>
-        <div class="uc-cta-subtitle">One-time · 4.99 USD · No subscription</div>
-      </div>
-      <div class="uc-price-block">
-        <div class="uc-price">4.99 USD</div>
-        <div class="uc-price-note">one-time, no subscription</div>
-      </div>
-    </div>
-    <div class="uc-pills">
-      <span class="uc-pill">✓ Full 12-week roadmap</span>
-      <span class="uc-pill">✓ AI coach insights</span>
-      <span class="uc-pill">✓ Calorie strategy</span>
-      <span class="uc-pill">✓ PDF download</span>
-    </div>
-    <input class="uc-input" type="email" id="uc-email-input"
-      placeholder="you@example.com"
-      oninput="ucCheckEmail(this)"
-    />
-    <button class="uc-btn" id="uc-unlock-btn" disabled onclick="ucSubmit()">
-      Unlock full report
-    </button>
-    <div class="uc-cta-foot">You'll receive a login link by email after payment</div>
-  </div>
-
 </div>
 
 <script>
-// Tab switcher
 function ucTab(el, panelId) {{
   document.querySelectorAll('.uc-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.uc-panel').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('uc-panel-' + panelId).classList.add('active');
 }}
-
-// Email validation → enable/disable button
-function ucCheckEmail(input) {{
-  var val = input.value;
-  var valid = val.includes('@') && val.split('@').pop().includes('.');
-  document.getElementById('uc-unlock-btn').disabled = !valid;
-}}
-
-// Submit → post email up to parent via query param trick
-function ucSubmit() {{
-  var email = document.getElementById('uc-email-input').value;
-  try {{
-    window.parent.postMessage({{type:'uc_email', email: email}}, '*');
-  }} catch(e) {{}}
-  // Fallback: write to sessionStorage so Streamlit can pick it up
-  try {{ sessionStorage.setItem('uc_pending_email', email); }} catch(e) {{}}
-}}
 </script>
 """
-    components.html(upgrade_card_html, height=700, scrolling=False)
+components.html(upgrade_card_html, height=630, scrolling=False)
 
-    # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
-    # CHANGED: no longer requires login first. Logged-in users skip the email
-    # field (we already know their email); anonymous visitors just type their
-    # email and go straight to Stripe. The account gets created automatically
-    # after payment by the stripe-webhook function.
-    _uid = get_current_user_id() or ""
-    _user_email = st.session_state.get("user_email", "")
+# -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
+# CHANGED: no longer requires login first. Logged-in users skip the email
+# field (we already know their email); anonymous visitors just type their
+# email and go straight to Stripe. The account gets created automatically
+# after payment by the stripe-webhook function.
 
+st.markdown("""
+<style>
+/* Gjør den blå knappen og e‑postfeltet pene som kortet */
+.payment-section {
+    background: #080F1C;
+    border: 1px solid #1E3A5F;
+    border-radius: 20px;
+    padding: 24px;
+    margin-top: 1rem;
+}
+.payment-section .stTextInput > div > div {
+    background: #0F1E35 !important;
+    border: 1px solid #1E3A5F !important;
+    border-radius: 10px !important;
+    color: #E2E8F0 !important;
+}
+.payment-section .stTextInput label {
+    color: #94A3B8 !important;
+    font-weight: 500 !important;
+}
+.payment-section .stButton button {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #0EA5A3 0%, #0891B2 100%) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 20px rgba(14,165,163,0.35);
+}
+.payment-section .stButton button:hover {
+    background: linear-gradient(135deg, #14B8A6 0%, #0EA5E0 100%) !important;
+    transform: translateY(-1px);
+}
+.payment-section .stButton button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+</style>
+""", unsafe_allow_html=True)
+
+_uid = get_current_user_id() or ""
+_user_email = st.session_state.get("user_email", "")
+
+with st.container():
+    st.markdown('<div class="payment-section">', unsafe_allow_html=True)
     if not _uid:
         _user_email = st.text_input(
             "Your email (to receive your report + access link)",
@@ -4166,7 +4049,6 @@ function ucSubmit() {{
             key="guest_checkout_email",
             placeholder="you@example.com",
         )
-
     _email_valid = "@" in _user_email and "." in _user_email.split("@")[-1]
 
     if st.button(
@@ -4175,6 +4057,69 @@ function ucSubmit() {{
         use_container_width=True,
         disabled=not _email_valid,
     ):
+        # ── HELE DEN EKSISTERENDE STRIPE‑LOGIKKEN (uendret) ──
+        import requests as _requests
+        _supabase_url = get_supabase_url()
+        _anon_key = get_supabase_key()
+        _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
+        try:
+            _resp = _requests.post(
+                _fn_url,
+                json={"user_id": _uid or None, "email": _user_email},
+                headers={
+                    "apikey": _anon_key,
+                    "Authorization": f"Bearer {_anon_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=10,
+            )
+            _data = _resp.json()
+            if "url" in _data:
+                _checkout_url = _data["url"]
+                # Vis lenke i toppen (som før)
+                components.html(
+                    f"""
+                    <script>
+                    (function() {{
+                        try {{
+                            const doc = window.top.document;
+                            let box = doc.getElementById("checkoutRedirectBox");
+                            if (!box) {{
+                                box = doc.createElement("div");
+                                box.id = "checkoutRedirectBox";
+                                box.style.position = "fixed";
+                                box.style.top = "0";
+                                box.style.left = "0";
+                                box.style.right = "0";
+                                box.style.zIndex = "999999";
+                                box.style.padding = "16px";
+                                box.style.background = "#0EA5A3";
+                                box.style.textAlign = "center";
+                                box.style.fontFamily = "sans-serif";
+                                doc.body.prepend(box);
+                            }}
+                            box.innerHTML =
+                                '<a href="{_checkout_url}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
+                                '💳 Click here to continue to payment &rarr;</a>';
+                            try {{ window.top.location.href = "{_checkout_url}"; }} catch (e) {{}}
+                        }} catch (e) {{
+                            console.error("Could not show checkout redirect link:", e);
+                        }}
+                    }})();
+                    </script>
+                    """,
+                    height=0,
+                )
+                st.info("💳 Click the green bar at the top of the page to continue to payment.")
+            else:
+                st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
+        except Exception as _e:
+            st.error(f"Payment error: {_e}")
+
+    if not _email_valid and _user_email:
+        st.caption("⚠️ Enter a valid email to continue")
+    st.caption("After payment, you'll get an email with a link to log in and download your report.")
+    st.markdown('</div>', unsafe_allow_html=True)
         import requests as _requests
         _supabase_url = get_supabase_url()
         _anon_key = get_supabase_key()
