@@ -3989,137 +3989,137 @@ if not _unlocked:
     """
     components.html(upgrade_card_html, height=630, scrolling=False)
 
-# -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
-# CHANGED: no longer requires login first. Logged-in users skip the email
-# field (we already know their email); anonymous visitors just type their
-# email and go straight to Stripe. The account gets created automatically
-# after payment by the stripe-webhook function.
+    # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
+    # CHANGED: no longer requires login first. Logged-in users skip the email
+    # field (we already know their email); anonymous visitors just type their
+    # email and go straight to Stripe. The account gets created automatically
+    # after payment by the stripe-webhook function.
 
-st.markdown("""
-<style>
-/* Gjør den blå knappen og e‑postfeltet pene som kortet */
-.payment-section {
-    background: #080F1C;
-    border: 1px solid #1E3A5F;
-    border-radius: 20px;
-    padding: 24px;
-    margin-top: 1rem;
-}
-.payment-section .stTextInput > div > div {
-    background: #0F1E35 !important;
-    border: 1px solid #1E3A5F !important;
-    border-radius: 10px !important;
-    color: #E2E8F0 !important;
-}
-.payment-section .stTextInput label {
-    color: #94A3B8 !important;
-    font-weight: 500 !important;
-}
-.payment-section .stButton button {
-    width: 100%;
-    padding: 14px;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: 700;
-    background: linear-gradient(135deg, #0EA5A3 0%, #0891B2 100%) !important;
-    color: white !important;
-    border: none !important;
-    box-shadow: 0 4px 20px rgba(14,165,163,0.35);
-}
-.payment-section .stButton button:hover {
-    background: linear-gradient(135deg, #14B8A6 0%, #0EA5E0 100%) !important;
-    transform: translateY(-1px);
-}
-.payment-section .stButton button:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-</style>
-""", unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+    /* Gjør den blå knappen og e‑postfeltet pene som kortet */
+    .payment-section {
+        background: #080F1C;
+        border: 1px solid #1E3A5F;
+        border-radius: 20px;
+        padding: 24px;
+        margin-top: 1rem;
+    }
+    .payment-section .stTextInput > div > div {
+        background: #0F1E35 !important;
+        border: 1px solid #1E3A5F !important;
+        border-radius: 10px !important;
+        color: #E2E8F0 !important;
+    }
+    .payment-section .stTextInput label {
+        color: #94A3B8 !important;
+        font-weight: 500 !important;
+    }
+    .payment-section .stButton button {
+        width: 100%;
+        padding: 14px;
+        border-radius: 10px;
+        font-size: 16px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #0EA5A3 0%, #0891B2 100%) !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 4px 20px rgba(14,165,163,0.35);
+    }
+    .payment-section .stButton button:hover {
+        background: linear-gradient(135deg, #14B8A6 0%, #0EA5E0 100%) !important;
+        transform: translateY(-1px);
+    }
+    .payment-section .stButton button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-_uid = get_current_user_id() or ""
-_user_email = st.session_state.get("user_email", "")
+    _uid = get_current_user_id() or ""
+    _user_email = st.session_state.get("user_email", "")
 
-with st.container():
-    st.markdown('<div class="payment-section">', unsafe_allow_html=True)
-    if not _uid:
-        _user_email = st.text_input(
-            "Your email (to receive your report + access link)",
-            value=_user_email,
-            key="guest_checkout_email",
-            placeholder="you@example.com",
-        )
-    _email_valid = "@" in _user_email and "." in _user_email.split("@")[-1]
-
-    if st.button(
-        "🔓 Unlock full report — 4,99 USD",
-        type="primary",
-        use_container_width=True,
-        disabled=not _email_valid,
-    ):
-        # ── HELE DEN EKSISTERENDE STRIPE‑LOGIKKEN (uendret) ──
-        import requests as _requests
-        _supabase_url = get_supabase_url()
-        _anon_key = get_supabase_key()
-        _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
-        try:
-            _resp = _requests.post(
-                _fn_url,
-                json={"user_id": _uid or None, "email": _user_email},
-                headers={
-                    "apikey": _anon_key,
-                    "Authorization": f"Bearer {_anon_key}",
-                    "Content-Type": "application/json",
-                },
-                timeout=10,
+    with st.container():
+        st.markdown('<div class="payment-section">', unsafe_allow_html=True)
+        if not _uid:
+            _user_email = st.text_input(
+                "Your email (to receive your report + access link)",
+                value=_user_email,
+                key="guest_checkout_email",
+                placeholder="you@example.com",
             )
-            _data = _resp.json()
-            if "url" in _data:
-                _checkout_url = _data["url"]
-                # Vis lenke i toppen (som før)
-                components.html(
-                    f"""
-                    <script>
-                    (function() {{
-                        try {{
-                            const doc = window.top.document;
-                            let box = doc.getElementById("checkoutRedirectBox");
-                            if (!box) {{
-                                box = doc.createElement("div");
-                                box.id = "checkoutRedirectBox";
-                                box.style.position = "fixed";
-                                box.style.top = "0";
-                                box.style.left = "0";
-                                box.style.right = "0";
-                                box.style.zIndex = "999999";
-                                box.style.padding = "16px";
-                                box.style.background = "#0EA5A3";
-                                box.style.textAlign = "center";
-                                box.style.fontFamily = "sans-serif";
-                                doc.body.prepend(box);
-                            }}
-                            box.innerHTML =
-                                '<a href="{_checkout_url}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
-                                '💳 Click here to continue to payment &rarr;</a>';
-                            try {{ window.top.location.href = "{_checkout_url}"; }} catch (e) {{}}
-                        }} catch (e) {{
-                            console.error("Could not show checkout redirect link:", e);
-                        }}
-                    }})();
-                    </script>
-                    """,
-                    height=0,
-                )
-                st.info("💳 Click the green bar at the top of the page to continue to payment.")
-            else:
-                st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
-        except Exception as _e:
-            st.error(f"Payment error: {_e}")
+        _email_valid = "@" in _user_email and "." in _user_email.split("@")[-1]
 
-    if not _email_valid and _user_email:
-        st.caption("⚠️ Enter a valid email to continue")
-    st.caption("After payment, you'll get an email with a link to log in and download your report.")
-    st.markdown('</div>', unsafe_allow_html=True)
+        if st.button(
+            "🔓 Unlock full report — 4,99 USD",
+            type="primary",
+            use_container_width=True,
+            disabled=not _email_valid,
+        ):
+            # ── HELE DEN EKSISTERENDE STRIPE‑LOGIKKEN (uendret) ──
+            import requests as _requests
+            _supabase_url = get_supabase_url()
+            _anon_key = get_supabase_key()
+            _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
+            try:
+                _resp = _requests.post(
+                    _fn_url,
+                    json={"user_id": _uid or None, "email": _user_email},
+                    headers={
+                        "apikey": _anon_key,
+                        "Authorization": f"Bearer {_anon_key}",
+                        "Content-Type": "application/json",
+                    },
+                    timeout=10,
+                )
+                _data = _resp.json()
+                if "url" in _data:
+                    _checkout_url = _data["url"]
+                    # Vis lenke i toppen (som før)
+                    components.html(
+                        f"""
+                        <script>
+                        (function() {{
+                            try {{
+                                const doc = window.top.document;
+                                let box = doc.getElementById("checkoutRedirectBox");
+                                if (!box) {{
+                                    box = doc.createElement("div");
+                                    box.id = "checkoutRedirectBox";
+                                    box.style.position = "fixed";
+                                    box.style.top = "0";
+                                    box.style.left = "0";
+                                    box.style.right = "0";
+                                    box.style.zIndex = "999999";
+                                    box.style.padding = "16px";
+                                    box.style.background = "#0EA5A3";
+                                    box.style.textAlign = "center";
+                                    box.style.fontFamily = "sans-serif";
+                                    doc.body.prepend(box);
+                                }}
+                                box.innerHTML =
+                                    '<a href="{_checkout_url}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
+                                    '💳 Click here to continue to payment &rarr;</a>';
+                                try {{ window.top.location.href = "{_checkout_url}"; }} catch (e) {{}}
+                            }} catch (e) {{
+                                console.error("Could not show checkout redirect link:", e);
+                            }}
+                        }})();
+                        </script>
+                        """,
+                        height=0,
+                    )
+                    st.info("💳 Click the green bar at the top of the page to continue to payment.")
+                else:
+                    st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
+            except Exception as _e:
+                st.error(f"Payment error: {_e}")
+
+        if not _email_valid and _user_email:
+            st.caption("⚠️ Enter a valid email to continue")
+        st.caption("After payment, you'll get an email with a link to log in and download your report.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
@@ -4158,7 +4158,6 @@ else:
                 st.caption("Your purchase is secured with 100% encryption.")
         except Exception as e:
             st.error(f"Error generating report: {e}")
-
 # -------------------- Scroll script --------------------
 if st.session_state.get("scroll_to_paywall"):
     st.markdown(
