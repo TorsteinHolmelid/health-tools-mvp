@@ -3619,6 +3619,52 @@ st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if not _unlocked:
+    # -------------------- 1. Sammenlikningstabell (Free vs Premium) --------------------
+    st.markdown(
+        '''<div class="ht-compare">
+  <div class="ht-compare-row head">
+    <div class="ht-compare-feature">Feature</div>
+    <div class="ht-compare-cell">Free</div>
+    <div class="ht-compare-cell">Premium</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">BMI, energy & VO2max overview</div>
+    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Biological age</div>
+    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">All personalized recommendations</div>
+    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Full 12-week plan & milestones</div>
+    <div class="ht-compare-cell no">1 week preview</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">AI Coach insights</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Progress tracking over time</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Downloadable PDF report</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+</div>''',
+        unsafe_allow_html=True
+    )
 
     # -------------------- 2. Preview av 12‑vekers treningsplan (med blur) --------------------
     _preview_results = st.session_state.get("results", {})
@@ -3808,25 +3854,27 @@ if not _unlocked:
 """
     components.html(preview_html, height=620, scrolling=True)
 
-    # -------------------- 3. Unlock-boks: pris + email + knapp --------------------
+    # -------------------- 3. Verdiforslag + betalingsboks --------------------
     st.markdown(
-        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(59,130,246,0.08));'
-        'border:1px solid rgba(14,165,163,0.4);border-radius:18px;padding:28px 24px 20px 24px;'
-        'text-align:center;margin:16px 0 8px 0;">'
-        '<div style="font-size:13px;font-weight:700;color:#0EA5A3;letter-spacing:0.1em;'
-        'text-transform:uppercase;margin-bottom:10px;">🔒 Unlock your full report</div>'
-        '<div style="font-size:32px;font-weight:900;color:#F1F5F9;margin-bottom:2px;">4,99 USD</div>'
-        '<div style="color:#64748B;font-size:12px;margin-bottom:20px;">One-time · No subscription</div>'
-        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-bottom:4px;">'
+        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
+        'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
+        'text-align:center;margin:10px 0;">'
+        '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
+        '🔒 Unlock your full report</div>'
+        '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
+        'Get your complete personalized health analysis as a premium PDF</div>'
+        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
         '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:4px 13px;font-size:12px;">✅ Full 12-week plan</span>'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
         '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:4px 13px;font-size:12px;">✅ AI coach insights</span>'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
         '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:4px 13px;font-size:12px;">✅ Calorie strategy</span>'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
         '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:4px 13px;font-size:12px;">✅ PDF download</span>'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
         '</div>'
+        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">4,99 USD</div>'
+        '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
         '</div>',
         unsafe_allow_html=True
     )
@@ -3845,13 +3893,9 @@ if not _unlocked:
             value=_user_email,
             key="guest_checkout_email",
             placeholder="you@example.com",
-            label_visibility="collapsed",
         )
 
     _email_valid = "@" in _user_email and "." in _user_email.split("@")[-1]
-
-    if not _uid:
-        st.caption("📧 Enter your email above to receive your report and access link")
 
     if st.button(
         "🔓 Unlock full report — 4,99 USD",
@@ -3877,6 +3921,13 @@ if not _unlocked:
             _data = _resp.json()
             if "url" in _data:
                 _checkout_url = _data["url"]
+                # Samme robuste metode som magic-link-innloggingen: skriv en
+                # synlig, klikkbar lenke direkte i hoveddokumentet via
+                # components.html. Automatisk window.top-navigasjon via
+                # st.markdown sin <script> kjøres ikke i Streamlit, og
+                # window.top.location-skriving blokkeres av iframe-sandkassen
+                # uansett — derfor er en ekte lenke i hoveddokumentet eneste
+                # pålitelige vei.
                 components.html(
                     f"""
                     <script>
@@ -3901,6 +3952,7 @@ if not _unlocked:
                             box.innerHTML =
                                 '<a href="{_checkout_url}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
                                 '💳 Click here to continue to payment &rarr;</a>';
+                            // Forsøk automatisk navigasjon i tillegg, i fall den faktisk fungerer i noen nettlesere
                             try {{ window.top.location.href = "{_checkout_url}"; }} catch (e) {{}}
                         }} catch (e) {{
                             console.error("Could not show checkout redirect link:", e);
@@ -3919,57 +3971,6 @@ if not _unlocked:
     if not _email_valid and _user_email:
         st.caption("⚠️ Enter a valid email to continue")
     st.caption("After payment, you'll get an email with a link to log in and download your report.")
-
-    # -------------------- 5. Feature-tabell (tryggingsboks nedst) --------------------
-    st.markdown(
-        '<details style="margin-top:24px;">'
-        '<summary style="color:#64748B;font-size:12px;cursor:pointer;list-style:none;text-align:center;">'
-        '▾ What's included in free vs premium?</summary>'
-        '<div class="ht-compare" style="margin-top:12px;">'
-        '<div class="ht-compare-row head">'
-        '<div class="ht-compare-feature">Feature</div>'
-        '<div class="ht-compare-cell">Free</div>'
-        '<div class="ht-compare-cell">Premium</div>'
-        '</div>'
-        '<div class="ht-compare-row">'
-        '<div class="ht-compare-feature">BMI, energy & VO2max overview</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '</div>'
-        '<div class="ht-compare-row">'
-        '<div class="ht-compare-feature">Biological age</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '</div>'
-        '<div class="ht-compare-row">'
-        '<div class="ht-compare-feature">All personalized recommendations</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '</div>'
-        '<div class="ht-compare-row">'
-        '<div class="ht-compare-feature">Full 12-week plan & milestones</div>'
-        '<div class="ht-compare-cell no">1 week preview</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '</div>'
-        '<div class="ht-compare-row">'
-        '<div class="ht-compare-feature">AI Coach insights</div>'
-        '<div class="ht-compare-cell no">—</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '</div>'
-        '<div class="ht-compare-row">'
-        '<div class="ht-compare-feature">Progress tracking over time</div>'
-        '<div class="ht-compare-cell no">—</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '</div>'
-        '<div class="ht-compare-row">'
-        '<div class="ht-compare-feature">Downloadable PDF report</div>'
-        '<div class="ht-compare-cell no">—</div>'
-        '<div class="ht-compare-cell yes">✅</div>'
-        '</div>'
-        '</div>'
-        '</details>',
-        unsafe_allow_html=True
-    )
 
 else:
     # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
