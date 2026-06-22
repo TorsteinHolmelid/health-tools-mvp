@@ -3618,376 +3618,376 @@ st.markdown('<div id="paywall_anchor"></div>', unsafe_allow_html=True)
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
-if not _unlocked:
-# -------------------- Unified premium upgrade card --------------------
-_preview_results = st.session_state.get("results", {})
-_preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
-_preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
-_bmi_val   = _preview_bmi.get("value", "—")
-_vo2_val   = _preview_vo2.get("value", "—")
-_vo2_pct   = _preview_vo2.get("percentile", "—")
-_bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
-
-_days_sample = [
-    ("MON", "Strength",  "Full‑body compound lifts — Squat, RDL, Push‑up, Row", "45 min", "#22C55E"),
-    ("TUE", "Cardio",    "Zone 2 steady‑state — HR 120–135 bpm, conversational",    "30 min", "#3B82F6"),
-    ("WED", "Strength",  "Upper/Lower split — Bench, Pull‑up, Lunge, OHP",   "50 min", "#22C55E"),
-    ("THU", "HIIT",      "4×4 intervals — 4 min hard (RPE 9), 3 min easy",   "40 min", "#F59E0B"),
-    ("FRI", "Strength",  "Posterior chain — Deadlift, Hip Thrust, Pull‑down, Plank",    "50 min", "#22C55E"),
-    ("SAT", "Endurance", "Long slow distance — aerobic base, HR <135 bpm",         "60 min", "#3B82F6"),
-    ("SUN", "Recovery",  "Rest or 15 min mobility + foam rolling",                       "—",      "#64748B"),
-]
-
-_type_icons = {"Strength":"💪","Cardio":"🏃","HIIT":"🔥","Endurance":"🚴","Recovery":"😴"}
-
-_preview_rows_html = ""
-for i, (day, wtype, desc, dur, accent) in enumerate(_days_sample):
-    if i < 3:
-        row_blur = ""
-        opacity  = "1"
-    elif i == 3:
-        row_blur = "filter:blur(3px);pointer-events:none;"
-        opacity  = "0.6"
-    else:
-        row_blur = "filter:blur(6px);pointer-events:none;"
-        opacity  = "0.3"
-    icon = _type_icons.get(wtype, "")
-    _preview_rows_html += f"""
-    <tr style="border-bottom:1px solid rgba(30,41,59,0.8);{row_blur}opacity:{opacity};">
-      <td style="padding:12px 16px;font-weight:700;font-size:13px;color:#94A3B8;letter-spacing:0.04em;white-space:nowrap;">{day}</td>
-      <td style="padding:12px 16px;">
-        <span style="background:{accent}18;border:1px solid {accent}40;color:{accent};
-          border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;white-space:nowrap;">{icon} {wtype}</span>
-      </td>
-      <td style="padding:12px 16px;font-size:13px;color:#CBD5E1;line-height:1.5;">{desc}</td>
-      <td style="padding:12px 16px;font-size:13px;color:#64748B;white-space:nowrap;text-align:right;">{dur}</td>
-    </tr>"""
-
-_bmi_display   = f"{_bmi_val:.1f}" if isinstance(_bmi_val, (int, float)) else str(_bmi_val)
-_vo2_display   = f"{_vo2_val:.0f}" if isinstance(_vo2_val, (int, float)) else str(_vo2_val)
-_pct_display   = f"Top {100-int(_vo2_pct)}%" if isinstance(_vo2_pct, float) else "—"
-_age_display   = f"{_bio_age}" if _bio_age != "—" else "—"
-
-upgrade_card_html = f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
-.uc-wrap {{
-  font-family: 'Inter', system-ui, sans-serif;
-  background: #080F1C;
-  border: 1px solid #1E3A5F;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 0 0 1px rgba(14,165,163,0.08), 0 24px 60px -12px rgba(0,0,0,0.7);
-  margin: 1.5rem 0;
-}}
-
-/* Tabs */
-.uc-tabs {{
-  display: flex;
-  border-bottom: 1px solid #1E293B;
-  background: #060D18;
-}}
-.uc-tab {{
-  flex: 1;
-  padding: 16px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #475569;
-  cursor: pointer;
-  text-align: center;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-  user-select: none;
-}}
-.uc-tab:hover {{ color: #94A3B8; }}
-.uc-tab.active {{
-  color: #F1F5F9;
-  border-bottom-color: #0EA5A3;
-  background: rgba(14,165,163,0.06);
-}}
-
-/* Panels */
-.uc-panel {{ display: none; padding: 0; }}
-.uc-panel.active {{ display: block; }}
-
-/* Compare table */
-.uc-compare-table {{
-  width: 100%;
-  border-collapse: collapse;
-}}
-.uc-compare-table th {{
-  padding: 14px 20px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #475569;
-  background: #060D18;
-  border-bottom: 1px solid #1E293B;
-  text-align: left;
-}}
-.uc-compare-table th.col-free, .uc-compare-table th.col-premium {{
-  text-align: center;
-  width: 120px;
-}}
-.uc-compare-table th.col-premium {{
-  color: #0EA5A3;
-  background: rgba(14,165,163,0.06);
-  border-left: 1px solid rgba(14,165,163,0.15);
-}}
-.uc-compare-table td {{
-  padding: 0;
-  border-bottom: 1px solid rgba(30,41,59,0.6);
-}}
-.uc-row-feature {{
-  display: flex;
-  align-items: center;
-  padding: 14px 20px;
-  font-size: 14px;
-  color: #CBD5E1;
-  font-weight: 500;
-}}
-.uc-row-free, .uc-row-premium {{
-  width: 120px;
-  text-align: center;
-  padding: 14px 20px;
-  font-size: 14px;
-}}
-.uc-row-free {{ color: #64748B; }}
-.uc-row-premium {{
-  color: #0EA5A3;
-  background: rgba(14,165,163,0.04);
-  border-left: 1px solid rgba(14,165,163,0.10);
-  font-weight: 600;
-}}
-.uc-check {{ color: #0EA5A3; font-size: 18px; }}
-.uc-check-free {{ color: #334155; font-size: 18px; }}
-.uc-row-premium-only .uc-row-feature {{ color: #E2E8F0; }}
-
-/* Preview panel */
-.uc-preview-inner {{
-  position: relative;
-  overflow: hidden;
-}}
-.uc-metrics-bar {{
-  display: flex;
-  border-bottom: 1px solid #1E293B;
-  background: #060D18;
-}}
-.uc-metric {{
-  flex: 1;
-  padding: 14px 10px;
-  text-align: center;
-  border-right: 1px solid #1E293B;
-}}
-.uc-metric:last-child {{ border-right: none; }}
-.uc-metric-label {{
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #475569;
-  margin-bottom: 4px;
-}}
-.uc-metric-value {{
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1.2;
-}}
-.uc-weeks-bar {{
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #1E293B;
-  flex-wrap: wrap;
-  background: #060D18;
-}}
-.uc-weeks-label {{
-  font-size: 11px;
-  color: #475569;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  margin-right: 4px;
-}}
-.uc-week-pill {{
-  background: #0F1E35;
-  border: 1px solid #1E3A5F;
-  color: #334155;
-  border-radius: 999px;
-  padding: 3px 12px;
-  font-size: 11px;
-  font-weight: 600;
-}}
-.uc-week-pill.active {{
-  background: rgba(14,165,163,0.15);
-  border-color: #0EA5A3;
-  color: #0EA5A3;
-}}
-.uc-preview-table {{
-  width: 100%;
-  border-collapse: collapse;
-}}
-.uc-blur-overlay {{
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 200px;
-  background: linear-gradient(to bottom, transparent 0%, #080F1Ccc 35%, #080F1C 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  padding-bottom: 24px;
-  gap: 8px;
-  pointer-events: none;
-}}
-.uc-lock-badge {{
-  background: rgba(14,165,163,0.12);
-  border: 1px solid rgba(14,165,163,0.35);
-  border-radius: 12px;
-  padding: 10px 24px;
-  text-align: center;
-}}
-.uc-lock-title {{
-  font-size: 15px;
-  font-weight: 700;
-  color: #F1F5F9;
-  margin-bottom: 4px;
-}}
-.uc-lock-sub {{
-  font-size: 12px;
-  color: #94A3B8;
-}}
-</style>
-
-<div class="uc-wrap">
-  <!-- Tabs -->
-  <div class="uc-tabs">
-    <div class="uc-tab active" onclick="ucTab(this,'compare')">Free vs Premium</div>
-    <div class="uc-tab" onclick="ucTab(this,'preview')">12‑week plan preview</div>
-  </div>
-
-  <!-- Compare panel -->
-  <div class="uc-panel active" id="uc-panel-compare">
-    <table class="uc-compare-table">
-      <thead>
-        <tr>
-          <th>Feature</th>
-          <th class="col-free">Free</th>
-          <th class="col-premium">Premium</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="uc-row-feature">BMI, energy &amp; VO₂max</td>
-          <td class="uc-row-free"><span class="uc-check">✓</span></td>
-          <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-        </tr>
-        <tr>
-          <td class="uc-row-feature">Biological age</td>
-          <td class="uc-row-free"><span class="uc-check">✓</span></td>
-          <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-        </tr>
-        <tr>
-          <td class="uc-row-feature">Personalized recommendations</td>
-          <td class="uc-row-free"><span class="uc-check">✓</span></td>
-          <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-        </tr>
-        <tr class="uc-row-premium-only">
-          <td class="uc-row-feature">Full 12‑week plan &amp; milestones</td>
-          <td class="uc-row-free" style="font-size:12px;">1 week only</td>
-          <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-        </tr>
-        <tr class="uc-row-premium-only">
-          <td class="uc-row-feature">AI coach insights</td>
-          <td class="uc-row-free">—</td>
-          <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-        </tr>
-        <tr class="uc-row-premium-only">
-          <td class="uc-row-feature">Progress tracking over time</td>
-          <td class="uc-row-free">—</td>
-          <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-        </tr>
-        <tr class="uc-row-premium-only">
-          <td class="uc-row-feature" style="border-bottom:none;">Downloadable PDF report</td>
-          <td class="uc-row-free" style="border-bottom:none;">—</td>
-          <td class="uc-row-premium" style="border-bottom:none;"><span class="uc-check">✓</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Preview panel -->
-  <div class="uc-panel" id="uc-panel-preview">
-    <div class="uc-preview-inner">
-      <!-- Metrics bar -->
-      <div class="uc-metrics-bar">
-        <div class="uc-metric">
-          <div class="uc-metric-label">BMI</div>
-          <div class="uc-metric-value" style="color:#0EA5A3;">{_bmi_display}</div>
-        </div>
-        <div class="uc-metric">
-          <div class="uc-metric-label">VO₂max</div>
-          <div class="uc-metric-value" style="color:#3B82F6;">{_vo2_display}</div>
-        </div>
-        <div class="uc-metric">
-          <div class="uc-metric-label">Fitness rank</div>
-          <div class="uc-metric-value" style="color:#D4AF7A;">{_pct_display}</div>
-        </div>
-        <div class="uc-metric">
-          <div class="uc-metric-label">Bio age</div>
-          <div class="uc-metric-value" style="color:#22C55E;">{_age_display}</div>
-        </div>
+    if not _unlocked:
+    # -------------------- Unified premium upgrade card --------------------
+    _preview_results = st.session_state.get("results", {})
+    _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
+    _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
+    _bmi_val   = _preview_bmi.get("value", "—")
+    _vo2_val   = _preview_vo2.get("value", "—")
+    _vo2_pct   = _preview_vo2.get("percentile", "—")
+    _bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
+    
+    _days_sample = [
+        ("MON", "Strength",  "Full‑body compound lifts — Squat, RDL, Push‑up, Row", "45 min", "#22C55E"),
+        ("TUE", "Cardio",    "Zone 2 steady‑state — HR 120–135 bpm, conversational",    "30 min", "#3B82F6"),
+        ("WED", "Strength",  "Upper/Lower split — Bench, Pull‑up, Lunge, OHP",   "50 min", "#22C55E"),
+        ("THU", "HIIT",      "4×4 intervals — 4 min hard (RPE 9), 3 min easy",   "40 min", "#F59E0B"),
+        ("FRI", "Strength",  "Posterior chain — Deadlift, Hip Thrust, Pull‑down, Plank",    "50 min", "#22C55E"),
+        ("SAT", "Endurance", "Long slow distance — aerobic base, HR <135 bpm",         "60 min", "#3B82F6"),
+        ("SUN", "Recovery",  "Rest or 15 min mobility + foam rolling",                       "—",      "#64748B"),
+    ]
+    
+    _type_icons = {"Strength":"💪","Cardio":"🏃","HIIT":"🔥","Endurance":"🚴","Recovery":"😴"}
+    
+    _preview_rows_html = ""
+    for i, (day, wtype, desc, dur, accent) in enumerate(_days_sample):
+        if i < 3:
+            row_blur = ""
+            opacity  = "1"
+        elif i == 3:
+            row_blur = "filter:blur(3px);pointer-events:none;"
+            opacity  = "0.6"
+        else:
+            row_blur = "filter:blur(6px);pointer-events:none;"
+            opacity  = "0.3"
+        icon = _type_icons.get(wtype, "")
+        _preview_rows_html += f"""
+        <tr style="border-bottom:1px solid rgba(30,41,59,0.8);{row_blur}opacity:{opacity};">
+          <td style="padding:12px 16px;font-weight:700;font-size:13px;color:#94A3B8;letter-spacing:0.04em;white-space:nowrap;">{day}</td>
+          <td style="padding:12px 16px;">
+            <span style="background:{accent}18;border:1px solid {accent}40;color:{accent};
+              border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;white-space:nowrap;">{icon} {wtype}</span>
+          </td>
+          <td style="padding:12px 16px;font-size:13px;color:#CBD5E1;line-height:1.5;">{desc}</td>
+          <td style="padding:12px 16px;font-size:13px;color:#64748B;white-space:nowrap;text-align:right;">{dur}</td>
+        </tr>"""
+    
+    _bmi_display   = f"{_bmi_val:.1f}" if isinstance(_bmi_val, (int, float)) else str(_bmi_val)
+    _vo2_display   = f"{_vo2_val:.0f}" if isinstance(_vo2_val, (int, float)) else str(_vo2_val)
+    _pct_display   = f"Top {100-int(_vo2_pct)}%" if isinstance(_vo2_pct, float) else "—"
+    _age_display   = f"{_bio_age}" if _bio_age != "—" else "—"
+    
+    upgrade_card_html = f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    
+    .uc-wrap {{
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #080F1C;
+      border: 1px solid #1E3A5F;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(14,165,163,0.08), 0 24px 60px -12px rgba(0,0,0,0.7);
+      margin: 1.5rem 0;
+    }}
+    
+    /* Tabs */
+    .uc-tabs {{
+      display: flex;
+      border-bottom: 1px solid #1E293B;
+      background: #060D18;
+    }}
+    .uc-tab {{
+      flex: 1;
+      padding: 16px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #475569;
+      cursor: pointer;
+      text-align: center;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      user-select: none;
+    }}
+    .uc-tab:hover {{ color: #94A3B8; }}
+    .uc-tab.active {{
+      color: #F1F5F9;
+      border-bottom-color: #0EA5A3;
+      background: rgba(14,165,163,0.06);
+    }}
+    
+    /* Panels */
+    .uc-panel {{ display: none; padding: 0; }}
+    .uc-panel.active {{ display: block; }}
+    
+    /* Compare table */
+    .uc-compare-table {{
+      width: 100%;
+      border-collapse: collapse;
+    }}
+    .uc-compare-table th {{
+      padding: 14px 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #475569;
+      background: #060D18;
+      border-bottom: 1px solid #1E293B;
+      text-align: left;
+    }}
+    .uc-compare-table th.col-free, .uc-compare-table th.col-premium {{
+      text-align: center;
+      width: 120px;
+    }}
+    .uc-compare-table th.col-premium {{
+      color: #0EA5A3;
+      background: rgba(14,165,163,0.06);
+      border-left: 1px solid rgba(14,165,163,0.15);
+    }}
+    .uc-compare-table td {{
+      padding: 0;
+      border-bottom: 1px solid rgba(30,41,59,0.6);
+    }}
+    .uc-row-feature {{
+      display: flex;
+      align-items: center;
+      padding: 14px 20px;
+      font-size: 14px;
+      color: #CBD5E1;
+      font-weight: 500;
+    }}
+    .uc-row-free, .uc-row-premium {{
+      width: 120px;
+      text-align: center;
+      padding: 14px 20px;
+      font-size: 14px;
+    }}
+    .uc-row-free {{ color: #64748B; }}
+    .uc-row-premium {{
+      color: #0EA5A3;
+      background: rgba(14,165,163,0.04);
+      border-left: 1px solid rgba(14,165,163,0.10);
+      font-weight: 600;
+    }}
+    .uc-check {{ color: #0EA5A3; font-size: 18px; }}
+    .uc-check-free {{ color: #334155; font-size: 18px; }}
+    .uc-row-premium-only .uc-row-feature {{ color: #E2E8F0; }}
+    
+    /* Preview panel */
+    .uc-preview-inner {{
+      position: relative;
+      overflow: hidden;
+    }}
+    .uc-metrics-bar {{
+      display: flex;
+      border-bottom: 1px solid #1E293B;
+      background: #060D18;
+    }}
+    .uc-metric {{
+      flex: 1;
+      padding: 14px 10px;
+      text-align: center;
+      border-right: 1px solid #1E293B;
+    }}
+    .uc-metric:last-child {{ border-right: none; }}
+    .uc-metric-label {{
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 4px;
+    }}
+    .uc-metric-value {{
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1.2;
+    }}
+    .uc-weeks-bar {{
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 12px 16px;
+      border-bottom: 1px solid #1E293B;
+      flex-wrap: wrap;
+      background: #060D18;
+    }}
+    .uc-weeks-label {{
+      font-size: 11px;
+      color: #475569;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      margin-right: 4px;
+    }}
+    .uc-week-pill {{
+      background: #0F1E35;
+      border: 1px solid #1E3A5F;
+      color: #334155;
+      border-radius: 999px;
+      padding: 3px 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }}
+    .uc-week-pill.active {{
+      background: rgba(14,165,163,0.15);
+      border-color: #0EA5A3;
+      color: #0EA5A3;
+    }}
+    .uc-preview-table {{
+      width: 100%;
+      border-collapse: collapse;
+    }}
+    .uc-blur-overlay {{
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 200px;
+      background: linear-gradient(to bottom, transparent 0%, #080F1Ccc 35%, #080F1C 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding-bottom: 24px;
+      gap: 8px;
+      pointer-events: none;
+    }}
+    .uc-lock-badge {{
+      background: rgba(14,165,163,0.12);
+      border: 1px solid rgba(14,165,163,0.35);
+      border-radius: 12px;
+      padding: 10px 24px;
+      text-align: center;
+    }}
+    .uc-lock-title {{
+      font-size: 15px;
+      font-weight: 700;
+      color: #F1F5F9;
+      margin-bottom: 4px;
+    }}
+    .uc-lock-sub {{
+      font-size: 12px;
+      color: #94A3B8;
+    }}
+    </style>
+    
+    <div class="uc-wrap">
+      <!-- Tabs -->
+      <div class="uc-tabs">
+        <div class="uc-tab active" onclick="ucTab(this,'compare')">Free vs Premium</div>
+        <div class="uc-tab" onclick="ucTab(this,'preview')">12‑week plan preview</div>
       </div>
-      <!-- Weeks bar -->
-      <div class="uc-weeks-bar">
-        <span class="uc-weeks-label">WEEKS</span>
-        <span class="uc-week-pill active">W1</span>
-        <span class="uc-week-pill">W2</span><span class="uc-week-pill">W3</span>
-        <span class="uc-week-pill">W4</span><span class="uc-week-pill">W5</span>
-        <span class="uc-week-pill">W6</span><span class="uc-week-pill">W7</span>
-        <span class="uc-week-pill">W8</span><span class="uc-week-pill">W9</span>
-        <span class="uc-week-pill">W10</span><span class="uc-week-pill">W11</span>
-        <span class="uc-week-pill">W12</span>
-      </div>
-      <!-- Plan table -->
-      <div style="overflow-x:auto;">
-        <table class="uc-preview-table">
+    
+      <!-- Compare panel -->
+      <div class="uc-panel active" id="uc-panel-compare">
+        <table class="uc-compare-table">
           <thead>
-            <tr style="background:#060D18;border-bottom:1px solid #1E293B;">
-              <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Day</th>
-              <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Type</th>
-              <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Prescription</th>
-              <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:right;">Duration</th>
+            <tr>
+              <th>Feature</th>
+              <th class="col-free">Free</th>
+              <th class="col-premium">Premium</th>
             </tr>
           </thead>
           <tbody>
-            {_preview_rows_html}
+            <tr>
+              <td class="uc-row-feature">BMI, energy &amp; VO₂max</td>
+              <td class="uc-row-free"><span class="uc-check">✓</span></td>
+              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
+            </tr>
+            <tr>
+              <td class="uc-row-feature">Biological age</td>
+              <td class="uc-row-free"><span class="uc-check">✓</span></td>
+              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
+            </tr>
+            <tr>
+              <td class="uc-row-feature">Personalized recommendations</td>
+              <td class="uc-row-free"><span class="uc-check">✓</span></td>
+              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
+            </tr>
+            <tr class="uc-row-premium-only">
+              <td class="uc-row-feature">Full 12‑week plan &amp; milestones</td>
+              <td class="uc-row-free" style="font-size:12px;">1 week only</td>
+              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
+            </tr>
+            <tr class="uc-row-premium-only">
+              <td class="uc-row-feature">AI coach insights</td>
+              <td class="uc-row-free">—</td>
+              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
+            </tr>
+            <tr class="uc-row-premium-only">
+              <td class="uc-row-feature">Progress tracking over time</td>
+              <td class="uc-row-free">—</td>
+              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
+            </tr>
+            <tr class="uc-row-premium-only">
+              <td class="uc-row-feature" style="border-bottom:none;">Downloadable PDF report</td>
+              <td class="uc-row-free" style="border-bottom:none;">—</td>
+              <td class="uc-row-premium" style="border-bottom:none;"><span class="uc-check">✓</span></td>
+            </tr>
           </tbody>
         </table>
       </div>
-      <!-- Blur overlay -->
-      <div class="uc-blur-overlay">
-        <div class="uc-lock-badge">
-          <div class="uc-lock-title">🔒 Weeks 2–12 are locked</div>
-          <div class="uc-lock-sub">AI coach · calorie strategy · milestones · full PDF</div>
+    
+      <!-- Preview panel -->
+      <div class="uc-panel" id="uc-panel-preview">
+        <div class="uc-preview-inner">
+          <!-- Metrics bar -->
+          <div class="uc-metrics-bar">
+            <div class="uc-metric">
+              <div class="uc-metric-label">BMI</div>
+              <div class="uc-metric-value" style="color:#0EA5A3;">{_bmi_display}</div>
+            </div>
+            <div class="uc-metric">
+              <div class="uc-metric-label">VO₂max</div>
+              <div class="uc-metric-value" style="color:#3B82F6;">{_vo2_display}</div>
+            </div>
+            <div class="uc-metric">
+              <div class="uc-metric-label">Fitness rank</div>
+              <div class="uc-metric-value" style="color:#D4AF7A;">{_pct_display}</div>
+            </div>
+            <div class="uc-metric">
+              <div class="uc-metric-label">Bio age</div>
+              <div class="uc-metric-value" style="color:#22C55E;">{_age_display}</div>
+            </div>
+          </div>
+          <!-- Weeks bar -->
+          <div class="uc-weeks-bar">
+            <span class="uc-weeks-label">WEEKS</span>
+            <span class="uc-week-pill active">W1</span>
+            <span class="uc-week-pill">W2</span><span class="uc-week-pill">W3</span>
+            <span class="uc-week-pill">W4</span><span class="uc-week-pill">W5</span>
+            <span class="uc-week-pill">W6</span><span class="uc-week-pill">W7</span>
+            <span class="uc-week-pill">W8</span><span class="uc-week-pill">W9</span>
+            <span class="uc-week-pill">W10</span><span class="uc-week-pill">W11</span>
+            <span class="uc-week-pill">W12</span>
+          </div>
+          <!-- Plan table -->
+          <div style="overflow-x:auto;">
+            <table class="uc-preview-table">
+              <thead>
+                <tr style="background:#060D18;border-bottom:1px solid #1E293B;">
+                  <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Day</th>
+                  <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Type</th>
+                  <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Prescription</th>
+                  <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:right;">Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {_preview_rows_html}
+              </tbody>
+            </table>
+          </div>
+          <!-- Blur overlay -->
+          <div class="uc-blur-overlay">
+            <div class="uc-lock-badge">
+              <div class="uc-lock-title">🔒 Weeks 2–12 are locked</div>
+              <div class="uc-lock-sub">AI coach · calorie strategy · milestones · full PDF</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
-
-<script>
-function ucTab(el, panelId) {{
-  document.querySelectorAll('.uc-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.uc-panel').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('uc-panel-' + panelId).classList.add('active');
-}}
-</script>
-"""
-components.html(upgrade_card_html, height=630, scrolling=False)
+    
+    <script>
+    function ucTab(el, panelId) {{
+      document.querySelectorAll('.uc-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.uc-panel').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('uc-panel-' + panelId).classList.add('active');
+    }}
+    </script>
+    """
+    components.html(upgrade_card_html, height=630, scrolling=False)
 
 # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
 # CHANGED: no longer requires login first. Logged-in users skip the email
