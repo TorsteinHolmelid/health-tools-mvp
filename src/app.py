@@ -3924,7 +3924,7 @@ if not _unlocked:
     st.markdown(
         '<details style="margin-top:24px;">'
         '<summary style="color:#64748B;font-size:12px;cursor:pointer;list-style:none;text-align:center;">'
-        "▾ What's included in free vs premium?</summary>"
+        '▾ What's included in free vs premium?</summary>'
         '<div class="ht-compare" style="margin-top:12px;">'
         '<div class="ht-compare-row head">'
         '<div class="ht-compare-feature">Feature</div>'
