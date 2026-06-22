@@ -3619,6 +3619,7 @@ st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 # ===================== NY PAYWALL (nøyaktig som bildet) =====================
+# ===================== NY PAYWALL (nøyaktig som bildet) =====================
 if not _unlocked:
     # ---------- 1. Sammenlikningstabell Free vs Premium ----------
     st.markdown("""
