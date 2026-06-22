@@ -3619,7 +3619,54 @@ st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if not _unlocked:
-    # -------------------- Unified premium upgrade card --------------------
+    # -------------------- 1. Sammenlikningstabell (Free vs Premium) --------------------
+    st.markdown(
+        '''<div class="ht-compare">
+  <div class="ht-compare-row head">
+    <div class="ht-compare-feature">Feature</div>
+    <div class="ht-compare-cell">Free</div>
+    <div class="ht-compare-cell">Premium</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">BMI, energy & VO2max overview</div>
+    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Biological age</div>
+    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">All personalized recommendations</div>
+    <div class="ht-compare-cell yes">✅</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Full 12-week plan & milestones</div>
+    <div class="ht-compare-cell no">1 week preview</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">AI Coach insights</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Progress tracking over time</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+  <div class="ht-compare-row">
+    <div class="ht-compare-feature">Downloadable PDF report</div>
+    <div class="ht-compare-cell no">—</div>
+    <div class="ht-compare-cell yes">✅</div>
+  </div>
+</div>''',
+        unsafe_allow_html=True
+    )
+
+    # -------------------- 2. Preview av 12‑vekers treningsplan (med blur) --------------------
     _preview_results = st.session_state.get("results", {})
     _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
     _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
@@ -3627,499 +3674,303 @@ if not _unlocked:
     _vo2_val   = _preview_vo2.get("value", "—")
     _vo2_pct   = _preview_vo2.get("percentile", "—")
     _bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
-    
+
     _days_sample = [
-        ("MON", "Strength",  "Full‑body compound lifts — Squat, RDL, Push‑up, Row", "45 min", "#22C55E"),
-        ("TUE", "Cardio",    "Zone 2 steady‑state — HR 120–135 bpm, conversational",    "30 min", "#3B82F6"),
-        ("WED", "Strength",  "Upper/Lower split — Bench, Pull‑up, Lunge, OHP",   "50 min", "#22C55E"),
-        ("THU", "HIIT",      "4×4 intervals — 4 min hard (RPE 9), 3 min easy",   "40 min", "#F59E0B"),
-        ("FRI", "Strength",  "Posterior chain — Deadlift, Hip Thrust, Pull‑down, Plank",    "50 min", "#22C55E"),
-        ("SAT", "Endurance", "Long slow distance — aerobic base, HR <135 bpm",         "60 min", "#3B82F6"),
-        ("SUN", "Recovery",  "Rest or 15 min mobility + foam rolling",                       "—",      "#64748B"),
+        ("MON", "💪 Strength", "Full-body compound lifts — Squat, Romanian Deadlift, Push-up, Row", "45 min", "#22C55E20", "#22C55E"),
+        ("TUE", "🏃 Cardio", "Zone 2 steady-state — keep HR 120–135 bpm, conversational pace", "30 min", "#3B82F620", "#3B82F6"),
+        ("WED", "💪 Strength", "Upper/Lower split — Bench Press, Pull-up, Lunge, Shoulder Press", "50 min", "#22C55E20", "#22C55E"),
+        ("THU", "🔥 HIIT", "4 × 4 intervals — 4 min hard (RPE 9), 3 min easy, full warm-up", "40 min", "#F59E0B20", "#F59E0B"),
+        ("FRI", "💪 Strength", "Posterior chain focus — Deadlift, Hip Thrust, Pull-down, Plank", "50 min", "#22C55E20", "#22C55E"),
+        ("SAT", "🚴 Endurance", "Long slow distance — build aerobic base, HR below 135 bpm", "60 min", "#3B82F620", "#3B82F6"),
+        ("SUN", "😴 Recovery", "Full rest or 15 min mobility + foam rolling", "—",      "#64748B20", "#64748B"),
     ]
-    
-    _type_icons = {"Strength":"💪","Cardio":"🏃","HIIT":"🔥","Endurance":"🚴","Recovery":"😴"}
-    
+
     _preview_rows_html = ""
-    for i, (day, wtype, desc, dur, accent) in enumerate(_days_sample):
+    for i, (day, wtype, desc, dur, bg, accent) in enumerate(_days_sample):
         if i < 3:
-            row_blur = ""
-            opacity  = "1"
+            blur_style = ""
         elif i == 3:
-            row_blur = "filter:blur(3px);pointer-events:none;"
-            opacity  = "0.6"
+            blur_style = "filter:blur(2px);user-select:none;"
         else:
-            row_blur = "filter:blur(6px);pointer-events:none;"
-            opacity  = "0.3"
-        icon = _type_icons.get(wtype, "")
+            blur_style = "filter:blur(5px);user-select:none;"
+
         _preview_rows_html += f"""
-        <tr style="border-bottom:1px solid rgba(30,41,59,0.8);{row_blur}opacity:{opacity};">
-          <td style="padding:12px 16px;font-weight:700;font-size:13px;color:#94A3B8;letter-spacing:0.04em;white-space:nowrap;">{day}</td>
-          <td style="padding:12px 16px;">
-            <span style="background:{accent}18;border:1px solid {accent}40;color:{accent};
-              border-radius:6px;padding:5px 14px;font-size:12px;font-weight:700;white-space:nowrap;">{icon} {wtype}</span>
+        <tr style="border-bottom:1px solid #1E293B;">
+          <td style="padding:9px 10px;font-weight:700;font-size:11px;color:#94A3B8;white-space:nowrap;">{day}</td>
+          <td style="padding:9px 10px;{blur_style}">
+            <span style="background:{bg};border:1px solid {accent}44;color:{accent};
+              border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;">{wtype}</span>
           </td>
-          <td style="padding:12px 16px;font-size:13px;color:#CBD5E1;line-height:1.5;">{desc}</td>
-          <td style="padding:12px 16px;font-size:13px;color:#64748B;white-space:nowrap;text-align:right;">{dur}</td>
+          <td style="padding:9px 10px;font-size:12px;color:#CBD5E1;{blur_style}">{desc}</td>
+          <td style="padding:9px 10px;font-size:12px;color:#94A3B8;white-space:nowrap;{blur_style}">{dur}</td>
         </tr>"""
-    
-    _bmi_display   = f"{_bmi_val:.1f}" if isinstance(_bmi_val, (int, float)) else str(_bmi_val)
-    _vo2_display   = f"{_vo2_val:.0f}" if isinstance(_vo2_val, (int, float)) else str(_vo2_val)
-    _pct_display   = f"Top {100-int(_vo2_pct)}%" if isinstance(_vo2_pct, float) else "—"
-    _age_display   = f"{_bio_age}" if _bio_age != "—" else "—"
-    
-    upgrade_card_html = f"""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    
-    .uc-wrap {{
-      font-family: 'Inter', system-ui, sans-serif;
-      background: #080F1C;
-      border: 1px solid #1E3A5F;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 0 0 1px rgba(14,165,163,0.08), 0 24px 60px -12px rgba(0,0,0,0.7);
-      margin: 1.5rem 0;
-    }}
-    
-    /* Tabs */
-    .uc-tabs {{
-      display: flex;
-      border-bottom: 1px solid #1E293B;
-      background: #060D18;
-    }}
-    .uc-tab {{
-      flex: 1;
-      padding: 16px 20px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #475569;
-      cursor: pointer;
-      text-align: center;
-      border-bottom: 2px solid transparent;
-      transition: all 0.2s;
-      user-select: none;
-    }}
-    .uc-tab:hover {{ color: #94A3B8; }}
-    .uc-tab.active {{
-      color: #F1F5F9;
-      border-bottom-color: #0EA5A3;
-      background: rgba(14,165,163,0.06);
-    }}
-    
-    /* Panels */
-    .uc-panel {{ display: none; padding: 0; }}
-    .uc-panel.active {{ display: block; }}
-    
-    /* Compare table */
-    .uc-compare-table {{
-      width: 100%;
-      border-collapse: collapse;
-    }}
-    .uc-compare-table th {{
-      padding: 14px 20px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #475569;
-      background: #060D18;
-      border-bottom: 1px solid #1E293B;
-      text-align: left;
-    }}
-    .uc-compare-table th.col-free, .uc-compare-table th.col-premium {{
-      text-align: center;
-      width: 120px;
-    }}
-    .uc-compare-table th.col-premium {{
-      color: #0EA5A3;
-      background: rgba(14,165,163,0.06);
-      border-left: 1px solid rgba(14,165,163,0.15);
-    }}
-    .uc-compare-table td {{
-      padding: 0;
-      border-bottom: 1px solid rgba(30,41,59,0.6);
-    }}
-    .uc-row-feature {{
-      display: flex;
-      align-items: center;
-      padding: 14px 20px;
-      font-size: 14px;
-      color: #CBD5E1;
-      font-weight: 500;
-    }}
-    .uc-row-free, .uc-row-premium {{
-      width: 120px;
-      text-align: center;
-      padding: 14px 20px;
-      font-size: 14px;
-    }}
-    .uc-row-free {{ color: #64748B; }}
-    .uc-row-premium {{
-      color: #0EA5A3;
-      background: rgba(14,165,163,0.04);
-      border-left: 1px solid rgba(14,165,163,0.10);
-      font-weight: 600;
-    }}
-    .uc-check {{ color: #0EA5A3; font-size: 18px; }}
-    .uc-check-free {{ color: #334155; font-size: 18px; }}
-    .uc-row-premium-only .uc-row-feature {{ color: #E2E8F0; }}
-    
-    /* Preview panel */
-    .uc-preview-inner {{
-      position: relative;
-      overflow: hidden;
-    }}
-    .uc-metrics-bar {{
-      display: flex;
-      border-bottom: 1px solid #1E293B;
-      background: #060D18;
-    }}
-    .uc-metric {{
-      flex: 1;
-      padding: 14px 10px;
-      text-align: center;
-      border-right: 1px solid #1E293B;
-    }}
-    .uc-metric:last-child {{ border-right: none; }}
-    .uc-metric-label {{
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #475569;
-      margin-bottom: 4px;
-    }}
-    .uc-metric-value {{
-      font-size: 24px;
-      font-weight: 800;
-      line-height: 1.2;
-    }}
-    .uc-weeks-bar {{
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 12px 16px;
-      border-bottom: 1px solid #1E293B;
-      flex-wrap: wrap;
-      background: #060D18;
-    }}
-    .uc-weeks-label {{
-      font-size: 11px;
-      color: #475569;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      margin-right: 4px;
-    }}
-    .uc-week-pill {{
-      background: #0F1E35;
-      border: 1px solid #1E3A5F;
-      color: #334155;
-      border-radius: 999px;
-      padding: 3px 12px;
-      font-size: 11px;
-      font-weight: 600;
-    }}
-    .uc-week-pill.active {{
-      background: rgba(14,165,163,0.15);
-      border-color: #0EA5A3;
-      color: #0EA5A3;
-    }}
-    .uc-preview-table {{
-      width: 100%;
-      border-collapse: collapse;
-    }}
-    .uc-blur-overlay {{
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 200px;
-      background: linear-gradient(to bottom, transparent 0%, #080F1Ccc 35%, #080F1C 100%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-end;
-      padding-bottom: 24px;
-      gap: 8px;
-      pointer-events: none;
-    }}
-    .uc-lock-badge {{
-      background: rgba(14,165,163,0.12);
-      border: 1px solid rgba(14,165,163,0.35);
-      border-radius: 12px;
-      padding: 10px 24px;
-      text-align: center;
-    }}
-    .uc-lock-title {{
-      font-size: 15px;
-      font-weight: 700;
-      color: #F1F5F9;
-      margin-bottom: 4px;
-    }}
-    .uc-lock-sub {{
-      font-size: 12px;
-      color: #94A3B8;
-    }}
-    </style>
-    
-    <div class="uc-wrap">
-      <!-- Tabs -->
-      <div class="uc-tabs">
-        <div class="uc-tab active" onclick="ucTab(this,'compare')">Free vs Premium</div>
-        <div class="uc-tab" onclick="ucTab(this,'preview')">12‑week plan preview</div>
-      </div>
-    
-      <!-- Compare panel -->
-      <div class="uc-panel active" id="uc-panel-compare">
-        <table class="uc-compare-table">
-          <thead>
-            <tr>
-              <th>Feature</th>
-              <th class="col-free">Free</th>
-              <th class="col-premium">Premium</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="uc-row-feature">BMI, energy &amp; VO₂max</td>
-              <td class="uc-row-free"><span class="uc-check">✓</span></td>
-              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-            </tr>
-            <tr>
-              <td class="uc-row-feature">Biological age</td>
-              <td class="uc-row-free"><span class="uc-check">✓</span></td>
-              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-            </tr>
-            <tr>
-              <td class="uc-row-feature">Personalized recommendations</td>
-              <td class="uc-row-free"><span class="uc-check">✓</span></td>
-              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-            </tr>
-            <tr class="uc-row-premium-only">
-              <td class="uc-row-feature">Full 12‑week plan &amp; milestones</td>
-              <td class="uc-row-free" style="font-size:12px;">1 week only</td>
-              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-            </tr>
-            <tr class="uc-row-premium-only">
-              <td class="uc-row-feature">AI coach insights</td>
-              <td class="uc-row-free">—</td>
-              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-            </tr>
-            <tr class="uc-row-premium-only">
-              <td class="uc-row-feature">Progress tracking over time</td>
-              <td class="uc-row-free">—</td>
-              <td class="uc-row-premium"><span class="uc-check">✓</span></td>
-            </tr>
-            <tr class="uc-row-premium-only">
-              <td class="uc-row-feature" style="border-bottom:none;">Downloadable PDF report</td>
-              <td class="uc-row-free" style="border-bottom:none;">—</td>
-              <td class="uc-row-premium" style="border-bottom:none;"><span class="uc-check">✓</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    
-      <!-- Preview panel -->
-      <div class="uc-panel" id="uc-panel-preview">
-        <div class="uc-preview-inner">
-          <!-- Metrics bar -->
-          <div class="uc-metrics-bar">
-            <div class="uc-metric">
-              <div class="uc-metric-label">BMI</div>
-              <div class="uc-metric-value" style="color:#0EA5A3;">{_bmi_display}</div>
-            </div>
-            <div class="uc-metric">
-              <div class="uc-metric-label">VO₂max</div>
-              <div class="uc-metric-value" style="color:#3B82F6;">{_vo2_display}</div>
-            </div>
-            <div class="uc-metric">
-              <div class="uc-metric-label">Fitness rank</div>
-              <div class="uc-metric-value" style="color:#D4AF7A;">{_pct_display}</div>
-            </div>
-            <div class="uc-metric">
-              <div class="uc-metric-label">Bio age</div>
-              <div class="uc-metric-value" style="color:#22C55E;">{_age_display}</div>
-            </div>
-          </div>
-          <!-- Weeks bar -->
-          <div class="uc-weeks-bar">
-            <span class="uc-weeks-label">WEEKS</span>
-            <span class="uc-week-pill active">W1</span>
-            <span class="uc-week-pill">W2</span><span class="uc-week-pill">W3</span>
-            <span class="uc-week-pill">W4</span><span class="uc-week-pill">W5</span>
-            <span class="uc-week-pill">W6</span><span class="uc-week-pill">W7</span>
-            <span class="uc-week-pill">W8</span><span class="uc-week-pill">W9</span>
-            <span class="uc-week-pill">W10</span><span class="uc-week-pill">W11</span>
-            <span class="uc-week-pill">W12</span>
-          </div>
-          <!-- Plan table -->
-          <div style="overflow-x:auto;">
-            <table class="uc-preview-table">
-              <thead>
-                <tr style="background:#060D18;border-bottom:1px solid #1E293B;">
-                  <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Day</th>
-                  <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Type</th>
-                  <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:left;">Prescription</th>
-                  <th style="padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:#334155;text-align:right;">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {_preview_rows_html}
-              </tbody>
-            </table>
-          </div>
-          <!-- Blur overlay -->
-          <div class="uc-blur-overlay">
-            <div class="uc-lock-badge">
-              <div class="uc-lock-title">🔒 Weeks 2–12 are locked</div>
-              <div class="uc-lock-sub">AI coach · calorie strategy · milestones · full PDF</div>
-            </div>
-          </div>
-        </div>
-      </div>
+
+    preview_html = f"""
+<style>
+.pdf-preview-wrap {{
+  position:relative;
+  border:1px solid #1E3A5F;
+  border-radius:16px;
+  overflow:hidden;
+  background:#0D1B2E;
+  margin: 18px 0 10px 0;
+  box-shadow: 0 0 40px rgba(14,165,163,0.08);
+}}
+.pdf-preview-header {{
+  background: linear-gradient(90deg, #0EA5A344 0%, #3B82F622 100%);
+  border-bottom: 1px solid #1E3A5F;
+  padding: 14px 20px 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}}
+.pdf-badge {{
+  background: #D4AF7A22;
+  border: 1px solid #D4AF7A55;
+  color: #D4AF7A;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}}
+.pdf-preview-table {{
+  width: 100%;
+  border-collapse: collapse;
+}}
+.pdf-preview-blur-zone {{
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 210px;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    #0D1B2Ecc 40%,
+    #0D1B2Eff 100%
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 22px;
+  gap: 8px;
+}}
+.pdf-lock-icon {{
+  font-size: 28px;
+  margin-bottom: 2px;
+}}
+.pdf-lock-text {{
+  font-size: 15px;
+  font-weight: 700;
+  color: #F1F5F9;
+  text-align: center;
+}}
+.pdf-lock-sub {{
+  font-size: 12px;
+  color: #94A3B8;
+  text-align: center;
+  margin-bottom: 4px;
+}}
+.pdf-week-pills {{
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}}
+.pdf-week-pill {{
+  background: #1E293B;
+  border: 1px solid #334155;
+  color: #64748B;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 11px;
+}}
+.pdf-week-pill.active {{
+  background: #0EA5A322;
+  border-color: #0EA5A3;
+  color: #0EA5A3;
+}}
+</style>
+<div class="pdf-preview-wrap">
+  <div class="pdf-preview-header">
+    <span class="pdf-badge">PREVIEW</span>
+    <span style="color:#F1F5F9;font-weight:700;font-size:14px;">📋 Your 12-Week Training Plan</span>
+    <span style="margin-left:auto;color:#64748B;font-size:12px;">Week 1 of 12</span>
+  </div>
+  <div style="display:flex;gap:0;border-bottom:1px solid #1E293B;">
+    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
+      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BMI</div>
+      <div style="font-size:18px;font-weight:800;color:#0EA5A3;">{_bmi_val if _bmi_val != "—" else "—"}</div>
     </div>
-    
-    <script>
-    function ucTab(el, panelId) {{
-      document.querySelectorAll('.uc-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.uc-panel').forEach(p => p.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('uc-panel-' + panelId).classList.add('active');
-    }}
-    </script>
-    """
-    components.html(upgrade_card_html, height=630, scrolling=False)
+    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
+      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">VO₂max</div>
+      <div style="font-size:18px;font-weight:800;color:#3B82F6;">{_vo2_val if _vo2_val != "—" else "—"}</div>
+    </div>
+    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
+      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">TOP %</div>
+      <div style="font-size:18px;font-weight:800;color:#D4AF7A;">{f"{_vo2_pct:.0f}%" if isinstance(_vo2_pct, float) else "—"}</div>
+    </div>
+    <div style="flex:1;padding:10px 14px;text-align:center;">
+      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BIO AGE</div>
+      <div style="font-size:18px;font-weight:800;color:#22C55E;">{_bio_age if _bio_age != "—" else "—"}</div>
+    </div>
+  </div>
+  <div style="padding:10px 16px;border-bottom:1px solid #1E293B;display:flex;gap:6px;flex-wrap:wrap;">
+    <span style="font-size:11px;color:#64748B;margin-right:4px;line-height:24px;">12 weeks:</span>
+    <span class="pdf-week-pill active">W1</span>
+    <span class="pdf-week-pill">W2</span><span class="pdf-week-pill">W3</span>
+    <span class="pdf-week-pill">W4</span><span class="pdf-week-pill">W5</span>
+    <span class="pdf-week-pill">W6</span><span class="pdf-week-pill">W7</span>
+    <span class="pdf-week-pill">W8</span><span class="pdf-week-pill">W9</span>
+    <span class="pdf-week-pill">W10</span><span class="pdf-week-pill">W11</span>
+    <span class="pdf-week-pill">W12</span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table class="pdf-preview-table">
+      <thead>
+        <tr style="border-bottom:1px solid #1E3A5F;background:#0A1628;">
+          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DAY</th>
+          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">TYPE</th>
+          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">PRESCRIPTION</th>
+          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DURATION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {_preview_rows_html}
+      </tbody>
+    </table>
+  </div>
+  <div class="pdf-preview-blur-zone">
+    <div class="pdf-lock-icon">🔒</div>
+    <div class="pdf-lock-text">Weeks 2–12 are locked</div>
+    <div class="pdf-lock-sub">Plus: AI coach insights · calorie strategy · milestone tracking · full PDF</div>
+  </div>
+</div>
+<div style="text-align:center;margin:6px 0 14px 0;color:#64748B;font-size:11px;">
+  👆 This is a preview — Mon–Wed of Week 1. Your full plan covers all 12 weeks, personalized to your biomarkers.
+</div>
+"""
+    components.html(preview_html, height=620, scrolling=True)
+
+    # -------------------- 3. Verdiforslag + betalingsboks --------------------
+    st.markdown(
+        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
+        'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
+        'text-align:center;margin:10px 0;">'
+        '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
+        '🔒 Unlock your full report</div>'
+        '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
+        'Get your complete personalized health analysis as a premium PDF</div>'
+        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
+        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
+        '</div>'
+        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">4,99 USD</div>'
+        '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
     # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
     # CHANGED: no longer requires login first. Logged-in users skip the email
     # field (we already know their email); anonymous visitors just type their
     # email and go straight to Stripe. The account gets created automatically
     # after payment by the stripe-webhook function.
-
-    st.markdown("""
-    <style>
-    /* Gjør den blå knappen og e‑postfeltet pene som kortet */
-    .payment-section {
-        background: #080F1C;
-        border: 1px solid #1E3A5F;
-        border-radius: 20px;
-        padding: 24px;
-        margin-top: 1rem;
-    }
-    .payment-section .stTextInput > div > div {
-        background: #0F1E35 !important;
-        border: 1px solid #1E3A5F !important;
-        border-radius: 10px !important;
-        color: #E2E8F0 !important;
-    }
-    .payment-section .stTextInput label {
-        color: #94A3B8 !important;
-        font-weight: 500 !important;
-    }
-    .payment-section .stButton button {
-        width: 100%;
-        padding: 14px;
-        border-radius: 10px;
-        font-size: 16px;
-        font-weight: 700;
-        background: linear-gradient(135deg, #0EA5A3 0%, #0891B2 100%) !important;
-        color: white !important;
-        border: none !important;
-        box-shadow: 0 4px 20px rgba(14,165,163,0.35);
-    }
-    .payment-section .stButton button:hover {
-        background: linear-gradient(135deg, #14B8A6 0%, #0EA5E0 100%) !important;
-        transform: translateY(-1px);
-    }
-    .payment-section .stButton button:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
     _uid = get_current_user_id() or ""
     _user_email = st.session_state.get("user_email", "")
 
-    with st.container():
-        st.markdown('<div class="payment-section">', unsafe_allow_html=True)
-        if not _uid:
-            _user_email = st.text_input(
-                "Your email (to receive your report + access link)",
-                value=_user_email,
-                key="guest_checkout_email",
-                placeholder="you@example.com",
+    if not _uid:
+        _user_email = st.text_input(
+            "Your email (to receive your report + access link)",
+            value=_user_email,
+            key="guest_checkout_email",
+            placeholder="you@example.com",
+        )
+
+    _email_valid = "@" in _user_email and "." in _user_email.split("@")[-1]
+
+    if st.button(
+        "🔓 Unlock full report — 4,99 USD",
+        type="primary",
+        use_container_width=True,
+        disabled=not _email_valid,
+    ):
+        import requests as _requests
+        _supabase_url = get_supabase_url()
+        _anon_key = get_supabase_key()
+        _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
+        try:
+            _resp = _requests.post(
+                _fn_url,
+                json={"user_id": _uid or None, "email": _user_email},
+                headers={
+                    "apikey": _anon_key,
+                    "Authorization": f"Bearer {_anon_key}",
+                    "Content-Type": "application/json",
+                },
+                timeout=10,
             )
-        _email_valid = "@" in _user_email and "." in _user_email.split("@")[-1]
-
-        if st.button(
-            "🔓 Unlock full report — 4,99 USD",
-            type="primary",
-            use_container_width=True,
-            disabled=not _email_valid,
-        ):
-            # ── HELE DEN EKSISTERENDE STRIPE‑LOGIKKEN (uendret) ──
-            import requests as _requests
-            _supabase_url = get_supabase_url()
-            _anon_key = get_supabase_key()
-            _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
-            try:
-                _resp = _requests.post(
-                    _fn_url,
-                    json={"user_id": _uid or None, "email": _user_email},
-                    headers={
-                        "apikey": _anon_key,
-                        "Authorization": f"Bearer {_anon_key}",
-                        "Content-Type": "application/json",
-                    },
-                    timeout=10,
-                )
-                _data = _resp.json()
-                if "url" in _data:
-                    _checkout_url = _data["url"]
-                    # Vis lenke i toppen (som før)
-                    components.html(
-                        f"""
-                        <script>
-                        (function() {{
-                            try {{
-                                const doc = window.top.document;
-                                let box = doc.getElementById("checkoutRedirectBox");
-                                if (!box) {{
-                                    box = doc.createElement("div");
-                                    box.id = "checkoutRedirectBox";
-                                    box.style.position = "fixed";
-                                    box.style.top = "0";
-                                    box.style.left = "0";
-                                    box.style.right = "0";
-                                    box.style.zIndex = "999999";
-                                    box.style.padding = "16px";
-                                    box.style.background = "#0EA5A3";
-                                    box.style.textAlign = "center";
-                                    box.style.fontFamily = "sans-serif";
-                                    doc.body.prepend(box);
-                                }}
-                                box.innerHTML =
-                                    '<a href="{_checkout_url}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
-                                    '💳 Click here to continue to payment &rarr;</a>';
-                                try {{ window.top.location.href = "{_checkout_url}"; }} catch (e) {{}}
-                            }} catch (e) {{
-                                console.error("Could not show checkout redirect link:", e);
+            _data = _resp.json()
+            if "url" in _data:
+                _checkout_url = _data["url"]
+                # Samme robuste metode som magic-link-innloggingen: skriv en
+                # synlig, klikkbar lenke direkte i hoveddokumentet via
+                # components.html. Automatisk window.top-navigasjon via
+                # st.markdown sin <script> kjøres ikke i Streamlit, og
+                # window.top.location-skriving blokkeres av iframe-sandkassen
+                # uansett — derfor er en ekte lenke i hoveddokumentet eneste
+                # pålitelige vei.
+                components.html(
+                    f"""
+                    <script>
+                    (function() {{
+                        try {{
+                            const doc = window.top.document;
+                            let box = doc.getElementById("checkoutRedirectBox");
+                            if (!box) {{
+                                box = doc.createElement("div");
+                                box.id = "checkoutRedirectBox";
+                                box.style.position = "fixed";
+                                box.style.top = "0";
+                                box.style.left = "0";
+                                box.style.right = "0";
+                                box.style.zIndex = "999999";
+                                box.style.padding = "16px";
+                                box.style.background = "#0EA5A3";
+                                box.style.textAlign = "center";
+                                box.style.fontFamily = "sans-serif";
+                                doc.body.prepend(box);
                             }}
-                        }})();
-                        </script>
-                        """,
-                        height=0,
-                    )
-                    st.info("💳 Click the green bar at the top of the page to continue to payment.")
-                else:
-                    st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
-            except Exception as _e:
-                st.error(f"Payment error: {_e}")
+                            box.innerHTML =
+                                '<a href="{_checkout_url}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
+                                '💳 Click here to continue to payment &rarr;</a>';
+                            // Forsøk automatisk navigasjon i tillegg, i fall den faktisk fungerer i noen nettlesere
+                            try {{ window.top.location.href = "{_checkout_url}"; }} catch (e) {{}}
+                        }} catch (e) {{
+                            console.error("Could not show checkout redirect link:", e);
+                        }}
+                    }})();
+                    </script>
+                    """,
+                    height=0,
+                )
+                st.info("💳 Click the green bar at the top of the page to continue to payment.")
+            else:
+                st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
+        except Exception as _e:
+            st.error(f"Payment error: {_e}")
 
-        if not _email_valid and _user_email:
-            st.caption("⚠️ Enter a valid email to continue")
-        st.caption("After payment, you'll get an email with a link to log in and download your report.")
-        st.markdown('</div>', unsafe_allow_html=True)
+    if not _email_valid and _user_email:
+        st.caption("⚠️ Enter a valid email to continue")
+    st.caption("After payment, you'll get an email with a link to log in and download your report.")
 
 else:
     # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
@@ -4158,6 +4009,7 @@ else:
                 st.caption("Your purchase is secured with 100% encryption.")
         except Exception as e:
             st.error(f"Error generating report: {e}")
+
 # -------------------- Scroll script --------------------
 if st.session_state.get("scroll_to_paywall"):
     st.markdown(
