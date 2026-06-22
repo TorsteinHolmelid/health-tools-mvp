@@ -3618,7 +3618,7 @@ st.markdown('<div id="paywall_anchor"></div>', unsafe_allow_html=True)
 st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
-    if not _unlocked:
+if not _unlocked:
     # -------------------- Unified premium upgrade card --------------------
     _preview_results = st.session_state.get("results", {})
     _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
