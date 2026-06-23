@@ -188,3 +188,19 @@ def save_premium_access(db: Client, stripe_session_id: str):
         "stripe_session_id": stripe_session_id,
     }
     return db.table("premium_access").insert(data).execute()
+
+def save_lead(db: Client, email: str, source: str = None, bio_age=None, chronological_age=None):
+    """
+    Lagre en e-post-lead (f.eks. fra e-postfangst-boksen etter et
+    kalkulator-resultat). user_id settes automatisk hvis brukeren er
+    logget inn, ellers None for anonyme besøkende.
+    """
+    data = {
+        "email": email,
+        "source": source,
+        "bio_age": bio_age,
+        "chronological_age": chronological_age,
+        "user_id": get_current_user_id(),
+    }
+    data = {k: v for k, v in data.items() if v is not None}
+    return db.table("leads").insert(data).execute()
