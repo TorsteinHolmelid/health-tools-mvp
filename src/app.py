@@ -3356,6 +3356,17 @@ if results:
 #  In app.py this goes between line 3350 (the closing
 #  `unsafe_allow_html=True,)` of the bio age card) and line 3353
 #  (`# ── Conditions ────`).
+#
+#  ALSO: add `save_lead` to the existing `from db import (...)`
+#  block near the top of app.py (around line 22-27), e.g.:
+#
+#  from db import (
+#      sign_up, sign_in, sign_in_with_tokens, set_user_password, is_authenticated, get_current_user_id, sign_out,
+#      get_user_profile, save_user_profile, get_db_client, get_user_history,
+#      has_premium_access,
+#      get_supabase_url, get_supabase_key,
+#      save_lead,   # <-- add this
+#  )
 # ============================================================
 
     # ── Email capture (right after the emotional "aha" moment) ──
@@ -3389,14 +3400,13 @@ if results:
                 _lead_saved_ok = True
                 try:
                     _lead_db = get_db_client()
-                    _lead_db.table("leads").insert({
-                        "email": _lead_email,
-                        "source": "bio_age_result",
-                        "bio_age": results.get("bio_age", {}).get("value"),
-                        "chronological_age": float(age) if age else None,
-                        "user_id": get_current_user_id(),
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                    }).execute()
+                    save_lead(
+                        _lead_db,
+                        email=_lead_email,
+                        source="bio_age_result",
+                        bio_age=results.get("bio_age", {}).get("value"),
+                        chronological_age=float(age) if age else None,
+                    )
                 except Exception as _lead_err:
                     # Don't break the user experience if the leads table
                     # doesn't exist yet or the insert fails for any reason —
