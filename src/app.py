@@ -3349,7 +3349,85 @@ if results:
                 unsafe_allow_html=True,
             )
 
+# ============================================================
+#  EMAIL CAPTURE — paste this block IMMEDIATELY AFTER the
+#  biological age card and BEFORE the "Conditions" section.
+#
+#  In app.py this goes between line 3350 (the closing
+#  `unsafe_allow_html=True,)` of the bio age card) and line 3353
+#  (`# ── Conditions ────`).
+# ============================================================
 
+    # ── Email capture (right after the emotional "aha" moment) ──
+    if "bio_age" in results and not st.session_state.get("lead_email_captured", False):
+        st.markdown(
+            '<div style="font-family:Arial,sans-serif;background:linear-gradient(135deg,#0EA5A322,#0EA5A30D);'
+            'border:1px solid #0EA5A355;border-radius:16px;padding:20px 22px;margin-top:16px;color:#E5E7EB;">'
+            '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">📩 Save your result + get 3 personal tips</div>'
+            '<div style="font-size:13px;color:#9CA3AF;line-height:1.5;">'
+            'We\'ll email you a copy of your biological age result, plus 3 tips tailored to your numbers above. '
+            'No spam — just useful stuff, straight to your inbox.</div></div>',
+            unsafe_allow_html=True,
+        )
+
+        _lead_col1, _lead_col2 = st.columns([3, 1])
+        with _lead_col1:
+            _lead_email = st.text_input(
+                "Your email",
+                key="lead_capture_email",
+                placeholder="you@example.com",
+                label_visibility="collapsed",
+            )
+        with _lead_col2:
+            _lead_submit = st.button("Send me my tips", key="lead_capture_button", use_container_width=True)
+
+        if _lead_submit:
+            _lead_email_valid = "@" in _lead_email and "." in _lead_email.split("@")[-1]
+            if not _lead_email_valid:
+                st.error("Please enter a valid email address.")
+            else:
+                _lead_saved_ok = True
+                try:
+                    _lead_db = get_db_client()
+                    _lead_db.table("leads").insert({
+                        "email": _lead_email,
+                        "source": "bio_age_result",
+                        "bio_age": results.get("bio_age", {}).get("value"),
+                        "chronological_age": float(age) if age else None,
+                        "user_id": get_current_user_id(),
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    }).execute()
+                except Exception as _lead_err:
+                    # Don't break the user experience if the leads table
+                    # doesn't exist yet or the insert fails for any reason —
+                    # just log it quietly and still show success to the user.
+                    _lead_saved_ok = False
+                    print(f"[lead capture] could not save lead: {_lead_err}")
+
+                # Fire GA4 event regardless, so we can track intent even if
+                # the DB write failed (helps catch silent backend issues).
+                components.html(
+                    """
+                    <script>
+                    (function() {
+                        try {
+                            window.top.dataLayer = window.top.dataLayer || [];
+                            window.top.dataLayer.push({'event': 'email_captured', 'source': 'bio_age_result'});
+                        } catch (e) {
+                            console.error('Could not push email_captured event:', e);
+                        }
+                    })();
+                    </script>
+                    """,
+                    height=0,
+                )
+
+                st.session_state["lead_email_captured"] = True
+                if _lead_saved_ok:
+                    st.success("✅ Got it! Check your inbox shortly for your result and tips.")
+                else:
+                    st.success("✅ Got it! We'll be in touch.")
+                st.rerun()
 # ── Conditions ────
     if "triage" in results:
         st.markdown("---")
