@@ -3619,54 +3619,7 @@ st.markdown("---")
 _unlocked = st.session_state.get("report_unlocked", False)
 
 if not _unlocked:
-    # -------------------- 1. Sammenlikningstabell (Free vs Premium) --------------------
-    st.markdown(
-        '''<div class="ht-compare">
-  <div class="ht-compare-row head">
-    <div class="ht-compare-feature">Feature</div>
-    <div class="ht-compare-cell">Free</div>
-    <div class="ht-compare-cell">Premium</div>
-  </div>
-  <div class="ht-compare-row">
-    <div class="ht-compare-feature">BMI, energy & VO2max overview</div>
-    <div class="ht-compare-cell yes">✅</div>
-    <div class="ht-compare-cell yes">✅</div>
-  </div>
-  <div class="ht-compare-row">
-    <div class="ht-compare-feature">Biological age</div>
-    <div class="ht-compare-cell yes">✅</div>
-    <div class="ht-compare-cell yes">✅</div>
-  </div>
-  <div class="ht-compare-row">
-    <div class="ht-compare-feature">All personalized recommendations</div>
-    <div class="ht-compare-cell yes">✅</div>
-    <div class="ht-compare-cell yes">✅</div>
-  </div>
-  <div class="ht-compare-row">
-    <div class="ht-compare-feature">Full 12-week plan & milestones</div>
-    <div class="ht-compare-cell no">1 week preview</div>
-    <div class="ht-compare-cell yes">✅</div>
-  </div>
-  <div class="ht-compare-row">
-    <div class="ht-compare-feature">AI Coach insights</div>
-    <div class="ht-compare-cell no">—</div>
-    <div class="ht-compare-cell yes">✅</div>
-  </div>
-  <div class="ht-compare-row">
-    <div class="ht-compare-feature">Progress tracking over time</div>
-    <div class="ht-compare-cell no">—</div>
-    <div class="ht-compare-cell yes">✅</div>
-  </div>
-  <div class="ht-compare-row">
-    <div class="ht-compare-feature">Downloadable PDF report</div>
-    <div class="ht-compare-cell no">—</div>
-    <div class="ht-compare-cell yes">✅</div>
-  </div>
-</div>''',
-        unsafe_allow_html=True
-    )
-
-    # -------------------- 2. Preview av 12‑vekers treningsplan (med blur) --------------------
+    # -------------------- 1+2. Unified upgrade card with tabs --------------------
     _preview_results = st.session_state.get("results", {})
     _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
     _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
@@ -3705,16 +3658,68 @@ if not _unlocked:
           <td style="padding:9px 10px;font-size:12px;color:#94A3B8;white-space:nowrap;{blur_style}">{dur}</td>
         </tr>"""
 
-    preview_html = f"""
+    upgrade_card_html = f"""
 <style>
-.pdf-preview-wrap {{
-  position:relative;
-  border:1px solid #1E3A5F;
-  border-radius:16px;
+.uc-wrap {{
+  border:1px solid rgba(14,165,163,0.35);
+  border-radius:18px;
   overflow:hidden;
   background:#0D1B2E;
-  margin: 18px 0 10px 0;
-  box-shadow: 0 0 40px rgba(14,165,163,0.08);
+  margin:18px 0 10px 0;
+  box-shadow:0 0 40px rgba(14,165,163,0.10);
+  font-family:sans-serif;
+}}
+/* ── header ── */
+.uc-header {{
+  padding:18px 20px 10px 20px;
+  border-bottom:1px solid #1E293B;
+}}
+.uc-title {{
+  font-size:18px;font-weight:800;color:#E5E7EB;margin-bottom:2px;
+}}
+.uc-subtitle {{
+  font-size:12px;color:#64748B;
+}}
+/* ── tabs ── */
+.uc-tabs {{
+  display:flex;gap:8px;padding:12px 16px 0 16px;
+  border-bottom:1px solid #1E293B;
+}}
+.uc-tab {{
+  padding:8px 16px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;
+  cursor:pointer;color:#64748B;background:transparent;
+  border:1px solid transparent;border-bottom:none;
+  transition:all 0.15s;
+}}
+.uc-tab.active {{
+  background:#1E293B;color:#E5E7EB;border-color:#334155;border-bottom:1px solid #0D1B2E;
+  margin-bottom:-1px;
+}}
+/* ── tab panels ── */
+.uc-panel {{ display:none; }}
+.uc-panel.active {{ display:block; }}
+/* ── compare table ── */
+.uc-compare {{
+  width:100%;border-collapse:collapse;
+}}
+.uc-compare th {{
+  padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:0.08em;
+  text-transform:uppercase;color:#64748B;text-align:center;
+}}
+.uc-compare th:first-child {{ text-align:left; }}
+.uc-compare td {{
+  padding:11px 14px;font-size:13px;color:#CBD5E1;border-top:1px solid #1E293B;
+}}
+.uc-compare td:first-child {{ font-weight:500; }}
+.uc-compare td.col-free {{ text-align:center;color:#64748B;font-size:13px; }}
+.uc-compare td.col-prem {{ text-align:center;color:#22C55E;font-size:15px; }}
+.uc-compare tr.premium-only td:first-child {{ color:#E5E7EB;font-weight:600; }}
+.uc-compare tr.premium-only {{ background:rgba(34,197,94,0.04); }}
+/* ── plan preview (reused styles) ── */
+.pdf-preview-wrap {{
+  position:relative;
+  overflow:hidden;
+  background:transparent;
 }}
 .pdf-preview-header {{
   background: linear-gradient(90deg, #0EA5A344 0%, #3B82F622 100%);
@@ -3743,7 +3748,7 @@ if not _unlocked:
   bottom: 0;
   left: 0;
   right: 0;
-  height: 210px;
+  height: 180px;
   background: linear-gradient(to bottom,
     transparent 0%,
     #0D1B2Ecc 40%,
@@ -3753,131 +3758,191 @@ if not _unlocked:
   flex-direction: column;
   align-items: center;
   justify-content: flex-end;
-  padding-bottom: 22px;
-  gap: 8px;
-}}
-.pdf-lock-icon {{
-  font-size: 28px;
-  margin-bottom: 2px;
-}}
-.pdf-lock-text {{
-  font-size: 15px;
-  font-weight: 700;
-  color: #F1F5F9;
-  text-align: center;
-}}
-.pdf-lock-sub {{
-  font-size: 12px;
-  color: #94A3B8;
-  text-align: center;
-  margin-bottom: 4px;
-}}
-.pdf-week-pills {{
-  display: flex;
+  padding-bottom: 16px;
   gap: 6px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
 }}
+.pdf-lock-icon {{ font-size:24px;margin-bottom:2px; }}
+.pdf-lock-text {{ font-size:14px;font-weight:700;color:#F1F5F9;text-align:center; }}
+.pdf-lock-sub  {{ font-size:11px;color:#94A3B8;text-align:center;margin-bottom:2px; }}
 .pdf-week-pill {{
-  background: #1E293B;
-  border: 1px solid #334155;
-  color: #64748B;
-  border-radius: 999px;
-  padding: 3px 12px;
-  font-size: 11px;
+  background:#1E293B;border:1px solid #334155;color:#64748B;
+  border-radius:999px;padding:3px 12px;font-size:11px;
 }}
 .pdf-week-pill.active {{
-  background: #0EA5A322;
-  border-color: #0EA5A3;
-  color: #0EA5A3;
+  background:#0EA5A322;border-color:#0EA5A3;color:#0EA5A3;
+}}
+/* ── price + pills row ── */
+.uc-price-row {{
+  padding:14px 20px 6px 20px;
+  border-top:1px solid #1E293B;
+}}
+.uc-price {{
+  font-size:26px;font-weight:800;color:#0EA5A3;display:inline;
+}}
+.uc-price-label {{
+  font-size:12px;color:#64748B;margin-left:8px;
+}}
+.uc-pills {{
+  display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 6px 0;
+}}
+.uc-pill {{
+  background:rgba(34,197,94,0.10);border:1px solid rgba(34,197,94,0.28);
+  color:#22C55E;border-radius:999px;padding:4px 12px;font-size:11px;font-weight:600;
 }}
 </style>
-<div class="pdf-preview-wrap">
-  <div class="pdf-preview-header">
-    <span class="pdf-badge">PREVIEW</span>
-    <span style="color:#F1F5F9;font-weight:700;font-size:14px;">📋 Your 12-Week Training Plan</span>
-    <span style="margin-left:auto;color:#64748B;font-size:12px;">Week 1 of 12</span>
+
+<!-- ═══════════════ UNIFIED UPGRADE CARD ═══════════════ -->
+<div class="uc-wrap">
+
+  <!-- Header -->
+  <div class="uc-header">
+    <div class="uc-title">🔒 Unlock your full report</div>
+    <div class="uc-subtitle">One-time · 4.99 USD · No subscription</div>
   </div>
-  <div style="display:flex;gap:0;border-bottom:1px solid #1E293B;">
-    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
-      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BMI</div>
-      <div style="font-size:18px;font-weight:800;color:#0EA5A3;">{_bmi_val if _bmi_val != "—" else "—"}</div>
-    </div>
-    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
-      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">VO₂max</div>
-      <div style="font-size:18px;font-weight:800;color:#3B82F6;">{_vo2_val if _vo2_val != "—" else "—"}</div>
-    </div>
-    <div style="flex:1;padding:10px 14px;border-right:1px solid #1E293B;text-align:center;">
-      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">TOP %</div>
-      <div style="font-size:18px;font-weight:800;color:#D4AF7A;">{f"{_vo2_pct:.0f}%" if isinstance(_vo2_pct, float) else "—"}</div>
-    </div>
-    <div style="flex:1;padding:10px 14px;text-align:center;">
-      <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BIO AGE</div>
-      <div style="font-size:18px;font-weight:800;color:#22C55E;">{_bio_age if _bio_age != "—" else "—"}</div>
-    </div>
+
+  <!-- Tabs -->
+  <div class="uc-tabs">
+    <div class="uc-tab active" id="tab-compare" onclick="switchTab('compare')">Free vs Premium</div>
+    <div class="uc-tab" id="tab-preview" onclick="switchTab('preview')">12-week plan preview</div>
   </div>
-  <div style="padding:10px 16px;border-bottom:1px solid #1E293B;display:flex;gap:6px;flex-wrap:wrap;">
-    <span style="font-size:11px;color:#64748B;margin-right:4px;line-height:24px;">12 weeks:</span>
-    <span class="pdf-week-pill active">W1</span>
-    <span class="pdf-week-pill">W2</span><span class="pdf-week-pill">W3</span>
-    <span class="pdf-week-pill">W4</span><span class="pdf-week-pill">W5</span>
-    <span class="pdf-week-pill">W6</span><span class="pdf-week-pill">W7</span>
-    <span class="pdf-week-pill">W8</span><span class="pdf-week-pill">W9</span>
-    <span class="pdf-week-pill">W10</span><span class="pdf-week-pill">W11</span>
-    <span class="pdf-week-pill">W12</span>
-  </div>
-  <div style="overflow-x:auto;">
-    <table class="pdf-preview-table">
+
+  <!-- Panel: Compare table -->
+  <div class="uc-panel active" id="panel-compare">
+    <table class="uc-compare">
       <thead>
-        <tr style="border-bottom:1px solid #1E3A5F;background:#0A1628;">
-          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DAY</th>
-          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">TYPE</th>
-          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">PRESCRIPTION</th>
-          <th style="padding:8px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DURATION</th>
+        <tr>
+          <th style="width:60%;padding-left:16px;"></th>
+          <th style="color:#64748B;">FREE</th>
+          <th style="color:#22C55E;">PREMIUM</th>
         </tr>
       </thead>
       <tbody>
-        {_preview_rows_html}
+        <tr>
+          <td>BMI, energy &amp; VO2max overview</td>
+          <td class="col-free">✓</td>
+          <td class="col-prem">✓</td>
+        </tr>
+        <tr>
+          <td>Biological age</td>
+          <td class="col-free">✓</td>
+          <td class="col-prem">✓</td>
+        </tr>
+        <tr>
+          <td>Personalized recommendations</td>
+          <td class="col-free">✓</td>
+          <td class="col-prem">✓</td>
+        </tr>
+        <tr>
+          <td>Full 12-week plan &amp; milestones</td>
+          <td class="col-free" style="font-size:11px;">1 week only</td>
+          <td class="col-prem">✓</td>
+        </tr>
+        <tr class="premium-only">
+          <td>AI coach insights</td>
+          <td class="col-free">—</td>
+          <td class="col-prem">✓</td>
+        </tr>
+        <tr class="premium-only">
+          <td>Progress tracking over time</td>
+          <td class="col-free">—</td>
+          <td class="col-prem">✓</td>
+        </tr>
+        <tr class="premium-only">
+          <td>Downloadable PDF report</td>
+          <td class="col-free">—</td>
+          <td class="col-prem">✓</td>
+        </tr>
       </tbody>
     </table>
   </div>
-  <div class="pdf-preview-blur-zone">
-    <div class="pdf-lock-icon">🔒</div>
-    <div class="pdf-lock-text">Weeks 2–12 are locked</div>
-    <div class="pdf-lock-sub">Plus: AI coach insights · calorie strategy · milestone tracking · full PDF</div>
-  </div>
-</div>
-<div style="text-align:center;margin:6px 0 14px 0;color:#64748B;font-size:11px;">
-  👆 This is a preview — Mon–Wed of Week 1. Your full plan covers all 12 weeks, personalized to your biomarkers.
-</div>
-"""
-    components.html(preview_html, height=620, scrolling=True)
 
-    # -------------------- 3. Verdiforslag + betalingsboks --------------------
-    st.markdown(
-        '<div style="background:linear-gradient(135deg,rgba(14,165,163,0.10),rgba(59,130,246,0.08));'
-        'border:1px solid rgba(14,165,163,0.35);border-radius:18px;padding:24px 22px;'
-        'text-align:center;margin:10px 0;">'
-        '<div style="font-size:22px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
-        '🔒 Unlock your full report</div>'
-        '<div style="color:#94A3B8;font-size:13px;margin-bottom:18px;">'
-        'Get your complete personalized health analysis as a premium PDF</div>'
-        '<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-bottom:20px;">'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Full 12-week roadmap</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Personalized coach insights</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ Calorie strategy</span>'
-        '<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-        'color:#22C55E;border-radius:999px;padding:5px 14px;font-size:12px;">✅ PDF download</span>'
-        '</div>'
-        '<div style="font-size:28px;font-weight:800;color:#0EA5A3;margin-bottom:4px;">4,99 USD</div>'
-        '<div style="color:#64748B;font-size:11px;margin-bottom:16px;">One-time · No subscription</div>'
-        '</div>',
-        unsafe_allow_html=True
-    )
+  <!-- Panel: 12-week plan preview -->
+  <div class="uc-panel" id="panel-preview">
+    <div class="pdf-preview-wrap" style="border-radius:0;border:none;margin:0;">
+      <div class="pdf-preview-header" style="background:linear-gradient(90deg,#0EA5A344 0%,#3B82F622 100%);padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1E293B;">
+        <span class="pdf-badge">PREVIEW</span>
+        <span style="color:#F1F5F9;font-weight:700;font-size:13px;">📋 Your 12-Week Training Plan</span>
+        <span style="margin-left:auto;color:#64748B;font-size:11px;">Week 1 of 12</span>
+      </div>
+      <div style="display:flex;gap:0;border-bottom:1px solid #1E293B;">
+        <div style="flex:1;padding:8px 10px;border-right:1px solid #1E293B;text-align:center;">
+          <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BMI</div>
+          <div style="font-size:16px;font-weight:800;color:#0EA5A3;">{_bmi_val if _bmi_val != "—" else "—"}</div>
+        </div>
+        <div style="flex:1;padding:8px 10px;border-right:1px solid #1E293B;text-align:center;">
+          <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">VO₂max</div>
+          <div style="font-size:16px;font-weight:800;color:#3B82F6;">{_vo2_val if _vo2_val != "—" else "—"}</div>
+        </div>
+        <div style="flex:1;padding:8px 10px;border-right:1px solid #1E293B;text-align:center;">
+          <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">TOP %</div>
+          <div style="font-size:16px;font-weight:800;color:#D4AF7A;">{f"{_vo2_pct:.0f}%" if isinstance(_vo2_pct, float) else "—"}</div>
+        </div>
+        <div style="flex:1;padding:8px 10px;text-align:center;">
+          <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BIO AGE</div>
+          <div style="font-size:16px;font-weight:800;color:#22C55E;">{_bio_age if _bio_age != "—" else "—"}</div>
+        </div>
+      </div>
+      <div style="padding:8px 14px;border-bottom:1px solid #1E293B;display:flex;gap:5px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:#64748B;margin-right:4px;line-height:22px;">12 weeks:</span>
+        <span class="pdf-week-pill active">W1</span>
+        <span class="pdf-week-pill">W2</span><span class="pdf-week-pill">W3</span>
+        <span class="pdf-week-pill">W4</span><span class="pdf-week-pill">W5</span>
+        <span class="pdf-week-pill">W6</span><span class="pdf-week-pill">W7</span>
+        <span class="pdf-week-pill">W8</span><span class="pdf-week-pill">W9</span>
+        <span class="pdf-week-pill">W10</span><span class="pdf-week-pill">W11</span>
+        <span class="pdf-week-pill">W12</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="pdf-preview-table">
+          <thead>
+            <tr style="border-bottom:1px solid #1E3A5F;background:#0A1628;">
+              <th style="padding:7px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DAY</th>
+              <th style="padding:7px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">TYPE</th>
+              <th style="padding:7px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">PRESCRIPTION</th>
+              <th style="padding:7px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DURATION</th>
+            </tr>
+          </thead>
+          <tbody>
+            {_preview_rows_html}
+          </tbody>
+        </table>
+      </div>
+      <div class="pdf-preview-blur-zone">
+        <div class="pdf-lock-icon">🔒</div>
+        <div class="pdf-lock-text">Weeks 2–12 are locked</div>
+        <div class="pdf-lock-sub">AI coach insights · calorie strategy · milestone tracking · full PDF</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Price + feature pills (always visible) -->
+  <div class="uc-price-row">
+    <span class="uc-price">4.99 USD</span>
+    <span class="uc-price-label">one-time · no subscription</span>
+    <div class="uc-pills">
+      <span class="uc-pill">✓ Full 12-week roadmap</span>
+      <span class="uc-pill">✓ AI coach insights</span>
+      <span class="uc-pill">✓ Calorie strategy</span>
+      <span class="uc-pill">✓ PDF download</span>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function switchTab(name) {{
+  document.getElementById('panel-compare').classList.remove('active');
+  document.getElementById('panel-preview').classList.remove('active');
+  document.getElementById('tab-compare').classList.remove('active');
+  document.getElementById('tab-preview').classList.remove('active');
+  document.getElementById('panel-' + name).classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}}
+</script>
+"""
+    components.html(upgrade_card_html, height=560, scrolling=False)
+
+    # -------------------- 3. Email + Stripe checkout (always visible below card) --------------------
 
     # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
     # CHANGED: no longer requires login first. Logged-in users skip the email
