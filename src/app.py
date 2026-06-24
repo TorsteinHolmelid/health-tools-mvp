@@ -618,24 +618,30 @@ class PremiumRadarChart(Flowable):
 st.markdown(
     """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&family=DM+Serif+Display:ital@0;1&display=swap');
 
 :root {
-  --bg0: #070D18;
-  --bg1: #0B1220;
-  --card: rgba(15,23,42,.72);
+  --bg0: #060B14;
+  --bg1: #0A1220;
+  --card: rgba(13,20,38,.75);
+  --card-solid: #0D1426;
   --card2: rgba(17,28,51,.62);
-  --stroke: rgba(148,163,184,.16);
+  --stroke: rgba(148,163,184,.13);
+  --stroke-hi: rgba(14,165,163,.4);
   --stroke2: rgba(148,163,184,.10);
-  --text: #E5E7EB;
-  --muted: #94A3B8;
-  --muted2: #A7B4C6;
-  --accent: #0EA5A3;
+  --text: #EEF2F7;
+  --muted: #7F92A8;
+  --muted2: #A8B8CB;
+  --accent: #0EC8C4;
+  --accent-dark: #0A9997;
   --accent2: #3B82F6;
   --good: #22C55E;
   --warn: #F59E0B;
   --bad: #EF4444;
-  --radius: 16px;
+  --gold: #D4AF7A;
+  --blue: #3B82F6;
+  --radius: 14px;
+  --radius-lg: 20px;
 }
 
 * {
@@ -648,9 +654,10 @@ html, body, .stApp {
 }
 
 .stApp {
-  background: radial-gradient(1200px 600px at 18% -10%, rgba(14,165,163,.20), transparent 60%),
-              radial-gradient(900px 520px at 90% 0%, rgba(59,130,246,.15), transparent 55%),
-              linear-gradient(180deg, var(--bg0), var(--bg1) 40%, #070B14);
+  background:
+    radial-gradient(ellipse 80vw 60vh at 10% -10%, rgba(14,200,196,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60vw 50vh at 90% 100%, rgba(59,130,246,0.06) 0%, transparent 55%),
+    var(--bg0);
   color: var(--text);
 }
 
@@ -883,7 +890,8 @@ html, body, .stApp {
   margin: 0;
   font-size: 3rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  font-family: 'DM Serif Display', serif;
+  letter-spacing: -0.025em;
   background: linear-gradient(135deg, #FFFFFF, #A5F3EC);
   -webkit-background-clip: text;
   background-clip: text;
@@ -3771,41 +3779,7 @@ if not _unlocked:
           <td style="padding:9px 10px;font-size:12px;color:#CBD5E1;{blur_style}">{desc}</td>
           <td style="padding:9px 10px;font-size:12px;color:#94A3B8;white-space:nowrap;{blur_style}">{dur}</td>
         </tr>"""
-# ── Personal insight strings for preview ──
-    if isinstance(_vo2_val, (int, float)):
-        _vo2_rounded = round(float(_vo2_val), 1)
-        if isinstance(_vo2_pct, (int, float)):
-            _pct_rounded = round(float(_vo2_pct))
-            if _pct_rounded < 40:
-                _cv_insight = f"Your VO₂max of {_vo2_rounded} ml/kg/min puts you in the bottom {_pct_rounded}% for your age group. Your premium report shows the exact cardio protocol to move up."
-            elif _pct_rounded < 70:
-                _cv_insight = f"Your VO₂max of {_vo2_rounded} ml/kg/min — you're ahead of {_pct_rounded}% of your peers. Your report shows how to push into the top 30%."
-            else:
-                _cv_insight = f"Strong VO₂max of {_vo2_rounded} ml/kg/min — top {100 - _pct_rounded}% for your age. Your report shows how to maintain and peak further."
-        else:
-            _cv_insight = f"Your VO₂max is {_vo2_rounded} ml/kg/min. Your premium report breaks down exactly what this means for your cardiovascular age."
-    else:
-        _cv_insight = "Run the calculator above to see your personalised cardiovascular insight here."
 
-    if isinstance(_bmi_val, (int, float)):
-        _bmi_rounded = round(float(_bmi_val), 1)
-        if _bmi_rounded < 18.5:
-            _plan_teaser = f"BMI {_bmi_rounded} — your Week 1–2 focuses on building lean mass with progressive overload and calorie surplus. Full 12 weeks in your PDF."
-        elif _bmi_rounded < 25:
-            _plan_teaser = f"BMI {_bmi_rounded} — Week 1–2 mixes Zone 2 cardio with strength to build your aerobic base. Full 12-week breakdown in your PDF."
-        elif _bmi_rounded < 30:
-            _plan_teaser = f"BMI {_bmi_rounded} — Week 1–2 prioritises fat-loss cardio (Zone 2, 3×/week) + 2 strength sessions. Full 12 weeks in your PDF."
-        else:
-            _plan_teaser = f"BMI {_bmi_rounded} — Week 1–2 starts with low-impact cardio and mobility work to build sustainable habits. Full 12 weeks in your PDF."
-    else:
-        _plan_teaser = "Enter your measurements above to unlock your personalised Week 1–2 plan preview."
-
-    if isinstance(_bio_age, (int, float)) and isinstance(_vo2_pct, (int, float)):
-        _bio_rounded = round(float(_bio_age))
-        _pct_r = round(float(_vo2_pct))
-        _compare_insight = f"Your biological age score and VO₂max (top {_pct_r}%) are compared against 10,000+ users in your age group. Full breakdown + chart in your premium report."
-    else:
-        _compare_insight = "Your premium report includes a full peer comparison chart showing where you rank across BMI, VO₂max, and biological age."
     upgrade_card_html = f"""
 <style>
 .uc-wrap {{
@@ -4062,39 +4036,7 @@ if not _unlocked:
       </div>
     </div>
   </div>
-  
-<!-- ═══════════════ PERSONAL INSIGHTS PREVIEW ═══════════════ -->
-  <div style="padding:14px 20px 4px 20px;border-top:1px solid #1E293B;">
-    <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;color:#64748B;text-transform:uppercase;margin-bottom:10px;">
-      Your full report includes
-    </div>
 
-    <!-- Insight 1: Cardiovascular age -->
-    <div style="background:#0A1628;border:1px solid #1E3A5F;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-      <div style="font-size:12px;color:#94A3B8;margin-bottom:4px;">🫀 Cardiovascular fitness</div>
-      <div style="font-size:14px;color:#E5E7EB;font-weight:600;">
-        {_cv_insight}
-      </div>
-    </div>
-
-    <!-- Insight 2: 12-week plan teaser -->
-    <div style="background:#0A1628;border:1px solid #1E3A5F;border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-      <div style="font-size:12px;color:#94A3B8;margin-bottom:4px;">📅 Week 1–2 of your plan</div>
-      <div style="font-size:14px;color:#E5E7EB;font-weight:600;">
-        {_plan_teaser}
-      </div>
-      <div style="font-size:11px;color:#64748B;margin-top:4px;">Weeks 3–12 are personalised to your VO₂max and goals — included in your PDF</div>
-    </div>
-
-    <!-- Insight 3: Percentile comparison -->
-    <div style="background:#0A1628;border:1px solid #1E3A5F;border-radius:10px;padding:12px 14px;margin-bottom:4px;">
-      <div style="font-size:12px;color:#94A3B8;margin-bottom:4px;">📊 How you compare</div>
-      <div style="font-size:14px;color:#E5E7EB;font-weight:600;">
-        {_compare_insight}
-      </div>
-    </div>
-  </div>
-  
   <!-- Price + feature pills (always visible) -->
   <div class="uc-price-row">
     <span class="uc-price">4.99 USD</span>
@@ -4120,7 +4062,7 @@ function switchTab(name) {{
 }}
 </script>
 """
-    components.html(upgrade_card_html, height=900, scrolling=False)
+    components.html(upgrade_card_html, height=560, scrolling=False)
 
     # -------------------- 3. Email + Stripe checkout (always visible below card) --------------------
 
