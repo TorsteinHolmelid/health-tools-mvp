@@ -638,11 +638,11 @@ html, body, .stApp {
 }
 .sticky-unlock-text {
   font-size: 13px;
-  color: #9CA3AF;
+  color: #E5E7EB;
   line-height: 1.4;
 }
 .sticky-unlock-text strong {
-  color: #E5E7EB;
+  color: #0EC8C4;
 }
 .sticky-unlock-btn {
   display: inline-flex;
@@ -664,6 +664,7 @@ html, body, .stApp {
 .sticky-unlock-btn:hover { background: #12E0DC; transform: translateY(-1px); }
 @media (max-width: 600px) {
   .sticky-unlock-bar { flex-direction: column; text-align: center; }
+  .sticky-unlock-bar.hide-at-bottom { display: none !important; }
 }
 
 /* ─── AMBIENT GLOW — exactly like landing page ─── */
@@ -4258,10 +4259,23 @@ if st.session_state.get("results") and not st.session_state.get("report_unlocked
     else:
         _sticky_msg = "Your results are ready — unlock the full plan"
     st.markdown(
-        f'<div class="sticky-unlock-bar">'
+        f'<div class="sticky-unlock-bar" id="sticky-unlock-bar">'
         f'<span class="sticky-unlock-text">{_sticky_msg}</span>'
         f'<a href="#paywall_anchor" class="sticky-unlock-btn">🔓 Unlock full report — $4.99</a>'
-        f'</div>',
+        f'</div>'
+        f'<script>'
+        f'(function(){{'
+        f'  if (window.innerWidth > 600) return;'
+        f'  function checkScroll(){{'
+        f'    var bar = document.getElementById("sticky-unlock-bar");'
+        f'    if (!bar) return;'
+        f'    var atBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 120);'
+        f'    bar.style.display = atBottom ? "none" : "";'
+        f'  }}'
+        f'  window.addEventListener("scroll", checkScroll, {{passive: true}});'
+        f'  checkScroll();'
+        f'}})();'
+        f'</script>',
         unsafe_allow_html=True,
     )
 
