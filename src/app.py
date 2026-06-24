@@ -4120,7 +4120,7 @@ function switchTab(name) {{
 }}
 </script>
 """
-    components.html(upgrade_card_html, height=560, scrolling=False)
+    components.html(upgrade_card_html, height=900, scrolling=False)
 
     # -------------------- 3. Email + Stripe checkout (always visible below card) --------------------
 
