@@ -3,40 +3,188 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 import streamlit as st
+import streamlit.components.v1 as components
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime, timedelta, timezone
-from db import get_db_client, get_user_history, has_premium_access, is_authenticated, sign_out, get_user_profile
-
-# --- Sidekonfigurasjon ---
-st.set_page_config(
-    page_title="My Progress",
-    page_icon="📈",
-    layout="centered",
+from html import escape
+from db import (
+    get_db_client, get_user_history, has_premium_access,
+    is_authenticated, sign_out, get_user_profile, set_user_password,
+    get_supabase_url, get_supabase_key,
 )
 
-# Bevar widget-keys frå hovudsida
+# --- Page config ---
+st.set_page_config(
+    page_title="My Progress · MyHealthTools",
+    page_icon="📈",
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
+
+# --- Shared CSS (mirrors app.py) ---
+st.markdown("""
+<style>
+:root {
+  --bg0: #060B14;
+  --bg1: #0A1220;
+  --bg2: #0F1A2E;
+  --stroke: rgba(255,255,255,0.07);
+  --text: #E5E7EB;
+  --muted: #94A3B8;
+  --muted2: #64748B;
+  --accent: #0EC8C4;
+  --radius: 14px;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+  background: rgba(6,11,20,0.97) !important;
+  border-right: 1px solid var(--stroke) !important;
+}
+[data-testid="stSidebar"] > div:first-child { background: transparent !important; }
+[data-testid="stSidebarContent"] { background: transparent !important; }
+
+[data-testid="collapsedControl"] {
+  background: rgba(14,200,196,0.1) !important;
+  border: 1px solid rgba(14,200,196,0.25) !important;
+  color: var(--accent) !important;
+}
+
+/* User card */
+.ht-side-card {
+  background: linear-gradient(160deg, rgba(14,165,163,0.08), rgba(15,23,42,0.9));
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 1rem 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
+}
+.ht-side-user { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ht-side-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #0EA5A3, #0F766E);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: white; font-size: 0.95rem; flex-shrink: 0;
+}
+.ht-side-user-info { display: flex; flex-direction: column; min-width: 0; }
+.ht-side-user-email {
+  font-size: 0.8rem; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ht-side-user-status { font-size: 0.7rem; color: #34D399; }
+.ht-side-divider { height: 1px; background: var(--stroke); border: none; margin: 12px 0; }
+.ht-side-feature {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: 0.75rem; color: var(--muted2); margin-bottom: 6px; line-height: 1.4;
+}
+.ht-side-feature:last-child { margin-bottom: 0; }
+
+/* Buttons */
+.stButton > button {
+  border-radius: 40px !important;
+  font-weight: 600 !important;
+  font-size: 0.9rem !important;
+  transition: all 0.2s ease !important;
+}
+.stButton > button[data-testid="baseButton-primary"] {
+  background: linear-gradient(135deg, #0EC8C4, #0A9997) !important;
+  color: #ffffff !important;
+  border: 0 !important;
+  box-shadow: 0 0 30px rgba(14,200,196,0.3) !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
+}
+
+/* App background */
+.stApp {
+  background: radial-gradient(ellipse 80vw 60vh at 10% -10%, rgba(14,200,196,0.07) 0%, transparent 60%),
+              radial-gradient(ellipse 60vw 50vh at 90% 100%, rgba(59,130,246,0.06) 0%, transparent 55%),
+              var(--bg0);
+  color: var(--text);
+}
+</style>
+""", unsafe_allow_html=True)
+
+# --- Bevar widget-keys frå hovudsida ---
 if is_authenticated():
-    db_preserve = get_db_client()
-    _profile = get_user_profile(db_preserve)
+    _db_preserve = get_db_client()
+    _profile = get_user_profile(_db_preserve)
     if _profile:
         for _k, _v in _profile.items():
             if _k not in st.session_state:
                 st.session_state[_k] = _v
 
+# --- Sidebar ---
+_logged_in = is_authenticated()
+
+if _logged_in:
+    st.sidebar.button("Log out", on_click=sign_out)
+
+    _user_email = st.session_state.get("user_email", "")
+    _avatar_letter = (_user_email[0].upper() if _user_email else "U")
+
+    st.sidebar.markdown(
+        f"""
+<div class="ht-side-card">
+  <div class="ht-side-user">
+    <div class="ht-side-avatar">{_avatar_letter}</div>
+    <div class="ht-side-user-info">
+      <div class="ht-side-user-email">{escape(_user_email)}</div>
+      <div class="ht-side-user-status">● Logged in</div>
+    </div>
+  </div>
+  <hr class="ht-side-divider">
+  <div class="ht-side-feature">🔒 256-bit encryption</div>
+  <div class="ht-side-feature">🛡️ GDPR · no third parties</div>
+  <div class="ht-side-feature">🔐 Your data — always yours alone</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+    if not st.session_state.get("password_just_set", False):
+        with st.sidebar.expander("🔑 Set a password (optional)", expanded=False):
+            st.caption("Set a password so you can log in directly next time without an email link.")
+            _new_pw = st.text_input("New password", type="password", key="prog_set_pw_input")
+            _new_pw_confirm = st.text_input("Confirm password", type="password", key="prog_set_pw_confirm")
+            if st.button("Save password", key="prog_set_pw_button"):
+                if not _new_pw or len(_new_pw) < 6:
+                    st.error("Password must be at least 6 characters.")
+                elif _new_pw != _new_pw_confirm:
+                    st.error("Passwords don't match.")
+                else:
+                    _pw_user, _pw_err = set_user_password(_new_pw)
+                    if _pw_err:
+                        st.error(f"Could not set password: {_pw_err}")
+                    else:
+                        st.session_state["password_just_set"] = True
+                        st.success("✅ Password set!")
+                        st.rerun()
+    else:
+        st.sidebar.success("✅ Password set for next time.")
+
+    st.sidebar.markdown("---")
+    st.sidebar.page_link("app.py", label="⬅️ Back to main page")
+
+else:
+    st.sidebar.markdown(
+        """
+<div style="padding:12px 0 8px 0;">
+  <div style="font-size:13px;font-weight:700;color:#E5E7EB;margin-bottom:4px;">🔐 Log in / Sign up</div>
+  <div style="font-size:12px;color:#9CA3AF;">Log in to view your progress.</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
 # --- Innloggingssjekk ---
-if not is_authenticated():
+if not _logged_in:
     st.warning("You must be logged in to see your progress.")
     st.info("Please go back to the main page and log in first.")
+    st.page_link("app.py", label="⬅️ Go to main page", icon="🏠")
     st.stop()
 
-# --- Brukar-ID frå session ---
-user_id = st.session_state.get("user_id")
-if not user_id:
-    st.error("User ID not found. Please log in again.")
-    st.stop()
-
-# --- Sjekk premium ---
+# --- DB + premium check ---
 db = get_db_client()
 _unlocked_session = st.session_state.get("report_unlocked", False)
 _unlocked_db = has_premium_access(db)
@@ -46,14 +194,14 @@ st.markdown("# 📈 My Progress")
 
 if not is_premium:
     st.warning("This is a premium feature. Please upgrade to see your progress charts.")
-    if st.button("🔓 Unlock full report — 4,99 USD", type="primary"):
-        import requests as _requests
+    if st.button("🔓 Unlock full report — 4.99 USD", type="primary", use_container_width=True):
         _uid = st.session_state.get("user_id", "")
         _email = st.session_state.get("user_email", "")
-        _supabase_url = st.secrets.get("SUPABASE_URL", "")
-        _anon_key = st.secrets.get("SUPABASE_KEY", "")
+        _supabase_url = get_supabase_url()
+        _anon_key = get_supabase_key()
         _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
         try:
+            import requests as _requests
             _resp = _requests.post(
                 _fn_url,
                 json={"user_id": _uid, "email": _email},
@@ -66,17 +214,39 @@ if not is_premium:
             )
             _data = _resp.json()
             if "url" in _data:
-                st.link_button("👉 Fortsett til betaling", _data["url"], type="primary")
+                components.html(
+                    f"""
+                    <script>
+                    (function() {{
+                        try {{
+                            const doc = window.top.document;
+                            let box = doc.getElementById("checkoutRedirectBox");
+                            if (!box) {{
+                                box = doc.createElement("div");
+                                box.id = "checkoutRedirectBox";
+                                box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:999999;padding:16px;background:#0EA5A3;text-align:center;font-family:sans-serif;";
+                                doc.body.prepend(box);
+                            }}
+                            box.innerHTML = '<a href="{_data["url"]}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">💳 Click here to continue to payment &rarr;</a>';
+                            try {{ window.top.location.href = "{_data["url"]}"; }} catch (e) {{}}
+                        }} catch (e) {{ console.error(e); }}
+                    }})();
+                    </script>
+                    """,
+                    height=0,
+                )
+                st.info("💳 Click the green bar at the top of the page to continue to payment.")
             else:
-                st.error("Kunne ikkje opprette betaling")
+                st.error("Could not create payment session.")
         except Exception as _e:
-            st.error(f"Feil: {_e}")
+            st.error(f"Payment error: {_e}")
     st.stop()
 
 # --- Hent data ---
 history = get_user_history(db)
 if not history:
     st.info("No measurements saved yet. Go to the main page and calculate your health metrics first.")
+    st.page_link("app.py", label="⬅️ Go to main page", icon="🏠")
     st.stop()
 
 df = pd.DataFrame(history)
@@ -114,10 +284,21 @@ def plot_metric(df, col, title, unit, color, ref_line=None, ref_label=""):
             marker=dict(size=6)
         ))
         if ref_line is not None:
-            fig.add_hline(y=ref_line, line_dash="dot", line_color="rgba(148,163,184,0.5)",
-                          annotation_text=ref_label, annotation_font_color="#64748B")
-        fig.update_layout(title=title, xaxis_title="Date", yaxis_title=unit,
-                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            fig.add_hline(
+                y=ref_line, line_dash="dot",
+                line_color="rgba(148,163,184,0.5)",
+                annotation_text=ref_label,
+                annotation_font_color="#64748B",
+            )
+        fig.update_layout(
+            title=dict(text=title, font=dict(color="#E5E7EB")),
+            xaxis_title="Date", yaxis_title=unit,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(color="#94A3B8"),
+            xaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
+            yaxis=dict(gridcolor="rgba(255,255,255,0.05)"),
+        )
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.caption(f"No {title.lower()} data available yet.")
