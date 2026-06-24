@@ -29,6 +29,16 @@ from db import (
 
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
+# ── set_page_config MÅ vere det aller første Streamlit-kallet ──
+_LOGO_ICON_B64 = "PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDQ0IDQ0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWN0IHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCIgcng9IjExIiBmaWxsPSIjMEVDOEM0Ii8+CiAgPHBhdGggZD0iTTggMjJIMTRMMTcgMTRMMjIgMzBMMjUgMjJIMzYiIHN0cm9rZT0iIzA0MDcwRCIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K"
+_LOGO_ICON_DATA_URI = f"data:image/svg+xml;base64,{_LOGO_ICON_B64}"
+st.set_page_config(
+    page_title="MyHealthTools",
+    page_icon=_LOGO_ICON_DATA_URI,
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
+
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
 # når Python-backend-en direkte. components.html() rendrer i en egen
@@ -377,16 +387,6 @@ if "generated" not in st.session_state:
 # Ikkje generer eigen UUID for innlogga brukarar – user_id kjem frå auth
 if "user_id" not in st.session_state:
     st.session_state["user_id"] = None
-
-_LOGO_ICON_B64 = "PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDQ0IDQ0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWN0IHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCIgcng9IjExIiBmaWxsPSIjMEVDOEM0Ii8+CiAgPHBhdGggZD0iTTggMjJIMTRMMTcgMTRMMjIgMzBMMjUgMjJIMzYiIHN0cm9rZT0iIzA0MDcwRCIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K"
-_LOGO_ICON_DATA_URI = f"data:image/svg+xml;base64,{_LOGO_ICON_B64}"
-
-st.set_page_config(
-    page_title="MyHealthTools",
-    page_icon=_LOGO_ICON_DATA_URI,
-    layout="centered",
-    initial_sidebar_state="expanded",
-)
 
 # ── Resting HR Sync funksjonar ────────────────────────────────────────────────
 _HR_KEYS = [
