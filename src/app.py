@@ -1200,9 +1200,10 @@ textarea:focus {
 .stButton > button[data-testid="baseButton-primary"],
 .stDownloadButton > button[data-testid="baseButton-primary"] {
   background: linear-gradient(135deg, #0EC8C4, #0A9997) !important;
-  color: #020F0F !important;
+  color: #ffffff !important;
   border: 0 !important;
   box-shadow: 0 0 30px rgba(14,200,196,0.3) !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
 }
 
 .stButton > button[data-testid="baseButton-primary"]:hover,
@@ -4744,12 +4745,29 @@ else:
 
 # -------------------- Scroll script --------------------
 if st.session_state.get("scroll_to_paywall"):
-    st.markdown(
+    components.html(
         """
         <script>
-        document.getElementById('paywall_anchor').scrollIntoView({behavior: 'smooth'});
+        (function() {
+            function doScroll() {
+                try {
+                    var anchor = window.top.document.getElementById('paywall_anchor');
+                    if (anchor) {
+                        anchor.scrollIntoView({behavior: 'smooth', block: 'start'});
+                    } else {
+                        // fallback: scroll to bottom
+                        window.top.scrollTo({top: window.top.document.body.scrollHeight, behavior: 'smooth'});
+                    }
+                } catch(e) {
+                    window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
+                }
+            }
+            // slight delay to ensure DOM is ready after rerun
+            setTimeout(doScroll, 120);
+        })();
         </script>
         """,
-        unsafe_allow_html=True,
+        height=0,
+        width=0,
     )
     st.session_state["scroll_to_paywall"] = False
