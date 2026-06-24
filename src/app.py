@@ -26,30 +26,6 @@ from db import (
     get_supabase_url, get_supabase_key,
     save_lead,   # <-- ADD THIS LINE
 )
-# ============================================================
-# TEMPORARY DIAGNOSTIC — paste this near the top of app.py,
-# right after your existing imports (after the `from db import (...)`
-# block). It will print exact, concrete facts to the Railway log
-# every time the app starts.
-#
-# DELETE this block once we've found the answer — it's not meant
-# to stay in the app long-term.
-# ============================================================
-
-import supabase as _supabase_pkg
-print(f"[DIAGNOSTIC] supabase-py version: {_supabase_pkg.__version__}")
-
-try:
-    _diag_client = get_db_client()
-    _diag_result = _diag_client.table("leads").insert({
-        "email": "diagnostic-test@example.com",
-        "source": "startup_diagnostic",
-    }).execute()
-    print(f"[DIAGNOSTIC] insert SUCCESS: {_diag_result.data}")
-except Exception as _diag_err:
-    print(f"[DIAGNOSTIC] insert FAILED: {repr(_diag_err)}")
-# NEW LINE — shows exactly what URL and key the client is actually using
-print(f"[DIAGNOSTIC] url={_diag_client.supabase_url} | key_prefix={_diag_client.supabase_key[:25]}")
 
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
