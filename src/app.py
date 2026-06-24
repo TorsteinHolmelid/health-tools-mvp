@@ -250,7 +250,9 @@ if logged_in:
         st.sidebar.success("✅ Password set for next time.")
 
     # ── 📈 My Progress (history graphs) ──
-    with st.sidebar.expander("📈 My Progress", expanded=False):
+    st.sidebar.page_link("pages/progress.py", label="📈 My Progress", icon="📈")
+
+    with st.sidebar.expander("📈 My Progress (quick view)", expanded=False):
         try:
             _hist_db = get_db_client()
             _history = get_user_history(_hist_db)
