@@ -48,6 +48,9 @@ try:
     print(f"[DIAGNOSTIC] insert SUCCESS: {_diag_result.data}")
 except Exception as _diag_err:
     print(f"[DIAGNOSTIC] insert FAILED: {repr(_diag_err)}")
+# NEW LINE — shows exactly what URL and key the client is actually using
+print(f"[DIAGNOSTIC] url={_diag_client.supabase_url} | key_prefix={_diag_client.supabase_key[:25]}")
+
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
