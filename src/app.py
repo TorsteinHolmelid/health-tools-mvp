@@ -248,32 +248,39 @@ if logged_in:
                 st.caption(f"Could not load progress chart: {e}")
 
 else:
-    with st.sidebar.expander("🔐 Log in / Sign up", expanded=False):
-        st.caption("Log in to save your values for next time.")
-        tab1, tab2 = st.tabs(["Log in", "Sign up"])
+    st.sidebar.markdown(
+        """
+<div style="padding:12px 0 8px 0;">
+  <div style="font-size:13px;font-weight:700;color:#E5E7EB;margin-bottom:4px;">🔐 Log in / Sign up</div>
+  <div style="font-size:12px;color:#9CA3AF;">Log in to save your values and access your history.</div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+    _sb_tab1, _sb_tab2 = st.sidebar.tabs(["Log in", "Sign up"])
 
-        with tab1:
-            email = st.text_input("Email", key="login_email")
-            password = st.text_input("Password", type="password", key="login_password")
-            if st.button("Log in"):
-                user, error = sign_in(email, password)
-                if error:
-                    st.error(f"Login failed: {error}")
-                else:
-                    st.session_state["authenticated"] = True
-                    st.session_state["user_id"] = user.id
-                    st.session_state["user_email"] = email
-                    st.rerun()
+    with _sb_tab1:
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_password")
+        if st.button("Log in", use_container_width=True, type="primary"):
+            user, error = sign_in(email, password)
+            if error:
+                st.error(f"Login failed: {error}")
+            else:
+                st.session_state["authenticated"] = True
+                st.session_state["user_id"] = user.id
+                st.session_state["user_email"] = email
+                st.rerun()
 
-        with tab2:
-            email = st.text_input("Email", key="signup_email")
-            password = st.text_input("Password", type="password", key="signup_password")
-            if st.button("Sign up"):
-                user, error = sign_up(email, password)
-                if error:
-                    st.error(f"Signup failed: {error}")
-                else:
-                    st.success("Account created! Please check your email to confirm (if required), then log in.")
+    with _sb_tab2:
+        email = st.text_input("Email", key="signup_email")
+        password = st.text_input("Password", type="password", key="signup_password")
+        if st.button("Sign up", use_container_width=True, type="primary"):
+            user, error = sign_up(email, password)
+            if error:
+                st.error(f"Signup failed: {error}")
+            else:
+                st.success("Account created! Please check your email to confirm (if required), then log in.")
 
 # --- Resten av din eksisterande kode i app.py (berre endre funksjonskall) ---
 # Merk: save_health_metrics() kallar du utan user_id-parameter no
@@ -378,7 +385,7 @@ st.set_page_config(
     page_title="MyHealthTools",
     page_icon=_LOGO_ICON_DATA_URI,
     layout="centered",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ── Resting HR Sync funksjonar ────────────────────────────────────────────────
