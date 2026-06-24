@@ -583,15 +583,36 @@ st.markdown(
 #MainMenu, footer, [data-testid="stToolbar"],
 [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
 
-/* Gøym header-innhald men behold sidebar-toggle */
-header[data-testid="stHeader"] {
-  background: transparent !important;
-  pointer-events: none !important;
+/* Gøym header men ikkje sidebar-toggle */
+header[data-testid="stHeader"] { background: transparent !important; height: 0 !important; overflow: visible !important; }
+
+/* Sidebar-toggle alltid synleg, uansett kor Streamlit plasserer den */
+[data-testid="collapsedControl"],
+button[kind="header"],
+.st-emotion-cache-1dp5vir,
+[aria-label="open sidebar"],
+[aria-label="Close sidebar"] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: #0EC8C4 !important;
+  border-radius: 50% !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  box-shadow: 0 0 16px rgba(14,200,196,0.6) !important;
+  position: fixed !important;
+  top: 0.75rem !important;
+  left: 0.75rem !important;
+  z-index: 999999 !important;
+  border: none !important;
+  cursor: pointer !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
-header[data-testid="stHeader"] > * { pointer-events: auto !important; }
-/* Gøym alt i headeren UNNTATT collapsedControl (sidebar-toggle) */
-header[data-testid="stHeader"] > *:not([data-testid="collapsedControl"]):not(:has([data-testid="collapsedControl"])) {
-  display: none !important;
+[data-testid="collapsedControl"] svg,
+[aria-label="open sidebar"] svg {
+  fill: #020F0F !important;
+  color: #020F0F !important;
 }
 
 /* Remove top padding that Streamlit adds for the hidden header */
@@ -1683,6 +1704,58 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
     </script>
     """
     html(css_part, height=200)
+# ── Sidebar toggle — alltid synleg øvst til venstre ─────────────────────────
+components.html(
+    """
+    <script>
+    (function() {
+        function tryToggle() {
+            try {
+                var doc = window.top.document;
+                // Finn sidebar-toggle — prøv fleire moglege selektorar
+                var btn = doc.querySelector('[data-testid="collapsedControl"]')
+                    || doc.querySelector('[aria-label="open sidebar"]')
+                    || doc.querySelector('[aria-label="Close sidebar"]')
+                    || doc.querySelector('button[kind="header"]');
+                if (btn) {
+                    btn.style.cssText = [
+                        'display:flex!important',
+                        'visibility:visible!important',
+                        'opacity:1!important',
+                        'background:#0EC8C4!important',
+                        'border-radius:50%!important',
+                        'width:2.5rem!important',
+                        'height:2.5rem!important',
+                        'box-shadow:0 0 16px rgba(14,200,196,0.6)!important',
+                        'position:fixed!important',
+                        'top:0.75rem!important',
+                        'left:0.75rem!important',
+                        'z-index:999999!important',
+                        'border:none!important',
+                        'cursor:pointer!important',
+                        'align-items:center!important',
+                        'justify-content:center!important',
+                    ].join(';');
+                    var svg = btn.querySelector('svg');
+                    if (svg) { svg.style.cssText = 'fill:#020F0F!important;color:#020F0F!important;'; }
+                }
+            } catch(e) {}
+        }
+        // Køyr fleire gonger for å fange opp etter Streamlit rerender
+        tryToggle();
+        setTimeout(tryToggle, 300);
+        setTimeout(tryToggle, 800);
+        setTimeout(tryToggle, 2000);
+        // Observer for DOM-endringar
+        try {
+            new MutationObserver(tryToggle).observe(window.top.document.body, {childList:true, subtree:true});
+        } catch(e) {}
+    })();
+    </script>
+    """,
+    height=0,
+    width=0,
+)
 # ── Render Hero ───────────────────────────────────────────────────────────────
 st.markdown(
     """
