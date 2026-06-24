@@ -649,19 +649,20 @@ html, body, .stApp {
   align-items: center;
   gap: 8px;
   background: #0EC8C4;
-  color: #020F0F;
+  color: #ffffff !important;
   font-weight: 800;
   font-size: 0.92rem;
   padding: 11px 26px;
   border-radius: 50px;
-  text-decoration: none;
+  text-decoration: none !important;
   white-space: nowrap;
   box-shadow: 0 0 24px rgba(14,200,196,0.3);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
   transition: 0.2s;
   cursor: pointer;
   border: none;
 }
-.sticky-unlock-btn:hover { background: #12E0DC; transform: translateY(-1px); }
+.sticky-unlock-btn:hover { background: #12E0DC; color: #ffffff !important; transform: translateY(-1px); }
 @media (max-width: 600px) {
   .sticky-unlock-bar { flex-direction: column; text-align: center; }
   .sticky-unlock-bar.hide-at-bottom { display: none !important; }
