@@ -52,6 +52,13 @@ except Exception as _diag_err:
 print(f"[DIAGNOSTIC] url={_diag_client.supabase_url} | key_prefix={_diag_client.supabase_key[:25]}")
 
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
+    # Bevar authenticated-status på tvers av reruns
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
+
+# Sett authenticated = True viss Supabase-session er aktiv
+if not st.session_state["authenticated"] and is_authenticated():
+    st.session_state["authenticated"] = True
 
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
@@ -163,7 +170,7 @@ components.html(
 )
 
 # --- Innlogging / registrering (no-blokkerande) ---
-logged_in = is_authenticated()
+logged_in = st.session_state.get("authenticated", False)
 
 if logged_in:
     # ── Synlig prompt i hovedinnholdet: vises kun rett etter at brukeren
