@@ -581,8 +581,18 @@ st.markdown(
 
 /* ─── HIDE STREAMLIT DEFAULT CHROME ─── */
 #MainMenu, footer, [data-testid="stToolbar"],
-[data-testid="stDecoration"], [data-testid="stStatusWidget"],
-header[data-testid="stHeader"] { display: none !important; }
+[data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
+
+/* Gøym header-innhald men behold sidebar-toggle */
+header[data-testid="stHeader"] {
+  background: transparent !important;
+  pointer-events: none !important;
+}
+header[data-testid="stHeader"] > * { pointer-events: auto !important; }
+/* Gøym alt i headeren UNNTATT collapsedControl (sidebar-toggle) */
+header[data-testid="stHeader"] > *:not([data-testid="collapsedControl"]):not(:has([data-testid="collapsedControl"])) {
+  display: none !important;
+}
 
 /* Remove top padding that Streamlit adds for the hidden header */
 .stApp > header { height: 0 !important; }
@@ -751,12 +761,23 @@ html, body, .stApp {
   background: transparent !important;
 }
 
-/* ─── SIDEBAR COLLAPSE BUTTON ─── */
+/* ─── SIDEBAR COLLAPSE BUTTON — gjer synleg ─── */
 [data-testid="collapsedControl"] {
-  background: rgba(14,200,196,0.1) !important;
-  border: 1px solid rgba(14,200,196,0.25) !important;
-  color: var(--accent) !important;
+  background: #0EC8C4 !important;
+  border: none !important;
+  color: #020F0F !important;
+  opacity: 1 !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  border-radius: 50% !important;
+  box-shadow: 0 0 16px rgba(14,200,196,0.5) !important;
 }
+[data-testid="collapsedControl"] svg {
+  color: #020F0F !important;
+  fill: #020F0F !important;
+}
+/* Sidebar nav-knapp øvst til venstre */
+section[data-testid="stSidebarNav"] { display: none !important; }
 
 /* ─── TABS — match landing page pill style ─── */
 .stTabs [data-baseweb="tab-list"] {
