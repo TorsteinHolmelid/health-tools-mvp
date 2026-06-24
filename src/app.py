@@ -618,6 +618,54 @@ html, body, .stApp {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ─── STICKY UNLOCK BAR ─── */
+.sticky-unlock-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: rgba(6,11,20,0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(14,200,196,0.3);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.sticky-unlock-text {
+  font-size: 13px;
+  color: #9CA3AF;
+  line-height: 1.4;
+}
+.sticky-unlock-text strong {
+  color: #E5E7EB;
+}
+.sticky-unlock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0EC8C4;
+  color: #020F0F;
+  font-weight: 800;
+  font-size: 0.92rem;
+  padding: 11px 26px;
+  border-radius: 50px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 0 24px rgba(14,200,196,0.3);
+  transition: 0.2s;
+  cursor: pointer;
+  border: none;
+}
+.sticky-unlock-btn:hover { background: #12E0DC; transform: translateY(-1px); }
+@media (max-width: 600px) {
+  .sticky-unlock-bar { flex-direction: column; text-align: center; }
+}
+
 /* ─── AMBIENT GLOW — exactly like landing page ─── */
 .stApp {
   background:
@@ -3906,6 +3954,37 @@ if results:
                 else:
                     st.success("✅ Got it! We'll be in touch.")
                 st.rerun()
+
+    # ── Upsell trigger (vises etter email capture ELLER om email allereie er captured) ──
+    if "bio_age" in results and not st.session_state.get("report_unlocked", False):
+        _bio_upsell_val = results["bio_age"]["value"]
+        _bio_upsell_chron = float(age) if age else 30.0
+        _bio_upsell_diff = _bio_upsell_val - _bio_upsell_chron
+        if _bio_upsell_diff <= 0:
+            _upsell_headline = f"Your body is {abs(_bio_upsell_diff):.1f} years younger than your calendar age."
+            _upsell_sub = "Want to know exactly what's driving that — and how to push it even further?"
+        else:
+            _upsell_headline = f"Your body is {abs(_bio_upsell_diff):.1f} years older than your calendar age."
+            _upsell_sub = "The good news: the biggest factors are changeable. Want a concrete plan to reverse it?"
+        st.markdown(
+            f'<div style="font-family:Arial,sans-serif;background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(10,18,32,0.95));'
+            f'border:1.5px solid rgba(14,165,163,0.45);border-radius:16px;padding:22px 24px;margin:20px 0;">'
+            f'<div style="font-size:17px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">{_upsell_headline}</div>'
+            f'<div style="font-size:14px;color:#9CA3AF;line-height:1.6;margin-bottom:16px;">{_upsell_sub}</div>'
+            f'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">'
+            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">✓ Full 12-week training plan</span>'
+            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">✓ Personal HR training zones</span>'
+            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">✓ Calorie &amp; nutrition strategy</span>'
+            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">✓ Downloadable PDF report</span>'
+            f'</div>'
+            f'<div style="font-size:12px;color:#6B7280;">One-time · $4.99 · No subscription</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("🔓 Get my full plan — $4.99 →", type="primary", key="bio_age_upsell_btn", use_container_width=True):
+            st.session_state["scroll_to_paywall"] = True
+            st.rerun()
+
 # ── Conditions ────
     if "triage" in results:
         st.markdown("---")
@@ -4168,6 +4247,24 @@ else:
     st.info("Click 'Calculate' / 'Generate report' to run the calculations")
 
 # ── Paywall / PDF ──────────────────────────────────────────────
+# ── Sticky unlock bar (vises berre for gratis brukarar med resultat) ──
+if st.session_state.get("results") and not st.session_state.get("report_unlocked", False):
+    _sticky_bio = (st.session_state.get("results", {}).get("bio_age") or {}).get("value")
+    _sticky_chron = st.session_state.get("age_val", 30)
+    if _sticky_bio:
+        _sticky_diff = abs(_sticky_bio - float(_sticky_chron))
+        _sticky_dir = "younger" if _sticky_bio <= float(_sticky_chron) else "older"
+        _sticky_msg = f"Your biological age: <strong>{_sticky_bio:.1f} yrs</strong> · {_sticky_diff:.1f} years {_sticky_dir} than average"
+    else:
+        _sticky_msg = "Your results are ready — unlock the full plan"
+    st.markdown(
+        f'<div class="sticky-unlock-bar">'
+        f'<span class="sticky-unlock-text">{_sticky_msg}</span>'
+        f'<a href="#paywall_anchor" class="sticky-unlock-btn">🔓 Unlock full report — $4.99</a>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
 # Anchor for scrolling (must be placed right before paywall)
 st.markdown('<div id="paywall_anchor"></div>', unsafe_allow_html=True)
 
@@ -4352,8 +4449,8 @@ if not _unlocked:
 
   <!-- Header -->
   <div class="uc-header">
-    <div class="uc-title">🔒 Unlock your full report</div>
-    <div class="uc-subtitle">One-time · 4.99 USD · No subscription</div>
+    <div class="uc-title">🔓 Turn your results into a real plan</div>
+    <div class="uc-subtitle">One-time · $4.99 · No subscription · Instant access</div>
   </div>
 
   <!-- Tabs -->
