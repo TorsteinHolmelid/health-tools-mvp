@@ -52,13 +52,6 @@ except Exception as _diag_err:
 print(f"[DIAGNOSTIC] url={_diag_client.supabase_url} | key_prefix={_diag_client.supabase_key[:25]}")
 
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
-    # Bevar authenticated-status på tvers av reruns
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-
-# Sett authenticated = True viss Supabase-session er aktiv
-if not st.session_state["authenticated"] and is_authenticated():
-    st.session_state["authenticated"] = True
 
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
@@ -69,64 +62,7 @@ if not st.session_state["authenticated"] and is_authenticated():
 # dette er DOM-manipulasjon, ikke navigasjon, og er derfor IKKE underlagt
 # iframens sandbox-restriksjon på top-navigasjon (som blokkerer all
 # automatisk/JS-styrt navigasjon fra denne typen iframe).
-if "access_token" not in st.query_params and "mlr" not in st.query_params:
-    components.html(
-        """
-        <script>
-        (function() {
-            let hash = "";
-            try {
-                hash = window.top.location.hash;
-            } catch (e) {
-                hash = window.location.hash;
-            }
 
-            if (hash && hash.includes("access_token")) {
-                const params = new URLSearchParams(hash.substring(1));
-                const accessToken = params.get("access_token");
-                const refreshToken = params.get("refresh_token");
-                if (accessToken && refreshToken) {
-                    let base;
-                    try {
-                        base = window.top.location.origin + window.top.location.pathname;
-                    } catch (e) {
-                        base = window.location.origin + window.location.pathname;
-                    }
-                    const url = new URL(base);
-                    url.searchParams.set("access_token", accessToken);
-                    url.searchParams.set("refresh_token", refreshToken);
-                    url.searchParams.set("mlr", "1");
-
-                    try {
-                        const doc = window.top.document;
-                        let box = doc.getElementById("mlrTopContainer");
-                        if (!box) {
-                            box = doc.createElement("div");
-                            box.id = "mlrTopContainer";
-                            box.style.position = "fixed";
-                            box.style.top = "0";
-                            box.style.left = "0";
-                            box.style.right = "0";
-                            box.style.zIndex = "999999";
-                            box.style.padding = "16px";
-                            box.style.background = "#0EA5A3";
-                            box.style.textAlign = "center";
-                            box.style.fontFamily = "sans-serif";
-                            doc.body.prepend(box);
-                        }
-                        box.innerHTML =
-                            '<a href="' + url.toString() + '" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
-                            '✅ Click here to log in and continue &rarr;</a>';
-                    } catch (e) {
-                        console.error("Could not write to top document:", e);
-                    }
-                }
-            }
-        })();
-        </script>
-        """,
-        height=0,
-    )
 
 if "access_token" in st.query_params and not is_authenticated():
     _mlr_access_token = st.query_params.get("access_token")
@@ -152,17 +88,48 @@ if st.query_params.get("payment") == "success" and not is_authenticated():
         "login link to access your full report."
     )
 
-# --- Google tag (gtag.js) ---
+# --- Google tag + magic-link script i eitt kall (unngår dobbel rerun) ---
 components.html(
     """
-    <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-68ZCX624Z4"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-68ZCX624Z4');
+    </script>
+    <script>
+    (function() {
+        if (window.__mlrDone) return;
+        window.__mlrDone = true;
+        let hash = "";
+        try { hash = window.top.location.hash; } catch (e) { hash = window.location.hash; }
+        if (hash && hash.includes("access_token")) {
+            const params = new URLSearchParams(hash.substring(1));
+            const accessToken = params.get("access_token");
+            const refreshToken = params.get("refresh_token");
+            if (accessToken && refreshToken) {
+                let base;
+                try { base = window.top.location.origin + window.top.location.pathname; }
+                catch (e) { base = window.location.origin + window.location.pathname; }
+                const url = new URL(base);
+                url.searchParams.set("access_token", accessToken);
+                url.searchParams.set("refresh_token", refreshToken);
+                url.searchParams.set("mlr", "1");
+                try {
+                    const doc = window.top.document;
+                    let box = doc.getElementById("mlrTopContainer");
+                    if (!box) {
+                        box = doc.createElement("div");
+                        box.id = "mlrTopContainer";
+                        box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:999999;padding:16px;background:#0EA5A3;text-align:center;font-family:sans-serif;";
+                        doc.body.prepend(box);
+                    }
+                    box.innerHTML = '<a href="' + url.toString() + '" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">✅ Click here to log in and continue &rarr;</a>';
+                } catch (e) { console.error("Could not write to top document:", e); }
+            }
+        }
+    })();
     </script>
     """,
     height=0,
@@ -170,7 +137,7 @@ components.html(
 )
 
 # --- Innlogging / registrering (no-blokkerande) ---
-logged_in = st.session_state.get("authenticated", False)
+logged_in = is_authenticated()
 
 if logged_in:
     # ── Synlig prompt i hovedinnholdet: vises kun rett etter at brukeren
