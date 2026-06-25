@@ -45,7 +45,7 @@ st.markdown("""
 [data-testid="stSidebar"] > div:first-child { background: transparent !important; }
 [data-testid="stSidebarContent"] { background: transparent !important; }
 
-/* Header: transparent men held høgda så toggle-knappen er klikkbar */
+/* Header: transparent men synleg så toggle-knappen er klikkbar */
 header[data-testid="stHeader"] {
   background: transparent !important;
   height: 3.5rem !important;
@@ -53,8 +53,11 @@ header[data-testid="stHeader"] {
   pointer-events: none !important;
 }
 
-/* Sidebar-toggle — teal knapp øvst til venstre */
+/* Sidebar-toggle — støttar både gamalt og nytt Streamlit */
 [data-testid="collapsedControl"],
+[data-testid="stExpandSidebarButton"],
+[data-testid="stBaseButton-headerNoPadding"],
+button[kind="headerNoPadding"],
 [aria-label="open sidebar"],
 [aria-label="Close sidebar"] {
   display: flex !important;
@@ -76,13 +79,13 @@ header[data-testid="stHeader"] {
   justify-content: center !important;
 }
 [data-testid="collapsedControl"] svg,
+[data-testid="stExpandSidebarButton"] svg,
+[data-testid="stBaseButton-headerNoPadding"] svg,
 [aria-label="open sidebar"] svg,
 [aria-label="Close sidebar"] svg {
   fill: #020F0F !important;
   color: #020F0F !important;
 }
-
-.block-container { padding-top: 4rem !important; }
 
 /* User card */
 .ht-side-card {
