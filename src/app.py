@@ -39,9 +39,11 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Hamburger-knapp: eigen teal knapp som triggar Streamlit sin sidebar ──────
-import streamlit.components.v1 as components
-components.html("""
+# ── Hamburger-knapp: synleg i DOM via st.markdown + JS-lyttar via components.html ──
+st.markdown("""
+<button id="ht-burger">
+  <span></span><span></span><span></span>
+</button>
 <style>
 #ht-burger {
   position: fixed;
@@ -71,22 +73,31 @@ components.html("""
   pointer-events: none;
 }
 </style>
-<button id="ht-burger">
-  <span></span><span></span><span></span>
-</button>
+""", unsafe_allow_html=True)
+
+components.html("""
 <script>
-document.getElementById('ht-burger').addEventListener('click', function() {
-  var selectors = [
-    '[data-testid="stExpandSidebarButton"]',
-    '[data-testid="stBaseButton-headerNoPadding"]',
-    '[data-testid="collapsedControl"]'
-  ];
-  var doc = window.parent.document;
-  for (var i = 0; i < selectors.length; i++) {
-    var btn = doc.querySelector(selectors[i]);
-    if (btn) { btn.click(); return; }
+(function() {
+  function attachListener() {
+    var doc = window.parent.document;
+    var burger = doc.getElementById('ht-burger');
+    if (!burger) { setTimeout(attachListener, 100); return; }
+    if (burger._htListenerAttached) return;
+    burger._htListenerAttached = true;
+    burger.addEventListener('click', function() {
+      var selectors = [
+        '[data-testid="stExpandSidebarButton"]',
+        '[data-testid="stBaseButton-headerNoPadding"]',
+        '[data-testid="collapsedControl"]'
+      ];
+      for (var i = 0; i < selectors.length; i++) {
+        var btn = doc.querySelector(selectors[i]);
+        if (btn) { btn.click(); return; }
+      }
+    });
   }
-});
+  attachListener();
+})();
 </script>
 """, height=0)
 
