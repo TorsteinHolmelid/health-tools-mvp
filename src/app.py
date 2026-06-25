@@ -222,37 +222,38 @@ if logged_in:
                         st.success("✅ Password set! You can log in with it next time.")
                         st.rerun()
 
-    st.sidebar.button("Log out", on_click=sign_out)
-
     _user_email = st.session_state.get("user_email", "")
     _avatar_letter = (_user_email[0].upper() if _user_email else "U")
 
-    st.sidebar.markdown(
-        f"""
-<div class="ht-side-card">
-  <div class="ht-side-user">
-    <div class="ht-side-avatar">{_avatar_letter}</div>
-    <div class="ht-side-user-info">
-      <div class="ht-side-user-email">{escape(_user_email)}</div>
-      <div class="ht-side-user-status">● Logged in</div>
-    </div>
-  </div>
-  <hr class="ht-side-divider">
-  <div class="ht-side-feature">🔒 256-bit encryption</div>
-  <div class="ht-side-feature">🛡️ GDPR · no third parties</div>
-  <div class="ht-side-feature">🔐 Your data — always yours alone</div>
+    # ── Logo / brand øvst ──
+    st.sidebar.markdown("""
+<div class="sb-brand">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 12h3l3-8 4 16 3-8h5" stroke="#0EC8C4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span>MyHealth<strong>Tools</strong></span>
 </div>
-""",
-        unsafe_allow_html=True,
-    )
+""", unsafe_allow_html=True)
 
-    # ── 🔑 Optional: set a password (so login doesn't always require a new email link) ──
+    # ── Brukarkort ──
+    st.sidebar.markdown(f"""
+<div class="sb-user-card">
+  <div class="sb-avatar">{_avatar_letter}</div>
+  <div class="sb-user-info">
+    <div class="sb-user-email">{escape(_user_email)}</div>
+    <div class="sb-user-status"><span class="sb-dot"></span>Logged in</div>
+  </div>
+</div>
+<div class="sb-divider"></div>
+""", unsafe_allow_html=True)
+
+    # ── Nav-lenker ──
+    st.sidebar.page_link("pages/progress.py", label="📈 My Progress")
+
+    # ── Set password ──
     if not st.session_state.get("password_just_set", False):
         with st.sidebar.expander("🔑 Set a password (optional)", expanded=False):
-            st.caption(
-                "You logged in with an email link. Set a password here if you'd "
-                "rather log in directly next time, without checking your email."
-            )
+            st.caption("Log in directly next time — no email link needed.")
             _new_pw = st.text_input("New password", type="password", key="set_pw_input")
             _new_pw_confirm = st.text_input("Confirm password", type="password", key="set_pw_confirm")
             if st.button("Save password", key="set_pw_button"):
@@ -266,69 +267,39 @@ if logged_in:
                         st.error(f"Could not set password: {_pw_err}")
                     else:
                         st.session_state["password_just_set"] = True
-                        st.success("✅ Password set! You can log in with it next time.")
+                        st.success("✅ Password set!")
                         st.rerun()
     else:
-        st.sidebar.success("✅ Password set for next time.")
+        st.sidebar.markdown('<div class="sb-pw-set">✅ Password set</div>', unsafe_allow_html=True)
 
-    # ── 📈 My Progress (history graphs) ──
-    st.sidebar.page_link("pages/progress.py", label="📈 My Progress", icon="📈")
+    # ── Trust badges ──
+    st.sidebar.markdown("""
+<div class="sb-divider"></div>
+<div class="sb-trust">
+  <div class="sb-trust-row"><span class="sb-trust-icon">🔒</span>256-bit encryption</div>
+  <div class="sb-trust-row"><span class="sb-trust-icon">🛡️</span>GDPR · no third parties</div>
+  <div class="sb-trust-row"><span class="sb-trust-icon">🔐</span>Only you see your data</div>
+</div>
+<div class="sb-divider"></div>
+""", unsafe_allow_html=True)
 
-    with st.sidebar.expander("📈 My Progress (quick view)", expanded=False):
-        try:
-            _hist_db = get_db_client()
-            _history = get_user_history(_hist_db)
-        except Exception:
-            _history = []
-
-        if not _history:
-            st.caption("No saved measurements yet. Click '💾 Save this measurement to history' after calculating to start tracking your progress.")
-        else:
-            try:
-                import pandas as pd
-                _df = pd.DataFrame(_history)
-                if "created_at" in _df.columns:
-                    _df["created_at"] = pd.to_datetime(_df["created_at"])
-                    _df = _df.sort_values("created_at").set_index("created_at")
-
-                _metric_map = {
-                    "weight": "⚖️ Weight (kg)",
-                    "bmi": "📐 BMI",
-                    "vo2max": "❤️ VO2max",
-                    "bio_age": "🧬 Biological age",
-                    "resting_hr": "💓 Resting HR",
-                    "weekly_activity_minutes": "🏃 Weekly activity (min)",
-                }
-                _available = [c for c in _metric_map if c in _df.columns and _df[c].notna().sum() >= 1]
-
-                if not _available:
-                    st.caption("Not enough saved data yet to plot a trend.")
-                else:
-                    _choice = st.selectbox(
-                        "Metric",
-                        _available,
-                        format_func=lambda c: _metric_map.get(c, c),
-                        key="progress_metric_choice",
-                    )
-                    _series = _df[_choice].dropna()
-                    if len(_series) >= 2:
-                        st.line_chart(_series)
-                    else:
-                        st.metric(_metric_map.get(_choice, _choice), f"{_series.iloc[-1]:.1f}")
-                        st.caption("Save another measurement to see a trend over time.")
-            except Exception as e:
-                st.caption(f"Could not load progress chart: {e}")
+    # ── Logg ut ──
+    st.sidebar.button("Log out", on_click=sign_out, use_container_width=True)
 
 else:
-    st.sidebar.markdown(
-        """
-<div style="padding:12px 0 8px 0;">
-  <div style="font-size:13px;font-weight:700;color:#E5E7EB;margin-bottom:4px;">🔐 Log in / Sign up</div>
-  <div style="font-size:12px;color:#9CA3AF;">Log in to save your values and access your history.</div>
+    # ── Ikkje innlogga: vis logo + login/signup ──
+    st.sidebar.markdown("""
+<div class="sb-brand">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M3 12h3l3-8 4 16 3-8h5" stroke="#0EC8C4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span>MyHealth<strong>Tools</strong></span>
 </div>
-""",
-        unsafe_allow_html=True,
-    )
+<div class="sb-login-header">
+  <div class="sb-login-title">🔐 Log in / Sign up</div>
+  <div class="sb-login-sub">Save your results and track progress over time.</div>
+</div>
+""", unsafe_allow_html=True)
     _sb_tab1, _sb_tab2 = st.sidebar.tabs(["Log in", "Sign up"])
 
     with _sb_tab1:
@@ -806,23 +777,154 @@ html, body, .stApp {
 
 /* ─── SIDEBAR — premium dark panel ─── */
 [data-testid="stSidebar"] {
-  background: rgba(6,11,20,0.95) !important;
-  border-right: 1px solid var(--stroke) !important;
+  background: linear-gradient(180deg, #070D1A 0%, #060B14 100%) !important;
+  border-right: 1px solid rgba(14,200,196,0.12) !important;
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   height: 100vh !important;
   z-index: 9999 !important;
+  box-shadow: 4px 0 32px rgba(0,0,0,0.5) !important;
 }
 [data-testid="stSidebar"] > div:first-child {
   background: transparent !important;
+  padding-top: 1rem !important;
 }
 [data-testid="stSidebarContent"] {
   background: transparent !important;
 }
-
-/* Sidebar nav-knapp øvst til venstre */
 section[data-testid="stSidebarNav"] { display: none !important; }
+
+/* Brand */
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0.5rem 0.25rem 1.2rem 0.25rem;
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.05rem;
+  color: #E5E7EB;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid rgba(14,200,196,0.1);
+  margin-bottom: 1rem;
+}
+.sb-brand strong { color: #0EC8C4; font-weight: 700; }
+
+/* User card */
+.sb-user-card {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  background: linear-gradient(135deg, rgba(14,200,196,0.08), rgba(15,23,42,0.6));
+  border: 1px solid rgba(14,200,196,0.15);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 0.75rem;
+}
+.sb-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0EC8C4, #0F766E);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; color: #020F0F; font-size: 1rem; flex-shrink: 0;
+  box-shadow: 0 0 12px rgba(14,200,196,0.35);
+}
+.sb-user-info { display: flex; flex-direction: column; min-width: 0; }
+.sb-user-email {
+  font-size: 0.78rem; font-weight: 600; color: #E5E7EB;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.sb-user-status {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 0.68rem; color: #34D399; margin-top: 2px;
+}
+.sb-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #34D399;
+  box-shadow: 0 0 6px rgba(52,211,153,0.7);
+  display: inline-block;
+}
+
+/* Divider */
+.sb-divider {
+  height: 1px;
+  background: rgba(148,163,184,0.08);
+  margin: 0.75rem 0;
+}
+
+/* Trust badges */
+.sb-trust { padding: 0.25rem 0; }
+.sb-trust-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.72rem; color: #64748B;
+  padding: 4px 0;
+  line-height: 1.4;
+}
+.sb-trust-icon { font-size: 0.8rem; }
+
+/* Password set */
+.sb-pw-set {
+  font-size: 0.75rem; color: #34D399;
+  padding: 4px 0 8px 0;
+}
+
+/* Login header (ikkje innlogga) */
+.sb-login-header { margin: 0.5rem 0 1rem 0; }
+.sb-login-title {
+  font-size: 0.9rem; font-weight: 700; color: #E5E7EB;
+  margin-bottom: 4px;
+}
+.sb-login-sub { font-size: 0.75rem; color: #64748B; line-height: 1.4; }
+
+/* Sidebar Streamlit widgets override */
+[data-testid="stSidebar"] .stButton > button {
+  background: linear-gradient(135deg, #0EC8C4, #0A9997) !important;
+  color: #020F0F !important;
+  font-weight: 700 !important;
+  border: none !important;
+  border-radius: 40px !important;
+  box-shadow: 0 0 16px rgba(14,200,196,0.25) !important;
+  transition: all 0.2s !important;
+}
+[data-testid="stSidebar"] .stButton > button:hover {
+  box-shadow: 0 0 24px rgba(14,200,196,0.45) !important;
+  transform: translateY(-1px) !important;
+}
+[data-testid="stSidebar"] [data-testid="stPageLink"] a {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 9px 12px !important;
+  border-radius: 10px !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  color: #94A3B8 !important;
+  text-decoration: none !important;
+  transition: all 0.15s !important;
+  border: 1px solid transparent !important;
+  margin-bottom: 4px !important;
+}
+[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {
+  background: rgba(14,200,196,0.08) !important;
+  color: #0EC8C4 !important;
+  border-color: rgba(14,200,196,0.2) !important;
+}
+[data-testid="stSidebar"] .stTabs [data-baseweb="tab-list"] {
+  background: rgba(15,23,42,0.5) !important;
+  border: 1px solid rgba(148,163,184,0.1) !important;
+  border-radius: 40px !important;
+  padding: 3px !important;
+}
+[data-testid="stSidebar"] .stTabs [data-baseweb="tab"] {
+  border-radius: 40px !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  color: #64748B !important;
+}
+[data-testid="stSidebar"] .stTabs [aria-selected="true"] {
+  background: rgba(14,200,196,0.15) !important;
+  color: #0EC8C4 !important;
+}
 
 /* ─── TABS — match landing page pill style ─── */
 .stTabs [data-baseweb="tab-list"] {
