@@ -36,7 +36,7 @@ st.set_page_config(
     page_title="MyHealthTools",
     page_icon=_LOGO_ICON_DATA_URI,
     layout="centered",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
@@ -777,6 +777,11 @@ html, body, .stApp {
 [data-testid="stSidebar"] {
   background: rgba(6,11,20,0.95) !important;
   border-right: 1px solid var(--stroke) !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
 }
 [data-testid="stSidebar"] > div:first-child {
   background: transparent !important;
