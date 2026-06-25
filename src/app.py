@@ -39,6 +39,26 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ── Hamburger-knapp: eigen teal knapp som triggar Streamlit sin sidebar ──────
+st.markdown("""
+<button id="ht-hamburger" onclick="
+  (function() {
+    var selectors = [
+      '[data-testid=\\'stExpandSidebarButton\\']',
+      '[data-testid=\\'stBaseButton-headerNoPadding\\']',
+      '[data-testid=\\'collapsedControl\\']',
+      'button[kind=\\'headerNoPadding\\']'
+    ];
+    for (var i = 0; i < selectors.length; i++) {
+      var btn = document.querySelector(selectors[i]);
+      if (btn) { btn.click(); return; }
+    }
+  })();
+">
+  <span></span><span></span><span></span>
+</button>
+""", unsafe_allow_html=True)
+
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
 # når Python-backend-en direkte. components.html() rendrer i en egen
@@ -583,53 +603,40 @@ st.markdown(
 #MainMenu, footer, [data-testid="stToolbar"],
 [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
 
-/* Header og toolbar: synleg og på plass */
-header[data-testid="stHeader"] {
-  background: transparent !important;
-  height: 3.5rem !important;
-  overflow: visible !important;
-  pointer-events: none !important;
-}
-[data-testid="stAppToolbar"] {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  height: 3.5rem !important;
-  z-index: 999998 !important;
-  pointer-events: none !important;
-  display: flex !important;
-  align-items: center !important;
+/* Gøym heile Streamlit-headeren — vi lagar eigen hamburger */
+header[data-testid="stHeader"],
+[data-testid="stAppToolbar"],
+[data-testid="stToolbar"],
+[data-testid="stDecoration"] {
+  display: none !important;
 }
 
-/* Sidebar-toggle — støttar nytt og gamalt Streamlit */
-[data-testid="stExpandSidebarButton"],
-[data-testid="stBaseButton-headerNoPadding"],
-[data-testid="collapsedControl"],
-button[kind="headerNoPadding"] {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: all !important;
-  background: #0EC8C4 !important;
-  border-radius: 50% !important;
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-  box-shadow: 0 0 16px rgba(14,200,196,0.6) !important;
+/* Eigen hamburger-knapp */
+#ht-hamburger {
   position: fixed !important;
   top: 0.75rem !important;
   left: 0.75rem !important;
-  z-index: 999999 !important;
+  z-index: 9999999 !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  border-radius: 50% !important;
+  background: #0EC8C4 !important;
+  box-shadow: 0 0 16px rgba(14,200,196,0.6) !important;
   border: none !important;
   cursor: pointer !important;
+  display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+  padding: 0 !important;
 }
-[data-testid="stExpandSidebarButton"] svg,
-[data-testid="stBaseButton-headerNoPadding"] svg,
-[data-testid="collapsedControl"] svg {
-  fill: #020F0F !important;
-  color: #020F0F !important;
+#ht-hamburger span {
+  display: block !important;
+  width: 14px !important;
+  height: 2px !important;
+  background: #020F0F !important;
+  border-radius: 2px !important;
 }
 
 
