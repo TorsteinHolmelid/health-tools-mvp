@@ -583,18 +583,22 @@ st.markdown(
 #MainMenu, footer, [data-testid="stToolbar"],
 [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
 
-/* Gøym header men ikkje sidebar-toggle */
-header[data-testid="stHeader"] { background: transparent !important; height: 0 !important; overflow: visible !important; }
+/* Header: transparent men held høgda så toggle-knappen er klikkbar */
+header[data-testid="stHeader"] {
+  background: transparent !important;
+  height: 3.5rem !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
 
-/* Sidebar-toggle alltid synleg, uansett kor Streamlit plasserer den */
+/* Sidebar-toggle — teal knapp øvst til venstre */
 [data-testid="collapsedControl"],
-button[kind="header"],
-.st-emotion-cache-1dp5vir,
 [aria-label="open sidebar"],
 [aria-label="Close sidebar"] {
   display: flex !important;
   visibility: visible !important;
   opacity: 1 !important;
+  pointer-events: all !important;
   background: #0EC8C4 !important;
   border-radius: 50% !important;
   width: 2.5rem !important;
@@ -610,14 +614,13 @@ button[kind="header"],
   justify-content: center !important;
 }
 [data-testid="collapsedControl"] svg,
-[aria-label="open sidebar"] svg {
+[aria-label="open sidebar"] svg,
+[aria-label="Close sidebar"] svg {
   fill: #020F0F !important;
   color: #020F0F !important;
 }
 
-/* Remove top padding that Streamlit adds for the hidden header */
-.stApp > header { height: 0 !important; }
-.block-container { padding-top: 0 !important; }
+.block-container { padding-top: 1rem !important; }
 
 
 :root {
@@ -782,21 +785,6 @@ html, body, .stApp {
   background: transparent !important;
 }
 
-/* ─── SIDEBAR COLLAPSE BUTTON — gjer synleg ─── */
-[data-testid="collapsedControl"] {
-  background: #0EC8C4 !important;
-  border: none !important;
-  color: #020F0F !important;
-  opacity: 1 !important;
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-  border-radius: 50% !important;
-  box-shadow: 0 0 16px rgba(14,200,196,0.5) !important;
-}
-[data-testid="collapsedControl"] svg {
-  color: #020F0F !important;
-  fill: #020F0F !important;
-}
 /* Sidebar nav-knapp øvst til venstre */
 section[data-testid="stSidebarNav"] { display: none !important; }
 
@@ -1704,58 +1692,7 @@ def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
     </script>
     """
     html(css_part, height=200)
-# ── Sidebar toggle — alltid synleg øvst til venstre ─────────────────────────
-components.html(
-    """
-    <script>
-    (function() {
-        function tryToggle() {
-            try {
-                var doc = window.top.document;
-                // Finn sidebar-toggle — prøv fleire moglege selektorar
-                var btn = doc.querySelector('[data-testid="collapsedControl"]')
-                    || doc.querySelector('[aria-label="open sidebar"]')
-                    || doc.querySelector('[aria-label="Close sidebar"]')
-                    || doc.querySelector('button[kind="header"]');
-                if (btn) {
-                    btn.style.cssText = [
-                        'display:flex!important',
-                        'visibility:visible!important',
-                        'opacity:1!important',
-                        'background:#0EC8C4!important',
-                        'border-radius:50%!important',
-                        'width:2.5rem!important',
-                        'height:2.5rem!important',
-                        'box-shadow:0 0 16px rgba(14,200,196,0.6)!important',
-                        'position:fixed!important',
-                        'top:0.75rem!important',
-                        'left:0.75rem!important',
-                        'z-index:999999!important',
-                        'border:none!important',
-                        'cursor:pointer!important',
-                        'align-items:center!important',
-                        'justify-content:center!important',
-                    ].join(';');
-                    var svg = btn.querySelector('svg');
-                    if (svg) { svg.style.cssText = 'fill:#020F0F!important;color:#020F0F!important;'; }
-                }
-            } catch(e) {}
-        }
-        // Køyr fleire gonger for å fange opp etter Streamlit rerender
-        tryToggle();
-        setTimeout(tryToggle, 300);
-        setTimeout(tryToggle, 800);
-        setTimeout(tryToggle, 2000);
-        // Observer for DOM-endringar
-        try {
-            new MutationObserver(tryToggle).observe(window.top.document.body, {childList:true, subtree:true});
-        } catch(e) {}
-    })();
-    </script>
-    """,
-    height=0,
-    width=0,
-)
+
 # ── Render Hero ───────────────────────────────────────────────────────────────
 st.markdown(
     """
