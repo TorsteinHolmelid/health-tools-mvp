@@ -81,6 +81,9 @@ header[data-testid="stHeader"] {
   fill: #020F0F !important;
   color: #020F0F !important;
 }
+
+.block-container { padding-top: 4rem !important; }
+
 /* User card */
 .ht-side-card {
   background: linear-gradient(160deg, rgba(14,165,163,0.08), rgba(15,23,42,0.9));
