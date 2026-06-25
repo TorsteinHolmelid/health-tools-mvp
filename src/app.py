@@ -720,7 +720,7 @@ html, body, .stApp {
 
 .block-container {
   max-width: 1100px;
-  padding: 0 1.5rem 3rem !important;
+  padding: 4rem 1.5rem 3rem !important;
 }
 
 /* ─── BRANDED NAV BAR (replaces Streamlit header) ─── */
@@ -781,7 +781,7 @@ html, body, .stApp {
   top: 0 !important;
   left: 0 !important;
   height: 100vh !important;
-  z-index: 99999 !important;
+  z-index: 9999 !important;
 }
 [data-testid="stSidebar"] > div:first-child {
   background: transparent !important;
