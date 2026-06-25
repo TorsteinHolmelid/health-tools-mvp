@@ -1,4509 +1,125 @@
+"""
+Premium Longevity Intelligence Report — PDF generator (English, premium edition)
+Drop-in replacement for create_pdf_bytes_ultimate(report).
+"""
+
 from __future__ import annotations
+import io
 import math
 import uuid
-import io
-from io import BytesIO
+import base64
 from datetime import datetime, timezone
-from html import escape
-import matplotlib.pyplot as plt
-import streamlit as st
-import streamlit.components.v1 as components
+from reportlab.lib.utils import ImageReader
+
+# Embedded MyHealthTools logo mark (PNG, 192x192) so the PDF never depends on
+# external image files being present on disk.
+_LOGO_PNG_B64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAE9ElEQVR4nO3dvU7caBiGYQ/aKgXHkyLS1nvEqSNRcDwUadliNxEBz2CPv18/11VFKRgzvLe/1wGFyzKJx+en197XwHYvX79del/DFkNepGE/pxGjGOKCDHymEYLoegEGn2XpG0LzFzb03NI6hmYvZvDZo1UI1V/E4HNE7RAean5ww89RtWeoSl0GnxpqnAbFTwDDTy01ZqtoAIaf2krPWJEjxeDTQ4mV6PAJYPjppcTsHQrA8NPb0Rm8OwDDzyiOzOJdARh+RnPvTO4OwPAzqntmc1cAhp/R7Z3Rqj8KAaPbHIC7P7PYM6ubAjD8zGbrzH4agOFnVltm1zMA0W4G4O7P7D6b4asBGH7O4tYsW4GIthqAuz9nc22mnQBE+xCAuz9ntTbbTgCiCYBofwRg/eHs3s+4E4BovwNw9yfF21l3AhBNAEQTANEelsX+T55fM+8EIJoAiCYAogmAaBcPwCRzAhBNAEQTANEEQDQBEE0ARBMA0QRANAEQTQBEEwDRBEA0ARDtr94XMLqff//z4e++/Pje4UqowQlww9rw3/p75iOAKz4bchGcgwBWbB1uEcxPAEQTANEE8M7etcYaNDcBEE0ARBPAG/euM9ageQmAaAL4n7t4JgEUIqA5CYBoAljcvZMJoCAhzUcARIsPwF07W3wAZIsOoMbd34kyl+gAQABEiw1gz6ry5cf3Xf8ThDVoHrEBwLIIgHCRAexdf9b+XPI16CcyAPglLgB3Zt6KC2CPtZXHGnQuAiBaVAD3PvxyXlEBlGINOg8BEC0mAOsPa2ICKM0adA7df0VSi19BdJYBnP3XNY14/ZfH56fXXi8+4mDWurMf/UKP+F6V0jOCbivQGb6grdagM7xXt/T8/LoEMOoXtPdxvGbU96q0Xp+nh2CiCeCgEU8NthNAQ3790ngEQLQuAYy4Nox2TWl3/17vf7cTYKSBO3otvit8TOT3AZZljAhGuIZkvd//7j8K0fsNGJEf3GvHQ3Ah1qA5CYBoAhiM9actARRkDZqPAAYiivYEMCnrTxkCKMwaNBcBDMLDbx8CIJoAKrAGzUMAA7D+9CMAogmgkhp3anf/8gRANAEQTQAVlVxZrD91CIBoAiCaACZg/alHAJUZ3rEJYHACqksARBNAA+7i4xLAwIRTnwCIJoBG3M3HJIBBCaYNARBNAEQTANEE0NDWvd7+344AGvtsuA1/WwLo4NqQG/72Lo/PT6+9LwJ6cQIQTQBEEwDRBEA0ARBNAEQTANEEQDQBEE0ARBMA0QRANAEQ7eHl67dL74uAHl6+frs4AYgmAKIJgGgCINrDsvz3MND7QqClXzPvBCCaAIgmAKL9DsBzACnezroTgGh/BOAU4Ozez7gTgGgCINqHAKxBnNXabDsBiLYagFOAs7k2004Aol0NwCnAWdya5ZsngAiY3WczbAUi2qcBOAWY1ZbZ3XQCiIDZbJ3ZzSuQCJjFnln1DEC0XQE4BRjd3hndfQKIgFHdM5t3rUAiYDT3zuTdzwAiYBRHZvHQQ7AI6O3oDB7+VyAR0EuJ2Ss6vI/PT68lPx6sKXnTLfp9AKcBtZWeseLfCBMBtdSYrarDaiWihJo31ao/CuE04KjaM9RsQJ0G7NHq5tn8Di0Ebmm9NXRdUcTAsvRdlYfY0YWQaYRnxO4XsEYQ5zTCwL833AVdI4q5jDjsa/4FaaKQH5DHuFsAAAAASUVORK5CYII="
+)
+
+def _get_logo_image_reader():
+    return ImageReader(io.BytesIO(base64.b64decode(_LOGO_PNG_B64)))
+
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib import colors
-from reportlab.lib.colors import HexColor, white, black
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.colors import HexColor, white
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer, 
-    Table, TableStyle, HRFlowable, Image as RLImage
-)
-import streamlit as st
-from db import (
-    sign_up, sign_in, sign_in_with_tokens, set_user_password, is_authenticated, get_current_user_id, sign_out,
-    get_user_profile, save_user_profile, get_db_client, get_user_history,
-    has_premium_access,
-    get_supabase_url, get_supabase_key,
-    save_lead,   # <-- ADD THIS LINE
+    SimpleDocTemplate, Paragraph, PageBreak, Flowable, Spacer,
+    Table, TableStyle, HRFlowable, KeepTogether,
 )
 
-from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
 
-# ── set_page_config MÅ vere det aller første Streamlit-kallet ──
-_LOGO_ICON_B64 = "PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDQ0IDQ0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWN0IHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCIgcng9IjExIiBmaWxsPSIjMEVDOEM0Ii8+CiAgPHBhdGggZD0iTTggMjJIMTRMMTcgMTRMMjIgMzBMMjUgMjJIMzYiIHN0cm9rZT0iIzA0MDcwRCIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K"
-_LOGO_ICON_DATA_URI = f"data:image/svg+xml;base64,{_LOGO_ICON_B64}"
-st.set_page_config(
-    page_title="MyHealthTools",
-    page_icon=_LOGO_ICON_DATA_URI,
-    layout="centered",
-    initial_sidebar_state="collapsed",
-)
-
-# ── Hamburger-knapp: synleg i DOM via st.markdown + JS-lyttar via components.html ──
-st.markdown("""
-<button id="ht-burger">
-  <span></span><span></span><span></span>
-</button>
-<style>
-#ht-burger {
-  position: fixed;
-  top: 0.75rem;
-  left: 0.75rem;
-  z-index: 9999999;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  background: #0EC8C4;
-  box-shadow: 0 0 16px rgba(14,200,196,0.6);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0;
-}
-#ht-burger span {
-  display: block;
-  width: 14px;
-  height: 2px;
-  background: #020F0F;
-  border-radius: 2px;
-  pointer-events: none;
-}
-</style>
-""", unsafe_allow_html=True)
-
-components.html("""
-<script>
-(function() {
-  function attachListener() {
-    var doc = window.parent.document;
-    var burger = doc.getElementById('ht-burger');
-    if (!burger) { setTimeout(attachListener, 100); return; }
-    if (burger._htListenerAttached) return;
-    burger._htListenerAttached = true;
-    burger.addEventListener('click', function() {
-      var selectors = [
-        '[data-testid="stExpandSidebarButton"]',
-        '[data-testid="stBaseButton-headerNoPadding"]',
-        '[data-testid="collapsedControl"]'
-      ];
-      for (var i = 0; i < selectors.length; i++) {
-        var btn = doc.querySelector(selectors[i]);
-        if (btn) { btn.click(); return; }
-      }
-    });
-  }
-  attachListener();
-})();
-</script>
-""", height=0)
-
-# --- Magic link-innlogging: fang opp access_token/refresh_token ---
-# Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
-# når Python-backend-en direkte. components.html() rendrer i en egen
-# iframe der <script>-tags faktisk kjøres (st.markdown gjør IKKE dette).
-# Scriptet leser browserens hash, og hvis det finner et token, skriver
-# det en synlig lenke DIREKTE i hoveddokumentets DOM (ikke i iframen) —
-# dette er DOM-manipulasjon, ikke navigasjon, og er derfor IKKE underlagt
-# iframens sandbox-restriksjon på top-navigasjon (som blokkerer all
-# automatisk/JS-styrt navigasjon fra denne typen iframe).
-
-
-if "access_token" in st.query_params and not is_authenticated():
-    _mlr_access_token = st.query_params.get("access_token")
-    _mlr_refresh_token = st.query_params.get("refresh_token")
-    if _mlr_access_token and _mlr_refresh_token:
-        _mlr_user, _mlr_err = sign_in_with_tokens(_mlr_access_token, _mlr_refresh_token)
-        if _mlr_err:
-            st.error(f"Could not complete login from email link: {_mlr_err}")
-        # Rydd tokens fra URL-en uansett utfall, så de ikke ligger synlige i adressefeltet
-        st.query_params.clear()
-        st.query_params["payment"] = "success"
-        if not _mlr_err:
-            st.session_state["show_set_password_prompt"] = True
-            st.rerun()
-
-# Vis kun "sjekk e-posten din"-meldingen rett etter Stripe-betaling, før
-# brukeren har logget seg inn via magic link. Når innlogging skjer, blir
-# is_authenticated() True og meldingen forsvinner automatisk — selv om
-# ?payment=success fortsatt ligger i URL-en.
-if st.query_params.get("payment") == "success" and not is_authenticated():
-    st.success(
-        "✅ Payment received! Check your email (and spam/junk folder) for a "
-        "login link to access your full report."
-    )
-
-# --- Google tag + magic-link script i eitt kall (unngår dobbel rerun) ---
-components.html(
-    """
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-68ZCX624Z4"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-68ZCX624Z4');
-    </script>
-    <script>
-    (function() {
-        if (window.__mlrDone) return;
-        window.__mlrDone = true;
-        let hash = "";
-        try { hash = window.top.location.hash; } catch (e) { hash = window.location.hash; }
-        if (hash && hash.includes("access_token")) {
-            const params = new URLSearchParams(hash.substring(1));
-            const accessToken = params.get("access_token");
-            const refreshToken = params.get("refresh_token");
-            if (accessToken && refreshToken) {
-                let base;
-                try { base = window.top.location.origin + window.top.location.pathname; }
-                catch (e) { base = window.location.origin + window.location.pathname; }
-                const url = new URL(base);
-                url.searchParams.set("access_token", accessToken);
-                url.searchParams.set("refresh_token", refreshToken);
-                url.searchParams.set("mlr", "1");
-                try {
-                    const doc = window.top.document;
-                    let box = doc.getElementById("mlrTopContainer");
-                    if (!box) {
-                        box = doc.createElement("div");
-                        box.id = "mlrTopContainer";
-                        box.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:999999;padding:16px;background:#0EA5A3;text-align:center;font-family:sans-serif;";
-                        doc.body.prepend(box);
-                    }
-                    box.innerHTML = '<a href="' + url.toString() + '" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">✅ Click here to log in and continue &rarr;</a>';
-                } catch (e) { console.error("Could not write to top document:", e); }
-            }
-        }
-    })();
-    </script>
-    """,
-    height=0,
-    width=0,
-)
-
-# --- Innlogging / registrering (no-blokkerande) ---
-logged_in = is_authenticated()
-
-if logged_in:
-    # ── Synlig prompt i hovedinnholdet: vises kun rett etter at brukeren
-    # nettopp logget inn via en magic link-e-post, så de ikke går glipp av
-    # muligheten til å sette et passord (sidebaren er lett å overse). ──
-    if (
-        st.session_state.get("show_set_password_prompt", False)
-        and not st.session_state.get("password_just_set", False)
-    ):
-        with st.container(border=True):
-            _pw_col1, _pw_col2 = st.columns([5, 1])
-            with _pw_col1:
-                st.markdown("**🔑 Want to skip the email link next time?**")
-                st.caption("Set a password now, or just close this — you can always log in with a fresh email link instead.")
-            with _pw_col2:
-                if st.button("✕", key="dismiss_password_prompt"):
-                    st.session_state["show_set_password_prompt"] = False
-                    st.rerun()
-
-            _main_new_pw = st.text_input("New password", type="password", key="main_set_pw_input")
-            _main_new_pw_confirm = st.text_input("Confirm password", type="password", key="main_set_pw_confirm")
-            if st.button("Save password", key="main_set_pw_button", type="primary"):
-                if not _main_new_pw or len(_main_new_pw) < 6:
-                    st.error("Password must be at least 6 characters.")
-                elif _main_new_pw != _main_new_pw_confirm:
-                    st.error("Passwords don't match.")
-                else:
-                    _main_pw_user, _main_pw_err = set_user_password(_main_new_pw)
-                    if _main_pw_err:
-                        st.error(f"Could not set password: {_main_pw_err}")
-                    else:
-                        st.session_state["password_just_set"] = True
-                        st.session_state["show_set_password_prompt"] = False
-                        st.success("✅ Password set! You can log in with it next time.")
-                        st.rerun()
-
-    _user_email = st.session_state.get("user_email", "")
-    _avatar_letter = (_user_email[0].upper() if _user_email else "U")
-
-    # ── Logo / brand øvst ──
-    st.sidebar.markdown("""
-<div class="sb-brand">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 12h3l3-8 4 16 3-8h5" stroke="#0EC8C4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-  <span>MyHealth<strong>Tools</strong></span>
-</div>
-""", unsafe_allow_html=True)
-
-    # ── Brukarkort ──
-    st.sidebar.markdown(f"""
-<div class="sb-user-card">
-  <div class="sb-avatar">{_avatar_letter}</div>
-  <div class="sb-user-info">
-    <div class="sb-user-email">{escape(_user_email)}</div>
-    <div class="sb-user-status"><span class="sb-dot"></span>Logged in</div>
-  </div>
-</div>
-<div class="sb-divider"></div>
-""", unsafe_allow_html=True)
-
-    # ── Nav-lenker ──
-    st.sidebar.page_link("pages/progress.py", label="📈 My Progress")
-
-    # ── Set password ──
-    if not st.session_state.get("password_just_set", False):
-        with st.sidebar.expander("🔑 Set a password (optional)", expanded=False):
-            st.caption("Log in directly next time — no email link needed.")
-            _new_pw = st.text_input("New password", type="password", key="set_pw_input")
-            _new_pw_confirm = st.text_input("Confirm password", type="password", key="set_pw_confirm")
-            if st.button("Save password", key="set_pw_button"):
-                if not _new_pw or len(_new_pw) < 6:
-                    st.error("Password must be at least 6 characters.")
-                elif _new_pw != _new_pw_confirm:
-                    st.error("Passwords don't match.")
-                else:
-                    _pw_user, _pw_err = set_user_password(_new_pw)
-                    if _pw_err:
-                        st.error(f"Could not set password: {_pw_err}")
-                    else:
-                        st.session_state["password_just_set"] = True
-                        st.success("✅ Password set!")
-                        st.rerun()
-    else:
-        st.sidebar.markdown('<div class="sb-pw-set">✅ Password set</div>', unsafe_allow_html=True)
-
-    # ── Trust badges ──
-    st.sidebar.markdown("""
-<div class="sb-divider"></div>
-<div class="sb-trust">
-  <div class="sb-trust-row"><span class="sb-trust-icon">🔒</span>256-bit encryption</div>
-  <div class="sb-trust-row"><span class="sb-trust-icon">🛡️</span>GDPR · no third parties</div>
-  <div class="sb-trust-row"><span class="sb-trust-icon">🔐</span>Only you see your data</div>
-</div>
-<div class="sb-divider"></div>
-""", unsafe_allow_html=True)
-
-    # ── Logg ut ──
-    st.sidebar.button("Log out", on_click=sign_out, use_container_width=True)
-
-else:
-    # ── Ikkje innlogga: vis logo + login/signup ──
-    st.sidebar.markdown("""
-<div class="sb-brand">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M3 12h3l3-8 4 16 3-8h5" stroke="#0EC8C4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>
-  <span>MyHealth<strong>Tools</strong></span>
-</div>
-<div class="sb-login-header">
-  <div class="sb-login-title">🔐 Log in / Sign up</div>
-  <div class="sb-login-sub">Save your results and track progress over time.</div>
-</div>
-""", unsafe_allow_html=True)
-    _sb_tab1, _sb_tab2 = st.sidebar.tabs(["Log in", "Sign up"])
-
-    with _sb_tab1:
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_password")
-        if st.button("Log in", use_container_width=True, type="primary"):
-            user, error = sign_in(email, password)
-            if error:
-                st.error(f"Login failed: {error}")
-            else:
-                st.session_state["authenticated"] = True
-                st.session_state["user_id"] = user.id
-                st.session_state["user_email"] = email
-                st.rerun()
-
-    with _sb_tab2:
-        email = st.text_input("Email", key="signup_email")
-        password = st.text_input("Password", type="password", key="signup_password")
-        if st.button("Sign up", use_container_width=True, type="primary"):
-            user, error = sign_up(email, password)
-            if error:
-                st.error(f"Signup failed: {error}")
-            else:
-                st.success("Account created! Please check your email to confirm (if required), then log in.")
-
-# --- Resten av din eksisterande kode i app.py (berre endre funksjonskall) ---
-# Merk: save_health_metrics() kallar du utan user_id-parameter no
-# get_user_history(db) kallar du utan user_id-parameter
-# has_premium_access(db) kallar du utan user_id-parameter
-import calculators
-from calculators import (
-    bmr_mifflin,
-    tdee_including_weekly_exercise,
-)
-from db import get_db_client, save_health_metrics
-def plot_health_radar(bmi_score, vo2_score, activity_score, lifestyle_score):
-    import plotly.graph_objects as go
-    categories = ['Kroppssammensetning', 'Kondisjon', 'Aktivitet', 'Livsstil']
-    values = [bmi_score, vo2_score, activity_score, lifestyle_score]
-    
-    fig = go.Figure(data=go.Scatterpolar(
-        r=values,
-        theta=categories,
-        fill='toself',
-        marker=dict(color='#0EA5A3', size=6),
-        line=dict(color='#0EA5A3', width=2),
-        opacity=0.7
-    ))
-    fig.update_layout(
-        polar=dict(
-            radialaxis=dict(visible=True, range=[0, 100], color='#94A3B8', gridcolor='#334155'),
-            angularaxis=dict(tickfont=dict(color='#E5E7EB', size=10), gridcolor='#334155'),
-            bgcolor='rgba(0,0,0,0)'
-        ),
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=60, r=60, t=20, b=20),
-        height=350,
-        font=dict(color='#E5E7EB')
-    )
-    return fig
-
-# ── Databaseoppsett ───────────────────────────────────────────────────────────
-db = get_db_client()
-
-# ── Globale konstantar for PDF ────────────────────────────────────────────────
-PAGE_W, PAGE_H = A4
-MARGIN_H = 18 * mm
-CONTENT_W = PAGE_W - 2 * MARGIN_H
-
-def P(txt, style):
-    return Paragraph(str(txt), style)
-
-# ── Last inn lagra profil-verdiar for innlogga brukar (ein gong per sesjon) ───
-PROFILE_KEYS = [
-    "basic_resting_hr", "age", "inp_sex", "inp_height", "inp_weight",
-    "s_bmi", "s_vo2", "s_bio", "s_conditions", "s_plan",
-    "b_use_whr", "b_waist", "b_hip", "b_use_neck", "b_neck", "b_bodyfat",
-    "v_activity", "v_weekly_minutes", "v_session_intensity",
-    "vo2_rhr_unknown", "vo2_rhr_value", "vo2_maxhr_unknown", "vo2_maxhr_val",
-    "vo2_method_select", "vo2_cooper_distance", "vo2_rockport_time",
-    "vo2_rockport_hr", "vo2_measured_input",
-    "global_resting_hr", "global_waist_cm", "global_hip_cm",
-    "ui_act_group", "ui_activity_type", "ui_intensity", "ui_sessions_per_week", "ui_minutes", "ui_rpe",
-    "ui_use_hr", "ui_avg_hr_calc", "ui_resting_hr", "ui_manual_kcal", "ui_manual_kcal_val",
-    "bio_smoker", "bio_diabetes", "bio_menopause", "bio_family_hist",
-    "bio_bp_unknown", "bio_bp_val", "bio_chol_unknown", "bio_chol_val",
-    "bio_rhr_unknown", "bio_rhr_val", "bio_sleep_unknown", "bio_sleep_val",
-    "bio_alc_unknown", "bio_alc_val", "bio_fv", "bio_stress",
-    "bio_grip_unknown", "bio_grip_val", "bio_waist_unknown", "bio_waist_val", "bio_hip_val",
-    "cond_select", "cond_custom", "cond_goal",
-    "plan_create", "plan_type", "protein_toggle",
-]
-
-if logged_in and "profile_loaded" not in st.session_state:
-    _saved_profile = get_user_profile(db)
-    if _saved_profile:
-        for _k, _v in _saved_profile.items():
-            if _k in PROFILE_KEYS:
-                st.session_state[_k] = _v
-    st.session_state["profile_loaded"] = True
-
-def autosave_profile():
-    """Lagre alle dei viktigste input-verdiane for innlogga brukar."""
-    if not logged_in:
-        return
-    data = {k: st.session_state.get(k) for k in PROFILE_KEYS if k in st.session_state}
-    save_user_profile(db, data)
-
-# Autosave kvar gong appen køyrer (ikkje berre ved Calculate)
-if logged_in and st.session_state.get("profile_loaded"):
-    autosave_profile()
-
-
-if "generated" not in st.session_state:
-    st.session_state.generated = False
-
-# Ikkje generer eigen UUID for innlogga brukarar – user_id kjem frå auth
-if "user_id" not in st.session_state:
-    st.session_state["user_id"] = None
-
-# ── Resting HR Sync funksjonar ────────────────────────────────────────────────
-_HR_KEYS = [
-    "resting_hr", "global_resting_hr", "basic_resting_hr",
-    "ui_resting_hr", "vo2_rhr_value", "bio_rhr_val",
-]
-
-def _sync_hr(source_key: str):
-    val = st.session_state.get(source_key)
-    if val is None:
-        return
-    try:
-        v = int(val)
-    except Exception:
-        return
-    for k in _HR_KEYS:
-        if k != source_key:
-            st.session_state[k] = v
-
-def sync_from_basic():
-    _sync_hr("basic_resting_hr")
-
-def sync_from_calc():
-    _sync_hr("ui_resting_hr")
-
-def sync_from_vo2():
-    _sync_hr("vo2_rhr_value")
-
-def sync_from_bio():
-    _sync_hr("bio_rhr_val")
-
-# ── PDF Styles Klasse ─────────────────────────────────────────────────────────
-class PDFStyles:
-    PRIMARY = colors.HexColor("#0EA5A3")
-    BG = colors.HexColor("#0B1220")
-    TEXT = colors.HexColor("#E5E7EB")
-    MUTED = colors.HexColor("#94A3B8")
-    
-    H1 = ParagraphStyle("H1", fontName="Helvetica-Bold", fontSize=24, leading=28, spaceAfter=20, textColor=colors.white)
-    H2 = ParagraphStyle("H2", fontName="Helvetica-Bold", fontSize=18, leading=22, spaceAfter=12, textColor=colors.white)
-    Body = ParagraphStyle("Body", fontName="Helvetica", fontSize=10, leading=14, spaceAfter=10, textColor=colors.lightgrey)
-    Label = ParagraphStyle("Label", fontName="Helvetica-Bold", fontSize=8, leading=10, spaceAfter=4, textColor=colors.HexColor("#64748B"))
-
-# ── Treningsplan Builder ──────────────────────────────────────────────────────
-def _build_day_plan(goal, has_strength, has_cardio, has_sport, has_low,
-                    strength_list, cardio_list, sport_list, low_list):
-    """
-    Lager en personlig ukestruktur basert på brukerens faktiske aktiviteter.
-    Rullerer gjennom flere aktiviteter innen hver kategori for variasjon.
-    """
-    # Standardaktiviteter hvis brukeren ikke har valgt noe
-    if not strength_list:
-        strength_list = ["Strength training (weights)"]
-    if not cardio_list:
-        cardio_list = ["Running/jogging"]
-    if not sport_list:
-        sport_list = []
-    if not low_list:
-        low_list = ["Walking (casual)"]
-
-    # Hjelpefunksjon for å velge aktivitet med rullering (basert på ukedag)
-    def _cycle_activity(act_list, day_index, offset=0):
-        if not act_list:
-            return None
-        idx = (day_index + offset) % len(act_list)
-        return act_list[idx]
-
-    # Basisoppsett – dagene som alltid finnes
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-    plan = []
-
-    for i, day in enumerate(days):
-        if day == "Sunday":
-            plan.append((day, "Rest", "—", "—", "—", "Full rest or restorative yoga / stretching"))
-            continue
-
-        # Velg aktiviteter basert på dag og tilgjengelige lister
-        # Vi fordeler dagene slik at alle kategorier får plass
-        if goal == "Build muscle (bulk)":
-            # Styrke på man, ons, fre
-            if i in [0, 2, 4] and has_strength:
-                primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength"
-                intensity = "Hard"
-                duration = "50 min"
-                notes = f"Progressive overload – {primary_act} · 4×8–12 · RPE 8"
-            # Kardio på tir, lør
-            elif i in [1, 5] and has_cardio:
-                primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"
-                intensity = "Moderate"
-                duration = "40 min"
-                notes = f"Zone 2 – {primary_act} · builds aerobic base"
-            # Sport eller lav intensitet på tor
-            elif i == 3 and (has_sport or has_low):
-                if has_sport:
-                    primary_act = _cycle_activity(sport_list, i, 2)
-                    session_type = "Sport"
-                else:
-                    primary_act = _cycle_activity(low_list, i, 3)
-                    session_type = "Active Recovery"
-                intensity = "Light–Moderate"
-                duration = "35 min"
-                notes = f"{primary_act} – enjoyment & recovery"
-            else:
-                # Fallback til lav intensitet
-                primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
-                session_type = "Active Recovery"
-                intensity = "Light"
-                duration = "30 min"
-                notes = f"Low-intensity movement – {primary_act} · keep HR <120"
-
-        elif goal == "Lose fat":
-            # Styrke + HIIT på man, ons, fre
-            if i in [0, 2, 4] and has_strength:
-                primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength + HIIT"
-                intensity = "Moderate–Hard"
-                duration = "50 min"
-                notes = f"{primary_act} supersets (3×12) + 15 min HIIT finisher"
-            # Kardio på tir, tor, lør
-            elif i in [1, 3, 5] and has_cardio:
-                primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"
-                intensity = "Moderate"
-                duration = "45 min"
-                notes = f"{primary_act} – steady state fat oxidation zone (65–75% HRmax)"
-            else:
-                # Sport eller lav intensitet
-                if has_sport and i in [4]:
-                    primary_act = _cycle_activity(sport_list, i, 2)
-                    session_type = "Sport"
-                else:
-                    primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
-                    session_type = "LISS / Active"
-                intensity = "Light–Moderate"
-                duration = "40 min"
-                notes = f"{primary_act} – low impact to aid recovery while burning calories"
-
-        else:  # Body Recomposition (default)
-            # Styrke på man, ons, fre
-            if i in [0, 2, 4] and has_strength:
-                primary_act = _cycle_activity(strength_list, i, 0)
-                session_type = "Strength"
-                intensity = "Moderate–Hard"
-                duration = "50 min"
-                notes = f"{primary_act} · 4×8–12 · progressive overload"
-            # Kardio på tir, lør
-            elif i in [1, 5] and has_cardio:
-                primary_act = _cycle_activity(cardio_list, i, 1)
-                session_type = "Cardio"
-                intensity = "Moderate"
-                duration = "35 min"
-                notes = f"{primary_act} – Zone 2 (65–75% HRmax) · aerobic base"
-            # Sport på tor
-            elif i == 3 and has_sport:
-                primary_act = _cycle_activity(sport_list, i, 2)
-                session_type = "Sport"
-                intensity = "Moderate"
-                duration = "40 min"
-                notes = f"{primary_act} – skill practice & enjoyment"
-            else:
-                # Lav intensitet som variasjon
-                primary_act = _cycle_activity(low_list, i, 3) if has_low else "Walking (casual)"
-                session_type = "Active Recovery"
-                intensity = "Light"
-                duration = "30 min"
-                notes = f"{primary_act} – movement variety, NEAT & recovery"
-
-        plan.append((day, session_type, primary_act, duration, intensity, notes))
-
-    return plan
-
-# ── Custom Flowables ──────────────────────────────────────────────────────────
-class PremiumRadarChart(Flowable):
-    def __init__(self, scores, width=400):
-        super().__init__()
-        self.scores = scores
-        self.w = width
-        self.h = 300
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-
-# ── Stripe Query Param Sjekk (sikker – berre via Supabase) ───────────────────
-    
-# ── Streamlit CSS Styling Custom Injection ─────────────────────────────────────
-st.markdown(
-    """
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&family=DM+Serif+Display:ital@0;1&display=swap');
-
-/* ─── HIDE STREAMLIT DEFAULT CHROME ─── */
-#MainMenu, footer, [data-testid="stToolbar"],
-[data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
-
-/* Gøym heile Streamlit-headeren */
-header[data-testid="stHeader"],
-[data-testid="stAppToolbar"],
-[data-testid="stToolbar"],
-[data-testid="stDecoration"] {
-  display: none !important;
-}
-
-
-:root {
-  --bg0: #060B14;
-  --bg1: #0A1220;
-  --card: rgba(13,20,38,.80);
-  --card-solid: #0D1426;
-  --card2: rgba(17,28,51,.70);
-  --stroke: rgba(148,163,184,.13);
-  --stroke-hi: rgba(14,200,196,.4);
-  --stroke2: rgba(148,163,184,.10);
-  --text: #EEF2F7;
-  --muted: #7F92A8;
-  --muted2: #A8B8CB;
-  --accent: #0EC8C4;
-  --accent-dark: #0A9997;
-  --accent2: #3B82F6;
-  --good: #22C55E;
-  --warn: #F59E0B;
-  --bad: #EF4444;
-  --gold: #D4AF7A;
-  --blue: #3B82F6;
-  --radius: 14px;
-  --radius-lg: 20px;
-  --nav-h: 60px;
-}
-
-*, *::before, *::after {
-  font-family: 'Inter', sans-serif;
-  box-sizing: border-box;
-}
-
-html, body, .stApp {
-  background: var(--bg0);
-  color: var(--text);
-  -webkit-font-smoothing: antialiased;
-}
-
-/* ─── STICKY UNLOCK BAR ─── */
-.sticky-unlock-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 999;
-  background: rgba(6,11,20,0.96);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid rgba(14,200,196,0.3);
-  padding: 12px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.sticky-unlock-text {
-  font-size: 13px;
-  color: #E5E7EB;
-  line-height: 1.4;
-}
-.sticky-unlock-text strong {
-  color: #0EC8C4;
-}
-.sticky-unlock-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #0EC8C4;
-  color: #ffffff !important;
-  font-weight: 800;
-  font-size: 0.92rem;
-  padding: 11px 26px;
-  border-radius: 50px;
-  text-decoration: none !important;
-  white-space: nowrap;
-  box-shadow: 0 0 24px rgba(14,200,196,0.3);
-  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-  transition: 0.2s;
-  cursor: pointer;
-  border: none;
-}
-.sticky-unlock-btn:hover { background: #12E0DC; color: #ffffff !important; transform: translateY(-1px); }
-@media (max-width: 600px) {
-  .sticky-unlock-bar { flex-direction: column; text-align: center; }
-  .sticky-unlock-bar.hide-at-bottom { display: none !important; }
-}
-
-/* ─── AMBIENT GLOW — exactly like landing page ─── */
-.stApp {
-  background:
-    radial-gradient(ellipse 80vw 60vh at 10% -10%, rgba(14,200,196,0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 60vw 50vh at 90% 100%, rgba(59,130,246,0.06) 0%, transparent 55%),
-    var(--bg0);
-  color: var(--text);
-}
-
-.block-container {
-  max-width: 1100px;
-  padding: 4rem 1.5rem 3rem !important;
-}
-
-/* ─── BRANDED NAV BAR (replaces Streamlit header) ─── */
-.ht-nav {
-  position: sticky;
-  top: 0;
-  z-index: 500;
-  background: rgba(6,11,20,0.88);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid var(--stroke);
-  margin: 0 -1.5rem 2rem -1.5rem;
-  padding: 0 1.5rem;
-  height: var(--nav-h);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.ht-nav-logo {
-  font-family: 'DM Serif Display', serif;
-  font-size: 1.2rem;
-  color: var(--text);
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  letter-spacing: -0.01em;
-}
-.ht-nav-logo span { color: var(--accent); }
-
-.ht-nav-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.ht-nav-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(14,200,196,0.08);
-  border: 1px solid rgba(14,200,196,0.25);
-  color: var(--accent);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 5px 14px;
-  border-radius: 40px;
-}
-
-/* ─── SIDEBAR — premium dark panel ─── */
-[data-testid="stSidebar"] {
-  background: linear-gradient(180deg, #070D1A 0%, #060B14 100%) !important;
-  border-right: 1px solid rgba(14,200,196,0.12) !important;
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  height: 100vh !important;
-  z-index: 9999 !important;
-  box-shadow: 4px 0 32px rgba(0,0,0,0.5) !important;
-}
-[data-testid="stSidebar"] > div:first-child {
-  background: transparent !important;
-  padding-top: 1rem !important;
-}
-[data-testid="stSidebarContent"] {
-  background: transparent !important;
-}
-section[data-testid="stSidebarNav"] { display: none !important; }
-
-/* Brand */
-.sb-brand {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 0.5rem 0.25rem 1.2rem 0.25rem;
-  font-family: 'DM Serif Display', serif;
-  font-size: 1.05rem;
-  color: #E5E7EB;
-  letter-spacing: -0.01em;
-  border-bottom: 1px solid rgba(14,200,196,0.1);
-  margin-bottom: 1rem;
-}
-.sb-brand strong { color: #0EC8C4; font-weight: 700; }
-
-/* User card */
-.sb-user-card {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  background: linear-gradient(135deg, rgba(14,200,196,0.08), rgba(15,23,42,0.6));
-  border: 1px solid rgba(14,200,196,0.15);
-  border-radius: 12px;
-  padding: 12px 14px;
-  margin-bottom: 0.75rem;
-}
-.sb-avatar {
-  width: 38px; height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0EC8C4, #0F766E);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 800; color: #020F0F; font-size: 1rem; flex-shrink: 0;
-  box-shadow: 0 0 12px rgba(14,200,196,0.35);
-}
-.sb-user-info { display: flex; flex-direction: column; min-width: 0; }
-.sb-user-email {
-  font-size: 0.78rem; font-weight: 600; color: #E5E7EB;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.sb-user-status {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 0.68rem; color: #34D399; margin-top: 2px;
-}
-.sb-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #34D399;
-  box-shadow: 0 0 6px rgba(52,211,153,0.7);
-  display: inline-block;
-}
-
-/* Divider */
-.sb-divider {
-  height: 1px;
-  background: rgba(148,163,184,0.08);
-  margin: 0.75rem 0;
-}
-
-/* Trust badges */
-.sb-trust { padding: 0.25rem 0; }
-.sb-trust-row {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 0.72rem; color: #64748B;
-  padding: 4px 0;
-  line-height: 1.4;
-}
-.sb-trust-icon { font-size: 0.8rem; }
-
-/* Password set */
-.sb-pw-set {
-  font-size: 0.75rem; color: #34D399;
-  padding: 4px 0 8px 0;
-}
-
-/* Login header (ikkje innlogga) */
-.sb-login-header { margin: 0.5rem 0 1rem 0; }
-.sb-login-title {
-  font-size: 0.9rem; font-weight: 700; color: #E5E7EB;
-  margin-bottom: 4px;
-}
-.sb-login-sub { font-size: 0.75rem; color: #64748B; line-height: 1.4; }
-
-/* Sidebar Streamlit widgets override */
-[data-testid="stSidebar"] .stButton > button {
-  background: linear-gradient(135deg, #0EC8C4, #0A9997) !important;
-  color: #020F0F !important;
-  font-weight: 700 !important;
-  border: none !important;
-  border-radius: 40px !important;
-  box-shadow: 0 0 16px rgba(14,200,196,0.25) !important;
-  transition: all 0.2s !important;
-}
-[data-testid="stSidebar"] .stButton > button:hover {
-  box-shadow: 0 0 24px rgba(14,200,196,0.45) !important;
-  transform: translateY(-1px) !important;
-}
-[data-testid="stSidebar"] [data-testid="stPageLink"] a {
-  display: flex !important;
-  align-items: center !important;
-  gap: 8px !important;
-  padding: 9px 12px !important;
-  border-radius: 10px !important;
-  font-size: 0.85rem !important;
-  font-weight: 600 !important;
-  color: #94A3B8 !important;
-  text-decoration: none !important;
-  transition: all 0.15s !important;
-  border: 1px solid transparent !important;
-  margin-bottom: 4px !important;
-}
-[data-testid="stSidebar"] [data-testid="stPageLink"] a:hover {
-  background: rgba(14,200,196,0.08) !important;
-  color: #0EC8C4 !important;
-  border-color: rgba(14,200,196,0.2) !important;
-}
-[data-testid="stSidebar"] .stTabs [data-baseweb="tab-list"] {
-  background: rgba(15,23,42,0.5) !important;
-  border: 1px solid rgba(148,163,184,0.1) !important;
-  border-radius: 40px !important;
-  padding: 3px !important;
-}
-[data-testid="stSidebar"] .stTabs [data-baseweb="tab"] {
-  border-radius: 40px !important;
-  font-size: 0.8rem !important;
-  font-weight: 600 !important;
-  color: #64748B !important;
-}
-[data-testid="stSidebar"] .stTabs [aria-selected="true"] {
-  background: rgba(14,200,196,0.15) !important;
-  color: #0EC8C4 !important;
-}
-
-/* ─── TABS — match landing page pill style ─── */
-.stTabs [data-baseweb="tab-list"] {
-  background: rgba(15,23,42,0.5) !important;
-  border: 1px solid var(--stroke) !important;
-  border-radius: 40px !important;
-  padding: 4px !important;
-  gap: 0 !important;
-}
-
-.stTabs [data-baseweb="tab"] {
-  background: transparent !important;
-  color: var(--muted2) !important;
-  border-radius: 40px !important;
-  font-size: 0.85rem !important;
-  font-weight: 600 !important;
-  padding: 7px 20px !important;
-  border: none !important;
-  transition: all 0.2s ease !important;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-  color: var(--text) !important;
-  background: rgba(255,255,255,0.05) !important;
-}
-
-.stTabs [aria-selected="true"] {
-  background: rgba(14,200,196,0.15) !important;
-  color: var(--accent) !important;
-  border: 1px solid rgba(14,200,196,0.35) !important;
-}
-
-.stTabs [data-baseweb="tab-highlight"] {
-  display: none !important;
-}
-
-.stTabs [data-baseweb="tab-border"] {
-  display: none !important;
-}
-
-/* ─── RADIO + CHECKBOX ─── */
-.stRadio > label, .stCheckbox > label {
-  color: var(--text) !important;
-  font-size: 0.9rem !important;
-}
-.stRadio [data-testid="stMarkdownContainer"] p,
-.stCheckbox [data-testid="stMarkdownContainer"] p {
-  color: var(--muted2) !important;
-  font-size: 0.8rem !important;
-}
-
-[data-testid="stCheckbox"] input {
-  transform: scale(1.1);
-  accent-color: var(--accent) !important;
-}
-[data-testid="stToggle"] input {
-  accent-color: var(--accent) !important;
-}
-
-/* ─── SELECTBOX / MULTISELECT ─── */
-[data-baseweb="select"] > div {
-  background: rgba(255,255,255,0.04) !important;
-  border: 1px solid rgba(255,255,255,0.10) !important;
-  border-radius: var(--radius) !important;
-  color: var(--text) !important;
-  transition: border-color 0.2s !important;
-}
-[data-baseweb="select"] > div:hover {
-  border-color: rgba(14,200,196,0.4) !important;
-}
-[data-baseweb="select"] > div:focus-within {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(14,200,196,0.15) !important;
-}
-[data-baseweb="popover"] {
-  background: #0D1426 !important;
-  border: 1px solid var(--stroke-hi) !important;
-  border-radius: var(--radius) !important;
-}
-[data-baseweb="menu"] li {
-  color: var(--text) !important;
-  background: transparent !important;
-}
-[data-baseweb="menu"] li:hover {
-  background: rgba(14,200,196,0.12) !important;
-  color: var(--accent) !important;
-}
-[data-baseweb="tag"] {
-  background: rgba(14,200,196,0.15) !important;
-  border: 1px solid rgba(14,200,196,0.3) !important;
-  color: var(--accent) !important;
-  border-radius: 40px !important;
-}
-
-
-/* ========== SIDEBAR (ny premium) ========== */
-.ht-side-card {
-  background: linear-gradient(160deg, rgba(14,165,163,0.08), rgba(15,23,42,0.9));
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin: 1rem 0;
-  box-shadow: 0 8px 24px rgba(0,0,0,.25);
-}
-
-.ht-side-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.ht-side-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0EA5A3, #0F766E);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: white;
-  font-size: 0.95rem;
-  flex-shrink: 0;
-}
-
-.ht-side-user-info {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.ht-side-user-email {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ht-side-user-status {
-  font-size: 0.7rem;
-  color: #34D399;
-}
-
-.ht-side-divider {
-  height: 1px;
-  background: var(--stroke);
-  border: none;
-  margin: 12px 0;
-}
-
-.ht-side-feature {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  font-size: 0.75rem;
-  color: var(--muted2);
-  margin-bottom: 6px;
-  line-height: 1.4;
-}
-.ht-side-feature:last-child { margin-bottom: 0; }
-
-.ht-side-badge-verified {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(52,211,153,0.12);
-  border: 1px solid rgba(52,211,153,0.3);
-  color: #34D399;
-  font-size: 0.72rem;
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 999px;
-  margin: 0.5rem 0;
-}
-
-/* ========== PREMIUM LOCK CARD ========== */
-.ht-locked-card {
-  border: 1px dashed rgba(14,165,163,0.35);
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, rgba(14,165,163,0.07), rgba(59,130,246,0.05));
-  padding: 22px 18px;
-  margin: 12px 0 18px 0;
-  text-align: center;
-}
-
-.ht-locked-icon {
-  font-size: 26px;
-  margin-bottom: 6px;
-}
-
-.ht-locked-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 4px;
-}
-
-.ht-locked-sub {
-  font-size: 12.5px;
-  color: var(--muted2);
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-
-.ht-locked-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0 auto 16px auto;
-  max-width: 320px;
-  filter: blur(4px);
-  opacity: 0.55;
-  pointer-events: none;
-  user-select: none;
-}
-
-.ht-locked-line {
-  height: 12px;
-  border-radius: 6px;
-  background: rgba(148,163,184,0.3);
-}
-
-.ht-locked-line.short {
-  width: 60%;
-  align-self: center;
-}
-
-.ht-locked-cta {
-  display: inline-block;
-  background: linear-gradient(135deg, #0EA5A3, #0F766E);
-  color: #fff !important;
-  font-weight: 700;
-  font-size: 13px;
-  padding: 10px 24px;
-  border-radius: 999px;
-  text-decoration: none !important;
-  box-shadow: 0 8px 18px rgba(14,165,163,0.25);
-}
-
-/* ========== FREE VS PREMIUM SAMANLIKNING ========== */
-.ht-compare {
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius);
-  overflow: hidden;
-  margin: 14px 0;
-  background: var(--card);
-}
-
-.ht-compare-row {
-  display: grid;
-  grid-template-columns: 1.6fr 0.7fr 0.7fr;
-  align-items: center;
-  padding: 10px 14px;
-  font-size: 13px;
-  border-bottom: 1px solid var(--stroke2);
-}
-
-.ht-compare-row:last-child {
-  border-bottom: none;
-}
-
-.ht-compare-row.head {
-  background: rgba(255,255,255,0.03);
-  font-weight: 700;
-  color: var(--muted2);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.ht-compare-feature {
-  color: var(--text);
-  text-align: left;
-}
-
-.ht-compare-cell {
-  text-align: center;
-  font-size: 15px;
-}
-
-.ht-compare-cell.yes {
-  color: #22C55E;
-}
-
-.ht-compare-cell.no {
-  color: #64748B;
-}
-
-/* ========== HERO (ny premium) ========== */
-.ht-hero {
-  background: linear-gradient(135deg, rgba(14,165,163,.18), rgba(59,130,246,.12));
-  border: 1px solid var(--stroke);
-  border-radius: calc(var(--radius) + 6px);
-  padding: 24px 24px;
-  box-shadow: 0 20px 40px -12px rgba(0,0,0,0.4);
-  backdrop-filter: blur(8px);
-  margin-bottom: 2rem;
-}
-
-.ht-badge {
-  display: inline-block;
-  background: rgba(14,165,163,0.15);
-  border: 1px solid rgba(14,165,163,0.4);
-  border-radius: 40px;
-  padding: 0.2rem 0.9rem;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 1px;
-  color: #0EA5A3;
-  margin-bottom: 1rem;
-}
-
-.ht-hero h1 {
-  margin: 0;
-  font-size: 3rem;
-  font-weight: 700;
-  font-family: 'DM Serif Display', serif;
-  letter-spacing: -0.025em;
-  background: linear-gradient(135deg, #FFFFFF, #A5F3EC);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
-}
-
-.ht-hero .sub {
-  margin-top: 6px;
-  color: var(--muted2);
-  font-size: 1rem;
-  line-height: 1.4;
-  max-width: 80%;
-}
-
-.ht-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 1rem;
-}
-
-.ht-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(17,24,39,.65);
-  border: 1px solid var(--stroke2);
-  padding: 6px 12px;
-  border-radius: 999px;
-  color: var(--muted2);
-  font-size: 0.75rem;
-}
-
-.ht-card {
-  background: var(--card);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius);
-  padding: 14px;
-  box-shadow: 0 12px 36px rgba(0,0,0,.22);
-  backdrop-filter: blur(8px);
-  margin-bottom: 12px;
-}
-
-/* ========== SLIDER – fiksa "dobbel-linje" ========== */
-/* Det yttre slider-elementet skal IKKJE ha eiga bakgrunn/høgde, */
-/* elles legg det seg som ei ekstra linje attmed BaseWeb sin eigen track. */
-div[data-baseweb="slider"] {
-  background: transparent !important;
-  height: auto !important;
-  border-radius: 0 !important;
-  margin: 1rem 0 !important;
-}
-
-/* Nullstill alle indre wrapper-div'ar (kan elles arve bakgrunn frå tema) */
-div[data-baseweb="slider"] > div {
-  background: transparent !important;
-}
-
-/* Sjølve "track"-stripa – det er denne som skal ha farge/høgde/runda kantar */
-div[data-baseweb="slider"] > div > div:first-child {
-  background: #1E293B !important;
-  border-radius: 999px !important;
-  height: 4px !important;
-}
-
-/* Den fylte/markerte delen av streken (frå min->valgt verdi) */
-div[data-baseweb="slider"] > div > div:first-child > div {
-  background: #0EA5A3 !important;
-  border-radius: 999px !important;
-  height: 4px !important;
-}
-
-div[data-baseweb="slider"] div[role="slider"] {
-  background: #0EA5A3 !important;
-  box-shadow: 0 0 0 2px #0EA5A3, 0 0 0 4px rgba(14,165,163,0.2);
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  transition: transform 0.1s ease;
-}
-
-div[data-baseweb="slider"] div[role="slider"]:hover {
-  transform: scale(1.1);
-}
-
-.stSlider label {
-  color: var(--text) !important;
-}
-
-/* ─── INPUTS ─── */
-.stTextInput input,
-.stNumberInput input,
-textarea {
-  background: rgba(255,255,255,0.04) !important;
-  color: var(--text) !important;
-  border: 1px solid rgba(255,255,255,0.10) !important;
-  border-radius: 12px !important;
-  font-size: 0.95rem !important;
-  transition: border-color 0.2s, box-shadow 0.2s !important;
-}
-
-.stTextInput input:focus,
-.stNumberInput input:focus,
-textarea:focus {
-  border-color: var(--accent) !important;
-  box-shadow: 0 0 0 3px rgba(14,200,196,0.15) !important;
-  outline: none !important;
-}
-
-.stTextInput label, .stNumberInput label,
-.stSelectbox label, .stMultiSelect label,
-.stSlider label, .stTextArea label {
-  color: var(--muted2) !important;
-  font-size: 0.85rem !important;
-  font-weight: 500 !important;
-  letter-spacing: 0.01em !important;
-}
-
-/* ─── BUTTONS ─── */
-.stButton > button {
-  border-radius: 40px !important;
-  font-weight: 600 !important;
-  font-size: 0.9rem !important;
-  transition: all 0.2s ease !important;
-  letter-spacing: -0.01em !important;
-}
-
-.stButton > button[data-testid="baseButton-primary"],
-.stDownloadButton > button[data-testid="baseButton-primary"] {
-  background: linear-gradient(135deg, #0EC8C4, #0A9997) !important;
-  color: #ffffff !important;
-  border: 0 !important;
-  box-shadow: 0 0 30px rgba(14,200,196,0.3) !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
-}
-
-.stButton > button[data-testid="baseButton-primary"]:hover,
-.stDownloadButton > button[data-testid="baseButton-primary"]:hover {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 40px rgba(14,200,196,0.45) !important;
-}
-
-.stButton > button[data-testid="baseButton-secondary"] {
-  background: transparent !important;
-  border: 1.5px solid rgba(14,200,196,0.35) !important;
-  color: var(--accent) !important;
-}
-
-.stButton > button[data-testid="baseButton-secondary"]:hover {
-  background: rgba(14,200,196,0.10) !important;
-  border-color: rgba(14,200,196,0.6) !important;
-}
-
-/* ─── METRICS ─── */
-[data-testid="stMetric"] {
-  background: rgba(15,23,42,.55) !important;
-  border: 1px solid var(--stroke) !important;
-  border-radius: 14px !important;
-  padding: 14px 16px !important;
-  transition: border-color 0.2s !important;
-}
-[data-testid="stMetric"]:hover {
-  border-color: rgba(14,200,196,0.3) !important;
-}
-[data-testid="stMetricValue"] {
-  color: var(--text) !important;
-  font-weight: 700 !important;
-}
-[data-testid="stMetricLabel"] {
-  color: var(--muted) !important;
-  font-size: 0.75rem !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.08em !important;
-}
-[data-testid="stMetricDelta"] {
-  font-size: 0.8rem !important;
-}
-
-/* ─── EXPANDERS ─── */
-[data-testid="stExpander"] details {
-  background: rgba(15,23,42,.45) !important;
-  border: 1px solid var(--stroke) !important;
-  border-radius: var(--radius) !important;
-  overflow: hidden !important;
-  transition: border-color 0.2s !important;
-}
-[data-testid="stExpander"] details[open] {
-  border-color: rgba(14,200,196,0.25) !important;
-}
-[data-testid="stExpander"] summary {
-  padding: 12px 16px !important;
-  font-weight: 600 !important;
-  font-size: 0.9rem !important;
-  letter-spacing: -0.01em !important;
-  color: var(--text) !important;
-}
-[data-testid="stExpander"] summary:hover {
-  background: rgba(148,163,184,.05) !important;
-  color: var(--accent) !important;
-}
-
-/* ─── SLIDER (fixed double-line) ─── */
-div[data-baseweb="slider"] {
-  background: transparent !important;
-  height: auto !important;
-  border-radius: 0 !important;
-  margin: 1rem 0 !important;
-}
-div[data-baseweb="slider"] > div {
-  background: transparent !important;
-}
-div[data-baseweb="slider"] > div > div:first-child {
-  background: #1E293B !important;
-  border-radius: 999px !important;
-  height: 4px !important;
-}
-div[data-baseweb="slider"] > div > div:first-child > div {
-  background: var(--accent) !important;
-  border-radius: 999px !important;
-  height: 4px !important;
-}
-div[data-baseweb="slider"] div[role="slider"] {
-  background: var(--accent) !important;
-  box-shadow: 0 0 0 3px var(--accent), 0 0 0 5px rgba(14,200,196,0.2) !important;
-  width: 16px !important;
-  height: 16px !important;
-  border-radius: 50% !important;
-  transition: transform 0.1s ease !important;
-}
-div[data-baseweb="slider"] div[role="slider"]:hover {
-  transform: scale(1.15) !important;
-}
-
-/* ─── ALERTS / INFO BOXES ─── */
-[data-testid="stAlert"] {
-  border-radius: var(--radius) !important;
-  border-width: 1px !important;
-}
-.stSuccess {
-  background: rgba(34,197,94,0.08) !important;
-  border-color: rgba(34,197,94,0.3) !important;
-}
-.stInfo {
-  background: rgba(59,130,246,0.08) !important;
-  border-color: rgba(59,130,246,0.3) !important;
-}
-.stWarning {
-  background: rgba(245,158,11,0.08) !important;
-  border-color: rgba(245,158,11,0.3) !important;
-}
-.stError {
-  background: rgba(239,68,68,0.08) !important;
-  border-color: rgba(239,68,68,0.3) !important;
-}
-
-/* ─── SECTION DIVIDERS (like landing page <hr class="divider">) ─── */
-.ht-divider {
-  height: 1px;
-  background: var(--stroke);
-  border: none;
-  margin: 2.5rem 0;
-}
-
-/* ─── SECTION EYEBROW (like landing page .eyebrow) ─── */
-.ht-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  background: rgba(14,200,196,0.08);
-  border: 1px solid rgba(14,200,196,0.22);
-  color: var(--accent);
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  padding: 4px 14px;
-  border-radius: 40px;
-  margin-bottom: 0.75rem;
-}
-
-/* ─── SECTION TITLE ─── */
-.ht-section-title {
-  font-family: 'DM Serif Display', serif;
-  font-size: clamp(1.6rem, 3vw, 2.2rem);
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  margin-bottom: 0.5rem;
-}
-
-/* ─── SIDEBAR IMPROVEMENTS ─── */
-.ht-side-card {
-  background: linear-gradient(160deg, rgba(14,200,196,0.06), rgba(15,23,42,0.9));
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius);
-  padding: 16px;
-  margin: 1rem 0;
-  box-shadow: 0 8px 24px rgba(0,0,0,.25);
-}
-.ht-side-user {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-.ht-side-avatar {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #0EC8C4, #0F766E);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; color: white; font-size: 0.95rem; flex-shrink: 0;
-}
-.ht-side-user-info { display: flex; flex-direction: column; min-width: 0; }
-.ht-side-user-email {
-  font-size: 0.8rem; font-weight: 600; color: var(--text);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ht-side-user-status { font-size: 0.7rem; color: #34D399; }
-.ht-side-divider { height: 1px; background: var(--stroke); border: none; margin: 12px 0; }
-.ht-side-feature {
-  display: flex; align-items: flex-start; gap: 8px;
-  font-size: 0.75rem; color: var(--muted2); margin-bottom: 6px; line-height: 1.4;
-}
-.ht-side-feature:last-child { margin-bottom: 0; }
-
-/* ─── HERO CARD ─── */
-.ht-hero {
-  background: linear-gradient(135deg, rgba(14,200,196,.12), rgba(59,130,246,.08));
-  border: 1px solid rgba(14,200,196,0.20);
-  border-radius: calc(var(--radius) + 6px);
-  padding: 28px 28px 24px;
-  box-shadow: 0 20px 40px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(14,200,196,0.08);
-  backdrop-filter: blur(8px);
-  margin-bottom: 2rem;
-}
-.ht-badge {
-  display: inline-block;
-  background: rgba(14,200,196,0.12);
-  border: 1px solid rgba(14,200,196,0.35);
-  border-radius: 40px;
-  padding: 0.2rem 0.9rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 1rem;
-}
-.ht-hero h1 {
-  margin: 0;
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 700;
-  font-family: 'DM Serif Display', serif;
-  letter-spacing: -0.025em;
-  background: linear-gradient(135deg, #FFFFFF 30%, #A5F3EC 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent !important;
-  line-height: 1.1;
-}
-.ht-hero .sub {
-  margin-top: 8px;
-  color: var(--muted2);
-  font-size: 1rem;
-  line-height: 1.5;
-  max-width: 75%;
-}
-.ht-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1.2rem; }
-.ht-pill {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: rgba(17,24,39,.65);
-  border: 1px solid var(--stroke);
-  padding: 6px 14px;
-  border-radius: 999px;
-  color: var(--muted2);
-  font-size: 0.75rem;
-  transition: border-color 0.2s;
-}
-.ht-pill:hover { border-color: rgba(14,200,196,0.3); color: var(--text); }
-
-/* ─── CARDS ─── */
-.ht-card {
-  background: var(--card);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: 0 12px 36px rgba(0,0,0,.22);
-  backdrop-filter: blur(8px);
-  margin-bottom: 12px;
-  transition: border-color 0.2s;
-}
-.ht-card:hover { border-color: rgba(14,200,196,0.2); }
-
-/* ─── PREMIUM LOCK CARD ─── */
-.ht-locked-card {
-  border: 1px dashed rgba(14,200,196,0.35);
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, rgba(14,200,196,0.06), rgba(59,130,246,0.04));
-  padding: 24px 20px;
-  margin: 12px 0 18px 0;
-  text-align: center;
-}
-.ht-locked-icon { font-size: 28px; margin-bottom: 8px; }
-.ht-locked-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-.ht-locked-sub { font-size: 12.5px; color: var(--muted2); margin-bottom: 18px; line-height: 1.5; }
-.ht-locked-lines {
-  display: flex; flex-direction: column; gap: 8px;
-  margin: 0 auto 18px auto; max-width: 320px;
-  filter: blur(4px); opacity: 0.55;
-  pointer-events: none; user-select: none;
-}
-.ht-locked-line { height: 12px; border-radius: 6px; background: rgba(148,163,184,0.3); }
-.ht-locked-line.short { width: 60%; align-self: center; }
-.ht-locked-cta {
-  display: inline-block;
-  background: linear-gradient(135deg, #0EC8C4, #0A9997);
-  color: #020F0F !important;
-  font-weight: 700; font-size: 13px;
-  padding: 11px 28px;
-  border-radius: 999px; text-decoration: none !important;
-  box-shadow: 0 8px 20px rgba(14,200,196,0.3);
-  transition: all 0.2s ease;
-}
-.ht-locked-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 28px rgba(14,200,196,0.4); }
-
-/* ─── COMPARISON TABLE ─── */
-.ht-compare {
-  border: 1px solid var(--stroke); border-radius: var(--radius);
-  overflow: hidden; margin: 14px 0; background: var(--card);
-}
-.ht-compare-row {
-  display: grid; grid-template-columns: 1.6fr 0.7fr 0.7fr;
-  align-items: center; padding: 10px 16px; font-size: 13px;
-  border-bottom: 1px solid var(--stroke2);
-}
-.ht-compare-row:last-child { border-bottom: none; }
-.ht-compare-row.head {
-  background: rgba(255,255,255,0.025); font-weight: 700; color: var(--muted2);
-  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
-}
-.ht-compare-feature { color: var(--text); text-align: left; }
-.ht-compare-cell { text-align: center; font-size: 15px; }
-.ht-compare-cell.yes { color: #22C55E; }
-.ht-compare-cell.no { color: #64748B; }
-
-/* ─── STREAMLIT CONTAINERS ─── */
-[data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"] {
-  border-color: var(--stroke) !important;
-  border-radius: var(--radius) !important;
-  background: rgba(15,23,42,.4) !important;
-}
-
-/* ─── PROGRESS BAR ─── */
-[data-testid="stProgressBar"] > div > div {
-  background: linear-gradient(90deg, #0EC8C4, #3B82F6) !important;
-}
-
-/* ─── CAPTION / SMALL TEXT ─── */
-.stCaption, [data-testid="stCaptionContainer"] p {
-  color: var(--muted) !important;
-  font-size: 0.78rem !important;
-}
-
-/* ─── MARKDOWN HEADINGS ─── */
-.stMarkdown h1, .stMarkdown h2 {
-  font-family: 'DM Serif Display', serif !important;
-  letter-spacing: -0.02em !important;
-}
-.stMarkdown h3, .stMarkdown h4 {
-  font-weight: 700 !important;
-  letter-spacing: -0.01em !important;
-}
-.stMarkdown a { color: var(--accent) !important; text-decoration: none !important; }
-.stMarkdown a:hover { text-decoration: underline !important; }
-
-/* ─── RESPONSIVE ─── */
-@media (max-width: 680px) {
-  .block-container { padding: 0 1rem 2rem !important; }
-  .ht-hero h1 { font-size: 1.8rem !important; }
-  .ht-hero .sub { max-width: 100% !important; }
-  .stButton > button { width: 100% !important; }
-  .ht-nav { margin: 0 -1rem !important; padding: 0 1rem !important; }
-}
-</style>
-""",
-    unsafe_allow_html=True,
-)
-
-# ========== EKSTREMT PREMIUM DASHBOARD (legg etter CSS-en) ==========
-def premium_kpi_dashboard(bmi_val, vo2_val, bio_diff):
-    """Vis animerte KPI-kort med trender"""
-    from streamlit.components.v1 import html
-    
-    bmi_display = f"{bmi_val:.1f}" if bmi_val else "—"
-    vo2_display = f"{vo2_val:.1f}" if vo2_val else "—"
-    bio_years = f"{abs(bio_diff):.1f}" if bio_diff else "—"
-    bio_text = "yngre" if bio_diff and bio_diff < 0 else "eldre" if bio_diff and bio_diff > 0 else "samme"
-    
-    # Bruk vanlig string (ikke f-string) for CSS-delen, eller escape krøllparenteser
-    css_part = """
-    <style>
-    .kpi-grid {{
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-        margin: 1.5rem 0;
-    }}
-    .kpi-card {{
-        background: linear-gradient(145deg, rgba(17,28,51,0.9), rgba(11,18,32,0.95));
-        backdrop-filter: blur(4px);
-        border-radius: 28px;
-        border: 1px solid rgba(14,165,163,0.3);
-        padding: 1.2rem 0.8rem;
-        text-align: center;
-        transition: all 0.2s ease;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    }}
-    .kpi-card:hover {{
-        transform: translateY(-3px);
-        border-color: rgba(14,165,163,0.7);
-        box-shadow: 0 14px 28px rgba(0,0,0,0.4);
-    }}
-    .kpi-label {{
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        color: #94A3B8;
-        margin-bottom: 8px;
-    }}
-    .kpi-value {{
-        font-size: 42px;
-        font-weight: 800;
-        background: linear-gradient(135deg, #E5E7EB, #0EA5A3);
-        -webkit-background-clip: text;
-        background-clip: text;
-        color: transparent;
-        line-height: 1;
-    }}
-    .kpi-trend {{
-        font-size: 12px;
-        margin-top: 8px;
-        color: #22C55E;
-    }}
-    </style>
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-label">BMI</div>
-            <div class="kpi-value" id="bmi-kpi">0.0</div>
-            <div class="kpi-trend">Normalvekt ✓</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">VO₂max</div>
-            <div class="kpi-value" id="vo2-kpi">0.0</div>
-            <div class="kpi-trend">Topp """ + str(100 - (st.session_state.get("results", {}).get("vo2", {}).get("percentile", 50))) + """%</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-label">Biological age</div>
-            <div class="kpi-value" id="bio-kpi">0.0</div>
-            <div class="kpi-trend">""" + bio_text + " " + bio_years + """ år</div>
-        </div>
-    </div>
-    <script>
-    (function() {{
-        function animateNumber(id, target, decimals) {{
-            let el = document.getElementById(id);
-            if(!el) return;
-            let start = 0, duration = 900;
-            let step = (ts) => {{
-                if(!start) start = ts;
-                let p = Math.min((ts-start)/duration,1);
-                let val = target * (1-Math.pow(1-p,3));
-                el.innerText = val.toFixed(decimals);
-                if(p<1) requestAnimationFrame(step);
-                else el.innerText = target.toFixed(decimals);
-            }};
-            requestAnimationFrame(step);
-        }}
-        animateNumber('bmi-kpi', """ + str(bmi_val or 0) + """, 1);
-        animateNumber('vo2-kpi', """ + str(vo2_val or 0) + """, 1);
-        animateNumber('bio-kpi', """ + str(bio_val or 0) + """, 1);
-    }})();
-    </script>
-    """
-    html(css_part, height=200)
-
-# ── Render Hero ───────────────────────────────────────────────────────────────
-st.markdown(
-    """
-<div class="ht-hero">
-  <div class="ht-badge">🔐 SECURE • GDPR • ENCRYPTED</div>
-  <h1 style="display:flex;align-items:center;gap:14px;"><img src="{logo}" alt="MyHealthTools logo" style="height:1em;width:1em;border-radius:22%;"> My Health Tools</h1>
-  <div class="sub">Your private health dashboard — science‑based insights, zero data sharing.</div>
-  <div class="ht-pills">
-    <span class="ht-pill">🧬 Biological age</span>
-    <span class="ht-pill">❤️ VO₂max & cardio</span>
-    <span class="ht-pill">📈 Track progress</span>
-    <span class="ht-pill">🔒 Only you see data</span>
-  </div>
-</div>
-""".format(logo=_LOGO_ICON_DATA_URI),
-    unsafe_allow_html=True,
-)
-# ── Consent & Privacy Sjekk ───────────────────────────────────────────────────
-if "consent_given" not in st.session_state:
-    st.session_state.consent_given = False
-
-if not st.session_state.consent_given:
-    with st.expander("Please read: Consent & privacy", expanded=True):
-        st.markdown("This demo stores nothing by default and is for educational purposes only. By continuing you confirm you understand it's not clinical advice.")
-    cols = st.columns([1, 1])
-    if cols[0].button("I agree", key="consent_agree", type="primary"):
-        st.session_state.consent_given = True
-        try:
-            if not st.session_state.get("_consent_rerun_done"):
-                st.session_state["_consent_rerun_done"] = True
-                st.rerun()
-        except Exception:
-            pass
-    if cols[1].button("Exit", key="consent_exit"):
-        st.stop()
-# ── Premium Download Gate Komponent ───────────────────────────────────────────
-def render_premium_download_gate(pdf_bytes):
-    """
-    Renders the premium download section in a clean, professional container.
-    """
-    with st.container(border=True):
-        st.subheader("✅ Your Premium Health Report is ready")
-        st.markdown("""
-        We have analyzed your biomarkers and generated a tailored 30-day protocol.
-        This report includes:
-        * 🎯 **Top 3 health priorities**
-        * 📊 **Radar analysis of your biomarkers**
-        * 📝 **Actionable 30-day health plan**
-        """)
-        
-        st.write("") 
-        
-        st.download_button(
-            label="📥 Download your PDF Report (4.99 USD)",
-            data=pdf_bytes,
-            file_name="Health_Audit_Report.pdf",
-            mime="application/pdf",
-            type="primary",
-            use_container_width=True
-        )
-        
-        st.caption("Your purchase is secured with 100% encryption.")
-
-
-# ── PDF Hjelpefunksjonar ───────────────────────────────────────────────────────
-def para(text: str, style) -> Paragraph:
-    return Paragraph(escape(str(text)).replace("\n", "<br/>"), style)
-
-
-def make_key_value_table(rows, col_widths=(55 * mm, 120 * mm)):
-    styles = getSampleStyleSheet()
-    body = styles["BodyText"]
-    body.fontName = "Helvetica"
-    body.fontSize = 9
-    body.leading = 11
-    data = [[para("Field", body), para("Value", body)]]
-    for k, v in rows:
-        data.append([para(k, body), para(v, body)])
-    t = Table(data, colWidths=col_widths, repeatRows=1)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0f172a")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 9),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#cbd5e1")),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8fafc")]),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 6),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
-    return t
-
-from datetime import datetime, timezone
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, PageBreak, Flowable
-from reportlab.lib.colors import HexColor, white
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from html import escape
-
-# (Husk å sørge for at C_BG, C_ACCENT, C_CARD, C_TEXT, C_MUTED, C_STROKE, C_CARD2, 
-#  PAGE_W, PAGE_H, CONTENT_W, TA_CENTER, P, ps, og buffer er definert over funksjonen)
-
-# ── Custom Flowables ──────────────────────────────────────────
-
-class Gap(Flowable):
-    def __init__(self, h=8):
-        super().__init__()
-        self._h = h
-    def wrap(self, aw, ah):
-        return aw, self._h
-    def draw(self):
-        pass
-
-class SectionHeader(Flowable):
-    def __init__(self, title, width=CONTENT_W, accent=None):
-        super().__init__()
-        self.title  = title
-        self.w      = width
-        self.accent = accent or C_ACCENT
-        self.h      = 38
-
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-    def draw(self):
-        c = self.canv
-        c.setFillColor(C_CARD)
-        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-        c.setFillColor(self.accent)
-        c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
-        c.setFillColor(C_TEXT)
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(14, 13, self.title)
-
-class MetricRow(Flowable):
-    def __init__(self, metrics, width=CONTENT_W):
-        super().__init__()
-        self.metrics = metrics
-        self.w       = width
-        self.h       = 62
-        n            = len(metrics)
-        self.card_w  = (width - (n - 1) * 8) / n if n > 0 else width
-
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-    def draw(self):
-        c = self.canv
-        cw = self.card_w
-        for i, (label, value, sub, col_str) in enumerate(self.metrics):
-            col = HexColor(col_str) if isinstance(col_str, str) else col_str
-            x   = i * (cw + 8)
-            c.setFillColor(C_CARD)
-            c.roundRect(x, 0, cw, 58, 8, fill=1, stroke=0)
-            c.setFillColor(col)
-            c.roundRect(x, 55, cw, 3, 1, fill=1, stroke=0)
-            c.setFillColor(C_MUTED)
-            c.setFont("Helvetica", 7)
-            c.drawString(x + 8, 43, str(label).upper()[:22])
-            c.setFillColor(col)
-            c.setFont("Helvetica-Bold", 15)
-            c.drawString(x + 8, 25, str(value)[:18])
-            if sub:
-                c.setFillColor(C_MUTED)
-                c.setFont("Helvetica", 7)
-                c.drawString(x + 8, 10, str(sub)[:24])
-
-class BMIBar(Flowable):
-    def __init__(self, bmi_val, width=CONTENT_W):
-        super().__init__()
-        self.bmi = bmi_val
-        self.w   = width
-        self.h   = 96
-
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-    def draw(self):
-        c   = self.canv
-        bmi = self.bmi
-        w   = self.w
-
-        c.setFillColor(C_CARD)
-        c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-
-        if bmi < 18.5:   bmi_col = "#3B82F6"
-        elif bmi < 25.0: bmi_col = "#22C55E"
-        elif bmi < 30.0: bmi_col = "#F59E0B"
-        else:            bmi_col = "#EF4444"
-
-        c.setFillColor(HexColor(bmi_col))
-        c.setFont("Helvetica-Bold", 26)
-        c.drawString(12, 62, f"{bmi:.1f}")
-        c.setFillColor(C_MUTED)
-        c.setFont("Helvetica", 8)
-        c.drawString(12, 52, "BMI Score")
-
-        scale_max = 45.0
-        bar_x = 12
-        bar_y = 28
-        bar_h = 14
-        bar_w = w - 24
-
-        segs = [
-            (0, 18.5, "#3B82F6",  "Underweight"),
-            (18.5, 25.0, "#22C55E", "Normal"),
-            (25.0, 30.0, "#F59E0B", "Overweight"),
-            (30.0, 45.0, "#EF4444", "Obese"),
-        ]
-
-        for i, (s, e, col, lbl) in enumerate(segs):
-            sx = bar_x + (s / scale_max) * bar_w
-            sw = ((e - s) / scale_max) * bar_w
-            c.setFillColor(HexColor(col))
-            if i == 0:
-                c.roundRect(sx, bar_y, sw, bar_h, 3, fill=1, stroke=0)
-                c.rect(sx + 3, bar_y, sw - 3, bar_h, fill=1, stroke=0)
-            elif i == len(segs) - 1:
-                c.roundRect(sx, bar_y, sw, bar_h, 3, fill=1, stroke=0)
-                c.rect(sx, bar_y, sw - 3, bar_h, fill=1, stroke=0)
-            else:
-                c.rect(sx, bar_y, sw, bar_h, fill=1, stroke=0)
-            c.setFillColor(HexColor("#0F172A"))
-            c.setFont("Helvetica-Bold", 6)
-            c.drawCentredString(sx + sw / 2, bar_y + 4, lbl)
-
-        mx = bar_x + min(1.0, bmi / scale_max) * bar_w
-        c.setStrokeColor(white)
-        c.setLineWidth(1.5)
-        c.line(mx, bar_y - 2, mx, bar_y + bar_h + 2)
-        c.setFillColor(white)
-        path = c.beginPath()
-        path.moveTo(mx,     bar_y + bar_h + 9)
-        path.lineTo(mx - 5, bar_y + bar_h + 2)
-        path.lineTo(mx + 5, bar_y + bar_h + 2)
-        path.close()
-        c.drawPath(path, fill=1, stroke=0)
-
-        for lbl, pos in [("0", 0), ("18.5", 18.5), ("25", 25), ("30", 30), ("45", 45)]:
-            lx = bar_x + (pos / scale_max) * bar_w
-            c.setFillColor(C_MUTED)
-            c.setFont("Helvetica", 6)
-            c.drawCentredString(lx, bar_y - 9, lbl)
-
-class VO2Visual(Flowable):
-    def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
-        super().__init__()
-        self.vo2  = vo2_val
-        self.pct  = float(percentile or 0)
-        self.rating = rating
-        self.w    = width
-        self.h    = 86
-
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-    def draw(self):
-        c   = self.canv
-        w   = self.w
-        pct = self.pct
-
-        if pct >= 80:   col = "#22C55E"
-        elif pct >= 60: col = "#3B82F6"
-        elif pct >= 40: col = "#F59E0B"
-        else:           col = "#EF4444"
-
-        c.setFillColor(C_CARD)
-        c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
-
-        c.setFillColor(HexColor(col))
-        c.setFont("Helvetica-Bold", 26)
-        c.drawString(12, 54, f"{self.vo2:.1f}")
-        c.setFillColor(C_MUTED)
-        c.setFont("Helvetica", 8)
-        c.drawString(12, 44, "ml / kg / min")
-        c.setFillColor(HexColor(col))
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(12, 28, str(self.rating or "—"))
-        c.setFillColor(C_MUTED)
-        c.setFont("Helvetica", 7)
-        c.drawString(12, 16, "Rating")
-
-        bx  = w * 0.44
-        bw  = w * 0.52
-        bh  = 12
-        by  = 40
-        c.setFillColor(C_STROKE)
-        c.roundRect(bx, by, bw, bh, 4, fill=1, stroke=0)
-        fill_w = max(8, (pct / 100.0) * bw)
-        c.setFillColor(HexColor(col))
-        c.roundRect(bx, by, fill_w, bh, 4, fill=1, stroke=0)
-        c.setFillColor(C_MUTED)
-        c.setFont("Helvetica", 7)
-        c.drawString(bx, by + bh + 5, "POPULATION PERCENTILE")
-        c.setFillColor(HexColor(col))
-        c.setFont("Helvetica-Bold", 11)
-        c.drawRightString(bx + bw, by - 11, f"{pct:.0f}th percentile")
-
-        zones = [
-            (0,  20,  "#EF4444"),
-            (20, 40,  "#F59E0B"),
-            (40, 60,  "#3B82F6"),
-            (60, 80,  "#22C55E"),
-            (80, 100, "#10B981"),
-        ]
-        sz_y = 16
-        sz_h = 7
-        for zs, ze, zc in zones:
-            zx = bx + (zs / 100) * bw
-            zw = ((ze - zs) / 100) * bw
-            c.setFillColor(HexColor(zc))
-            c.rect(zx, sz_y, zw, sz_h, fill=1, stroke=0)
-        c.setStrokeColor(white)
-        c.setLineWidth(1.5)
-        mx2 = bx + (pct / 100) * bw
-        c.line(mx2, sz_y - 1, mx2, sz_y + sz_h + 1)
-
-class BioFactorBars(Flowable):
-    def __init__(self, factors, width=CONTENT_W):
-        super().__init__()
-        self.factors = factors[:8]
-        self.w       = width
-        self.h       = len(self.factors) * 22 + 8
-
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-    def draw(self):
-        c = self.canv
-        c.setFillColor(C_CARD)
-        c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
-
-        row_h = 22
-        bar_x = self.w * 0.42
-        bar_w = self.w * 0.45
-
-        for i, f in enumerate(self.factors):
-            y       = self.h - 14 - i * row_h
-            delta   = float(f.get("delta", 0))
-            col_str = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
-            bar_pct = min(abs(delta) / 10.0, 1.0)
-
-            c.setFillColor(C_MUTED)
-            c.setFont("Helvetica", 7.5)
-            lbl = str(f.get("label", ""))[:32]
-            c.drawString(10, y - 4, lbl)
-
-            c.setFillColor(C_STROKE)
-            c.roundRect(bar_x, y - 4, bar_w, 8, 2, fill=1, stroke=0)
-            if bar_pct > 0:
-                c.setFillColor(HexColor(col_str))
-                c.roundRect(bar_x, y - 4, bar_pct * bar_w, 8, 2, fill=1, stroke=0)
-
-            c.setFillColor(HexColor(col_str))
-            c.setFont("Helvetica-Bold", 7.5)
-            c.drawRightString(self.w - 4, y - 4, f"{delta:+.1f} yrs")
-
-class MilestoneLine(Flowable):
-    def __init__(self, week, weight, focus, progress_pct, col_str, is_last, width=CONTENT_W):
-        super().__init__()
-        self.week         = week
-        self.weight       = weight
-        self.focus        = focus
-        self.progress_pct = progress_pct
-        self.col_str      = col_str
-        self.is_last      = is_last
-        self.w            = width
-        self.h            = 48
-
-    def wrap(self, aw, ah):
-        return self.w, self.h
-
-    def draw(self):
-        c   = self.canv
-        col = HexColor(self.col_str)
-
-        if not self.is_last:
-            c.setStrokeColor(C_STROKE)
-            c.setLineWidth(1)
-            c.line(13, 0, 13, 10)
-
-        c.setFillColor(col)
-        c.circle(13, 36, 11, fill=1, stroke=0)
-        c.setFillColor(white)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawCentredString(13, 32, str(self.week))
-
-        c.setFillColor(C_CARD)
-        c.roundRect(32, 14, self.w - 36, 34, 6, fill=1, stroke=0)
-        c.setFillColor(col)
-        c.roundRect(32, 44, self.w - 36, 4, 2, fill=1, stroke=0)
-
-        c.setFillColor(col)
-        c.setFont("Helvetica-Bold", 12)
-        c.drawString(42, 32, f"{self.weight:.1f} kg")
-        c.setFillColor(C_MUTED)
-        c.setFont("Helvetica", 7.5)
-        c.drawString(42, 20, str(self.focus)[:40])
-
-        bx = self.w - 90
-        bw = 80
-        c.setFillColor(C_STROKE)
-        c.roundRect(bx, 20, bw, 6, 2, fill=1, stroke=0)
-        c.setFillColor(col)
-        c.roundRect(bx, 20, self.progress_pct / 100 * bw, 6, 2, fill=1, stroke=0)
-        c.setFillColor(C_MUTED)
-        c.setFont("Helvetica", 6.5)
-        c.drawRightString(bx + bw, 13, f"{self.progress_pct:.0f}%")
-
-
-# ── Page template (dark bg + header/footer) ──────────────────
-
-def draw_page(canvas, doc):
-    canvas.saveState()
-    canvas.setFillColor(C_BG)
-    canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
-    canvas.setFillColor(C_ACCENT)
-    canvas.rect(0, PAGE_H - 3, PAGE_W, 3, fill=1, stroke=0)
-    canvas.setFillColor(C_CARD)
-    canvas.rect(0, PAGE_H - 22, PAGE_W, 19, fill=1, stroke=0)
-    canvas.setFillColor(C_TEXT)
-    canvas.setFont("Helvetica-Bold", 8.5)
-    canvas.drawString(18 * mm, PAGE_H - 15, "HEALTH TOOLS — PREMIUM REPORT")
-    canvas.setFillColor(C_MUTED)
-    canvas.setFont("Helvetica", 8)
-    canvas.drawRightString(PAGE_W - 18 * mm, PAGE_H - 15, f"Page {canvas.getPageNumber()}")
-    canvas.setFillColor(C_STROKE)
-    canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
-    canvas.setFillColor(HexColor("#64748B"))
-    canvas.setFont("Helvetica", 6.5)
-    canvas.drawString(18 * mm, 4, "Educational use only — not medical advice — health-tools.streamlit.app")
-    canvas.drawRightString(PAGE_W - 18 * mm, 4, datetime.now(timezone.utc).strftime("%Y-%m-%d UTC"))
-    canvas.restoreState()
-
-
-# ── Definer funksjonen din her (f.eks. def generate_report_pdf(report):) ──
-def generate_report_pdf(report):
+def create_pdf_bytes_premium(report: dict) -> bytes:
     buffer = io.BytesIO()
+    PAGE_W, PAGE_H = A4
+    MARGIN_H = 18 * mm
+    CONTENT_W = PAGE_W - 2 * MARGIN_H
+
     doc = SimpleDocTemplate(
-        buffer, 
-        pagesize=A4,
-        leftMargin=18 * mm, 
-        rightMargin=18 * mm,
-        topMargin=26 * mm, 
-        bottomMargin=18 * mm,
+        buffer, pagesize=A4,
+        leftMargin=MARGIN_H, rightMargin=MARGIN_H,
+        topMargin=32 * mm, bottomMargin=22 * mm,
     )
 
-    story = []
-    inp = report.get("inputs", {})
-
-    # Cover
-    story.append(Gap(6))
-    story.append(P("HEALTH TOOLS", ps("cvt", fontSize=30, leading=34, textColor=C_ACCENT, bold=True, alignment=TA_CENTER)))
-    story.append(P("Premium Health Report", ps("cvs", fontSize=15, leading=19, textColor=C_TEXT, alignment=TA_CENTER, spaceAfter=6)))
-
-    # Info row
-    age_v  = inp.get("age", "—")
-    sex_v  = inp.get("sex", "—")
-    h_v    = inp.get("height_cm", "—")
-    w_v    = inp.get("weight_kg", "—")
-    gen_v  = report.get("generated", "—")
-
-    info_data = [
-        [P("AGE", ps("il", fontSize=7, textColor=C_MUTED)),
-         P("SEX", ps("il", fontSize=7, textColor=C_MUTED)),
-         P("HEIGHT", ps("il", fontSize=7, textColor=C_MUTED)),
-         P("WEIGHT", ps("il", fontSize=7, textColor=C_MUTED)),
-         P("GENERATED", ps("il", fontSize=7, textColor=C_MUTED))],
-        [P(f"{age_v} yrs", ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
-         P(str(sex_v),     ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
-         P(f"{h_v} cm",    ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
-         P(f"{w_v} kg",    ps("iv", fontSize=12, bold=True, textColor=C_TEXT)),
-         P(str(gen_v),     ps("iv", fontSize=8,  textColor=C_MUTED))],
-    ]
-    info_t = Table(info_data, colWidths=[CONTENT_W / 5] * 5)
-    info_t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), C_CARD),
-        ("ROWBACKGROUNDS", (0, 0), (-1, -1), [C_CARD, C_CARD2]),
-        ("BOX",       (0, 0), (-1, -1), 1,   C_STROKE),
-        ("INNERGRID", (0, 0), (-1, -1), 0.5, C_STROKE),
-        ("TOPPADDING",    (0, 0), (-1, -1), 8),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
-    ]))
-    story.append(info_t)
-    story.append(Gap(10))
-
-    # ── BMI ──
-    if report.get("bmi"):
-        bmi_v   = float(report["bmi"]["value"])
-        story.append(SectionHeader("Body Mass Index"))
-        story.append(Gap(5))
-        story.append(BMIBar(bmi_v))
-        if report.get("whr") or report.get("bodyfat"):
-            story.append(Gap(4))
-            extra = []
-            if report.get("whr"):
-                extra.append(("Waist-to-hip ratio", f'{report["whr"]["value"]:.2f} — {report["whr"]["category"]}'))
-            if report.get("bodyfat"):
-                extra.append(("Body fat (Navy method)", f'{report["bodyfat"]["value"]:.1f}%'))
-            for lbl, val in extra:
-                story.append(P(f'<font color="#94A3B8">{lbl}:</font>  <font color="#E5E7EB"><b>{val}</b></font>', ps("be", fontSize=9, leading=14)))
-        story.append(Gap(10))
-
-    # ── VO2 ──
-    if report.get("vo2"):
-        v = report["vo2"]
-        story.append(SectionHeader("VO2max & Cardio Fitness"))
-        story.append(Gap(5))
-        story.append(VO2Visual(float(v["value"]), float(v.get("percentile") or 0), v.get("rating", "—")))
-        story.append(Gap(5))
-        meta_data = [
-            [P("METHOD",          ps("ml", fontSize=7, textColor=C_MUTED)),
-             P("AGE BAND",        ps("ml", fontSize=7, textColor=C_MUTED)),
-             P("POPULATION MEAN", ps("ml", fontSize=7, textColor=C_MUTED))],
-            [P(str(v.get("method", "—")), ps("mv", fontSize=9, bold=True, textColor=C_TEXT)),
-             P(str(v.get("age_band", "—")), ps("mv", fontSize=9, bold=True, textColor=C_TEXT)),
-             P(f'{v.get("mean", "—")} ml/kg/min', ps("mv", fontSize=9, bold=True, textColor=C_TEXT))],
-        ]
-        meta_t = Table(meta_data, colWidths=[CONTENT_W / 3] * 3)
-        meta_t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), C_CARD2),
-            ("BOX",       (0, 0), (-1, -1), 1,   C_STROKE),
-            ("INNERGRID", (0, 0), (-1, -1), 0.5, C_STROKE),
-            ("TOPPADDING",    (0, 0), (-1, -1), 7),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 10),
-        ]))
-        story.append(meta_t)
-        tips = v.get("tips", [])
-        if tips:
-            story.append(Gap(6))
-            story.append(P("Training Recommendations", ps("trh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
-            for tip in tips[:5]:
-                story.append(P(f"→  {escape(str(tip))}", ps(f"tip{id(tip)}", fontSize=8.5, leading=12, textColor=HexColor("#CBD5E1"), spaceAfter=3)))
-        story.append(Gap(10))
-
-    # ── Biological age ──
-    if report.get("bio_age"):
-        bio_val   = float(report["bio_age"]["value"])
-        chron_age = float(inp.get("age", bio_val) or bio_val)
-        diff      = bio_val - chron_age
-        bio_col   = "#22C55E" if diff <= -1 else "#F59E0B" if diff <= 2 else "#EF4444"
-        diff_txt  = f"{abs(diff):.1f} yrs {'younger' if diff < 0 else 'older'} than calendar"
-
-        story.append(SectionHeader("Biological Age"))
-        story.append(Gap(5))
-        story.append(MetricRow([
-            ("BIOLOGICAL AGE",    f"{bio_val:.1f} yrs",    diff_txt,              bio_col),
-            ("CHRONOLOGICAL AGE", f"{chron_age:.0f} yrs",  "Calendar age",        "#94A3B8"),
-            ("DIFFERENCE",        f"{diff:+.1f} yrs",       "Bio vs. calendar",    bio_col),
-        ]))
-        if report.get("bio_factors"):
-            story.append(Gap(6))
-            story.append(P("Factor Breakdown", ps("bfh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
-            story.append(BioFactorBars(report["bio_factors"]))
-        story.append(Gap(10))
-
-    # ── Exercise log ──
-    ex = report.get("exercise_log")
-    if ex:
-        story.append(SectionHeader("Exercise Log"))
-        story.append(Gap(5))
-        kcal_pw   = float(ex.get("kcal_per_week", 0))
-        total_min = int(ex.get("minutes", 0)) * int(ex.get("sessions_per_week", 0))
-        story.append(MetricRow([
-            ("ACTIVITY",    str(ex.get("activity", "—"))[:18], str(ex.get("intensity", "—")), "#0EA5A3"),
-            ("KCAL / SESSION", f'{ex.get("kcal_per_session", 0):.0f}', "kcal", "#3B82F6"),
-            ("KCAL / WEEK", f'{kcal_pw:.0f}', f'{ex.get("sessions_per_week", 0)}× per week', "#22C55E"),
-            ("VOLUME",      f'{total_min} min/wk', f'{ex.get("minutes", 0)} min × {ex.get("sessions_per_week", 0)}', "#F59E0B"),
-        ]))
-        story.append(Gap(4))
-        who_met = total_min >= 150
-        who_col = "#22C55E" if who_met else "#F59E0B"
-        who_txt = "✓  Meets WHO 150 min/week guidelines" if who_met else f"⚠  {150 - total_min} min/week below WHO 150 min target"
-        story.append(P(who_txt, ps("who", fontSize=8.5, textColor=HexColor(who_col), spaceAfter=2)))
-        story.append(Gap(10))
-
-    # ── Conditions ──
-    if report.get("triage") and report.get("triage_recommendations"):
-        story.append(SectionHeader("Conditions & Recommendations"))
-        story.append(Gap(5))
-        for r in report["triage_recommendations"]:
-            story.append(P(f"→  {escape(str(r))}", ps(f"rec{id(r)}", fontSize=8.5, leading=13, textColor=HexColor("#CBD5E1"), spaceAfter=3)))
-        story.append(Gap(10))
-
-    # ── Plan ──
-    if report.get("plan") and not report["plan"].get("error"):
-        plan = report["plan"]
-        story.append(SectionHeader("Weight Goal Plan"))
-        story.append(Gap(5))
-        story.append(MetricRow([
-            ("MAINTENANCE",  f'{plan.get("current_needs_kcal", "—")} kcal', "per day", "#94A3B8"),
-            ("RECOMMENDED",  f'{plan.get("recommended_daily_kcal", "—")} kcal', "per day", "#0EA5A3"),
-            ("WEEKLY CHANGE", f'{float(plan.get("kg_per_week", 0)):+.2f} kg', "per week", "#3B82F6"),
-        ]))
-        milestones = plan.get("milestones", [])
-        if milestones:
-            story.append(Gap(6))
-            story.append(P("Milestone Roadmap", ps("mrh", fontSize=10, bold=True, textColor=C_ACCENT, spaceAfter=3)))
-            try:
-                start_w = float(inp.get("weight_kg", 70) or 70)
-            except Exception:
-                start_w = 70.0
-            try:
-                end_w = float(milestones[-1].get("Projected weight (kg)", start_w))
-            except Exception:
-                end_w = start_w
-            total_change = abs(end_w - start_w)
-            m_cols = ["#3B82F6", "#7C3AED", "#0EA5A3", "#22C55E"]
-            for i, m in enumerate(milestones):
-                try:
-                    pw = float(m.get("Projected weight (kg)", start_w))
-                except Exception:
-                    pw = start_w
-                prog = (min(100, max(0, int(abs(pw - start_w) / total_change * 100))) if total_change > 0.01 else 100)
-                story.append(MilestoneLine(
-                    week=m.get("Week", i + 1),
-                    weight=pw,
-                    focus=m.get("Focus", ""),
-                    progress_pct=prog,
-                    col_str=m_cols[i % len(m_cols)],
-                    is_last=(i == len(milestones) - 1),
-                ))
-        story.append(Gap(10))
-
-    # Disclaimer
-    story.append(Gap(4))
-    story.append(P(
-        "This report is generated for educational purposes only and is not a medical diagnosis, "
-        "clinical assessment, or substitute for professional healthcare advice. "
-        "Always consult a qualified healthcare professional regarding any medical concerns.",
-        ps("disc", fontSize=7.5, leading=10, textColor=HexColor("#64748B")),
-    ))
-
-    # ── BYGG ──
-    print("KØYRER ANDRE PDF-FUNKSJON")
-    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
-    print("ETTER ANDRE build")
-    buffer.seek(0)
-    return buffer.read() # Lagt til riktig innrykk for å avslutte funksjonen ordentlig!
-
-# ── Modules (main) ────
-with st.expander("⚙️ Choose modules", expanded=False):
-    st.caption("Turn modules on/off. (Nothing is stored.)")
-    cA, cB = st.columns(2)
-    with cA:
-        run_bmi = st.toggle("BMI calculator", value=True, key="s_bmi")
-        run_vo2 = st.toggle("VO2max estimate", value=True, key="s_vo2")
-        run_bioage = st.toggle("Biological age", value=True, key="s_bio")
-    with cB:
-        run_conditions = st.toggle("Conditions & recommendations", value=True, key="s_conditions")
-        run_plan = st.toggle("Weight goal / plan", value=True, key="s_plan")
-
-# ── Sidebar (kept minimal) ────
-st.sidebar.markdown(
-    """
-<div class="ht-side-card" style="margin-top:0.5rem;">
-  <div class="ht-side-feature" style="margin:0;">
-    🔏 Your health data is stored securely in your private account — only you have access when you are logged in.
-  </div>
-</div>
-""",
-    unsafe_allow_html=True,
-)
-
-# ── Session state defaults ────────────────────────────────────────────────────
-if "resting_hr" not in st.session_state:
-    st.session_state["resting_hr"] = None
-if "exercise_kcal_per_week" not in st.session_state:
-    st.session_state["exercise_kcal_per_week"] = 0.0
-if "global_avg_hr" not in st.session_state:
-    st.session_state["global_avg_hr"] = None
-if "age" not in st.session_state:
-    st.session_state["age"] = 30
-if "global_resting_hr" not in st.session_state:
-    st.session_state["global_resting_hr"] = None
-if "global_waist_cm" not in st.session_state:
-    st.session_state["global_waist_cm"] = None
-if "global_hip_cm" not in st.session_state:
-    st.session_state["global_hip_cm"] = None
-
-# ── Basic inputs ──────────────────────────────────────────────────────────────
-st.markdown("## 🧾 Basic information")
-st.caption("These inputs drive BMI, calories, VO2 and biological age estimates.")
-st.markdown('<div class="ht-card">', unsafe_allow_html=True)
-
-# --- Dine eksisterende inputs ---
-resting_hr_basic = st.number_input(
-    "Resting HR (bpm)",
-    min_value=30, max_value=120,
-    value=st.session_state.get("resting_hr") or 60,
-    key="basic_resting_hr",
-    on_change=sync_from_basic,
-)
-if st.session_state.get("resting_hr") is None and resting_hr_basic is not None:
-    st.session_state["resting_hr"] = int(resting_hr_basic)
-    st.session_state["global_resting_hr"] = int(resting_hr_basic)
-
-age_input = st.number_input("Age (years)", min_value=5, max_value=120,
-                             value=st.session_state.get("age", 30), key="age")
-try:
-    age = int(st.session_state.get("age", 30))
-except Exception:
-    age = 30
-
-c1, c2 = st.columns(2)
-with c1:
-    sex = st.selectbox("Sex", ["M", "F"], index=0 if st.session_state.get("inp_sex", "M") == "M" else 1, key="inp_sex")
-with c2:
-    pass  # placeholder
-
-c3, c4 = st.columns(2)
-with c3:
-    height_cm = st.number_input("Height (cm)", min_value=50, max_value=250, value=int(st.session_state.get("inp_height", 170)), key="inp_height")
-with c4:
-    weight_kg = st.number_input("Weight (kg)", min_value=20.0, max_value=300.0, value=float(st.session_state.get("inp_weight", 70.0)),
-                                 format="%.1f", key="inp_weight")
-st.markdown("</div>", unsafe_allow_html=True)
-
-if age < 18:
-    st.warning("BMI and fitness estimates are less reliable under 18.")
-elif age >= 70:
-    st.info("For older adults, BMI is often less informative.")
-
-
-# local defaults
-activity_level = "Moderate"
-weekly_minutes = 150
-session_intensity = 3
-resting_hr = None
-max_hr = None
-measured_vo2_input = 0.0
-waist_cm = None
-hip_cm = None
-neck_cm = None
-bodyfat_requested = False
-smoker = False
-diabetes = False
-sleep_hours = None
-alcohol_units = None
-fruit_veg = None
-perceived_stress = 5
-grip_strength = None
-bp_systolic = None
-cholesterol = None
-family_history = False
-menopause = False
-vo2_method = "Questionnaire"
-vo2_distance_m = 0.0
-rockport_time_min = 0.0
-rockport_hr = 0
-
-# ── BMI inputs ────────────────────────────────────────────────────────────────
-if run_bmi:
-    with st.expander("📏 BMI inputs and body composition", expanded=False):
-        st.markdown("BMI is a simple screening tool, not a diagnosis.")
-        use_waist_hip = st.toggle("I don't know my waist & hip measurements", value=False, key="b_use_whr")
-        if not use_waist_hip:
-            c1, c2 = st.columns(2)
-            with c1:
-                waist_cm = st.number_input("Waist (cm)", min_value=30.0, max_value=300.0,
-                                            value=float(st.session_state.get("global_waist_cm") or 80.0),
-                                            format="%.1f", key="b_waist")
-            with c2:
-                hip_cm = st.number_input("Hip (cm)", min_value=30.0, max_value=300.0,
-                                          value=float(st.session_state.get("global_hip_cm") or 95.0),
-                                          format="%.1f", key="b_hip")
-            st.session_state["global_waist_cm"] = waist_cm
-            st.session_state["global_hip_cm"] = hip_cm
-
-        with st.expander("⚙️ More options: body fat estimate (optional)", expanded=False):
-            use_neck = st.toggle("I don't know my neck measurement", value=False, key="b_use_neck")
-            if not use_neck:
-                neck_cm = st.number_input("Neck (cm)", min_value=20.0, max_value=80.0,
-                                           value=38.0, format="%.1f", key="b_neck")
-            bodyfat_requested = st.checkbox("Estimate body fat (Navy method)", value=False, key="b_bodyfat")
-
-# ── VO2 inputs ────────────────────────────────────────────────────────────────
-if run_vo2:
-    with st.expander("❤️ Cardio / VO2max", expanded=False):
-
-        # ── Activity level — visual card selector ──
-        _act_options = ["Sedentary", "Light", "Moderate", "Active", "Very active", "Athlete"]
-        _act_icons   = ["🛋️", "🚶", "🚴", "🏃", "⚡", "🏅"]
-        _act_descs   = ["Desk job, no exercise", "1–2x/week light", "3–4x/week moderate",
-                        "5x/week vigorous", "6–7x/week or daily", "2x/day / elite"]
-
-        _current_act = st.session_state.get("v_activity", "Moderate")
-
-        st.markdown("**Activity level**")
-        _act_cols = st.columns(6)
-        for _ci, (_ao, _ai, _ad) in enumerate(zip(_act_options, _act_icons, _act_descs)):
-            with _act_cols[_ci]:
-                _selected = (_ao == _current_act)
-                if st.button(
-                    f"{_ai}\n{_ao}\n{_ad}",
-                    key=f"act_btn_{_ci}",
-                    type="primary" if _selected else "secondary",
-                    use_container_width=True,
-                ):
-                    st.session_state["v_activity"] = _ao
-
-        activity_level = st.session_state.get("v_activity", "Moderate")
-
-        st.markdown("---")
-
-        # ── Weekly minutes slider ──
-        weekly_minutes = st.slider(
-            "⏱️ Weekly minutes of moderate-to-vigorous activity",
-            min_value=0, max_value=600, value=150, step=10,
-            key="v_weekly_minutes", format="%d min"
-        )
-        _who = "✅ Meets WHO guidelines (150+ min/week)" if weekly_minutes >= 150 else "⚠️ Below WHO guidelines (aim for 150+ min/week)"
-        _who_color = "#22C55E" if weekly_minutes >= 150 else "#F59E0B"
-        st.markdown(f'<div style="color:{_who_color};font-size:12px;margin-top:-8px;margin-bottom:8px;">{_who}</div>',
-                    unsafe_allow_html=True)
-
-        # ── Session intensity ──
-        session_intensity = st.slider(
-            "💪 Typical session intensity",
-            min_value=1, max_value=5, value=3, key="v_session_intensity"
-        )
-        _int_labels = {1: "😴 Very light", 2: "🚶 Light", 3: "🚴 Moderate", 4: "🏃 Hard", 5: "🔥 Max effort"}
-        st.markdown(f'<div style="color:#94A3B8;font-size:12px;margin-top:-8px;margin-bottom:8px;">{_int_labels[session_intensity]}</div>',
-                    unsafe_allow_html=True)
-
-        st.markdown("---")
-
-        # ── Heart rate ──
-        st.markdown("**❤️ Heart rate**")
-        resting_hr_unknown = st.toggle(
-            "I don't know my resting heart rate",
-            value=(st.session_state.get("global_resting_hr") is None),
-            key="vo2_rhr_unknown"
-        )
-        if not resting_hr_unknown:
-            default_rhr = st.session_state.get("global_resting_hr") or 70
-            resting_hr = st.slider("Resting HR (bpm)", min_value=30, max_value=120,
-                    value=int(default_rhr), key="vo2_rhr_value",
-                    on_change=sync_from_vo2)
-            _hr_zone = "🟢 Athletic" if resting_hr < 55 else "🟡 Normal" if resting_hr < 75 else "🔴 Elevated"
-            st.caption(f"{_hr_zone} — prefilled from basic inputs above.")
-        else:
-            resting_hr = None
-
-        max_hr_unknown = st.toggle("I don't know my max heart rate", value=False, key="vo2_maxhr_unknown")
-        if not max_hr_unknown:
-            max_hr = st.slider("Max HR (bpm)", min_value=100, max_value=240,
-                    value=180, key="vo2_maxhr_val")
-            _age_pred = 220 - int(age) if age else 190
-            st.caption(f"Age-predicted max: ~{_age_pred} bpm")
-        else:
-            max_hr = None
-
-        st.markdown("---")
-
-        # ── VO2 method ──
-        with st.expander("⚙️ More options: choose VO2max calculation method (optional)", expanded=False):
-            vo2_method = st.radio(
-                "Method",
-                ["Questionnaire", "Cooper (12-min)", "Rockport (1-mile)", "Measured value"],
-                index=0, key="vo2_method_select", horizontal=True,
-                label_visibility="collapsed"
-            )
-
-            _method_info = {
-                "Questionnaire": "📋 Estimated from activity level, HR and BMI. Good for general use.",
-                "Cooper (12-min)": "🏃 Run as far as possible in 12 min. Very accurate.",
-                "Rockport (1-mile)": "🚶 Walk 1 mile, record time and HR at finish.",
-                "Measured value": "⌚ Enter a value from Apple Watch, Garmin, or lab test.",
-            }
-            st.caption(_method_info.get(vo2_method, ""))
-
-            if vo2_method == "Cooper (12-min)":
-                vo2_distance_m = st.slider("Distance covered in 12 min (meters)",
-                        min_value=0, max_value=4000, value=2400, step=50,
-                        key="vo2_cooper_distance", format="%d m")
-                st.caption(f"Estimated VO2max: ~{(vo2_distance_m - 504.9) / 44.73:.1f} ml/kg/min" if vo2_distance_m > 504 else "Enter distance above")
-            elif vo2_method == "Rockport (1-mile)":
-                rockport_time_min = st.slider("1-mile walk time (minutes)",
-                        min_value=8.0, max_value=30.0, value=15.0, step=0.5,
-                        key="vo2_rockport_time", format="%.1f min")
-                rockport_hr = st.slider("Heart rate at finish (bpm)",
-                        min_value=60, max_value=200, value=140,
-                        key="vo2_rockport_hr")
-            elif vo2_method == "Measured value":
-                measured_vo2_input = st.slider(
-                    "Your measured VO2max (ml/kg/min)",
-                    min_value=10.0, max_value=90.0, value=40.0, step=0.5,
-                    key="vo2_measured_input", format="%.1f ml/kg/min"
-                )
-            else:
-                measured_vo2_input = 0.0
-
-# ── Exercise calories ─────────────────────────────────────────────────────────
-ACTIVITIES = {
-    "Walking (casual)":              {"Light": 2.8, "Moderate": 3.5, "Hard": 4.3},
-    "Brisk walking":                 {"Light": 3.5, "Moderate": 4.3, "Hard": 5.0},
-    "Running/jogging":               {"Light": 7.0, "Moderate": 9.8, "Hard": 11.5},
-    "Cycling (leisure)":             {"Light": 4.0, "Moderate": 6.8, "Hard": 8.5},
-    "Cycling (vigorous)":            {"Light": 6.8, "Moderate": 8.5, "Hard": 10.0},
-    "Strength training (weights)":   {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
-    "HIIT":                          {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
-    "Swimming":                      {"Light": 5.0, "Moderate": 7.0, "Hard": 9.5},
-    "Rowing (moderate/vigorous)":    {"Light": 5.0, "Moderate": 7.0, "Hard": 8.5},
-    "Elliptical":                    {"Light": 4.5, "Moderate": 6.0, "Hard": 8.0},
-    "Stair climbing / Stairmaster":  {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
-    "Yoga / Pilates":                {"Light": 2.5, "Moderate": 3.0, "Hard": 4.0},
-    "Dancing":                       {"Light": 3.0, "Moderate": 5.0, "Hard": 7.0},
-    "Hiking (incline)":              {"Light": 3.5, "Moderate": 6.0, "Hard": 7.0},
-    "Rock climbing / Bouldering":    {"Light": 4.0, "Moderate": 7.0, "Hard": 8.0},
-    "Boxing / Martial arts":         {"Light": 6.0, "Moderate": 8.0, "Hard": 10.0},
-    "Basketball / Team sports":      {"Light": 5.0, "Moderate": 7.0, "Hard": 10.0},
-    "Soccer (football)":             {"Light": 6.0, "Moderate": 7.5, "Hard": 10.0},
-    "Tennis (casual)":               {"Light": 4.0, "Moderate": 7.0, "Hard": 9.0},
-    "Squash":                        {"Light": 7.0, "Moderate": 9.0, "Hard": 11.0},
-    "Badminton":                     {"Light": 4.0, "Moderate": 6.0, "Hard": 8.0},
-    "Table tennis (bordtennis)":     {"Light": 2.5, "Moderate": 4.0, "Hard": 5.5},
-    "Gardening / Heavy yard work":   {"Light": 3.0, "Moderate": 4.5, "Hard": 6.0},
-    "Housework / Light chores":      {"Light": 2.0, "Moderate": 3.0, "Hard": 3.5},
-}
-
-with st.expander("🏃 Exercise log", expanded=True):
-
-    # ── Activity picker — grouped visual cards ──
-    _act_groups = {
-        "🚶 Low impact":   ["Walking (casual)", "Brisk walking", "Yoga / Pilates", "Housework / Light chores", "Gardening / Heavy yard work"],
-        "🚴 Cardio":       ["Cycling (leisure)", "Cycling (vigorous)", "Elliptical", "Rowing (moderate/vigorous)", "Swimming"],
-        "🏃 High impact":  ["Running/jogging", "HIIT", "Stair climbing / Stairmaster"],
-        "⚽ Sports":       ["Basketball / Team sports", "Soccer (football)", "Tennis (casual)", "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"],
-        "💪 Strength":     ["Strength training (weights)", "Boxing / Martial arts", "Rock climbing / Bouldering", "Hiking (incline)"],
-    }
-    _act_icons_map = {
-        "Walking (casual)": "🚶", "Brisk walking": "🚶‍♂️", "Running/jogging": "🏃",
-        "Cycling (leisure)": "🚲", "Cycling (vigorous)": "🚴", "Strength training (weights)": "🏋️",
-        "HIIT": "⚡", "Swimming": "🏊", "Rowing (moderate/vigorous)": "🚣",
-        "Elliptical": "🔄", "Stair climbing / Stairmaster": "🪜", "Yoga / Pilates": "🧘",
-        "Dancing": "💃", "Hiking (incline)": "🥾", "Rock climbing / Bouldering": "🧗",
-        "Boxing / Martial arts": "🥊", "Basketball / Team sports": "🏀", "Soccer (football)": "⚽",
-        "Tennis (casual)": "🎾", "Squash": "🏸", "Badminton": "🏸",
-        "Table tennis (bordtennis)": "🏓", "Gardening / Heavy yard work": "🌱",
-        "Housework / Light chores": "🧹",
-    }
-
-    st.markdown("**🎯 Activity type**")
-    _current_act = st.session_state.get("ui_activity_type", "Walking (casual)")
-    _group_names = list(_act_groups.keys())
-    if "ui_act_group" not in st.session_state:
-        st.session_state["ui_act_group"] = next(
-            (g for g, acts in _act_groups.items() if _current_act in acts), _group_names[0]
-        )
-    _sel_group = st.radio("Category", _group_names,
-                    horizontal=True, key="ui_act_group", label_visibility="collapsed")
-
-    _group_acts = _act_groups[_sel_group]
-    _n = len(_group_acts)
-    _gcols = st.columns(_n)
-    for _gi, _ga in enumerate(_group_acts):
-        with _gcols[_gi]:
-            _is_sel = (_ga == st.session_state.get("ui_activity_type", "Walking (casual)"))
-            _ico = _act_icons_map.get(_ga, "🏅")
-            _short = _ga.split("(")[0].split("/")[0].strip()
-            if st.button(
-                f"{_ico}\n{_short}",
-                key=f"act_type_btn_{_sel_group}_{_gi}",
-                type="primary" if _is_sel else "secondary",
-                use_container_width=True,
-            ):
-                st.session_state["ui_activity_type"] = _ga
-
-    activity_ex = st.session_state.get("ui_activity_type", "Walking (casual)")
-    if activity_ex not in _group_acts:
-        activity_ex = _group_acts[0]
-        st.session_state["ui_activity_type"] = activity_ex
-
-    st.markdown("---")
-
-    # ── Intensity — visual 3-button style ──
-    st.markdown("**💪 Intensity**")
-    _int_opts = ["Light", "Moderate", "Hard"]
-    _int_icons = ["🟢", "🟡", "🔴"]
-    _int_descs = ["Easy, can hold conversation", "Slightly breathless", "Hard, can barely talk"]
-    _int_cols = st.columns(3)
-    _cur_int = st.session_state.get("ui_intensity", "Moderate")
-    for _ii, (_io, _iico, _id) in enumerate(zip(_int_opts, _int_icons, _int_descs)):
-        with _int_cols[_ii]:
-            _is_int = (_io == _cur_int)
-            if st.button(
-                f"{_iico}\n{_io}\n{_id}",
-                key=f"int_btn_{_ii}",
-                type="primary" if _is_int else "secondary",
-                use_container_width=True,
-            ):
-                st.session_state["ui_intensity"] = _io
-    intensity_label = st.session_state.get("ui_intensity", "Moderate")
-
-    st.markdown("---")
-
-    # ── Sessions + Duration ──
-    st.markdown("**📅 Volume**")
-    _vc1, _vc2 = st.columns(2)
-    with _vc1:
-        sessions_per_week = st.slider("Sessions per week", min_value=0, max_value=14,
-                                       value=int(st.session_state.get("ui_sessions_per_week", 3)), step=1, key="ui_sessions_per_week")
-    with _vc2:
-        minutes_per_session = st.slider("Minutes per session", min_value=5, max_value=180,
-                                         value=int(st.session_state.get("ui_minutes", 45)), step=5, key="ui_minutes", format="%d min")
-
-    _total_min = sessions_per_week * minutes_per_session
-    _who_ex = "✅ Meets WHO guidelines" if _total_min >= 150 else f"⚠️ {150 - _total_min} min/week below WHO target"
-    _who_ex_color = "#22C55E" if _total_min >= 150 else "#F59E0B"
-    st.markdown(
-        f'<div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:8px 12px;'
-        f'display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
-        f'<span style="color:#94A3B8;font-size:12px;">Total: <b style="color:#E5E7EB;">{_total_min} min/week</b></span>'
-        f'<span style="color:{_who_ex_color};font-size:12px;">{_who_ex}</span>'
-        f'</div>', unsafe_allow_html=True
-    )
-
-    with st.expander("⚙️ More options: fine-tune calorie estimate (optional)", expanded=False):
-        # ── RPE ──
-        st.markdown("**😤 Perceived exertion (RPE)**")
-        rpe = st.slider("RPE", 1, 10, 5, key="ui_rpe", label_visibility="collapsed")
-        _rpe_labels = {1:"😴 Rest",2:"🧘 Very easy",3:"🚶 Easy",4:"🚶‍♂️ Moderate",5:"🚴 Somewhat hard",
-                       6:"🏃 Hard",7:"🏃‍♂️ Very hard",8:"⚡ Very very hard",9:"🔥 Near max",10:"💀 Max effort"}
-        st.markdown(f'<div style="color:#94A3B8;font-size:12px;margin-top:-8px;">{_rpe_labels[rpe]}</div>',
-                    unsafe_allow_html=True)
-        rpe_multiplier = 0.85 + (rpe - 1) * (0.4 / 9)
-
-        st.markdown("---")
-
-        # ── HR refinement ──
-        default_avg = st.session_state.get("global_avg_hr")
-        avg_hr = default_avg if default_avg is not None else 130
-        st.session_state["global_avg_hr"] = int(avg_hr)
-
-        use_hr = st.toggle("❤️ Use average session HR to refine estimate", key="ui_use_hr")
-        avg_hr_for_calc = None
-        resting_hr_for_calc = None
-        if use_hr:
-            _hc1, _hc2 = st.columns(2)
-            with _hc1:
-                avg_hr_for_calc = st.slider("Avg session HR (bpm)", min_value=60, max_value=200,
-                                             value=int(avg_hr), key="ui_avg_hr_calc")
-            with _hc2:
-                resting_hr_for_calc = st.slider("Resting HR (bpm)", min_value=30, max_value=100,
-                                                 value=int(st.session_state.get("global_resting_hr") or 60),
-                                                 key="ui_resting_hr",
-                                                 on_change=sync_from_calc)
-            _hr_reserve = avg_hr_for_calc - resting_hr_for_calc
-            st.caption(f"HR reserve used: {_hr_reserve} bpm — higher reserve = more accurate calorie estimate")
-
-        manual_kcal = st.toggle("🔢 I know my exact kcal burn per session", key="ui_manual_kcal")
-        if manual_kcal:
-            manual_kcal_val = st.slider("kcal burned per session", min_value=0, max_value=2000,
-                                         value=int(st.session_state.get("ui_manual_kcal_val", 300)), step=10, key="ui_manual_kcal_val", format="%d kcal")
-        else:
-            manual_kcal_val = 0.0
-
-    # ── Compute ──
-    try:
-        base_met = ACTIVITIES.get(activity_ex, {}).get(intensity_label, 4.0)
-    except Exception:
-        base_met = 4.0
-    try:
-        w_ex = float(weight_kg)
-    except Exception:
-        w_ex = 70.0
-
-    if manual_kcal and manual_kcal_val > 0:
-        kcal_per_session = float(manual_kcal_val)
-    else:
-        kcal_per_min = (base_met * 3.5 * w_ex) / 200.0
-        kcal_per_session = kcal_per_min * float(minutes_per_session) * rpe_multiplier
-        if avg_hr_for_calc is not None and resting_hr_for_calc:
-            hr_delta = max(0.0, float(avg_hr_for_calc) - float(resting_hr_for_calc))
-            hr_multiplier = 1.0 + min(0.5, hr_delta / 100.0)
-            kcal_per_session *= hr_multiplier
-
-    kcal_per_week_ex = sessions_per_week * kcal_per_session
-    st.session_state["exercise_kcal_per_week"] = kcal_per_week_ex
-    st.session_state["exercise_last"] = {
-        "activity": activity_ex, "intensity": intensity_label,
-        "minutes": int(minutes_per_session), "sessions_per_week": int(sessions_per_week),
-        "kcal_per_session": round(kcal_per_session, 1),
-        "kcal_per_week": round(kcal_per_week_ex, 1),
-        "rpe": int(rpe),
-        "avg_hr": int(avg_hr_for_calc) if avg_hr_for_calc is not None else None,
-    }
-
-    # ── Live burn summary card ──
-    _burn_color = "#22C55E" if kcal_per_week_ex >= 1500 else "#3B82F6" if kcal_per_week_ex >= 500 else "#94A3B8"
-    st.markdown(
-        f'<div style="background:rgba(15,23,42,0.7);border:1px solid rgba(148,163,184,0.15);'
-        f'border-radius:14px;padding:14px 16px;margin-top:10px;">'
-        f'<div style="color:#94A3B8;font-size:11px;margin-bottom:4px;">ESTIMATED WEEKLY BURN</div>'
-        f'<div style="color:{_burn_color};font-weight:800;font-size:28px;">{kcal_per_week_ex:.0f} kcal/week</div>'
-        f'<div style="color:#94A3B8;font-size:12px;margin-top:4px;">'
-        f'{kcal_per_session:.0f} kcal/session × {sessions_per_week} sessions · '
-        f'{_act_icons_map.get(activity_ex,"🏅")} {activity_ex}</div>'
-        f'<div style="margin-top:10px;background:rgba(255,255,255,0.05);border-radius:999px;height:6px;overflow:hidden;">'
-        f'<div style="width:{min(100, int(kcal_per_week_ex/30))}%;background:{_burn_color};height:100%;border-radius:999px;"></div>'
-        f'</div>'
-        f'<div style="color:#64748B;font-size:10px;margin-top:4px;">MET-based estimate · adjust RPE or use HR for more accuracy</div>'
-        f'</div>',
-        unsafe_allow_html=True
-    )
-
-# ── Biological age inputs ─────────────────────────────────────────────────────
-if run_bioage:
-    with st.expander("Biological age inputs", expanded=True):
-        st.caption("Leave any field blank or use 'I don't know' where available.")
-
-        t_core, t_cardio, t_life, t_body = st.tabs(["Core", "Cardio", "Lifestyle", "Body comp"])
-
-        with t_core:
-            c1, c2 = st.columns(2)
-            with c1:
-                smoker = st.toggle("Smoker?", key="bio_smoker")
-                diabetes = st.toggle("Diabetes?", key="bio_diabetes")
-            with c2:
-                family_history = st.toggle(
-                    "Family history of premature cardiovascular disease?",
-                    key="bio_family_hist",
-                )
-                if sex == "F":
-                    menopause = st.toggle("Post-menopausal?", key="bio_menopause")
-
-        with t_cardio:
-            st.markdown("#### 🫀 Cardiovascular")
-            bp_unknown = st.toggle("I don't know my systolic blood pressure", value=False, key="bio_bp_unknown")
-            if not bp_unknown:
-                bp_systolic = st.number_input(
-                    "Systolic blood pressure (mmHg)",
-                    min_value=70.0, max_value=260.0, value=float(st.session_state.get("bio_bp_val", 120.0)), key="bio_bp_val"
-                )
-
-            chol_unknown = st.toggle("I don't know my cholesterol", value=False, key="bio_chol_unknown")
-            if not chol_unknown:
-                cholesterol = st.number_input(
-                    "Cholesterol (mg/dL)",
-                    min_value=50.0, max_value=500.0, value=float(st.session_state.get("bio_chol_val", 180.0)), key="bio_chol_val"
-                )
-
-            _bio_rhr_known = st.session_state.get("global_resting_hr")
-            rhr_unknown = st.toggle("I don't know my resting heart rate",
-                                    value=(_bio_rhr_known is None), key="bio_rhr_unknown")
-            if not rhr_unknown:
-                resting_hr = st.number_input(
-                    "Resting heart rate (bpm)",
-                    min_value=30, max_value=220,
-                    value=int(_bio_rhr_known or 70), key="bio_rhr_val",
-                    on_change=sync_from_bio
-                )
-
-        with t_life:
-            st.markdown("#### 😴 Lifestyle")
-            sleep_unknown = st.toggle("I don't know my sleep duration", value=False, key="bio_sleep_unknown")
-            if not sleep_unknown:
-                sleep_hours = st.number_input(
-                    "Average sleep per night (hours)",
-                    min_value=0.0, max_value=24.0, value=float(st.session_state.get("bio_sleep_val", 7.0)), format="%.1f", key="bio_sleep_val"
-                )
-
-            alcohol_unknown = st.toggle("I don't know my alcohol intake", value=False, key="bio_alc_unknown")
-            if not alcohol_unknown:
-                alcohol_units = st.number_input(
-                    "Alcohol units per week",
-                    min_value=0, max_value=300, value=int(st.session_state.get("bio_alc_val", 0)), key="bio_alc_val"
-                )
-
-            fruit_veg = st.number_input(
-                "Daily fruit & vegetable servings",
-                min_value=0, max_value=20, value=int(st.session_state.get("bio_fv", 3)), key="bio_fv"
-            )
-            perceived_stress = st.slider(
-                "Perceived stress (1 low – 10 high)",
-                min_value=1, max_value=10, value=int(st.session_state.get("bio_stress", 5)), key="bio_stress"
-            )
-
-        with t_body:
-            st.markdown("#### ⚖️ Body composition")
-            grip_unknown = st.toggle("I don't know my grip strength", value=False, key="bio_grip_unknown")
-            if not grip_unknown:
-                grip_strength = st.number_input(
-                    "Grip strength (kg)",
-                    min_value=0.0, max_value=100.0, value=float(st.session_state.get("bio_grip_val", 30.0)), format="%.1f", key="bio_grip_val"
-                )
-
-            bio_waist_unknown = st.toggle("I don't know my waist-to-hip ratio", value=False, key="bio_waist_unknown")
-            if not bio_waist_unknown:
-                c1, c2 = st.columns(2)
-                with c1:
-                    waist_bio = st.number_input(
-                        "Waist (cm)", min_value=30.0, max_value=300.0,
-                        value=float(st.session_state.get("global_waist_cm") or 80.0),
-                        format="%.1f", key="bio_waist_val"
-                    )
-                with c2:
-                    hip_bio = st.number_input(
-                        "Hip (cm)", min_value=30.0, max_value=300.0,
-                        value=float(st.session_state.get("global_hip_cm") or 95.0),
-                        format="%.1f", key="bio_hip_val"
-                    )
-                if waist_cm is None:
-                    waist_cm = waist_bio
-                if hip_cm is None:
-                    hip_cm = hip_bio
-
-# ── Conditions ────────────────────────────────────────────────────────────────
-selected_conditions = []
-custom_condition = ""
-condition_goal_focus = "General"
-
-if run_conditions:
-    with st.expander("Conditions & recommendations", expanded=True):
-        st.markdown("Select any diagnoses/conditions to get practical exercise & prevention tips.")
-        if hasattr(calculators, "DIAGNOSIS_RECOMMENDATIONS"):
-            condition_options = sorted(list(calculators.DIAGNOSIS_RECOMMENDATIONS.keys()))
-        else:
-            condition_options = ["Type 2 Diabetes", "Hypertension", "Lower Back Pain", "Asthma", "Osteoarthritis"]
-        selected_conditions = st.multiselect("Select conditions", options=condition_options,
-                                              default=[], key="cond_select")
-        custom_condition = st.text_input("Other condition (free text)", "", key="cond_custom")
-        if custom_condition.strip():
-            selected_conditions = (selected_conditions or []) + [custom_condition.strip()]
-        condition_goal_focus = st.selectbox("Recommendations focus",
-                                             ["General", "VO2", "Weight", "Mobility"],
-                                             index=0, key="cond_goal")
-
-# ── Weight goal / plan ────────────────────────────────────────────────────────
-create_plan = False
-target_weight = None
-target_bmi = None
-plan_weeks = 12
-
-if run_plan and run_bmi:
-    with st.expander("🎯 Goal / plan", expanded=True):        # Visual toggle
-        create_plan = st.toggle("Activate weight goal plan", value=False, key="plan_create")
-
-        if create_plan:
-            # Current weight for reference
-            _cw = float(weight_kg) if weight_kg else 70.0
-            _min_w = max(30.0, _cw - 40.0)
-            _max_w = min(250.0, _cw + 40.0)
-
-            st.markdown("#### 🎯 Set your target")
-
-            plan_mode = st.radio(
-                "What do you want to target?",
-                ["⚖️ Target weight (kg)", "📊 Target BMI"],
-                index=0, key="plan_type", horizontal=True
-            )
-
-            if "⚖️" in plan_mode:
-                target_weight = st.slider(
-                    "Target weight (kg)",
-                    min_value=float(_min_w),
-                    max_value=float(_max_w),
-                    value=max(float(_min_w), min(float(_max_w), _cw - 5.0)),
-                    step=0.5,
-                    key="plan_target_weight",
-                    format="%.1f kg"
-                )
-                _diff = target_weight - _cw
-                _dir = "lose" if _diff < 0 else "gain"
-                _col = "#22C55E" if _diff < 0 else "#3B82F6"
-                st.markdown(
-                    f'<div style="background:rgba(34,197,94,0.08);border:1px solid {_col}44;'
-                    f'border-radius:12px;padding:10px 14px;margin:6px 0;">'
-                    f'<span style="color:{_col};font-weight:700;font-size:18px;">'
-                    f'{abs(_diff):.1f} kg to {_dir}</span>'
-                    f'<span style="color:#94A3B8;font-size:13px;margin-left:10px;">'
-                    f'({_cw:.1f} kg → {target_weight:.1f} kg)</span></div>',
-                    unsafe_allow_html=True
-                )
-                target_bmi = None
-            else:
-                target_bmi = st.slider(
-                    "Target BMI",
-                    min_value=16.0, max_value=35.0,
-                    value=22.0, step=0.1,
-                    key="plan_target_bmi",
-                    format="%.1f"
-                )
-                _h = float(height_cm) / 100.0 if height_cm else 1.70
-                _implied_w = target_bmi * _h * _h
-                st.markdown(
-                    f'<div style="background:rgba(59,130,246,0.08);border:1px solid #3B82F644;'
-                    f'border-radius:12px;padding:10px 14px;margin:6px 0;">'
-                    f'<span style="color:#3B82F6;font-weight:700;font-size:18px;">BMI {target_bmi:.1f}</span>'
-                    f'<span style="color:#94A3B8;font-size:13px;margin-left:10px;">'
-                    f'= {_implied_w:.1f} kg at your height</span></div>',
-                    unsafe_allow_html=True
-                )
-                target_weight = None
-
-# --- INSERT THE NEW STRATEGY SECTION HERE ---
-            st.markdown("#### ⚙️ Strategy")
-            goal_mode = st.radio(
-                "What is your primary goal?",
-                ["Lose fat", "Build muscle (bulk)", "Body Recomposition"],
-                horizontal=True,
-                key="goal_mode_input"
-            )
-
-            protein_focus = st.toggle("High protein focus (recommended for muscle growth)", value=True, key="protein_toggle")
-
-            # Add a new toggle to integrate sport/fitness activity into your plan
-            exercise_integration = st.toggle(
-                "Integrate sport/fitness activity into your plan",
-                True,
-                key="exercise_integration"
-            )
-
-            if exercise_integration:
-                st.markdown("##### Activities")
-
-                _act_groups = {
-                    "🚶 Low impact":  ["Walking (casual)", "Brisk walking", "Yoga / Pilates",
-                                       "Housework / Light chores", "Gardening / Heavy yard work"],
-                    "🚴 Cardio":      ["Cycling (leisure)", "Cycling (vigorous)", "Elliptical",
-                                       "Rowing (moderate/vigorous)", "Swimming"],
-                    "🏃 High impact": ["Running/jogging", "HIIT", "Stair climbing / Stairmaster"],
-                    "⚽ Sports":      ["Basketball / Team sports", "Soccer (football)", "Tennis (casual)",
-                                       "Squash", "Badminton", "Table tennis (bordtennis)", "Dancing"],
-                    "💪 Strength":    ["Strength training (weights)", "Boxing / Martial arts",
-                                       "Rock climbing / Bouldering", "Hiking (incline)"],
-                }
-
-                selected_activities = []
-
-                for group_name, group_items in _act_groups.items():
-                    st.markdown(f"**{group_name}**")
-                    cols = st.columns(3)
-                    for i, activity in enumerate(group_items):
-                        with cols[i % 3]:
-                            if st.checkbox(activity, key=f"act_{activity}"):
-                                selected_activities.append(activity)
-
-                if selected_activities:
-                    st.success(
-                        f"{len(selected_activities)} activit{'ies' if len(selected_activities) > 1 else 'y'} selected: "
-                        + ", ".join(selected_activities)
-                    )
-                else:
-                    st.caption("No activities selected yet.")
-
-                st.session_state["selected_activities"] = selected_activities
-            else:
-                st.session_state["selected_activities"] = []
-
-            # Save to session_state so it is available for PDF generation later
-            st.session_state["goal_mode"] = goal_mode
-            st.session_state["protein_focus"] = protein_focus
-
-            # --------------------------------------------
-
-            st.markdown("#### ⏱️ Timeline")
-            plan_weeks = st.slider(
-                "Weeks to reach target",
-                min_value=4, max_value=52, value=12, step=1,
-                key="plan_weeks",
-                format="%d weeks"
-            )
-
-            # Visual timeline preview
-            _wks = int(plan_weeks)
-            _tw = target_weight if target_weight else (target_bmi * (float(height_cm)/100)**2 if target_bmi and height_cm else _cw)
-            _rate = (_tw - _cw) / _wks if _wks > 0 else 0
-            _safe = abs(_rate) <= 1.0
-            _rate_color = "#22C55E" if _safe else "#F59E0B"
-
-            _warn_html = ""
-            if not _safe:
-                _warn_html = (
-                    '<div style="color:#F59E0B;font-size:12px;margin-top:10px;">'
-                    "⚠️ Rate above 1 kg/week — consider a longer timeline for safety."
-                    "</div>"
-                )
-
-            _preview_html = (
-                '<div style="background:rgba(15,23,42,0.6);border:1px solid rgba(148,163,184,0.15);'
-                'border-radius:14px;padding:14px 16px;margin-top:8px;">'
-                '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;">'
-                '<div style="text-align:center;">'
-                '<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">RATE</div>'
-                f'<div style="color:{_rate_color};font-weight:800;font-size:20px;">{_rate:+.2f} kg/wk</div>'
-                '</div>'
-                '<div style="text-align:center;">'
-                '<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">DURATION</div>'
-                f'<div style="color:#E5E7EB;font-weight:800;font-size:20px;">{_wks} wks</div>'
-                '</div>'
-                '<div style="text-align:center;">'
-                '<div style="color:#94A3B8;font-size:11px;margin-bottom:2px;">TARGET</div>'
-                f'<div style="color:#E5E7EB;font-weight:800;font-size:20px;">{_tw:.1f} kg</div>'
-                '</div>'
-                '</div>'
-                f'{_warn_html}'
-                '</div>'
-            )
-            st.markdown(_preview_html, unsafe_allow_html=True)
-
-# 1. Knappen gjør KUN én ting: slår på minnet i appen
-# 1. Knappen gjør KUN én ting: slår på minnet i appen
-if st.button("📊 Calculate & Generate Report", type="primary", use_container_width=True):
-    st.session_state.generated = True
-    autosave_profile()
-
-# 2. Hvis minnet er aktivert (brukeren har trykket), kjører alt dette:
-if st.session_state.generated:
-    import traceback, logging
-
-    def _f(val, name=""):
-        try:
-            if val is None:
-                return None
-            if isinstance(val, (int, float)):
-                return float(val)
-            s = str(val).strip()
-            return None if s == "" else float(s.replace(",", "."))
-        except Exception as e:
-            raise ValueError(f"Cannot convert '{name}' to float: {val!r} ({e})")
-
-    def _i(val, name=""):
-        try:
-            if val is None:
-                return None
-            if isinstance(val, int):
-                return val
-            s = str(val).strip()
-            return None if s == "" else int(float(s))
-        except Exception as e:
-            raise ValueError(f"Cannot convert '{name}' to int: {val!r} ({e})")
-
-    try:
-        age_i = _i(age, "age")
-        if age_i is None:
-            raise ValueError("Age must be a number.")
-        height_f = _f(height_cm, "height_cm")
-        weight_f = _f(weight_kg, "weight_kg")
-        if height_f is None or weight_f is None:
-            raise ValueError("Height and weight must be numbers.")
-
-        waist_f = _f(waist_cm, "waist_cm")
-        hip_f = _f(hip_cm, "hip_cm")
-        neck_f = _f(neck_cm, "neck_cm")
-        measured_vo2_f = _f(measured_vo2_input, "measured_vo2")
-        vo2_dist_f = _f(vo2_distance_m, "vo2_distance")
-        rockport_time_f = _f(rockport_time_min, "rockport_time")
-        rockport_hr_i = _i(rockport_hr, "rockport_hr")
-        weekly_min_i = _i(weekly_minutes, "weekly_minutes")
-        session_int_i = _i(session_intensity, "session_intensity")
-        resting_hr_i = _i(resting_hr, "resting_hr")
-        max_hr_i = _i(max_hr, "max_hr")
-        plan_weeks_i = _i(plan_weeks, "plan_weeks")
-        target_weight_f = _f(target_weight, "target_weight")
-        target_bmi_f = _f(target_bmi, "target_bmi")
-
-        results = {}
-        
-        # BMI
-        if run_bmi:
-            bmi_value, bmi_category = calculators.bmi_calc(weight_f, height_f)
-            results["bmi"] = {"value": float(bmi_value), "category": bmi_category}
-            if waist_f is not None and hip_f is not None:
-                whr_value = calculators.waist_hip_ratio(waist_f, hip_f)
-                results["whr"] = {"value": float(whr_value),
-                    "category": calculators.whr_category(sex, whr_value)}
-
-        # Body fat
-        if bodyfat_requested and neck_f is not None:
-            try:
-                if sex == "M":
-                    if waist_f is None:
-                        raise ValueError("Waist required for male body-fat estimate.")
-                    bf = calculators.body_fat_navy(sex=sex, height_cm=height_f,
-                        neck_cm=neck_f, waist_cm=waist_f)
-                else:
-                    if waist_f is None or hip_f is None:
-                        raise ValueError("Waist and hip required for female body-fat estimate.")
-                    bf = calculators.body_fat_navy(sex=sex, height_cm=height_f,
-                        neck_cm=neck_f, waist_cm=waist_f, hip_cm=hip_f)
-                results["bodyfat"] = {"value": round(float(bf), 1)}
-            except Exception as e:
-                st.warning(f"Body-fat estimate skipped: {e}")
-
-        # VO2
-        if run_vo2:
-            vo2_method_sel = st.session_state.get("vo2_method_select", vo2_method)
-            if measured_vo2_f is not None and measured_vo2_f > 0:
-                vo2_value = calculators.vo2_measured_value(measured_vo2_f)
-                method_used = "Measured value"
-            elif vo2_method_sel == "Cooper (12-min)":
-                vo2_value = calculators.vo2_cooper_from_distance(float(vo2_dist_f or 0.0))
-                method_used = "Cooper (12-min)"
-            elif vo2_method_sel == "Rockport (1-mile)":
-                if rockport_time_f is None:
-                    raise ValueError("Rockport time must be a number.")
-                vo2_value = calculators.vo2_rockport_1mile(
-                    float(rockport_time_f), int(rockport_hr_i or 0),
-                    weight_f, age_i, sex)
-                method_used = "Rockport (1-mile)"
-            else:
-                bmi_v = results["bmi"]["value"] if "bmi" in results else calculators.bmi_calc(weight_f, height_f)[0]
-                vo2_value = calculators.vo2_questionnaire_estimate(
-                    age=age_i, sex=sex,
-                    weekly_minutes=int(weekly_min_i or 0),
-                    session_intensity_score=int(session_int_i or 1),
-                    activity_level=st.session_state.get("v_activity", activity_level),
-                    bmi=bmi_v,
-                    resting_hr=int(resting_hr_i) if resting_hr_i is not None else None,
-                    max_hr=int(max_hr_i) if max_hr_i is not None else None,
-                )
-                method_used = "Questionnaire"
-
-            vo2_ref = calculators.vo2_reference(age_i, sex, float(vo2_value))
-            vo2_tips = calculators.vo2_improvement_tips(
-                vo2_value=float(vo2_value), sex=sex, age=age_i,
-                activity_level=st.session_state.get("v_activity", activity_level),
-                weekly_minutes=int(weekly_min_i or 0),
-            )
-            top_descriptor = calculators.vo2_top_descriptor(age_i, sex, float(vo2_value))
-            results["vo2"] = {
-                "value": round(float(vo2_value), 1),
-                "method": method_used,
-                "age_band": vo2_ref.get("age_band"),
-                "percentile": vo2_ref.get("percentile"),
-                "rating": vo2_ref.get("rating"),
-                "mean": vo2_ref.get("mean"),
-                "tips": vo2_tips,
-                "top_descriptor": top_descriptor,
-            }
-
-        # Biological age
-        if run_bioage:
-            bmi_v = results["bmi"]["value"] if "bmi" in results else calculators.bmi_calc(weight_f, height_f)[0]
-            waist_to_hip = None
-            if waist_f is not None and hip_f is not None:
-                try:
-                    waist_to_hip = calculators.waist_hip_ratio(waist_f, hip_f)
-                except Exception:
-                    pass
-            measured_vo2_for_bio = results.get("vo2", {}).get("value")
-            bio_age, bio_factors = calculators.estimate_biological_age_detailed(
-                age=age_i, sex=sex,
-                smoker=st.session_state.get("bio_smoker", False),
-                bmi=bmi_v,
-                activity_level=st.session_state.get("v_activity", activity_level),
-                sleep_hours=_f(st.session_state.get("bio_sleep_val"), "sleep"),
-                alcohol_units_per_week=_f(st.session_state.get("bio_alc_val"), "alcohol"),
-                fruit_veg_servings=_f(st.session_state.get("bio_fv"), "fruit_veg"),
-                perceived_stress=st.session_state.get("bio_stress", perceived_stress),
-                grip_strength_kg=_f(st.session_state.get("bio_grip_val"), "grip"),
-                bp_systolic=_f(st.session_state.get("bio_bp_val"), "bp"),
-                cholesterol_mg_dl=_f(st.session_state.get("bio_chol_val"), "chol"),
-                diabetes=st.session_state.get("bio_diabetes", False),
-                resting_hr=_i(st.session_state.get("bio_rhr_val") or resting_hr_i, "rhr"),
-                waist_to_hip_ratio=waist_to_hip,
-                family_history=st.session_state.get("bio_family_hist", False),
-                menopause=st.session_state.get("bio_menopause", False),
-                measured_vo2=measured_vo2_for_bio,
-            )
-            results["bio_age"] = {"value": round(float(bio_age), 1)}
-            results["bio_factors"] = bio_factors
-
-        # Conditions
-        if run_conditions:
-            recs = calculators.recommendations_for_diagnoses(
-                st.session_state.get("cond_select", []) or selected_conditions,
-                st.session_state.get("cond_goal", condition_goal_focus)
-            )
-            results["triage"] = {"level": "Info", "message": "Recommendations generated for selected conditions."}
-            results["triage_recommendations"] = recs
-
-        # Plan
-        if run_plan and run_bmi and create_plan:
-            target_w = (target_bmi_f * (height_f / 100.0) ** 2) if target_bmi_f else target_weight_f
-            if target_w:
-                ekpw = float(st.session_state.get("exercise_kcal_per_week", 0.0))
-                plan = calculators.generate_weight_plan(
-                    current_weight_kg=weight_f,
-                    target_weight_kg=target_w,
-                    weeks=int(plan_weeks_i or 12),
-                    sex=sex, height_cm=height_f, age=age_i,
-                    activity_level=st.session_state.get("v_activity", activity_level),
-                    exercise_kcal_per_week=ekpw,
-                )
-                if plan.get("error"):
-                    st.error(plan.get("message"))
-                else:
-                    results["plan"] = plan
-
-        # Oppdater session state slik at resten av appen får resultata
-        st.session_state["results"] = results
-        st.success("Calculation finished — results ready.")
-        
-    except Exception as e:
-        st.error(f"Error during calculation: {e}")
-        st.text(traceback.format_exc())
-        logging.exception("Calculation failed")
-        st.session_state["results"] = {}
-
-# ── Manuell lagring (utanfor try/except) ──────────────────────────────────────
-st.markdown("---")
-col_save1, col_save2 = st.columns([3, 1])
-with col_save1:
-    st.caption("The measurements are not saved automatically. Press the button to save today's data to your history.")
-with col_save2:
-    if st.button("💾 Save this measurement to history", type="primary", use_container_width=True):
-        try:
-            res = st.session_state.get("results", {})
-            if not res:
-                st.error("Ingen resultat å lagre. Køyr 'Calculate' først.")
-            else:
-                db = get_db_client()
-                # Hent ut enkeltverdiane – tilpass etter dine input-nøklar
-                weight_val = st.session_state.get("inp_weight", None)
-                bmi_val = res.get("bmi", {}).get("value")
-                vo2_val = res.get("vo2", {}).get("value")
-                bio_val = res.get("bio_age", {}).get("value")
-                weekly_min = st.session_state.get("v_weekly_minutes", 0)
-                resting_hr_val = st.session_state.get("resting_hr") or st.session_state.get("basic_resting_hr")
-                
-                save_health_metrics(
-                    db,
-                    weight=weight_val,
-                    bmi=bmi_val,
-                    vo2max=vo2_val,
-                    bio_age=bio_val,
-                    weekly_activity_minutes=weekly_min,
-                    resting_hr=resting_hr_val
-                )
-                st.success("✅ Measurement saved! Go to 'My Progress' to view your progress.")
-                st.balloons()
-        except Exception as e:
-            st.error(f"Error saving: {e}")
-# ── Display results ───────────────────────────────────────────────────────────
-results = st.session_state.get("results", {})
-
-# Premium-status (brukt til å låse/vise seksjonar lenger nede)
-# Handter return frå Stripe – gjenopprett session og tving ny Supabase-sjekk
-_params = st.query_params
-if _params.get("payment") == "success" and _params.get("uid"):
-    # Old flow: already-logged-in user paid, uid is in the URL.
-    _uid = _params.get("uid")
-    st.session_state["authenticated"] = True
-    st.session_state["user_id"] = _uid
-    st.session_state["premium_checked"] = False
-    st.session_state["report_unlocked"] = False
-elif _params.get("payment") == "success" and _params.get("email"):
-    # CHANGED: guest checkout flow. We know they paid, but they're not
-    # logged in yet on this device — the account + access was created by the
-    # stripe-webhook function, and a magic link was emailed to them.
-    st.session_state["guest_payment_email"] = _params.get("email")
-    st.success(
-        f"✅ Payment received! We've sent a login link to **{_params.get('email')}** — "
-        "check your inbox (and spam folder) to access your full report."
-    )
-
-# Sjekk premium frå Supabase (sikker)
-# Sjekk premium frå Supabase – alltid når brukaren er innlogga
-if is_authenticated():
-    st.session_state["report_unlocked"] = has_premium_access(db)
-else:
-    st.session_state["report_unlocked"] = False
-
-    _unlocked = st.session_state.get("report_unlocked", False)
-
-if results:
-        # --- BMI SEKSJON ---
-    if "bmi" in results:
-        st.subheader("BMI")
-        b = results["bmi"]["value"]
-        cat = results["bmi"]["category"]
-
-        # Fargekode basert på kategori
-        if b < 18.5:
-            bmi_color = "#3B82F6"
-            bmi_emoji = "⬇️"
-        elif b < 25.0:
-            bmi_color = "#22C55E"
-            bmi_emoji = "✅"
-        elif b < 30.0:
-            bmi_color = "#F59E0B"
-            bmi_emoji = "⚠️"
-        else:
-            bmi_color = "#EF4444"
-            bmi_emoji = "🔴"
-
-        # Marker-posisjon på linja (0–45 skala → 0–100%)
-        marker_pct = min(100, max(0, (b / 45.0) * 100))
-
-        components.html(f"""
-<style>
-  .bmi-wrap {{
-    font-family: Arial, sans-serif;
-    background: #1F2937;
-    border: 1px solid #374151;
-    border-radius: 16px;
-    padding: 20px 22px 18px 22px;
-    color: #E5E7EB;
-    max-width: 100%;
-  }}
-  .bmi-top {{
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 18px;
-  }}
-  .bmi-val {{
-    font-size: 48px;
-    font-weight: 800;
-    color: {bmi_color};
-    line-height: 1;
-  }}
-  .bmi-cat {{
-    font-size: 14px;
-    color: #9CA3AF;
-    margin-top: 4px;
-  }}
-  .bmi-badge {{
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: {bmi_color}22;
-    border: 1px solid {bmi_color};
-    color: {bmi_color};
-    font-size: 14px;
-    font-weight: 700;
-    border-radius: 999px;
-    padding: 6px 14px;
-  }}
-  .bmi-track-wrap {{
-    position: relative;
-    margin-bottom: 8px;
-  }}
-  .bmi-track {{
-    display: flex;
-    height: 20px;
-    border-radius: 999px;
-    overflow: hidden;
-    width: 100%;
-  }}
-  .bmi-seg {{
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 10px;
-    font-weight: 700;
-    color: rgba(0,0,0,0.7);
-  }}
-  .bmi-marker-row {{
-    position: relative;
-    height: 28px;
-    margin-top: 2px;
-  }}
-  .bmi-marker {{
-    position: absolute;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }}
-  .bmi-arrow {{
-    width: 0; height: 0;
-    border-left: 7px solid transparent;
-    border-right: 7px solid transparent;
-    border-bottom: 12px solid {bmi_color};
-  }}
-  .bmi-marker-val {{
-    font-size: 12px;
-    font-weight: 800;
-    color: {bmi_color};
-    margin-top: 2px;
-    white-space: nowrap;
-  }}
-  .bmi-labels {{
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    color: #6B7280;
-    margin-top: 4px;
-  }}
-  .bmi-legend {{
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 14px;
-  }}
-  .bmi-leg-item {{
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    color: #CBD5E1;
-    background: #111827;
-    border: 1px solid #374151;
-    border-radius: 999px;
-    padding: 4px 10px;
-  }}
-  .bmi-dot {{
-    width: 9px; height: 9px;
-    border-radius: 50%;
-    flex: 0 0 9px;
-  }}
-</style>
-
-<div class="bmi-wrap">
-  <div class="bmi-top">
-    <div>
-      <div class="bmi-val" id="bmi-val-anim">0.0</div>
-      <div class="bmi-cat">Body Mass Index</div>
-    </div>
-    <div class="bmi-badge">{bmi_emoji} {cat}</div>
-  </div>
-
-  <div class="bmi-track-wrap">
-    <div class="bmi-track">
-      <!-- Underweight: 0–18.5 = 41.1% of 45 -->
-      <div class="bmi-seg" style="width:41.1%; background:#3B82F6;">Under</div>
-      <!-- Normal: 18.5–25 = 14.4% -->
-      <div class="bmi-seg" style="width:14.4%; background:#22C55E;">Normal</div>
-      <!-- Overweight: 25–30 = 11.1% -->
-      <div class="bmi-seg" style="width:11.1%; background:#F59E0B;">Over</div>
-      <!-- Obese: 30–45 = 33.3% -->
-      <div class="bmi-seg" style="width:33.3%; background:#EF4444;">Obese</div>
-    </div>
-
-    <div class="bmi-marker-row">
-      <div class="bmi-marker" style="left:{marker_pct:.1f}%;">
-        <div class="bmi-arrow"></div>
-        <div class="bmi-marker-val">{b:.1f}</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="bmi-labels">
-    <span>0</span>
-    <span>18.5</span>
-    <span>25</span>
-    <span>30</span>
-    <span>45+</span>
-  </div>
-
-  <div class="bmi-legend">
-    <div class="bmi-leg-item"><span class="bmi-dot" style="background:#3B82F6"></span>Underweight (&lt;18.5)</div>
-    <div class="bmi-leg-item"><span class="bmi-dot" style="background:#22C55E"></span>Normal (18.5–24.9)</div>
-    <div class="bmi-leg-item"><span class="bmi-dot" style="background:#F59E0B"></span>Overweight (25–29.9)</div>
-    <div class="bmi-leg-item"><span class="bmi-dot" style="background:#EF4444"></span>Obese (30+)</div>
-  </div>
-</div>
-<script>
-(function() {{
-  var target = {b:.4f};
-  var el = document.getElementById('bmi-val-anim');
-  if (!el) return;
-  var start = null, duration = 900;
-  function step(ts) {{
-    if (!start) start = ts;
-    var p = Math.min((ts - start) / duration, 1);
-    var ease = 1 - Math.pow(1 - p, 3);
-    el.textContent = (target * ease).toFixed(1);
-    if (p < 1) requestAnimationFrame(step);
-    else el.textContent = target.toFixed(1);
-  }}
-  requestAnimationFrame(step);
-}})();
-</script>
-        """, height=260)
-
-    # ── Energy & Metabolism ───────────────────────────────────────────────────
-    st.markdown("---")
-    st.subheader("Energy og Metabolism")
-
-    def _to_float(val):
-        try:
-            return float(str(val).replace(",", ".").strip())
-        except Exception:
-            return None
-
-    calc_age_f = _to_float(age)
-    calc_weight = _to_float(weight_kg)
-    calc_height = _to_float(height_cm)
-
-    if calc_age_f is None or calc_weight is None or calc_height is None:
-        st.info("Fyll inn alder, vekt og høyde for kaloriberegning.")
-    else:
-        bmr_val = bmr_mifflin(age=int(calc_age_f), sex=sex,
-                               weight_kg=float(calc_weight), height_cm=float(calc_height))
-        daily_living = bmr_val * 1.2
-        # ── FIX: use actual exercise kcal/week from session_state ──
-        w_kcal = float(st.session_state.get("exercise_kcal_per_week", 0.0))
-        tdee_total = tdee_including_weekly_exercise(
-            bmr_val,
-            st.session_state.get("v_activity", activity_level),
-            w_kcal
-        )
-        st.session_state["latest_tdee_total"] = float(tdee_total)
-
-        c1, c2, c3 = st.columns(3)
-        c1.metric("BMR (base metabolic rate)", f"{int(bmr_val)} kcal")
-        c2.metric("Daily burn (sedentary)", f"{int(daily_living)} kcal")
-        c3.metric("Total daily burn incl. exercise", f"{int(tdee_total)} kcal")
-
-        if w_kcal > 0:
-            st.caption(f"Exercise contribution: {w_kcal:.0f} kcal/week = "
-                       f"{w_kcal/7:.0f} kcal/day added to TDEE.")
-
-# ── VO2 ───────────────────────────────────────────────────────────────────
-        if "vo2" in results:
-            st.markdown("---")
-            st.subheader("VO2 max & fitness")
-    
-            v_val = float(results["vo2"]["value"])
-            v_pct = max(0.0, min(100.0, float(results["vo2"].get("percentile") or 0)))
-            top_text = f"Top {100 - v_pct:.1f}%"
-    
-        if v_pct >= 90:
-            pct_color = "#22C55E"; pct_label = "Excellent"
-        elif v_pct >= 80:
-            pct_color = "#3B82F6"; pct_label = "Very good"
-        elif v_pct >= 60:
-            pct_color = "#7C7CF5"; pct_label = "Good"
-        elif v_pct >= 40:
-            pct_color = "#F59E0B"; pct_label = "Below average"
-        else:
-            pct_color = "#EF6A3B"; pct_label = "Low"
-        
-        _vo2_html = """
-<style>
-  .vo2-row {
-    display: flex; gap: 12px; font-family: Arial, sans-serif;
-    background: #1F2937; border: 1px solid #374151;
-    border-radius: 16px; padding: 18px 20px;
-  }
-  .vo2-card {
-    flex: 1; text-align: center;
-    background: #111827; border-radius: 12px; padding: 14px 8px;
-    border: 1px solid #374151;
-  }
-  .vo2-label {
-    font-size: 10px; color: #6B7280; text-transform: uppercase;
-    letter-spacing: .06em; margin-bottom: 6px;
-  }
-  .vo2-num {
-    font-size: 36px; font-weight: 800; line-height: 1; color: VO2COLOR;
-  }
-  .vo2-sub {
-    font-size: 11px; color: #9CA3AF; margin-top: 4px;
-  }
-</style>
-<div class="vo2-row">
-  <div class="vo2-card">
-    <div class="vo2-label">VO2 max</div>
-    <div class="vo2-num" id="vo2-val-anim">0.0</div>
-    <div class="vo2-sub">ml/kg/min</div>
-  </div>
-  <div class="vo2-card">
-    <div class="vo2-label">Percentile</div>
-    <div class="vo2-num" id="vo2-pct-anim">0</div>
-    <div class="vo2-sub">of your age group</div>
-  </div>
-  <div class="vo2-card">
-    <div class="vo2-label">Ranking</div>
-    <div class="vo2-num" style="font-size:22px;padding-top:7px;">PCT_LABEL</div>
-    <div class="vo2-sub">TOP_TEXT</div>
-  </div>
-</div>
-<script>
-(function() {
-  function animCount(id, target, decimals, duration) {
-    var el = document.getElementById(id);
-    if (!el) return;
-    var start = null;
-    function step(ts) {
-      if (!start) start = ts;
-      var p = Math.min((ts - start) / duration, 1);
-      var ease = 1 - Math.pow(1 - p, 3);
-      el.textContent = (target * ease).toFixed(decimals);
-      if (p < 1) requestAnimationFrame(step);
-      else el.textContent = target.toFixed(decimals);
-    }
-    requestAnimationFrame(step);
-  }
-  animCount('vo2-val-anim', VO2VAL, 1, 1000);
-  animCount('vo2-pct-anim', VO2PCT, 0, 1000);
-})();
-</script>
-        """
-        _vo2_html = (
-            _vo2_html
-            .replace("VO2COLOR", pct_color)
-            .replace("VO2VAL", f"{v_val:.4f}")
-            .replace("VO2PCT", f"{v_pct:.1f}")
-            .replace("PCT_LABEL", pct_label)
-            .replace("TOP_TEXT", top_text)
-        )
-        components.html(_vo2_html, height=150)
-
-        if v_pct >= 90:
-            pct_color = "#22C55E"; pct_label = "Excellent"
-        elif v_pct >= 80:
-            pct_color = "#3B82F6"; pct_label = "Very good"
-        elif v_pct >= 60:
-            pct_color = "#7C7CF5"; pct_label = "Good"
-        elif v_pct >= 40:
-            pct_color = "#F59E0B"; pct_label = "Below average"
-        else:
-            pct_color = "#EF6A3B"; pct_label = "Low"
-
-        if v_pct >= 90:
-            interpretation_text = "You are performing excellent compared to the average for your age."
-        elif v_pct >= 80:
-            interpretation_text = "You are performing very well compared to the average for your age."
-        elif v_pct >= 60:
-            interpretation_text = "You are around the average to good range for your age."
-        elif v_pct >= 40:
-            interpretation_text = "You are slightly below average for your age."
-        else:
-            interpretation_text = "You are below the average for your age, but this is very trainable."
-
-        vo2_rows = [
-            ("20–29", 44, 40, "#26A690"),
-            ("30–39", 40, 36, "#3B82F6"),
-            ("40–49", 37, 33, "#7C7CF5"),
-            ("50–59", 34, 30, "#F59E0B"),
-            ("60+",   30, 27, "#EF6A3B"),
-        ]
-
-        def band_match(band: str) -> bool:
-            if band == "20–29": return 20 <= age <= 29
-            if band == "30–39": return 30 <= age <= 39
-            if band == "40–49": return 40 <= age <= 49
-            if band == "50–59": return 50 <= age <= 59
-            return age >= 60
-
-        active_band = next((b for b, *_ in vo2_rows if band_match(b)), None)
-
-        if str(sex).upper().startswith("M"):
-            current_avg = {b: m for b, m, _, _ in vo2_rows}
-        else:
-            current_avg = {b: w for b, _, w, _ in vo2_rows}
-
-        # ── Age band bars (Plotly) ──
-        import plotly.graph_objects as go
-
-        st.markdown("#### VO2 max across age bands")
-
-        bands = [r[0] for r in vo2_rows]
-        avgs  = [current_avg[r[0]] for r in vo2_rows]
-        colors_list = [pct_color if r[0] == active_band else r[3] for r in vo2_rows]
-        labels = ["← Your group" if r[0] == active_band else "Average" for r in vo2_rows]
-
-        fig_bands = go.Figure()
-
-        fig_bands.add_trace(go.Bar(
-            x=avgs,
-            y=bands,
-            orientation="h",
-            marker=dict(
-                color=colors_list,
-                line=dict(width=0),
-            ),
-            text=[f"{a} ml/kg/min" for a in avgs],
-            textposition="outside",
-            textfont=dict(color="#9CA3AF", size=11),
-            hovertemplate="<b>%{y}</b><br>Average: %{x} ml/kg/min<extra></extra>",
-            name="Age band avg",
-        ))
-
-        fig_bands.add_vline(
-            x=v_val,
-            line=dict(color="white", width=2, dash="dash"),
-            annotation_text=f"You: {v_val:.1f}",
-            annotation_font=dict(color="white", size=12),
-            annotation_position="top right",
+    # ── Theme ──────────────────────────────────────────────────────
+    BG     = HexColor("#080C16")
+    CARD   = HexColor("#121C32")
+    CARD2  = HexColor("#0E1729")
+    GOLD   = HexColor("#D4AF7A")
+    ACCENT = HexColor("#14B8A6")
+    BLUE   = HexColor("#3B82F6")
+    GLOW   = HexColor("#38BDF8")
+    GOOD   = HexColor("#22C55E")
+    WARN   = HexColor("#F59E0B")
+    BAD    = HexColor("#EF4444")
+    TEXT   = HexColor("#F1F5F9")
+    MUTED  = HexColor("#94A3B8")
+    STROKE = HexColor("#28324A")
+    DIM    = HexColor("#5B6B85")
+
+    _styles = getSampleStyleSheet()
+
+    def S(name, size=10, color=TEXT, after=6, lead=None, bold=False, italic=False, align=TA_LEFT):
+        return ParagraphStyle(
+            name, parent=_styles["Normal"],
+            fontName="Helvetica-Bold" if bold else ("Helvetica-Oblique" if italic else "Helvetica"),
+            fontSize=size, textColor=color, spaceAfter=after,
+            leading=lead or (size + 4), alignment=align,
         )
 
-        fig_bands.update_layout(
-            paper_bgcolor="#111827",
-            plot_bgcolor="#1F2937",
-            font=dict(color="#E5E7EB", family="Arial"),
-            height=320,
-            margin=dict(l=10, r=80, t=20, b=40),
-            xaxis=dict(
-                title="VO2 max (ml/kg/min)",
-                color="#9CA3AF",
-                gridcolor="#374151",
-                range=[0, max(avgs + [v_val]) + 8],
-            ),
-            yaxis=dict(
-                color="#D1D5DB",
-                gridcolor="#374151",
-            ),
-            showlegend=False,
-        )
+    def P(txt, style):
+        return Paragraph(str(txt), style)
 
-        st.plotly_chart(fig_bands, use_container_width=True)
-
-        # ── Percentile gauge (Plotly) ──
-        st.markdown(f"#### Population percentile")
-
-        fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number+delta",
-            value=v_pct,
-            number=dict(
-                suffix="th",
-                font=dict(size=48, color=pct_color),
-            ),
-            delta=dict(
-                reference=50,
-                increasing=dict(color="#22C55E"),
-                decreasing=dict(color="#EF4444"),
-                valueformat=".1f",
-            ),
-            title=dict(
-                text=f"<b>{pct_label}</b><br><span style='font-size:13px;color:#9CA3AF'>{interpretation_text}</span>",
-                font=dict(size=16, color="#F9FAFB"),
-            ),
-            gauge=dict(
-                axis=dict(
-                    range=[0, 100],
-                    tickwidth=1,
-                    tickcolor="#374151",
-                    tickfont=dict(color="#9CA3AF", size=11),
-                    nticks=6,
-                ),
-                bar=dict(color=pct_color, thickness=0.25),
-                bgcolor="#1F2937",
-                borderwidth=0,
-                steps=[
-                    dict(range=[0, 40],  color="#1a1a2e"),
-                    dict(range=[40, 60], color="#1e2a3a"),
-                    dict(range=[60, 80], color="#1a2e2a"),
-                    dict(range=[80, 100],color="#1a2e1a"),
-                ],
-                threshold=dict(
-                    line=dict(color="white", width=3),
-                    thickness=0.8,
-                    value=v_pct,
-                ),
-            ),
-        ))
-
-        fig_gauge.update_layout(
-            paper_bgcolor="#111827",
-            font=dict(color="#E5E7EB", family="Arial"),
-            height=340,
-            margin=dict(l=20, r=20, t=60, b=20),
-        )
-
-        st.plotly_chart(fig_gauge, use_container_width=True)
-
-        col_l, col_m, col_r = st.columns(3)
-        col_l.metric("Your percentile", f"{v_pct:.0f}th", f"{v_pct - 50:.1f} vs avg")
-        col_m.metric("Rating", pct_label)
-        col_r.metric("Top", f"{100 - v_pct:.0f}%")
-        # VO2 tips
-        tips = results["vo2"].get("tips", [])
-        if tips:
-            st.markdown("**VO2 improvement tips**")
-            for tip in tips:
-                st.write(f"• {tip}")
-
-# ── Biological age ────
-    if "bio_age" in results:
-            st.markdown("---")
-            st.subheader("Biological age")
-            _bio_val = results["bio_age"]["value"]
-            _chron = float(age)
-            _diff = _bio_val - _chron
-            _diff_color = "#22C55E" if _diff <= 0 else "#EF4444"
-            _diff_label = f"{abs(_diff):.1f} years younger" if _diff <= 0 else f"{abs(_diff):.1f} years older"
-            _diff_sign = "▼" if _diff <= 0 else "▲"
-            _factors_html = "".join([
-                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">'
-                '<div style="font-size:11px;color:#9CA3AF;min-width:140px;max-width:140px;'
-                'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + f["label"] + '</div>'
-                '<div style="flex:1;background:rgba(255,255,255,0.06);border-radius:999px;height:10px;overflow:hidden;">'
-                '<div style="width:' + str(max(3, min(100, abs(f.get("delta", 0)) / 5 * 100))) + '%;height:100%;border-radius:999px;'
-                'background:' + ("#22C55E" if f.get("delta", 0) <= 0 else "#EF4444") + ';"></div></div>'
-                '<div style="font-size:11px;font-weight:700;min-width:52px;text-align:right;'
-                'color:' + ("#22C55E" if f.get("delta", 0) <= 0 else "#EF4444") + ';">'
-                + f'{f.get("delta", 0):+.0f} yrs' +
-                '</div></div>'
-                for f in results.get("bio_factors", [])
-            ])
-            st.markdown(
-                '<div style="font-family:Arial,sans-serif;background:#1F2937;border:1px solid #374151;'
-                'border-radius:16px;padding:20px 22px 18px 22px;color:#E5E7EB;">'
-                '<div style="display:flex;justify-content:space-between;align-items:flex-start;'
-                'margin-bottom:18px;flex-wrap:wrap;gap:12px;">'
-                '<div><div style="font-size:52px;font-weight:800;color:' + _diff_color + ';line-height:1;">'
-                + f"{_bio_val:.1f}" +
-                '</div><div style="font-size:13px;color:#9CA3AF;margin-top:4px;">Biological age &nbsp;&middot;&nbsp; Chronological: '
-                + f"{_chron:.0f}" + ' yrs</div></div>'
-                '<div style="display:inline-flex;align-items:center;gap:6px;background:' + _diff_color + '22;'
-                'border:1px solid ' + _diff_color + ';color:' + _diff_color + ';font-size:14px;font-weight:700;'
-                'border-radius:999px;padding:6px 14px;">' + _diff_sign + " " + _diff_label + ' than average</div>'
-                '</div>'
-                '<div style="font-size:12px;font-weight:700;color:#6B7280;letter-spacing:0.08em;'
-                'text-transform:uppercase;margin-bottom:10px;">Factor breakdown</div>'
-                + _factors_html +
-                '</div>',
-                unsafe_allow_html=True,
-            )
-
-    # ── Premium upsell — vises RETT ETTER biologisk alder (emosjonelt høgdepunkt) ──
-    # Plassering: mellom bio age-kortet og Conditions-seksjonen.
-    # E-postfeltet (lead capture) er flytta NED til etter samanlikningstabellen
-    # i paywall-seksjonen, som plan B for dei som ikkje kjøper med ein gong.
-    if "bio_age" in results and not st.session_state.get("report_unlocked", False):
-        _bio_upsell_val = results["bio_age"]["value"]
-        _bio_upsell_chron = float(age) if age else 30.0
-        _bio_upsell_diff = _bio_upsell_val - _bio_upsell_chron
-
-        # Personalisert overskrift og teaser basert på resultatet
-        if _bio_upsell_diff <= 0:
-            _upsell_headline = f"Your body is {abs(_bio_upsell_diff):.1f} years younger than your calendar age."
-            _upsell_teaser = (
-                f"Your VO₂ max and lifestyle habits are working in your favour. "
-                f"A targeted 12-week plan could push your biological age down by another "
-                f"{min(7, max(2, int(abs(_bio_upsell_diff) * 0.5 + 2)))} years."
-            )
-        else:
-            _upsell_headline = f"Your body is {abs(_bio_upsell_diff):.1f} years older than your calendar age."
-            _upsell_teaser = (
-                f"The good news: the factors driving this are changeable. "
-                f"A personalised 12-week plan could reverse {min(int(abs(_bio_upsell_diff) * 0.6) + 1, int(abs(_bio_upsell_diff)))} "
-                f"of those years with the right protocol."
-            )
-
-        # Kompakt, sjølvstendig premium-boks — knappen er INNI boksen
-        st.markdown(
-            f'<div style="font-family:Arial,sans-serif;'
-            f'background:rgba(14,165,163,0.07);'
-            f'border:1.5px solid rgba(14,165,163,0.35);'
-            f'border-radius:16px;padding:22px 24px;margin:20px 0;">'
-
-            # Overskrift + teaser
-            f'<div style="font-size:17px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
-            f'{_upsell_headline}</div>'
-            f'<div style="font-size:13px;color:#9CA3AF;line-height:1.6;margin-bottom:16px;">'
-            f'{_upsell_teaser}</div>'
-
-            # Feature-tags
-            f'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;">'
-            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-            f'color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">'
-            f'✓ 10-page PDF report</span>'
-            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-            f'color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">'
-            f'✓ Progress tracking over time</span>'
-            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-            f'color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">'
-            f'✓ Full 12-week plan</span>'
-            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
-            f'color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">'
-            f'✓ AI Coach insights</span>'
-            f'</div>'
-
-            # Pris + trust-linje
-            f'<div style="display:flex;align-items:center;justify-content:space-between;'
-            f'flex-wrap:wrap;gap:10px;">'
-            f'<div style="font-size:11px;color:#6B7280;">'
-            f'One-time · $4.99 · No subscription · Instant access</div>'
-            f'<div style="font-size:22px;font-weight:800;color:#0EC8C4;">$4.99</div>'
-            f'</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
-
-        # CTA-knapp — direkte under boksen, visuelt kopla til han
-        if st.button(
-            "Get my plan and PDF report — $4.99 →",
-            type="primary",
-            key="bio_age_upsell_btn",
-            use_container_width=True,
-        ):
-            st.session_state["scroll_to_paywall"] = True
-            st.rerun()
-
-        st.caption("🔒 Secure Stripe checkout · Download in seconds · No subscription")
-
-# ── Conditions ────
-    if "triage" in results:
-        st.markdown("---")
-        st.subheader("Conditions & recommendations")
-        if results.get("triage_recommendations"):
-            _rec_cards_list = []
-            for _r in results["triage_recommendations"]:
-                _r_lower = str(_r).lower()
-                if any(w in _r_lower for w in ["avoid", "risk", "warning", "stop", "danger", "limit"]):
-                    _rc = "#EF4444"; _ri = "⚠️"; _rbg = "rgba(239,68,68,0.08)"; _rb = "rgba(239,68,68,0.25)"
-                elif any(w in _r_lower for w in ["exercise", "train", "cardio", "walk", "run", "strength", "activity"]):
-                    _rc = "#3B82F6"; _ri = "🏃"; _rbg = "rgba(59,130,246,0.08)"; _rb = "rgba(59,130,246,0.25)"
-                elif any(w in _r_lower for w in ["diet", "eat", "food", "nutrition", "calori", "protein", "vegetable", "fruit"]):
-                    _rc = "#22C55E"; _ri = "🥗"; _rbg = "rgba(34,197,94,0.08)"; _rb = "rgba(34,197,94,0.25)"
-                elif any(w in _r_lower for w in ["sleep", "stress", "mental", "relax", "breath", "meditat"]):
-                    _rc = "#A78BFA"; _ri = "😴"; _rbg = "rgba(167,139,250,0.08)"; _rb = "rgba(167,139,250,0.25)"
-                elif any(w in _r_lower for w in ["doctor", "consult", "medical", "physician", "specialist", "monitor"]):
-                    _rc = "#F59E0B"; _ri = "🩺"; _rbg = "rgba(245,158,11,0.08)"; _rb = "rgba(245,158,11,0.25)"
-                else:
-                    _rc = "#0EA5A3"; _ri = "💡"; _rbg = "rgba(14,165,163,0.08)"; _rb = "rgba(14,165,163,0.25)"
-                _rec_cards_list.append(
-                    '<div style="display:flex;align-items:flex-start;gap:12px;'
-                    'background:' + _rbg + ';border:1px solid ' + _rb + ';'
-                    'border-left:3px solid ' + _rc + ';border-radius:12px;'
-                    'padding:12px 14px;margin-bottom:8px;">'
-                    '<div style="font-size:18px;line-height:1.3;">' + _ri + '</div>'
-                    '<div style="font-size:13px;color:#E5E7EB;line-height:1.6;">' + str(_r) + '</div>'
-                    '</div>'
-                )
-            st.markdown("".join(_rec_cards_list), unsafe_allow_html=True)
-        else:
-            st.info(results.get("triage", {}).get("message", "No triage details."))
-
-
-    # --- Retrieve required values ---
-    # BMI value
-    bmi_val = results.get("bmi", {}).get("value", 0.0)
-    
-    # Exercise total minutes per week from session state
-    ex_log = st.session_state.get("exercise_last", {})
-    ex_min = ex_log.get("minutes", 0)
-    ex_sess = ex_log.get("sessions_per_week", 0)
-    ex_total_min = ex_min * ex_sess
-    
-    # Biological age difference
-    bio_age_val = results.get("bio_age", {}).get("value")
-    chron_age = float(age) if age else 0.0
-    _diff = (bio_age_val - chron_age) if bio_age_val is not None else 0.0
-    
-    # --- Compute scores (0–100) ---
-    bmi_score = 100 if 18.5 <= bmi_val < 25 else 70 if 17 <= bmi_val < 27 else 40
-    vo2_score = float(results.get("vo2", {}).get("percentile", 50))
-    activity_score = min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30
-    lifestyle_score = max(0, min(100, 70 - (_diff * 10))) if _diff else 60
-
-    # ── Plan ──────────────────────────────────────────────────────────────────
-        # ── Plan ────
-    if "plan" in results:
-        plan = results["plan"]
-        st.markdown("---")
-        st.subheader("🎯 Weight goal / plan")
-
-        current_maint = float(st.session_state.get("latest_tdee_total",
-                    plan.get("current_needs_kcal", 0) or 0.0))
-        kg_per_week = float(plan.get("kg_per_week", 0.0) or 0.0)
-        daily_change_kcal = kg_per_week * 7700.0 / 7.0
-        recommended_daily = int(round(current_maint + daily_change_kcal))
-        actual_deficit = int(round(current_maint - recommended_daily))
-        if actual_deficit > 500:
-            st.warning(f"⚠️ Your goal requires a {actual_deficit} kcal/day deficit. This exceeds the safe limit of 500 kcal/day and may cause muscle loss and metabolic slowdown. Consider extending your timeline.")
-        plan["current_needs_kcal"] = int(round(current_maint))
-        plan["recommended_daily_kcal"] = recommended_daily
-
-        if plan.get("warning"):
-            st.warning(plan["warning"])
-
-        # ── Top 3 metrics ──
-        _pc1, _pc2, _pc3 = st.columns(3)
-        _pc1.metric("Maintenance", f"{plan['current_needs_kcal']} kcal/day")
-        _pc2.metric("Recommended", f"{plan['recommended_daily_kcal']} kcal/day",
-                    delta=f"{plan['recommended_daily_kcal'] - plan['current_needs_kcal']:+d} kcal")
-        _pc3.metric("Weekly change", f"{kg_per_week:+.2f} kg/wk")
-
-        # ── Calorie deficit/surplus bar ──
-        _deficit = plan['recommended_daily_kcal'] - plan['current_needs_kcal']
-        _bar_color = "#22C55E" if _deficit < 0 else "#3B82F6"
-        _bar_label = f"{'Deficit' if _deficit < 0 else 'Surplus'}: {abs(_deficit)} kcal/day"
-        _bar_pct = min(100, int(abs(_deficit) / max(1, plan['current_needs_kcal']) * 100 * 5))
-        st.markdown(
-            f'<div style="margin:10px 0 4px 0;color:#94A3B8;font-size:12px;">{_bar_label}</div>'
-            f'<div style="background:rgba(255,255,255,0.06);border-radius:999px;height:10px;overflow:hidden;">'
-            f'<div style="width:{_bar_pct}%;background:{_bar_color};height:100%;border-radius:999px;'
-            f'transition:width 0.4s;"></div></div>',
-            unsafe_allow_html=True
-        )
-        # ── SIMULATION SLIDER (only for non-premium users) ──────────────────
-        if results and not st.session_state.get("report_unlocked", False):
-            st.markdown("---")
-            st.markdown("### 🔮 What if you added more activity?")
-            st.caption("See how extra weekly movement could improve your fitness — then unlock your full plan to make it happen.")
-        
-            current_vo2 = results.get("vo2", {}).get("value")
-            current_bio_age = results.get("bio_age", {}).get("value")
-            current_chron_age = float(age) if age else None
-        
-            if current_vo2 is not None and current_bio_age is not None and current_chron_age is not None:
-                extra_min = st.slider(
-                    "➕ Extra minutes of moderate‑to‑vigorous activity per week",
-                    min_value=0, max_value=300, value=30, step=10,
-                    help="Based on scientific estimates: every +50 min/week → +1 ml/kg/min VO₂max, and -0.5 years biological age."
-                )
-                vo2_boost = extra_min / 50.0
-                bio_boost = vo2_boost * 0.5
-                new_vo2 = current_vo2 + vo2_boost
-                new_bio_age = current_bio_age - bio_boost
-                bio_diff = new_bio_age - current_chron_age
-                diff_text = f"{abs(bio_diff):.1f} years {'younger' if bio_diff < 0 else 'older'}" if bio_diff != 0 else "same as calendar"
-        
-                col_sim1, col_sim2 = st.columns(2)
-                with col_sim1:
-                    st.metric(
-                        "📈 Projected VO₂max",
-                        f"{new_vo2:.1f} ml/kg/min",
-                        delta=f"+{vo2_boost:.1f}" if vo2_boost > 0 else None,
-                        delta_color="normal"
-                    )
-                with col_sim2:
-                    st.metric(
-                        "🧬 Projected biological age",
-                        f"{new_bio_age:.1f} yrs",
-                        delta=f"‑{bio_boost:.1f}" if bio_boost > 0 else None,
-                        delta_color="inverse" if bio_boost > 0 else "off"
-                    )
-                    st.caption(f"Chronological age: {current_chron_age:.0f} yrs → {diff_text}")
-                st.info(
-                    "✨ This simulation is an estimate. Your **premium report** shows exactly how to reach these numbers "
-                    "with a personalised 12‑week training plan, calorie strategy, and weekly milestones."
-                )
-                if st.button("📥 Scroll down to get access→", type="primary", key="sim_cta"):
-                    st.session_state["scroll_to_paywall"] = True
-                    st.rerun()
-            else:
-                st.caption("Complete the calculation above to see how extra activity could improve your numbers.")
-
-        # ── Milestone roadmap (blur for free users – first two weeks visible) ──
-        milestones = plan.get("milestones", [])
-        if milestones:
-            st.markdown("#### 🗺️ Milestone roadmap")
-            _start_w = float(weight_kg)
-            _end_w = float(milestones[-1].get("Projected weight (kg)", _start_w))
-            _total_change = _end_w - _start_w
-
-            # Sjekk om brukaren har premium
-            _is_premium = st.session_state.get("report_unlocked", False)
-
-            for i, m in enumerate(milestones):
-                _wk = m.get("Week", i + 1)
-                _pw = float(m.get("Projected weight (kg)", _start_w))
-                _focus = m.get("Focus", "")
-
-                if abs(_total_change) > 0.01:
-                    _prog = min(100, max(0, int(abs(_pw - _start_w) / abs(_total_change) * 100)))
-                else:
-                    _prog = 100
-
-                _is_last = i == len(milestones) - 1
-                _dot_color = "#22C55E" if _is_last else "#3B82F6"
-                _focus_icons = {
-                    "Build routine": "🏗️",
-                    "Maintain consistency": "🔄",
-                    "Review progress": "📊",
-                    "Re-check and set next goal": "🏁",
-                }
-                _icon = next((v for k, v in _focus_icons.items() if k.lower() in str(_focus).lower()), "📍")
-
-                _connector = ""
-                if not _is_last:
-                    _connector = '<div style="width:2px;flex:1;min-height:20px;background:rgba(148,163,184,0.2);margin-top:2px;"></div>'
-
-                # Blur: for ikkje-premium – vis dei to første vekene klart, resten uskarpe
-                if not _is_premium:
-                    if i >= 2:   # rad 0 og 1 (veke 1 og 2) er klare
-                        blur_style = "filter:blur(4px);user-select:none;"
-                    else:
-                        blur_style = ""
-                else:
-                    blur_style = ""
-
-                _milestone_html = f"""
-<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;{blur_style}">
-  <div style="display:flex;flex-direction:column;align-items:center;min-width:28px;">
-    <div style="width:28px;height:28px;border-radius:50%;background:{_dot_color};
-    display:flex;align-items:center;justify-content:center;
-    font-size:12px;font-weight:800;color:#fff;flex-shrink:0;">{_wk}</div>
-    {_connector}
-  </div>
-  <div style="background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);
-  border-radius:12px;padding:10px 14px;flex:1;margin-bottom:4px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
-      <div>
-        <span style="color:#E5E7EB;font-weight:700;font-size:15px;">{_pw:.1f} kg</span>
-        <span style="color:#94A3B8;font-size:12px;margin-left:8px;">{_icon} {_focus}</span>
-      </div>
-      <div style="background:rgba(255,255,255,0.06);border-radius:999px;
-      padding:3px 10px;font-size:11px;color:#94A3B8;">Week {_wk} · {_prog}%</div>
-    </div>
-    <div style="margin-top:7px;background:rgba(255,255,255,0.05);
-    border-radius:999px;height:5px;overflow:hidden;">
-      <div style="width:{_prog}%;background:{_dot_color};height:100%;border-radius:999px;"></div>
-    </div>
-  </div>
-</div>
-"""
-                st.markdown(_milestone_html, unsafe_allow_html=True)
-
-            # Viss ikkje premium og det finst minst éin blura rad (dvs. 3+ milestones)
-            if not _is_premium and len(milestones) >= 3:
-                st.markdown(
-                    '<div style="text-align:center;margin-top:10px;padding:8px;background:rgba(0,0,0,0.4);border-radius:12px;">'
-                    '<span style="color:#F59E0B;font-size:13px;">🔓 Unlock premium to see weeks 3+ of your personalised milestone roadmap</span>'
-                    '</div>',
-                    unsafe_allow_html=True
-                )
-                # ── Coach Insight ──
-                _rate = float(plan.get("kg_per_week", 0.0) or 0.0)
-                _tw_coach = float(milestones[-1].get("Projected weight (kg)", weight_kg)) if milestones else float(weight_kg)
-                _wks_coach = int(plan_weeks) if plan_weeks else 12
-                if _rate < 0:
-                    _coach_msg = (
-                        f"At {abs(_rate):.2f} kg/week, you are on a safe and sustainable fat loss trajectory. "
-                        f"You will reach {_tw_coach:.1f} kg in approximately {_wks_coach} weeks. "
-                        f"Consistency is your biggest advantage — small daily habits compound over time."
-                    )
-                    _coach_icon = "🟢"
-                elif _rate > 0:
-                    _coach_msg = (
-                        f"You are in a controlled weight gain phase at {_rate:.2f} kg/week. "
-                        f"Target: {_tw_coach:.1f} kg in {_wks_coach} weeks. "
-                        f"Focus on strength training to maximise lean muscle gain."
-                    )
-                    _coach_icon = "🔵"
-                else:
-                    _coach_msg = (
-                        "You are at maintenance calories. "
-                        "Focus on body recomposition — building muscle while maintaining weight."
-                    )
-                    _coach_icon = "⚪"
-        
-                st.markdown(
-                    f'<div style="background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(34,197,94,0.08));'
-                    f'border:1px solid rgba(14,165,163,0.3);border-left:4px solid #0EA5A3;'
-                    f'border-radius:14px;padding:16px 18px;margin:14px 0;">'
-                    f'<div style="color:#0EA5A3;font-size:12px;font-weight:700;letter-spacing:0.08em;'
-                    f'text-transform:uppercase;margin-bottom:8px;">🧠 Coach Insight</div>'
-                    f'<div style="color:#E5E7EB;font-size:14px;line-height:1.7;">{_coach_icon} {_coach_msg}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-else:
-    st.info("Click 'Calculate' / 'Generate report' to run the calculations")
-
-# ── Paywall / PDF ──────────────────────────────────────────────
-# ── Sticky unlock bar (vises berre for gratis brukarar med resultat) ──
-if st.session_state.get("results") and not st.session_state.get("report_unlocked", False):
-    _sticky_bio = (st.session_state.get("results", {}).get("bio_age") or {}).get("value")
-    _sticky_chron = st.session_state.get("age_val", 30)
-    if _sticky_bio:
-        _sticky_diff = abs(_sticky_bio - float(_sticky_chron))
-        _sticky_dir = "younger" if _sticky_bio <= float(_sticky_chron) else "older"
-        _sticky_msg = f"Your biological age: <strong>{_sticky_bio:.1f} yrs</strong> · {_sticky_diff:.1f} years {_sticky_dir} than average"
-    else:
-        _sticky_msg = "Your results are ready — unlock the full plan"
-    st.markdown(
-        f'<div class="sticky-unlock-bar" id="sticky-unlock-bar">'
-        f'<span class="sticky-unlock-text">{_sticky_msg}</span>'
-        f'<a href="#paywall_anchor" class="sticky-unlock-btn">🔓 Unlock full report — $4.99</a>'
-        f'</div>'
-        f'<script>'
-        f'(function(){{'
-        f'  if (window.innerWidth > 600) return;'
-        f'  function checkScroll(){{'
-        f'    var bar = document.getElementById("sticky-unlock-bar");'
-        f'    if (!bar) return;'
-        f'    var atBottom = (window.innerHeight + window.scrollY) >= (document.body.scrollHeight - 120);'
-        f'    bar.style.display = atBottom ? "none" : "";'
-        f'  }}'
-        f'  window.addEventListener("scroll", checkScroll, {{passive: true}});'
-        f'  checkScroll();'
-        f'}})();'
-        f'</script>',
-        unsafe_allow_html=True,
-    )
-
-# Anchor for scrolling (must be placed right before paywall)
-st.markdown('<div id="paywall_anchor"></div>', unsafe_allow_html=True)
-
-st.markdown("---")
-_unlocked = st.session_state.get("report_unlocked", False)
-
-if not _unlocked:
-    # -------------------- 1+2. Unified upgrade card with tabs --------------------
-    _preview_results = st.session_state.get("results", {})
-    _preview_bmi     = (_preview_results.get("bmi") or {}) if _preview_results else {}
-    _preview_vo2     = (_preview_results.get("vo2") or {}) if _preview_results else {}
-    _bmi_val   = _preview_bmi.get("value", "—")
-    _vo2_val   = _preview_vo2.get("value", "—")
-    _vo2_pct   = _preview_vo2.get("percentile", "—")
-    _bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
-
-    # ── Mirror the exact formulas from pdf_premium.py so the preview matches ──
-    # ── the real PDF 1:1 instead of using placeholder/illustrative numbers.   ──
-    def _sf_preview(x):
+    def _sf(x):
         try:
             return float(x)
         except Exception:
             return None
 
-    _age_for_preview = int(st.session_state.get("age", 30) or 30)
-    _sex_for_preview = str(st.session_state.get("inp_sex", "M") or "M").upper()
-    _bmi_f = _sf_preview(_bmi_val)
-    _vo2_f = _sf_preview(_vo2_val)
-    _vo2_pct_f = _sf_preview(_vo2_pct) or 0.0
-    _bio_f = _sf_preview(_bio_age)
-    _bio_diff = (_bio_f - _age_for_preview) if (_bio_f is not None and _age_for_preview is not None) else None
-    if _bio_diff is not None:
-        _bio_diff = max(-5.0, min(5.0, _bio_diff))
+    inp   = report.get("inputs", {}) or {}
+    age_v = inp.get("age", "—")
+    sex_v = inp.get("sex", "—")
+    h_v   = inp.get("height_cm", "—")
+    w_v   = inp.get("weight_kg", "—")
+    name_v = inp.get("name") or report.get("user_name") or ""
+    gen_v = report.get("generated", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
+    report_id = report.get("report_id") or f"HT-{uuid.uuid4().hex[:8].upper()}"
 
-    # exercise volume (mirrors ex_total_min in the PDF)
-    _exlog_preview = st.session_state.get("exercise_last", {}) or {}
-    _ex_min_pv  = _sf_preview(_exlog_preview.get("minutes", 0)) or 0
-    _ex_sess_pv = _sf_preview(_exlog_preview.get("sessions_per_week", 0)) or 0
-    _ex_total_min_pv = int(_ex_min_pv * _ex_sess_pv)
+    bmi_d   = report.get("bmi") or {}
+    vo2_d   = report.get("vo2") or {}
+    bio_d   = report.get("bio_age") or {}
+    factors = report.get("bio_factors") or []
+    plan_d  = report.get("plan") or {}
+    exlog   = report.get("exercise_log") or {}
+    triage_r = report.get("triage_recommendations") or []
+    whr_d   = report.get("whr") or {}
+    bf_d    = report.get("bodyfat") or {}
 
-    # radar dimensions — identical thresholds to RadarChart in pdf_premium.py
-    _radar_pv = {}
-    _radar_pv["Body Comp"] = (100 if (_bmi_f and 18.5 <= _bmi_f < 25) else 75 if (_bmi_f and 17 <= _bmi_f < 27)
-                               else 50 if (_bmi_f and 15 <= _bmi_f < 30) else 25 if _bmi_f else 50)
-    _radar_pv["Cardio"]   = int(_vo2_pct_f) if _vo2_f else 50
-    _radar_pv["Bio Age"]  = (max(0, min(100, int(70 - _bio_diff * 10))) if _bio_diff is not None else 50)
-    _radar_pv["Activity"] = (min(100, int(_ex_total_min_pv / 300 * 100)) if _ex_total_min_pv else 30)
-    _radar_pv["Lifestyle"] = 60  # neutral default preview value (factors not recomputed here)
+    bmi_v   = _sf(bmi_d.get("value"))
+    bmi_cat = str(bmi_d.get("category", ""))
+    vo2_v   = _sf(vo2_d.get("value"))
+    vo2_pct = _sf(vo2_d.get("percentile")) or 0.0
+    vo2_rat = str(vo2_d.get("rating", ""))
+    bio_v   = _sf(bio_d.get("value"))
+    age_f   = _sf(age_v)
 
-    # overall score — identical weighting to pdf_premium.py
-    _score_parts_pv = []
-    if _bmi_f is not None:
-        if 18.5 <= _bmi_f < 25: _score_parts_pv.append(100)
-        elif 17 <= _bmi_f < 27: _score_parts_pv.append(75)
-        elif 15 <= _bmi_f < 30: _score_parts_pv.append(50)
-        else: _score_parts_pv.append(25)
-    if _vo2_f is not None:
-        _score_parts_pv.append(min(100, int(_vo2_pct_f)))
-    if _bio_diff is not None:
-        _score_parts_pv.append(max(0, min(100, int(70 - _bio_diff * 10))))
-    if _ex_total_min_pv:
-        _score_parts_pv.append(min(100, int(_ex_total_min_pv / 300 * 100)))
-    _health_score_pv = int(sum(_score_parts_pv) / len(_score_parts_pv)) if _score_parts_pv else 73
+    has_plan  = bool(plan_d and not plan_d.get("error"))
+    cur_kcal  = _sf(plan_d.get("current_needs_kcal")) if has_plan else None
+    rec_kcal  = _sf(plan_d.get("recommended_daily_kcal")) if has_plan else None
+    kg_pw     = _sf(plan_d.get("kg_per_week")) if has_plan else None
+    milestones = plan_d.get("milestones", []) if has_plan else []
+    _goal     = plan_d.get("goal", "Maintenance")
 
-    def _vo2_color_pv(pct):
-        if pct >= 80: return "#22C55E"
-        if pct >= 60: return "#3B82F6"
-        if pct >= 40: return "#F59E0B"
-        return "#EF4444"
+    ex_min  = exlog.get("minutes", 0)
+    ex_sess = exlog.get("sessions_per_week", 0)
+    ex_kcal_w = _sf(exlog.get("kcal_per_week")) or 0.0
+    ex_total_min = int(ex_min or 0) * int(ex_sess or 0)
 
-    def _dim_color_pv(sc):
-        if sc >= 70: return "#22C55E"
-        if sc >= 45: return "#F59E0B"
-        return "#EF4444"
-
-    _vo2_col_pv = _vo2_color_pv(_vo2_pct_f)
-
-    # ACSM age/sex VO2 norm table — identical to VO2PopComparisonBox in pdf_premium.py
-    _norms_m_pv = {(20,29):44.0,(30,39):42.4,(40,49):40.0,(50,59):36.7,(60,69):33.1}
-    _norms_f_pv = {(20,29):38.6,(30,39):36.3,(40,49):33.1,(50,59):29.7,(60,69):26.5}
-    _norms_pv = _norms_m_pv if _sex_for_preview.startswith("M") else _norms_f_pv
-    _pop_avg_pv = next((v for (lo, hi), v in _norms_pv.items() if lo <= _age_for_preview <= hi), 38.0)
-    _pop_good_pv = _pop_avg_pv * 1.15
-    _pop_exc_pv  = _pop_avg_pv * 1.30
-
-    # real selected activity (mirrors the 30-day plan's "Training DNA" in the PDF) —
-    # falls back to a sensible default only if the user hasn't selected anything yet
-    _selected_acts_pv = [a for a in (st.session_state.get("selected_activities") or []) if a]
-    _plan_activity_pv = _selected_acts_pv[0] if _selected_acts_pv else "Strength training (weights)"
-    _ACT_CATEGORY_PV = {
+    # ── 30-Day Training Plan — built only from the user's selected activities ──
+    ACT_CATEGORY = {
         "Walking (casual)": "low", "Brisk walking": "low", "Yoga / Pilates": "low",
         "Housework / Light chores": "low", "Gardening / Heavy yard work": "low",
         "Cycling (leisure)": "cardio", "Cycling (vigorous)": "cardio", "Elliptical": "cardio",
@@ -4514,811 +130,2586 @@ if not _unlocked:
         "Strength training (weights)": "strength", "Boxing / Martial arts": "strength",
         "Rock climbing / Bouldering": "strength", "Hiking (incline)": "strength",
     }
-    _plan_cat_pv = _ACT_CATEGORY_PV.get(_plan_activity_pv, "strength")
-    _plan_tag_color_pv = {"strength": "#22C55E", "cardio": "#3B82F6", "sport": "#D4AF7A", "low": "#64748B"}.get(_plan_cat_pv, "#22C55E")
-    _plan_tag_label_pv = {"strength": "Strength", "cardio": "Cardio", "sport": "Sport", "low": "Low-impact"}.get(_plan_cat_pv, "Strength")
+    CAT_EMOJI = {"strength": "Strength", "cardio": "Cardio", "sport": "Sport", "low": "Low-impact"}
 
-    _days_sample = [
-        ("MON", _plan_tag_label_pv, f"{_plan_activity_pv} — week 1 foundation session, technique-focused", "30 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
-        ("TUE", _plan_tag_label_pv, f"{_plan_activity_pv} — building rhythm and consistency", "30 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
-        ("WED", _plan_tag_label_pv, f"{_plan_activity_pv} — moderate intensity, full session", "35 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
-        ("THU", _plan_tag_label_pv, f"{_plan_activity_pv} — progressive overload this week", "35 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
-        ("FRI", _plan_tag_label_pv, f"{_plan_activity_pv} — practice / test effort", "40 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
-        ("SAT", _plan_tag_label_pv, f"{_plan_activity_pv} — longer endurance session", "40 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
-        ("SUN", "😴 Recovery", "Full rest or 15 min mobility + foam rolling", "—",      "#64748B20", "#64748B"),
-    ]
+    selected_acts = [a for a in (report.get("selected_activities") or []) if a]
+    _strength_sel = [a for a in selected_acts if ACT_CATEGORY.get(a) == "strength"]
+    _cardio_sel   = [a for a in selected_acts if ACT_CATEGORY.get(a) == "cardio"]
+    _sport_sel    = [a for a in selected_acts if ACT_CATEGORY.get(a) == "sport"]
+    _low_sel      = [a for a in selected_acts if ACT_CATEGORY.get(a) == "low"]
+    has_strength_act = bool(_strength_sel)
+    has_cardio_act   = bool(_cardio_sel)
+    has_sport_act    = bool(_sport_sel)
+    plan30_strength = _strength_sel or ["Strength training (weights)"]
+    plan30_cardio   = _cardio_sel or ["Running/jogging"]
+    plan30_sport    = _sport_sel or []
+    plan30_low      = _low_sel or ["Walking (casual)"]
 
-
-    _preview_rows_html = ""
-    for i, (day, wtype, desc, dur, bg, accent) in enumerate(_days_sample):
-        if i < 3:
-            blur_style = ""
-        elif i == 3:
-            blur_style = "filter:blur(2px);user-select:none;"
-        else:
-            blur_style = "filter:blur(5px);user-select:none;"
-
-        _preview_rows_html += f"""
-        <tr style="border-bottom:1px solid #1E293B;">
-          <td style="padding:9px 10px;font-weight:700;font-size:11px;color:#94A3B8;white-space:nowrap;">{day}</td>
-          <td style="padding:9px 10px;{blur_style}">
-            <span style="background:{bg};border:1px solid {accent}44;color:{accent};
-              border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;white-space:nowrap;">{wtype}</span>
-          </td>
-          <td style="padding:9px 10px;font-size:12px;color:#CBD5E1;{blur_style}">{desc}</td>
-          <td style="padding:9px 10px;font-size:12px;color:#94A3B8;white-space:nowrap;{blur_style}">{dur}</td>
-        </tr>"""
-
-    upgrade_card_html = f"""
-<style>
-.uc-wrap {{
-  border:1px solid rgba(14,165,163,0.35);
-  border-radius:18px;
-  overflow:hidden;
-  background:#0D1B2E;
-  margin:18px 0 10px 0;
-  box-shadow:0 0 40px rgba(14,165,163,0.10);
-  font-family:sans-serif;
-}}
-/* ── header ── */
-.uc-header {{
-  padding:18px 20px 10px 20px;
-  border-bottom:1px solid #1E293B;
-}}
-.uc-title {{
-  font-size:18px;font-weight:800;color:#E5E7EB;margin-bottom:2px;
-}}
-.uc-subtitle {{
-  font-size:12px;color:#64748B;
-}}
-/* ── tabs ── */
-.uc-tabs {{
-  display:flex;gap:8px;padding:12px 16px 0 16px;
-  border-bottom:1px solid #1E293B;
-}}
-.uc-tab {{
-  padding:8px 16px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;
-  cursor:pointer;color:#64748B;background:transparent;
-  border:1px solid transparent;border-bottom:none;
-  transition:all 0.15s;
-}}
-.uc-tab.active {{
-  background:#1E293B;color:#E5E7EB;border-color:#334155;border-bottom:1px solid #0D1B2E;
-  margin-bottom:-1px;
-}}
-/* ── tab panels ── */
-.uc-panel {{ display:none; }}
-.uc-panel.active {{ display:block; }}
-/* ── compare table ── */
-.uc-compare {{
-  width:100%;border-collapse:collapse;
-}}
-.uc-compare th {{
-  padding:10px 14px;font-size:10px;font-weight:700;letter-spacing:0.08em;
-  text-transform:uppercase;color:#64748B;text-align:center;
-}}
-.uc-compare th:first-child {{ text-align:left; }}
-.uc-compare td {{
-  padding:11px 14px;font-size:13px;color:#CBD5E1;border-top:1px solid #1E293B;
-}}
-.uc-compare td:first-child {{ font-weight:500; }}
-.uc-compare td.col-free {{ text-align:center;color:#64748B;font-size:13px; }}
-.uc-compare td.col-prem {{ text-align:center;color:#22C55E;font-size:15px; }}
-.uc-compare tr.premium-only td:first-child {{ color:#E5E7EB;font-weight:600; }}
-.uc-compare tr.premium-only {{ background:rgba(34,197,94,0.04); }}
-/* ── plan preview (reused styles) ── */
-.pdf-preview-wrap {{
-  position:relative;
-  overflow:hidden;
-  background:transparent;
-}}
-.pdf-preview-header {{
-  background: linear-gradient(90deg, #0EA5A344 0%, #3B82F622 100%);
-  border-bottom: 1px solid #1E3A5F;
-  padding: 14px 20px 12px 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}}
-.pdf-badge {{
-  background: #D4AF7A22;
-  border: 1px solid #D4AF7A55;
-  color: #D4AF7A;
-  border-radius: 6px;
-  padding: 3px 10px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-}}
-.pdf-preview-table {{
-  width: 100%;
-  border-collapse: collapse;
-}}
-.pdf-preview-blur-zone {{
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 180px;
-  background: linear-gradient(to bottom,
-    transparent 0%,
-    #0D1B2Ecc 40%,
-    #0D1B2Eff 100%
-  );
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-end;
-  padding-bottom: 16px;
-  gap: 6px;
-}}
-.pdf-lock-icon {{ font-size:24px;margin-bottom:2px; }}
-.pdf-lock-text {{ font-size:14px;font-weight:700;color:#F1F5F9;text-align:center; }}
-.pdf-lock-sub  {{ font-size:11px;color:#94A3B8;text-align:center;margin-bottom:2px; }}
-.pdf-week-pill {{
-  background:#1E293B;border:1px solid #334155;color:#64748B;
-  border-radius:999px;padding:3px 12px;font-size:11px;
-}}
-.pdf-week-pill.active {{
-  background:#0EA5A322;border-color:#0EA5A3;color:#0EA5A3;
-}}
-/* ── price + pills row ── */
-.uc-price-row {{
-  padding:14px 20px 6px 20px;
-  border-top:1px solid #1E293B;
-}}
-.uc-price {{
-  font-size:26px;font-weight:800;color:#0EA5A3;display:inline;
-}}
-.uc-price-label {{
-  font-size:12px;color:#64748B;margin-left:8px;
-}}
-.uc-pills {{
-  display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 6px 0;
-}}
-.uc-pill {{
-  background:rgba(34,197,94,0.10);border:1px solid rgba(34,197,94,0.28);
-  color:#22C55E;border-radius:999px;padding:4px 12px;font-size:11px;font-weight:600;
-}}
-/* ── slideshow ── */
-.ss-wrap {{
-  position:relative;
-  overflow:hidden;
-  background:#0A1628;
-}}
-.ss-track {{
-  display:flex;
-  transition:transform 0.35s ease;
-  will-change:transform;
-  touch-action:pan-y;
-}}
-.ss-slide {{
-  flex:0 0 100%;
-  min-width:100%;
-  padding:18px 20px 14px 20px;
-  box-sizing:border-box;
-}}
-.ss-slide-label {{
-  font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
-  color:#0EA5A3;margin-bottom:14px;
-}}
-.ss-caption {{
-  font-size:12px;color:#94A3B8;margin-top:14px;line-height:1.5;
-}}
-.ss-blur {{
-  filter:blur(4px);
-  user-select:none;
-  pointer-events:none;
-}}
-.ss-kpis {{
-  display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;
-}}
-.ss-kpi {{
-  background:#0D1B2E;border:1px solid #1E293B;border-radius:10px;
-  padding:12px 6px;text-align:center;
-}}
-.ss-kpi-l {{ font-size:9px;color:#64748B;letter-spacing:0.05em;margin-bottom:4px;text-transform:uppercase; }}
-.ss-kpi-v {{ font-size:18px;font-weight:800; }}
-.ss-score-row {{ display:flex;align-items:center;gap:18px; }}
-.ss-score-ring {{
-  width:84px;height:84px;border-radius:50%;
-  border:6px solid #22C55E;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  flex-shrink:0;background:#0D1B2E;
-}}
-.ss-score-num {{ font-size:24px;font-weight:800;color:#22C55E;line-height:1; }}
-.ss-score-sub {{ font-size:10px;color:#64748B; }}
-.ss-score-bars {{ flex:1;display:flex;flex-direction:column;gap:8px; }}
-.ss-bar-row {{ display:flex;align-items:center;gap:8px;font-size:11px;color:#94A3B8; }}
-.ss-bar-row span {{ width:70px;flex-shrink:0; }}
-.ss-bar {{ flex:1;height:6px;background:#1E293B;border-radius:4px;overflow:hidden; }}
-.ss-bar-fill {{ height:100%;border-radius:4px; }}
-.ss-vo2-compare {{ display:flex;gap:8px;text-align:center; }}
-.ss-vo2-col {{ flex:1;background:#0D1B2E;border:1px solid #1E293B;border-radius:10px;padding:12px 4px; }}
-.ss-vo2-val {{ font-size:18px;font-weight:800; }}
-.ss-vo2-lbl {{ font-size:10px;color:#64748B;margin-top:2px; }}
-.ss-hr-zones {{ display:flex;gap:4px;margin-top:12px;border-radius:8px;overflow:hidden; }}
-.ss-hr-zone {{ flex:1;text-align:center;font-size:10px;color:#CBD5E1;padding:8px 0;font-weight:700; }}
-.ss-radar-wrap {{ position:relative;width:200px;height:200px;margin:0 auto; }}
-.ss-radar-svg {{ width:100%;height:100%; }}
-.ss-radar-lbl {{ position:absolute;font-size:10px;color:#94A3B8;font-weight:600;white-space:nowrap; }}
-.ss-plan-rows {{ display:flex;flex-direction:column;gap:6px; }}
-.ss-plan-row {{ display:flex;align-items:center;gap:8px;background:#0D1B2E;border:1px solid #1E293B;border-radius:8px;padding:8px 10px; }}
-.ss-plan-day {{ font-size:10px;font-weight:700;color:#64748B;width:42px;flex-shrink:0; }}
-.ss-plan-tag {{ font-size:10px;font-weight:600;border-radius:6px;padding:2px 8px;flex-shrink:0;white-space:nowrap; }}
-.ss-plan-desc {{ font-size:11px;color:#CBD5E1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }}
-.ss-dots {{ display:flex;justify-content:center;gap:6px;padding:10px 0; background:#0A1628; }}
-.ss-dot {{ width:6px;height:6px;border-radius:50%;background:#334155;cursor:pointer;transition:all 0.2s; }}
-.ss-dot.active {{ background:#0EA5A3;width:18px;border-radius:4px; }}
-.ss-arrow {{
-  position:absolute;top:50%;transform:translateY(-50%);
-  width:30px;height:30px;border-radius:50%;
-  background:rgba(13,27,46,0.85);border:1px solid #334155;color:#E5E7EB;
-  font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  z-index:5;
-}}
-.ss-arrow-left {{ left:8px; }}
-.ss-arrow-right {{ right:8px; }}
-.ss-swipe-hint {{
-  text-align:center;font-size:10px;color:#475569;padding:6px 0 2px 0;
-}}
-@media (min-width:600px) {{
-  .ss-arrow {{ width:34px;height:34px; }}
-}}
-</style>
-
-<!-- ═══════════════ UNIFIED UPGRADE CARD ═══════════════ -->
-<div class="uc-wrap">
-
-  <!-- Header -->
-  <div class="uc-header">
-    <div class="uc-title">🔓 Turn your results into a real plan</div>
-    <div class="uc-subtitle">One-time · $4.99 · No subscription · Instant access</div>
-  </div>
-
-  <!-- Tabs -->
-  <div class="uc-tabs">
-    <div class="uc-tab active" id="tab-slides" onclick="switchTab('slides')">📱 See your report</div>
-    <div class="uc-tab" id="tab-compare" onclick="switchTab('compare')">Free vs Premium</div>
-    <div class="uc-tab" id="tab-preview" onclick="switchTab('preview')">12-week plan preview</div>
-  </div>
-
-  <!-- Panel: Slideshow preview of the actual report -->
-  <div class="uc-panel active" id="panel-slides">
-    <div class="ss-wrap">
-      <div class="ss-track" id="ssTrack">
-
-        <!-- Slide 1: KPI snapshot -->
-        <div class="ss-slide">
-          <div class="ss-slide-label">Page 1 · At a glance</div>
-          <div class="ss-kpis">
-            <div class="ss-kpi"><div class="ss-kpi-l">BMI</div><div class="ss-kpi-v" style="color:#F59E0B;">{f"{_bmi_f:.1f}" if _bmi_f is not None else "—"}</div></div>
-            <div class="ss-kpi"><div class="ss-kpi-l">VO2max</div><div class="ss-kpi-v" style="color:{_vo2_col_pv};">{f"{_vo2_f:.1f}" if _vo2_f is not None else "—"}</div></div>
-            <div class="ss-kpi"><div class="ss-kpi-l">Bio age</div><div class="ss-kpi-v" style="color:#22C55E;">{f"{_bio_f:.1f}" if _bio_f is not None else "—"}</div></div>
-            <div class="ss-kpi"><div class="ss-kpi-l">Calories</div><div class="ss-kpi-v ss-blur" style="color:#22C55E;">····</div></div>
-          </div>
-          <div class="ss-caption">Every number on this page is calculated from <strong>your</strong> data — not population averages.</div>
-        </div>
-
-        <!-- Slide 2: Biomarker dashboard / score -->
-        <div class="ss-slide">
-          <div class="ss-slide-label">Page 3 · Biomarker dashboard</div>
-          <div class="ss-score-row">
-            <div class="ss-score-ring" style="border-color:{_dim_color_pv(_health_score_pv)};">
-              <div class="ss-score-num" style="color:{_dim_color_pv(_health_score_pv)};">{_health_score_pv}</div>
-              <div class="ss-score-sub">/ 100</div>
-            </div>
-            <div class="ss-score-bars">
-              <div class="ss-bar-row"><span>Body Comp</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Body Comp']}%;background:{_dim_color_pv(_radar_pv['Body Comp'])};"></div></div></div>
-              <div class="ss-bar-row"><span>Cardio</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Cardio']}%;background:{_dim_color_pv(_radar_pv['Cardio'])};"></div></div></div>
-              <div class="ss-bar-row ss-blur"><span>Bio Age</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Bio Age']}%;background:{_dim_color_pv(_radar_pv['Bio Age'])};"></div></div></div>
-              <div class="ss-bar-row ss-blur"><span>Activity</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Activity']}%;background:{_dim_color_pv(_radar_pv['Activity'])};"></div></div></div>
-            </div>
-          </div>
-          <div class="ss-caption">A weighted composite across 5 dimensions — see exactly where your next 12 weeks should go.</div>
-        </div>
-
-        <!-- Slide 3: VO2max detail -->
-        <div class="ss-slide">
-          <div class="ss-slide-label">Page 5 · Cardio fitness — VO2max</div>
-          <div class="ss-vo2-compare">
-            <div class="ss-vo2-col"><div class="ss-vo2-val" style="color:{_vo2_col_pv};">{f"{_vo2_f:.1f}" if _vo2_f is not None else "—"}</div><div class="ss-vo2-lbl">You</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#94A3B8;">{f"{_pop_avg_pv:.1f}"}</div><div class="ss-vo2-lbl">Average</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#22C55E;">{f"{_pop_good_pv:.1f}"}</div><div class="ss-vo2-lbl">Good</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#0EA5A3;">{f"{_pop_exc_pv:.1f}"}</div><div class="ss-vo2-lbl">Excellent</div></div>
-          </div>
-          <div class="ss-hr-zones ss-blur">
-            <div class="ss-hr-zone" style="background:#64748B33;">Z1</div>
-            <div class="ss-hr-zone" style="background:#22C55E33;">Z2</div>
-            <div class="ss-hr-zone" style="background:#3B82F633;">Z3</div>
-            <div class="ss-hr-zone" style="background:#F59E0B33;">Z4</div>
-            <div class="ss-hr-zone" style="background:#EF444433;">Z5</div>
-          </div>
-          <div class="ss-caption">ACSM norms for your age & sex — your personal heart-rate zones unlock in full.</div>
-        </div>
-
-        <!-- Slide 4: Radar -->
-        <div class="ss-slide">
-          <div class="ss-slide-label">Page 8 · 5-dimension health radar</div>
-          <div class="ss-radar-wrap">
-            <svg viewBox="0 0 200 200" class="ss-radar-svg">
-              <polygon points="100,20 180,100 100,180 20,100" fill="none" stroke="#1E293B" stroke-width="1"/>
-              <polygon points="100,55 145,100 100,145 55,100" fill="none" stroke="#1E293B" stroke-width="1"/>
-              <polygon points="100,40 160,100 130,170 50,130" fill="#0EA5A333" stroke="#0EA5A3" stroke-width="2"/>
-              <circle cx="100" cy="40" r="3" fill="#0EA5A3"/>
-              <circle cx="160" cy="100" r="3" fill="#0EA5A3"/>
-              <circle cx="130" cy="170" r="3" fill="#0EA5A3"/>
-              <circle cx="50" cy="130" r="3" fill="#0EA5A3"/>
-            </svg>
-            <div class="ss-radar-lbl" style="top:0;left:50%;transform:translate(-50%,-50%);">Body Comp</div>
-            <div class="ss-radar-lbl ss-blur" style="top:50%;right:0;transform:translate(50%,-50%);">Lifestyle</div>
-            <div class="ss-radar-lbl ss-blur" style="bottom:0;right:25%;transform:translate(50%,50%);">Activity</div>
-            <div class="ss-radar-lbl ss-blur" style="bottom:0;left:25%;transform:translate(-50%,50%);">Bio Age</div>
-            <div class="ss-radar-lbl" style="top:50%;left:0;transform:translate(-50%,-50%);">Cardio</div>
-          </div>
-          <div class="ss-caption">See your full shape at a glance — and exactly which dimension to prioritise next.</div>
-        </div>
-
-        <!-- Slide 5: Training plan -->
-        <div class="ss-slide">
-          <div class="ss-slide-label">Page 10 · Your personalised 30-day plan</div>
-          <div class="ss-plan-rows">
-            <div class="ss-plan-row"><span class="ss-plan-day">MON</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — foundation</span></div>
-            <div class="ss-plan-row"><span class="ss-plan-day">TUE</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — rhythm</span></div>
-            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">WED</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — moderate</span></div>
-            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">THU</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — overload</span></div>
-            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">FRI–SUN</span><span class="ss-plan-tag" style="background:#64748B22;color:#94A3B8;border:1px solid #64748B44;">···</span><span class="ss-plan-desc">Unlocks with full report</span></div>
-          </div>
-          <div class="ss-caption">Built specifically from <em>your</em> selected activities — 30 days, four progressive blocks.</div>
-        </div>
-
-      </div>
-
-      <!-- Dots -->
-      <div class="ss-dots" id="ssDots">
-        <span class="ss-dot active" onclick="ssGoTo(0)"></span>
-        <span class="ss-dot" onclick="ssGoTo(1)"></span>
-        <span class="ss-dot" onclick="ssGoTo(2)"></span>
-        <span class="ss-dot" onclick="ssGoTo(3)"></span>
-        <span class="ss-dot" onclick="ssGoTo(4)"></span>
-      </div>
-
-      <!-- Arrows -->
-      <button class="ss-arrow ss-arrow-left" onclick="ssPrev()">‹</button>
-      <button class="ss-arrow ss-arrow-right" onclick="ssNext()">›</button>
-    </div>
-    <div class="ss-swipe-hint">👆 Swipe or tap arrows to preview your report</div>
-  </div>
-
-  <!-- Panel: Compare table -->
-  <div class="uc-panel" id="panel-compare">
-    <table class="uc-compare">
-      <thead>
-        <tr>
-          <th style="width:60%;padding-left:16px;"></th>
-          <th style="color:#64748B;">FREE</th>
-          <th style="color:#22C55E;">PREMIUM</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>BMI, energy &amp; VO2max overview</td>
-          <td class="col-free">✓</td>
-          <td class="col-prem">✓</td>
-        </tr>
-        <tr>
-          <td>Biological age</td>
-          <td class="col-free">✓</td>
-          <td class="col-prem">✓</td>
-        </tr>
-        <tr>
-          <td>Personalized recommendations</td>
-          <td class="col-free">✓</td>
-          <td class="col-prem">✓</td>
-        </tr>
-        <tr>
-          <td>Full 12-week plan &amp; milestones</td>
-          <td class="col-free" style="font-size:11px;">1 week only</td>
-          <td class="col-prem">✓</td>
-        </tr>
-        <tr class="premium-only">
-          <td>AI coach insights</td>
-          <td class="col-free">—</td>
-          <td class="col-prem">✓</td>
-        </tr>
-        <tr class="premium-only">
-          <td>Progress tracking over time</td>
-          <td class="col-free">—</td>
-          <td class="col-prem">✓</td>
-        </tr>
-        <tr class="premium-only">
-          <td>Downloadable PDF report</td>
-          <td class="col-free">—</td>
-          <td class="col-prem">✓</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Panel: 12-week plan preview -->
-  <div class="uc-panel" id="panel-preview">
-    <div class="pdf-preview-wrap" style="border-radius:0;border:none;margin:0;">
-      <div class="pdf-preview-header" style="background:linear-gradient(90deg,#0EA5A344 0%,#3B82F622 100%);padding:10px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1E293B;">
-        <span class="pdf-badge">PREVIEW</span>
-        <span style="color:#F1F5F9;font-weight:700;font-size:13px;">📋 Your 12-Week Training Plan</span>
-        <span style="margin-left:auto;color:#64748B;font-size:11px;">Week 1 of 12</span>
-      </div>
-      <div style="display:flex;gap:0;border-bottom:1px solid #1E293B;">
-        <div style="flex:1;padding:8px 10px;border-right:1px solid #1E293B;text-align:center;">
-          <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BMI</div>
-          <div style="font-size:16px;font-weight:800;color:#0EA5A3;">{_bmi_val if _bmi_val != "—" else "—"}</div>
-        </div>
-        <div style="flex:1;padding:8px 10px;border-right:1px solid #1E293B;text-align:center;">
-          <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">VO₂max</div>
-          <div style="font-size:16px;font-weight:800;color:#3B82F6;">{_vo2_val if _vo2_val != "—" else "—"}</div>
-        </div>
-        <div style="flex:1;padding:8px 10px;border-right:1px solid #1E293B;text-align:center;">
-          <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">TOP %</div>
-          <div style="font-size:16px;font-weight:800;color:#D4AF7A;">{f"{_vo2_pct:.0f}%" if isinstance(_vo2_pct, float) else "—"}</div>
-        </div>
-        <div style="flex:1;padding:8px 10px;text-align:center;">
-          <div style="font-size:10px;color:#64748B;letter-spacing:1px;margin-bottom:2px;">BIO AGE</div>
-          <div style="font-size:16px;font-weight:800;color:#22C55E;">{_bio_age if _bio_age != "—" else "—"}</div>
-        </div>
-      </div>
-      <div style="padding:8px 14px;border-bottom:1px solid #1E293B;display:flex;gap:5px;flex-wrap:wrap;">
-        <span style="font-size:11px;color:#64748B;margin-right:4px;line-height:22px;">12 weeks:</span>
-        <span class="pdf-week-pill active">W1</span>
-        <span class="pdf-week-pill">W2</span><span class="pdf-week-pill">W3</span>
-        <span class="pdf-week-pill">W4</span><span class="pdf-week-pill">W5</span>
-        <span class="pdf-week-pill">W6</span><span class="pdf-week-pill">W7</span>
-        <span class="pdf-week-pill">W8</span><span class="pdf-week-pill">W9</span>
-        <span class="pdf-week-pill">W10</span><span class="pdf-week-pill">W11</span>
-        <span class="pdf-week-pill">W12</span>
-      </div>
-      <div style="overflow-x:auto;">
-        <table class="pdf-preview-table">
-          <thead>
-            <tr style="border-bottom:1px solid #1E3A5F;background:#0A1628;">
-              <th style="padding:7px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DAY</th>
-              <th style="padding:7px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">TYPE</th>
-              <th style="padding:7px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">PRESCRIPTION</th>
-              <th style="padding:7px 10px;font-size:10px;color:#64748B;font-weight:600;text-align:left;">DURATION</th>
-            </tr>
-          </thead>
-          <tbody>
-            {_preview_rows_html}
-          </tbody>
-        </table>
-      </div>
-      <div class="pdf-preview-blur-zone">
-        <div class="pdf-lock-icon">🔒</div>
-        <div class="pdf-lock-text">Weeks 2–12 are locked</div>
-        <div class="pdf-lock-sub">AI coach insights · calorie strategy · milestone tracking · full PDF</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Price + feature pills (always visible) -->
-  <div class="uc-price-row">
-    <span class="uc-price">4.99 USD</span>
-    <span class="uc-price-label">one-time · no subscription</span>
-    <div class="uc-pills">
-      <span class="uc-pill">✓ Full 12-week roadmap</span>
-      <span class="uc-pill">✓ AI coach insights</span>
-      <span class="uc-pill">✓ Calorie strategy</span>
-      <span class="uc-pill">✓ PDF download</span>
-    </div>
-  </div>
-
-</div>
-
-<script>
-function switchTab(name) {{
-  document.getElementById('panel-slides').classList.remove('active');
-  document.getElementById('panel-compare').classList.remove('active');
-  document.getElementById('panel-preview').classList.remove('active');
-  document.getElementById('tab-slides').classList.remove('active');
-  document.getElementById('tab-compare').classList.remove('active');
-  document.getElementById('tab-preview').classList.remove('active');
-  document.getElementById('panel-' + name).classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
-}}
-
-(function() {{
-  var ssIndex = 0;
-  var ssTotal = 5;
-  var ssTrack = document.getElementById('ssTrack');
-  var ssStartX = 0;
-  var ssDeltaX = 0;
-  var ssDragging = false;
-
-  function ssRender() {{
-    ssTrack.style.transform = 'translateX(' + (-ssIndex * 100) + '%)';
-    var dots = document.querySelectorAll('#ssDots .ss-dot');
-    for (var i = 0; i < dots.length; i++) {{
-      dots[i].classList.toggle('active', i === ssIndex);
-    }}
-  }}
-  window.ssGoTo = function(i) {{ ssIndex = Math.max(0, Math.min(ssTotal - 1, i)); ssRender(); }};
-  window.ssNext = function() {{ ssGoTo(ssIndex + 1 >= ssTotal ? 0 : ssIndex + 1); }};
-  window.ssPrev = function() {{ ssGoTo(ssIndex - 1 < 0 ? ssTotal - 1 : ssIndex - 1); }};
-
-  if (ssTrack) {{
-    ssTrack.addEventListener('touchstart', function(e) {{
-      ssDragging = true;
-      ssStartX = e.touches[0].clientX;
-      ssTrack.style.transition = 'none';
-    }}, {{passive: true}});
-    ssTrack.addEventListener('touchmove', function(e) {{
-      if (!ssDragging) return;
-      ssDeltaX = e.touches[0].clientX - ssStartX;
-      var pct = (-ssIndex * 100) + (ssDeltaX / ssTrack.offsetWidth * 100);
-      ssTrack.style.transform = 'translateX(' + pct + '%)';
-    }}, {{passive: true}});
-    ssTrack.addEventListener('touchend', function() {{
-      ssDragging = false;
-      ssTrack.style.transition = 'transform 0.35s ease';
-      if (ssDeltaX < -40) ssNext();
-      else if (ssDeltaX > 40) ssPrev();
-      else ssRender();
-      ssDeltaX = 0;
-    }});
-  }}
-
-  // auto-advance every 4s, pausing on interaction
-  var ssAuto = setInterval(function() {{ ssNext(); }}, 4000);
-  if (ssTrack) {{
-    ssTrack.addEventListener('touchstart', function() {{ clearInterval(ssAuto); }});
-  }}
-  var arrows = document.querySelectorAll('.ss-arrow');
-  for (var a = 0; a < arrows.length; a++) {{
-    arrows[a].addEventListener('click', function() {{ clearInterval(ssAuto); }});
-  }}
-}})();
-
-// ── Dynamic iframe height: tell Streamlit our real content height so ──
-// ── there is no leftover gap below the card, no matter which tab is  ──
-// ── active or how much content that tab has.                         ──
-(function() {{
-  function reportHeight() {{
-    var h = document.body.scrollHeight;
-    window.parent.postMessage({{
-      isStreamlitMessage: true,
-      type: 'streamlit:setFrameHeight',
-      height: h
-    }}, '*');
-  }}
-  // report on load, on tab switch, and on any layout shift
-  window.addEventListener('load', reportHeight);
-  document.querySelectorAll('.uc-tab').forEach(function(t) {{
-    t.addEventListener('click', function() {{ setTimeout(reportHeight, 50); }});
-  }});
-  if (window.ResizeObserver) {{
-    new ResizeObserver(reportHeight).observe(document.body);
-  }}
-  setTimeout(reportHeight, 100);
-  setTimeout(reportHeight, 400);
-}})();
-</script>
-"""
-    components.html(upgrade_card_html, height=560, scrolling=False)
-
-    # -------------------- 3. Email + Stripe checkout (always visible below card) --------------------
-
-    # -------------------- 4. Lås opp-knapp (Stripe Checkout Session) – GUEST CHECKOUT --------------------
-    # CHANGED: no longer requires login first. Logged-in users skip the email
-    # field (we already know their email); anonymous visitors just type their
-    # email and go straight to Stripe. The account gets created automatically
-    # after payment by the stripe-webhook function.
-    _uid = get_current_user_id() or ""
-    _user_email = st.session_state.get("user_email", "")
-
-    if not _uid:
-        _user_email = st.text_input(
-            "Your email (to receive your report + access link)",
-            value=_user_email,
-            key="guest_checkout_email",
-            placeholder="you@example.com",
-        )
-
-    _email_valid = "@" in _user_email and "." in _user_email.split("@")[-1]
-
-    if st.button(
-        "🔓 Unlock full report — 4,99 USD",
-        type="primary",
-        use_container_width=True,
-        disabled=not _email_valid,
-    ):
-        import requests as _requests
-        _supabase_url = get_supabase_url()
-        _anon_key = get_supabase_key()
-        _fn_url = f"{_supabase_url}/functions/v1/stripe-checkout"
-        try:
-            _resp = _requests.post(
-                _fn_url,
-                json={"user_id": _uid or None, "email": _user_email},
-                headers={
-                    "apikey": _anon_key,
-                    "Authorization": f"Bearer {_anon_key}",
-                    "Content-Type": "application/json",
-                },
-                timeout=10,
-            )
-            _data = _resp.json()
-            if "url" in _data:
-                _checkout_url = _data["url"]
-                # Samme robuste metode som magic-link-innloggingen: skriv en
-                # synlig, klikkbar lenke direkte i hoveddokumentet via
-                # components.html. Automatisk window.top-navigasjon via
-                # st.markdown sin <script> kjøres ikke i Streamlit, og
-                # window.top.location-skriving blokkeres av iframe-sandkassen
-                # uansett — derfor er en ekte lenke i hoveddokumentet eneste
-                # pålitelige vei.
-                components.html(
-                    f"""
-                    <script>
-                    (function() {{
-                        try {{
-                            const doc = window.top.document;
-                            let box = doc.getElementById("checkoutRedirectBox");
-                            if (!box) {{
-                                box = doc.createElement("div");
-                                box.id = "checkoutRedirectBox";
-                                box.style.position = "fixed";
-                                box.style.top = "0";
-                                box.style.left = "0";
-                                box.style.right = "0";
-                                box.style.zIndex = "999999";
-                                box.style.padding = "16px";
-                                box.style.background = "#0EA5A3";
-                                box.style.textAlign = "center";
-                                box.style.fontFamily = "sans-serif";
-                                doc.body.prepend(box);
-                            }}
-                            box.innerHTML =
-                                '<a href="{_checkout_url}" style="color:#fff;font-weight:700;font-size:16px;text-decoration:none;">' +
-                                '💳 Click here to continue to payment &rarr;</a>';
-                            // Forsøk automatisk navigasjon i tillegg, i fall den faktisk fungerer i noen nettlesere
-                            try {{ window.top.location.href = "{_checkout_url}"; }} catch (e) {{}}
-                        }} catch (e) {{
-                            console.error("Could not show checkout redirect link:", e);
-                        }}
-                    }})();
-                    </script>
-                    """,
-                    height=0,
-                )
-                st.info("💳 Click the green bar at the top of the page to continue to payment.")
-            else:
-                st.error(f"Could not create payment session: {_data.get('error', 'Unknown error')}")
-        except Exception as _e:
-            st.error(f"Payment error: {_e}")
-
-    if not _email_valid and _user_email:
-        st.caption("⚠️ Enter a valid email to continue")
-    st.caption("After payment, you'll get an email with a link to log in and download your report.")
-
-    # ── Plan B: e-postfelt for dei som ikkje kjøper med ein gong ──
-    # Vises berre for ikkje-innlogga brukarar som ikkje allereie har oppgitt e-post.
-    if not _uid and not st.session_state.get("lead_email_captured", False):
-        st.markdown(
-            '<div style="margin-top:24px;border-top:1px solid rgba(255,255,255,0.07);'            'padding-top:20px;font-family:Arial,sans-serif;">'            '<div style="font-size:13px;color:#6B7280;text-align:center;margin-bottom:12px;">'            'Not ready yet? Get 3 free personalised tips by email instead →</div>'            '</div>',
-            unsafe_allow_html=True,
-        )
-        _planb_col1, _planb_col2 = st.columns([3, 1])
-        with _planb_col1:
-            _planb_email = st.text_input(
-                "Email for free tips",
-                key="planb_lead_email",
-                placeholder="you@example.com",
-                label_visibility="collapsed",
-            )
-        with _planb_col2:
-            _planb_submit = st.button("Send tips", key="planb_lead_button", use_container_width=True)
-
-        if _planb_submit:
-            _planb_valid = "@" in _planb_email and "." in _planb_email.split("@")[-1]
-            if not _planb_valid:
-                st.error("Please enter a valid email address.")
-            else:
-                try:
-                    _planb_db = get_db_client()
-                    save_lead(
-                        _planb_db,
-                        email=_planb_email,
-                        source="paywall_plan_b",
-                        bio_age=st.session_state.get("results", {}).get("bio_age", {}).get("value"),
-                        chronological_age=float(age) if age else None,
-                    )
-                except Exception as _planb_err:
-                    print(f"[lead capture plan B] could not save lead: {_planb_err}")
-                components.html(
-                    """
-                    <script>
-                    (function() {
-                        try {
-                            window.top.dataLayer = window.top.dataLayer || [];
-                            window.top.dataLayer.push({'event': 'email_captured', 'source': 'paywall_plan_b'});
-                        } catch (e) {}
-                    })();
-                    </script>
-                    """,
-                    height=0,
-                )
-                st.session_state["lead_email_captured"] = True
-                st.success("✅ On its way! Check your inbox for 3 tips tailored to your results.")
-                st.rerun()
-
-        # Spacer so the sticky bar doesn't cover the plan-B email field
-        st.markdown(
-            '<div style="height:90px;"></div>',
-            unsafe_allow_html=True,
-        )
-
-else:
-    # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
-    _results_for_pdf = st.session_state.get("results", {})
-    if not _results_for_pdf:
-        st.warning("⚠️ Run the calculations first (click 'Calculate'), then you can download the PDF report.")
-    else:
-        report = {
-            "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-            "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
-            "bmi": _results_for_pdf.get("bmi"),
-            "bodyfat": _results_for_pdf.get("bodyfat"),
-            "whr": _results_for_pdf.get("whr"),
-            "vo2": _results_for_pdf.get("vo2"),
-            "bio_age": _results_for_pdf.get("bio_age"),
-            "bio_factors": _results_for_pdf.get("bio_factors"),
-            "triage": _results_for_pdf.get("triage"),
-            "triage_recommendations": _results_for_pdf.get("triage_recommendations"),
-            "plan": _results_for_pdf.get("plan"),
-            "exercise_log": st.session_state.get("exercise_last"),
-            "selected_activities": st.session_state.get("selected_activities", []),
-        }
-        try:
-            pdf_bytes = create_pdf_bytes_ultimate(report)
-            with st.container(border=True):
-                st.subheader("✅ Your Premium Health Report is ready")
-                st.markdown("We have analyzed your biomarkers and generated a tailored 30-day protocol designed to optimize your health.")
-                st.download_button(
-                    label="📥 Download your PDF Report (4.99 USD)",
-                    data=pdf_bytes,
-                    file_name="Health_Audit_Report.pdf",
-                    mime="application/pdf",
-                    type="primary",
-                    use_container_width=True
-                )
-                st.caption("Your purchase is secured with 100% encryption.")
-        except Exception as e:
-            st.error(f"Error generating report: {e}")
-
-# -------------------- Scroll script --------------------
-if st.session_state.get("scroll_to_paywall"):
-    components.html(
+    def _strength_rx(week, day_idx=0, activity=""):
         """
-        <script>
-        (function() {
-            function doScroll() {
-                try {
-                    var anchor = window.top.document.getElementById('paywall_anchor');
-                    if (anchor) {
-                        anchor.scrollIntoView({behavior: 'smooth', block: 'start'});
-                    } else {
-                        // fallback: scroll to bottom
-                        window.top.scrollTo({top: window.top.document.body.scrollHeight, behavior: 'smooth'});
-                    }
-                } catch(e) {
-                    window.scrollTo({top: document.body.scrollHeight, behavior: 'smooth'});
-                }
+        Per-activity, per-day, per-week strength prescriptions.
+        Day types: 0=push, 1=pull, 2=legs/core, 3=push, 4=pull, 5=full-body
+        (mirrors the existing STRENGTH_SPLITS rotation but adds activity-specific cues)
+        """
+        day_types = {0: "push", 1: "pull", 2: "legs", 3: "push", 4: "pull", 5: "full"}
+        dtype = day_types.get(day_idx % 6, "push")
+        act = activity.lower()
+
+        # ── STRENGTH TRAINING (WEIGHTS) ──────────────────────────────────────────
+        if "strength training" in act or "weights" in act:
+            P = {
+                1: {
+                    "push":  ("45 min", "Bench press 3×10, overhead press 3×10, tricep dips 3×12. RPE 6 — nail the form, no grinding reps."),
+                    "pull":  ("45 min", "Barbell row 3×10, lat pulldown 3×10, face pulls 3×15. RPE 6 — full stretch at the bottom of every rep."),
+                    "legs":  ("45 min", "Squat 3×10, Romanian deadlift 3×10, leg press 3×12. RPE 6 — controlled tempo, 3 s down."),
+                    "full":  ("45 min", "Deadlift 3×8, push-up 3×15, goblet squat 3×12, plank 3×45 s. Full-body primer, moderate load."),
+                },
+                2: {
+                    "push":  ("50 min", "Bench press 3×10 (+2.5 kg vs W1), incline DB press 3×10, lateral raises 3×15. RPE 7."),
+                    "pull":  ("50 min", "Barbell row 3×10 (+2.5 kg), pull-ups 3×8, seated cable row 3×12. RPE 7 — squeeze the scapula."),
+                    "legs":  ("50 min", "Squat 3×10 (+2.5 kg), hip thrust 3×12, walking lunges 3×10 each leg. RPE 7."),
+                    "full":  ("50 min", "Deadlift 3×8 (+5 kg), dips 3×10, Bulgarian split squat 3×10, plank 3×60 s. Progressive load."),
+                },
+                3: {
+                    "push":  ("55 min", "Bench press 4×8 (heaviest weight this month), OHP 4×8, cable fly 3×12 drop-set on last set. RPE 8."),
+                    "pull":  ("55 min", "Barbell row 4×8 (heavy), weighted pull-ups 4×6, face pulls 3×15. RPE 8 — peak week, push the load."),
+                    "legs":  ("55 min", "Squat 4×8 (heaviest), stiff-leg deadlift 4×8, leg press 4×10 drop-set. RPE 8."),
+                    "full":  ("55 min", "Deadlift 4×6 (heaviest), push-press 3×8, front squat 3×8, ab wheel 3×10. Peak intensity full-body."),
+                },
+                4: {
+                    "push":  ("40 min", "Bench press 3×8 (same weight as W3, no new PR), OHP 3×8, triceps 2×12. RPE 7 — lock in, don't push."),
+                    "pull":  ("40 min", "Row 3×8 (W3 weight), lat pulldown 3×10, face pulls 2×15. RPE 7 — taper, protect the gains."),
+                    "legs":  ("40 min", "Squat 3×8 (W3 weight), hip thrust 3×10, leg curl 2×12. RPE 7 — legs fresh for reassessment."),
+                    "full":  ("40 min", "Deadlift 3×5 (W3 weight), push-up 2×15, goblet squat 2×10, plank 2×45 s. Light full-body flush."),
+                },
             }
-            // slight delay to ensure DOM is ready after rerun
-            setTimeout(doScroll, 120);
-        })();
-        </script>
-        """,
-        height=0,
-        width=0,
-    )
-    st.session_state["scroll_to_paywall"] = False
+
+        # ── BOXING / MARTIAL ARTS ────────────────────────────────────────────────
+        elif "boxing" in act or "martial arts" in act:
+            P = {
+                1: {
+                    "push":  ("40 min", "Jab–cross technique on bag: 3×3 min rounds, 60 s rest. Focus on hip rotation and punch extension, not power."),
+                    "pull":  ("40 min", "Defensive movement: slip, roll, parry drills with a partner or mirror × 3×3 min. Build the habit."),
+                    "legs":  ("40 min", "Footwork fundamentals: in/out, lateral, pivot × 4×3 min. Stance, balance and weight transfer."),
+                    "push":  ("40 min", "Combination work: 1-2, 1-2-3, 1-2-3-2 on bag × 4×2 min. Clean technique at 60% power."),
+                    "pull":  ("40 min", "Clinch and grappling defence drills × 3×3 min. Posture, head position, hand control."),
+                    "full":  ("40 min", "Shadow boxing: 4×3 min continuous movement, mix offence and defence. Aerobic base session."),
+                },
+                2: {
+                    "push":  ("45 min", "Power combinations on bag: 1-2-hook, uppercut combos × 5×3 min, 60 s rest. 75% power."),
+                    "pull":  ("45 min", "Defensive combinations: slip-cross, roll-hook, parry-jab counter × 4×3 min. Speed up the defence."),
+                    "legs":  ("45 min", "Footwork + punch combos: step in/out with each combo × 4×3 min. Punches come from the feet."),
+                    "push":  ("45 min", "Pad work or bag: 4×3 min moderate intensity — vary combo length from 2 to 6 punches."),
+                    "pull":  ("45 min", "Sparring technique (light): 4×2 min controlled sparring or partner drills at 50% contact."),
+                    "full":  ("45 min", "Shadow boxing + bag superset: 2 min shadow, 2 min bag × 5 rounds. Build work capacity."),
+                },
+                3: {
+                    "push":  ("50 min", "Heavy bag power rounds: 6×3 min at 90% effort, 45 s rest. Hardest hitting session this month."),
+                    "pull":  ("50 min", "Defensive gauntlet: partner throws combos, you slip/roll continuously × 6×2 min. Max reaction speed."),
+                    "legs":  ("50 min", "Footwork hell: lateral shuffle + pivot + sprint × 8×2 min. 90% effort. Test the legs."),
+                    "push":  ("50 min", "Pad work peak: 6×3 min at near-competition intensity. No holding back."),
+                    "pull":  ("50 min", "Full sparring or hard partner drills: 5×3 min. Treat this as a real fight."),
+                    "full":  ("50 min", "Full fight simulation: 8×3 min shadow + bag alternating. Cardio and technique at peak intensity."),
+                },
+                4: {
+                    "push":  ("35 min", "Easy bag work: 4×2 min light combinations at 60% — feel sharp, not fatigued."),
+                    "pull":  ("35 min", "Slow defensive drills: slips and rolls at 65% — groove the movements, no pressure."),
+                    "legs":  ("35 min", "Light footwork: 4×2 min easy patterns, stay loose and mobile."),
+                    "push":  ("35 min", "Light pad work: 3×2 min easy combos. Taper, stay sharp."),
+                    "pull":  ("35 min", "Technical shadow boxing: 4×2 min — visualise the perfect defence and counter."),
+                    "full":  ("35 min", "Easy shadow boxing: 4×2 min continuous. Aerobic flush, finish feeling fresh."),
+                },
+            }
+
+        # ── ROCK CLIMBING / BOULDERING ───────────────────────────────────────────
+        elif "climbing" in act or "bouldering" in act:
+            P = {
+                1: {
+                    "push":  ("45 min", "Slab climbing technique: 4 easy-grade routes focusing on footwork precision and quiet feet. No overgripping."),
+                    "pull":  ("45 min", "Hangboard protocol: 7 s on / 3 s off × 6 reps per hold, 3 hold types at 60% effort. Build finger tendon tolerance."),
+                    "legs":  ("45 min", "Footwork drills: climb 3 routes using only slab technique — no pulling with arms. Legs do the work."),
+                    "push":  ("45 min", "Overhang exploration: 3 easy overhangs at 60% effort — practice body positioning and hip-to-wall proximity."),
+                    "pull":  ("45 min", "Dead-hang endurance: 10 s hang / 50 s rest × 8 sets on a jug. Gentle finger loading."),
+                    "full":  ("45 min", "Volume day: 6 easy routes top-to-bottom without resting on the wall. Build movement fluency."),
+                },
+                2: {
+                    "push":  ("50 min", "Technical slab: 5 moderate-grade routes — focus on precise foot placement, trust the rubber."),
+                    "pull":  ("50 min", "Hangboard build: 10 s on / 5 s off × 6 reps, add one harder hold type vs. week 1."),
+                    "legs":  ("50 min", "Dynamic movement: 3 moderate overhangs practising hip flags and drop-knees. Control the swing."),
+                    "push":  ("50 min", "Problem-solving: 5 moderate-grade boulders you haven't sent — read the route before pulling on."),
+                    "pull":  ("50 min", "Lock-off training: 3 s lock-off at 90°, 120°, 150° × 5 reps each arm. Build pulling strength."),
+                    "full":  ("50 min", "Circuit day: 8 moderate routes, 3 min rest between each. Volume with moderate difficulty."),
+                },
+                3: {
+                    "push":  ("55 min", "Hard project attempts: 3 routes at your limit — 5 attempts each with full rest between. Peak week."),
+                    "pull":  ("55 min", "Hangboard peak: 10 s on / 5 s off × 8 reps on crimps and slopers. Heaviest finger loading this month."),
+                    "legs":  ("55 min", "Powerful dynamics: campus ladder moves or hard boulders with dynamic throws × 6 problems. Max intensity."),
+                    "push":  ("55 min", "Redpoint attempts: your hardest project, fresh skin, 6 attempts. This is your peak climbing session."),
+                    "pull":  ("55 min", "Max pulling: weighted pull-ups or system board on hardest holds × 4×5 reps. Peak strength session."),
+                    "full":  ("55 min", "Hard circuit: 6 near-limit routes, full rest, maximum quality. Push the ceiling."),
+                },
+                4: {
+                    "push":  ("40 min", "Easy slab cruising: 4 easy routes at 65% — enjoy the movement, no projecting."),
+                    "pull":  ("40 min", "Light hangboard: 7 s on / 53 s off × 4 reps on jugs only. Maintain, don't stress the tendons."),
+                    "legs":  ("40 min", "Gentle traversing: low wall traverse for 20 min — footwork focus, easy effort."),
+                    "push":  ("40 min", "Relaxed bouldering: 4 easy problems — notice how much more automatic the movement feels."),
+                    "pull":  ("40 min", "Easy lock-offs: 2 s hold, 3 hold positions × 3 reps each arm. Taper, stay fresh."),
+                    "full":  ("40 min", "Fun climbing: pick 4 routes you enjoy at easy grade. Taper week — finish smiling."),
+                },
+            }
+
+        # ── HIKING (INCLINE) ─────────────────────────────────────────────────────
+        elif "hiking" in act:
+            P = {
+                1: {
+                    "push":  ("45 min", "Incline treadmill or hill walk at 6–8% gradient, 5 km/h — focus on upright posture and heel-to-toe strike."),
+                    "pull":  ("45 min", "Descent practice: find a 15–20% downhill and walk down slowly, 4 × 5 min. Quad load, controlled pace."),
+                    "legs":  ("45 min", "Uneven terrain walk: forest path or trail at easy effort — ankle stability and ground feel are the focus."),
+                    "push":  ("45 min", "Weighted pack introduction: 5 kg pack, flat-to-moderate trail, 45 min. Posture over pace."),
+                    "pull":  ("45 min", "Step-up strength: find stairs or a step, 3×15 each leg with a controlled 3 s up / 3 s down tempo."),
+                    "full":  ("50 min", "Long easy hike: 50 min continuous at conversational pace, mixed terrain if possible."),
+                },
+                2: {
+                    "push":  ("50 min", "Incline hike at 8–10% gradient — push the pace slightly vs. week 1, same 5 km/h but steeper."),
+                    "pull":  ("50 min", "Descent intervals: 6 × 5 min fast descent, 3 min flat recovery. Build eccentric quad tolerance."),
+                    "legs":  ("50 min", "Trail run-walk: alternate 3 min easy jog / 5 min hike × 5 rounds on mixed terrain."),
+                    "push":  ("50 min", "Weighted pack build: 8 kg pack, moderate incline trail, 50 min at steady pace."),
+                    "pull":  ("50 min", "Step-up + calf raise superset: 3×12 each leg, add 5 kg weight vest if available."),
+                    "full":  ("60 min", "Endurance hike: 60 min continuous, mixed gradient — include at least 2 sustained uphills."),
+                },
+                3: {
+                    "push":  ("60 min", "Steep incline hike: 10–15% gradient, 55 min sustained effort. Hardest ascent session this month."),
+                    "pull":  ("55 min", "Descent power session: 8 × 5 min fast downhill, 2 min flat rest. Max eccentric loading."),
+                    "legs":  ("55 min", "Trail intervals: 5 × 4 min hard uphill effort, walk 3 min down for recovery. Push the VO2max."),
+                    "push":  ("60 min", "Heavy pack hike: 10–12 kg pack, sustained incline trail, 55 min. Peak load this month."),
+                    "pull":  ("55 min", "Single-leg strength peak: pistol squat progressions or step-ups with max load × 4×10 each leg."),
+                    "full":  ("70 min", "Long hard hike: 70 min, max elevation gain you can find. This is your peak endurance session."),
+                },
+                4: {
+                    "push":  ("40 min", "Easy incline walk: 5% gradient, 4.5 km/h, 40 min — legs fresh, lungs easy."),
+                    "pull":  ("35 min", "Gentle descent walk: easy grade, slow pace, 30 min. Flush out the legs."),
+                    "legs":  ("40 min", "Flat trail walk: 40 min conversational pace — active recovery, no hills."),
+                    "push":  ("40 min", "Light pack walk: 4 kg pack, flat-moderate terrain, 40 min. Taper, stay mobile."),
+                    "pull":  ("35 min", "Easy step-ups: 2×10 each leg, bodyweight only. Stay loose, don't tire."),
+                    "full":  ("45 min", "Easy nature hike: 45 min at your own comfortable pace. Enjoy it — notice how strong you feel."),
+                },
+            }
+
+        # ── GENERIC STRENGTH FALLBACK ─────────────────────────────────────────────
+        else:
+            P = {
+                1: {
+                    "push":  ("45 min", "Push movements (press, push-up, dip): 3×10 at RPE 6 — establish the baseline, clean form only."),
+                    "pull":  ("45 min", "Pull movements (row, pull-up, curl): 3×10 at RPE 6 — full range, slow eccentric."),
+                    "legs":  ("45 min", "Leg movements (squat, hinge, lunge): 3×10 at RPE 6 — 3 s tempo on the way down."),
+                    "full":  ("45 min", "Full-body circuit: one push + one pull + one leg + one core exercise, 3 rounds. Moderate load."),
+                },
+                2: {
+                    "push":  ("50 min", "Push movements: 3×10, add 2.5–5% load vs. week 1. RPE 7."),
+                    "pull":  ("50 min", "Pull movements: 3×10, add load or 1–2 reps vs. week 1. RPE 7."),
+                    "legs":  ("50 min", "Leg movements: 3×10 (+load), add one unilateral exercise. RPE 7."),
+                    "full":  ("50 min", "Full-body circuit: increase load or reps by 5–10% across all exercises. RPE 7."),
+                },
+                3: {
+                    "push":  ("55 min", "Push movements: 4×8 at heaviest load this month. RPE 8 — push hard, technique must hold."),
+                    "pull":  ("55 min", "Pull movements: 4×8 heavy. Drop-set on the final set of your last exercise. RPE 8."),
+                    "legs":  ("55 min", "Leg movements: 4×8 heavy. Add a drop-set or paused reps on squats/hinges. RPE 8."),
+                    "full":  ("55 min", "Full-body peak: 4 rounds, max load you can handle with good form. Hardest session this month."),
+                },
+                4: {
+                    "push":  ("40 min", "Push movements: 3×8, same weight as week 3 — no new PRs. RPE 7. Taper."),
+                    "pull":  ("40 min", "Pull movements: 3×8, maintain week 3 load. RPE 7. Protect the gains."),
+                    "legs":  ("40 min", "Leg movements: 3×8 at week 3 weight. Keep legs fresh for reassessment."),
+                    "full":  ("40 min", "Light full-body flush: 2 rounds, moderate load — finish feeling good, not drained."),
+                },
+            }
+
+        dur, rx = P[week][dtype]
+        return dur, rx
+
+    def _cardio_easy_rx(week, activity=""):
+        """Activity-specific easy cardio prescriptions with weekly progression."""
+        act = activity.lower()
+
+        if "running" in act or "jogging" in act:
+            return {
+                1: ("30 min", "Easy run at conversational pace (~65% HRmax) — you should be able to say full sentences. No watching pace."),
+                2: ("35 min", "Easy run, 5 min longer than week 1 — same effort, let pace come naturally."),
+                3: ("35 min", "Easy run with 4 × 20 s relaxed strides in the final 10 min — accelerate gently, don't sprint."),
+                4: ("30 min", "Easy run, taper week — genuinely easy, arrive at next session fresh."),
+            }[week]
+
+        elif "cycling" in act:
+            return {
+                1: ("30 min", "Zone 2 ride at ~65% HRmax — flat or gentle rolling terrain, cadence 80–90 rpm, comfortable gear."),
+                2: ("35 min", "Zone 2, 5 min longer — same easy effort, focus on smooth pedal stroke throughout."),
+                3: ("35 min", "Zone 2 with 4 × 30 s relaxed cadence increases (100+ rpm) in the final 10 min. Keep effort easy."),
+                4: ("30 min", "Easy Zone 2 spin — taper week, shorter session, same comfortable effort."),
+            }[week]
+
+        elif "swimming" in act:
+            return {
+                1: ("30 min", "Easy freestyle at ~65% effort — focus on stroke length and bilateral breathing. No splits, just feel."),
+                2: ("35 min", "Easy swim, 5 min longer — alternate 100 m freestyle / 50 m backstroke to vary the load."),
+                3: ("35 min", "Easy swim with 4 × 25 m relaxed tempo increases mid-session. Stroke quality must hold at speed."),
+                4: ("30 min", "Easy mixed strokes — taper week, focus on feel and flow, not distance."),
+            }[week]
+
+        elif "rowing" in act:
+            return {
+                1: ("30 min", "Easy row at 18–20 spm, damper 4–5, ~65% effort — focus on sequencing: legs → body → arms each stroke."),
+                2: ("35 min", "Easy row, 5 min longer — maintain the sequencing, add 1 spm if it still feels comfortable."),
+                3: ("35 min", "Easy row with 4 × 1 min at 22 spm in the final 10 min — rate goes up, effort stays easy."),
+                4: ("30 min", "Easy row at 18 spm — taper week, smooth technique, arrive fresh at the next session."),
+            }[week]
+
+        elif "elliptical" in act:
+            return {
+                1: ("30 min", "Easy elliptical at ~65% HRmax — zero incline, moderate resistance, focus on full push-pull arm drive."),
+                2: ("35 min", "Easy elliptical, 5 min longer — add 1 resistance level if heart rate feels too low."),
+                3: ("35 min", "Easy elliptical with 4 × 30 s higher cadence bursts in the last 10 min. Effort stays easy."),
+                4: ("30 min", "Easy elliptical — taper week, comfortable resistance, shorter session."),
+            }[week]
+
+        elif "stair" in act:
+            return {
+                1: ("25 min", "Stairmaster or stair walk at level 4–6 (~65% effort) — upright posture, don't lean on the rails."),
+                2: ("30 min", "Stair walk, 5 min longer — add 1 level if heart rate stays below 70% HRmax."),
+                3: ("30 min", "Stair walk with 4 × 1 min at +2 levels in the last 10 min. Return to base level to recover."),
+                4: ("25 min", "Easy stair walk — taper week, base level, comfortable effort."),
+            }[week]
+
+        elif "hiit" in act:
+            return {
+                1: ("20 min", "Active recovery HIIT day — 30 s easy bodyweight movement / 30 s complete rest × 10 rounds. Very low effort."),
+                2: ("20 min", "Easy movement circuit — jumping jacks, march in place, arm circles × 10 min. Flush the legs."),
+                3: ("20 min", "Gentle mobility flow: 5 min easy movement, 10 min static/dynamic stretching, 5 min cool-down walk."),
+                4: ("20 min", "Full rest-day movement: 20 min easy walk or gentle yoga. No cardio stress."),
+            }[week]
+
+        else:
+            return {
+                1: ("30 min", "Zone 2 effort (~65% HRmax) — conversational pace, build the aerobic base."),
+                2: ("35 min", "Zone 2, 5 min longer than last week, same easy effort."),
+                3: ("35 min", "Zone 2 with 4 × 20 s relaxed pick-ups in the last 10 min."),
+                4: ("30 min", "Zone 2 taper — keep it genuinely easy, shorter session."),
+            }[week]
+
+    def _cardio_interval_rx(week, pct, activity=""):
+        """Activity-specific interval prescriptions scaled by VO2max percentile."""
+        act = activity.lower()
+        low_fit = pct is not None and pct < 50
+
+        if "running" in act or "jogging" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min at a pace that feels 'comfortably hard' (Zone 3), 2 min easy jog recovery. Build the engine."),
+                    2: ("28 min", "6 × 2 min hard effort / 2 min easy jog. Same pace as week 1 — add one rep."),
+                    3: ("30 min", "6 × 3 min hard / 2 min easy jog — your toughest run this month. Push the pace."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy jog — taper, stay sharp."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min at Zone 4–5 (hard but controlled) / 2 min easy jog recovery."),
+                2: ("32 min", "6 × 3 min hard / 2 min easy jog. Add 1 min to each rep vs. week 1."),
+                3: ("35 min", "8 × 2 min hard / 90 s easy jog — hardest run this month. Race-effort reps."),
+                4: ("24 min", "4 × 3 min hard / 2 min easy jog — taper, keep the legs snappy."),
+            }[week]
+
+        elif "cycling" in act:
+            if low_fit:
+                return {
+                    1: ("28 min", "5 × 2 min hard effort (Zone 3, ~80% HRmax) / 2 min easy spin. Build power tolerance."),
+                    2: ("30 min", "6 × 2 min hard / 2 min easy spin. Same effort, one extra rep."),
+                    3: ("32 min", "6 × 3 min hard / 2 min easy — peak interval session. Push the watts."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy spin — taper, stay sharp."),
+                }[week]
+            return {
+                1: ("30 min", "6 × 2 min at ~90% HRmax / 2 min easy spin. Hard but not all-out."),
+                2: ("34 min", "6 × 3 min hard / 2 min easy spin. Watts should feel unsustainable past 4 min."),
+                3: ("36 min", "8 × 2 min max effort / 90 s easy — hardest bike session this month."),
+                4: ("24 min", "4 × 3 min hard / 2 min easy spin — taper, keep the power."),
+            }[week]
+
+        elif "swimming" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 50 m hard / 60 s rest at wall — controlled speed, focus on stroke not thrashing."),
+                    2: ("28 min", "6 × 50 m hard / 50 s rest. Push the pace slightly vs. week 1."),
+                    3: ("30 min", "6 × 75 m hard / 60 s rest — toughest swim session this month."),
+                    4: ("20 min", "4 × 50 m controlled fast / 60 s rest — taper, feel sharp."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 50 m near-max / 45 s rest at wall. Strong stroke throughout."),
+                2: ("30 min", "6 × 75 m hard / 50 s rest. Increase distance per rep vs. week 1."),
+                3: ("32 min", "8 × 50 m max effort / 30 s rest — hardest swim this month."),
+                4: ("22 min", "4 × 75 m controlled fast / 45 s rest — taper, stay sharp."),
+            }[week]
+
+        elif "rowing" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min at 22–24 spm, hard effort / 2 min easy row. Keep sequencing clean under fatigue."),
+                    2: ("28 min", "6 × 2 min hard / 2 min easy. Add 1 spm vs. week 1 if form holds."),
+                    3: ("30 min", "6 × 3 min at 24 spm / 2 min easy — your hardest row this month."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy — taper, strong finish each rep."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min at 26 spm, ~90% effort / 2 min easy row."),
+                2: ("32 min", "6 × 3 min at 26–28 spm / 2 min easy. Each 500 m split should hurt."),
+                3: ("35 min", "8 × 2 min at 28 spm / 90 s easy — hardest rowing session this month."),
+                4: ("24 min", "4 × 3 min at 26 spm / 2 min easy — taper, snappy catch each stroke."),
+            }[week]
+
+        elif "elliptical" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min high resistance / 2 min easy glide. Push stride rate up on the hard intervals."),
+                    2: ("28 min", "6 × 2 min hard / 2 min easy. Same resistance, add one rep."),
+                    3: ("30 min", "6 × 3 min hard / 2 min easy — peak elliptical session."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy — taper, keep the power."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min max resistance / 2 min easy. Arms and legs fully engaged."),
+                2: ("32 min", "6 × 3 min hard / 2 min easy glide. Add +1 resistance vs. week 1."),
+                3: ("35 min", "8 × 2 min all-out / 90 s easy — hardest elliptical session this month."),
+                4: ("24 min", "4 × 3 min hard / 2 min easy — taper, stay explosive."),
+            }[week]
+
+        elif "stair" in act:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min at +3 levels above base / 2 min base level recovery. Build stair power."),
+                    2: ("28 min", "6 × 2 min hard / 2 min base recovery. Add 1 level vs. week 1."),
+                    3: ("30 min", "6 × 3 min at highest level you can hold / 2 min base — peak stair session."),
+                    4: ("22 min", "4 × 2 min hard / 2 min base — taper, legs sharp."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min at near-max level / 2 min base level recovery."),
+                2: ("32 min", "6 × 3 min hard / 2 min base. Push level higher than week 1."),
+                3: ("35 min", "8 × 2 min max level / 90 s base — hardest stair session this month."),
+                4: ("24 min", "4 × 3 min hard / 2 min base — taper, finish each rep strong."),
+            }[week]
+
+        elif "hiit" in act:
+            if low_fit:
+                return {
+                    1: ("20 min", "5 rounds: 30 s work (burpee or squat jump) / 90 s rest. Full recovery between rounds."),
+                    2: ("22 min", "6 rounds: 30 s work / 75 s rest. Add one round vs. week 1."),
+                    3: ("25 min", "6 rounds: 40 s work / 60 s rest — hardest HIIT session this month."),
+                    4: ("18 min", "4 rounds: 30 s work / 90 s rest — taper, stay sharp."),
+                }[week]
+            return {
+                1: ("22 min", "6 rounds: 40 s max-effort (burpee, squat jump, or sprint) / 80 s rest."),
+                2: ("25 min", "7 rounds: 40 s max-effort / 70 s rest. Shorten rest vs. week 1."),
+                3: ("28 min", "8 rounds: 40 s max / 60 s rest — hardest HIIT session this month."),
+                4: ("20 min", "5 rounds: 30 s max / 90 s rest — taper, explosive quality over quantity."),
+            }[week]
+
+        else:
+            if low_fit:
+                return {
+                    1: ("25 min", "5 × 2 min moderately hard / 2 min easy (Zone 3-4) — build interval tolerance."),
+                    2: ("28 min", "6 × 2 min moderately hard / 2 min easy."),
+                    3: ("30 min", "6 × 3 min hard / 2 min easy — your toughest interval session this month."),
+                    4: ("22 min", "4 × 2 min hard / 2 min easy — taper, stay sharp."),
+                }[week]
+            return {
+                1: ("28 min", "6 × 2 min hard (Zone 4-5) / 2 min easy recovery."),
+                2: ("32 min", "6 × 3 min hard / 2 min easy."),
+                3: ("35 min", "8 × 2 min hard / 90 s easy — your hardest session this month."),
+                4: ("24 min", "4 × 3 min hard / 2 min easy — taper, keep the legs snappy."),
+            }[week]
+
+    def _cardio_long_rx(week, activity=""):
+        """Activity-specific long aerobic session prescriptions."""
+        act = activity.lower()
+
+        if "running" in act or "jogging" in act:
+            return {
+                1: ("50 min", "Long easy run — pure volume at conversational pace. Don't watch splits. This is your aerobic foundation."),
+                2: ("60 min", "Long easy run, 10 min longer than week 1 — same effort, let pace drift naturally."),
+                3: ("70 min", "Long run with the final 10 min slightly brisker — still aerobic, just a hint of tempo at the end."),
+                4: ("45 min", "Easy long run, taper week — shorter and genuinely comfortable. Arrive at reassessment fresh."),
+            }[week]
+
+        elif "cycling" in act:
+            return {
+                1: ("60 min", "Long Zone 2 ride — flat or rolling route, 80–90 rpm, completely conversational. Build the aerobic engine."),
+                2: ("75 min", "Long ride, 15 min longer — add a small hill mid-ride but keep overall effort easy."),
+                3: ("85 min", "Long ride with the final 15 min at a slightly brisker pace (Zone 3). Push gently at the end."),
+                4: ("55 min", "Easy long ride, taper — comfortable effort, enjoy the route."),
+            }[week]
+
+        elif "swimming" in act:
+            return {
+                1: ("40 min", "Continuous easy swim — mix strokes every 200 m, focus on relaxed breathing and stroke efficiency."),
+                2: ("50 min", "Long swim, 10 min longer — alternate freestyle and backstroke every 4 lengths to vary muscle load."),
+                3: ("55 min", "Long swim with the final 10 min as a slightly harder tempo — controlled speed, technique must hold."),
+                4: ("40 min", "Easy long swim, taper — relax in the water, focus on feel not distance."),
+            }[week]
+
+        elif "rowing" in act:
+            return {
+                1: ("50 min", "Long easy row at 18–20 spm — focus on sequencing consistency the whole session. Pure aerobic base."),
+                2: ("60 min", "Long row, 10 min longer — maintain 18–20 spm, let the metres accumulate naturally."),
+                3: ("70 min", "Long row with the final 10 min at 22 spm — lift the rate, keep the effort sustainable."),
+                4: ("45 min", "Easy long row — taper week, comfortable pace, finish feeling good."),
+            }[week]
+
+        elif "elliptical" in act:
+            return {
+                1: ("55 min", "Long easy elliptical — moderate resistance, full arm engagement, completely conversational effort."),
+                2: ("65 min", "Long elliptical, 10 min longer — add 1 resistance level mid-session if heart rate drops below Zone 2."),
+                3: ("75 min", "Long elliptical with the final 10 min at +2 resistance — sustained aerobic push at the end."),
+                4: ("50 min", "Easy long elliptical — taper week, comfortable resistance, shorter duration."),
+            }[week]
+
+        elif "stair" in act:
+            return {
+                1: ("40 min", "Long stair session at base level — steady continuous effort, no intervals, build leg endurance."),
+                2: ("50 min", "Long stair, 10 min longer — add 1 level vs. week 1 if heart rate is still comfortable."),
+                3: ("55 min", "Long stair with final 10 min at +2 levels — sustained effort, don't hold the rails."),
+                4: ("35 min", "Easy stair endurance — taper week, comfortable level, finish fresh."),
+            }[week]
+
+        elif "hiit" in act:
+            return {
+                1: ("35 min", "Active recovery: 35 min continuous low-intensity bodyweight circuit — squats, lunges, push-ups at easy pace."),
+                2: ("40 min", "Low-intensity circuit, 5 min longer — add one exercise but keep the effort genuinely easy."),
+                3: ("40 min", "Aerobic circuit: 8 exercises × 40 s on / 20 s rest, 2 rounds. Moderate pace — complement the HIIT days."),
+                4: ("35 min", "Easy movement circuit — taper week, flush the body, arrive at reassessment ready."),
+            }[week]
+
+        else:
+            return {
+                1: ("50 min", "Steady, easy pace — pure volume, conversational effort throughout."),
+                2: ("60 min", "Steady, easy pace — 10 minutes longer than last week."),
+                3: ("70 min", "Steady pace, with the last 10 minutes slightly brisker than the rest."),
+                4: ("45 min", "Easy pace — taper week, shorter session, same comfortable effort."),
+            }[week]
+
+    def _low_rx(week, activity=""):
+        """Activity-specific low-impact prescriptions with weekly progression."""
+        act = activity.lower()
+
+        if "brisk walking" in act:
+            return {
+                1: ("25 min", "Brisk walk at ~5.5 km/h — arms swinging, purposeful stride, heart rate ~110–120 bpm. Warm up 5 min easy first."),
+                2: ("30 min", "Brisk walk, 5 min longer — push the pace slightly, aim for 6 km/h if it feels comfortable."),
+                3: ("35 min", "Brisk walk with 3 × 3 min at near-power-walk pace mid-session. Recover to normal brisk pace between."),
+                4: ("25 min", "Brisk walk taper — comfortable pace, finish feeling energised not tired."),
+            }[week]
+
+        elif "walking" in act:
+            return {
+                1: ("25 min", "Easy casual walk at comfortable pace — fresh air, low heart rate (~100 bpm), active recovery mindset."),
+                2: ("30 min", "Easy walk, 5 min longer — add a gentle hill if possible to vary the stimulus."),
+                3: ("30 min", "Easy walk with 2 × 5 min slightly faster pace — not brisk, just a shade quicker than your normal stroll."),
+                4: ("25 min", "Easy walk — taper week, purely for movement and fresh air."),
+            }[week]
+
+        elif "yoga" in act or "pilates" in act:
+            return {
+                1: ("30 min", "Foundation session — 5 min breathwork, 20 min basic poses or Pilates fundamentals, 5 min savasana/rest."),
+                2: ("35 min", "Build session — add 2–3 new poses or Pilates progressions. Hold each pose 5 s longer than week 1."),
+                3: ("40 min", "Challenge session — attempt your hardest pose or sequence. Full class or flow at 75% effort."),
+                4: ("30 min", "Restorative session — yin yoga or gentle Pilates. Passive holds, deep breathing, full recovery."),
+            }[week]
+
+        elif "housework" in act or "chores" in act:
+            return {
+                1: ("30 min", "30 min of active chores (vacuuming, mopping, scrubbing) — keep moving continuously, no sitting breaks."),
+                2: ("35 min", "35 min of active chores — increase the pace or tackle a more physical task (moving furniture, deep clean)."),
+                3: ("40 min", "40 min active chores at a slightly higher tempo — combine upper and lower body tasks back-to-back."),
+                4: ("30 min", "30 min light chores — taper week, nothing heavy."),
+            }[week]
+
+        elif "gardening" in act or "yard" in act:
+            return {
+                1: ("30 min", "30 min of active gardening — digging, raking or weeding continuously. Good compound movement."),
+                2: ("35 min", "35 min — tackle a heavier task: wheelbarrow loads, shifting compost, or digging a new bed."),
+                3: ("40 min", "40 min of your most physically demanding garden task — sustained effort the whole time."),
+                4: ("30 min", "30 min light gardening — planting, light weeding, easy tasks. Taper week."),
+            }[week]
+
+        else:
+            return {
+                1: ("25 min", "Easy effort activity, heart rate below ~120 bpm — pure recovery, mobility and movement."),
+                2: ("30 min", "Easy effort, 5 min longer — gentle progression, still very comfortable."),
+                3: ("30 min", "Easy effort with 2 × 3 min slightly livelier pace mid-session. Return to easy after each."),
+                4: ("25 min", "Easy recovery activity — taper week, arrive at reassessment feeling fresh."),
+            }[week]
+
+    def _sport_rx(week, day_idx=0, activity=""):
+        """
+        Returns (duration, prescription) specific to the sport, week theme, and day of the week.
+        day_idx: 0=Mon … 5=Sat  (Sunday is always rest, never reaches here)
+        week: 1=Foundation, 2=Build, 3=Push, 4=Taper
+        activity: the exact activity string from ACT_CATEGORY, used to pick sport-specific cues.
+        Day types rotate so every session within a week is different:
+          0=technique, 1=drills, 2=intervals, 3=tactical, 4=match, 5=conditioning
+        """
+        day_types = {0: "technique", 1: "drills", 2: "intervals",
+                     3: "tactical",  4: "match",  5: "conditioning"}
+        dtype = day_types.get(day_idx % 6, "technique")
+
+        # ── TABLE TENNIS ─────────────────────────────────────────────────────────
+        if "table tennis" in activity.lower() or "bordtennis" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Slow-ball stroke mechanics — focus on contact point and consistent racket angle. No pace, pure form."),
+                    "drills":        ("30 min", "Multiball FH & BH alternations — 20 balls per set, 60 s rest. Precision over speed."),
+                    "intervals":     ("30 min", "Rally bursts: 10 strokes at 60% pace, 30 s rest × 8 sets. Learn the rhythm, not the pace."),
+                    "tactical":      ("30 min", "Serve + 3rd-ball attack at half pace — one serve variation, repeat until automatic."),
+                    "match":         ("35 min", "Friendly practice match at 70% — focus on placement, not winning."),
+                    "conditioning":  ("35 min", "Long-rally endurance: both players aim for 20+ shot rallies, full footwork recovery between points."),
+                },
+                2: {
+                    "technique":     ("35 min", "Add topspin to FH drives — 3 sets × 15 reps each side, full hip rotation."),
+                    "drills":        ("40 min", "Combo drill: FH cross-court → BH cross-court → FH down-the-line. Rotate every 15 balls."),
+                    "intervals":     ("35 min", "Pressure drills: 15 strokes at 75% pace, 20 s rest × 10 sets."),
+                    "tactical":      ("40 min", "2-point tactical patterns — serve short/attack long or push long/attack return."),
+                    "match":         ("40 min", "Practice match at 80% — best of 5, track unforced errors per game."),
+                    "conditioning":  ("40 min", "Stamina rallies: aim for 30+ shots. Prioritise footwork recovery after each point."),
+                },
+                3: {
+                    "technique":     ("45 min", "Power FH loop — maximum topspin, 4 sets × 12 reps, full hip drive."),
+                    "drills":        ("50 min", "High-speed combos at 90%+: FH loop → BH block → FH counter-loop × 12 sets."),
+                    "intervals":     ("50 min", "Max-intensity bursts: 20 strokes at 95% pace, 15 s rest × 12 sets. Hardest session this month."),
+                    "tactical":      ("50 min", "Full tactical pressure — varied serves, immediate attack, strong opponent or fast multiball feed."),
+                    "match":         ("55 min", "Competitive match at full intensity — treat every point as a tournament point."),
+                    "conditioning":  ("55 min", "Peak endurance: 40+ shot rallies, full court movement. Finish with 10 min full-speed multiball."),
+                },
+                4: {
+                    "technique":     ("30 min", "Light stroke review at 65% — feel the form, don't force it."),
+                    "drills":        ("30 min", "Best drill from week 3, half the volume. Remind muscles what good feels like."),
+                    "intervals":     ("25 min", "Short sharp sets: 10 strokes at 80%, 30 s rest × 6. Snappy but not fatiguing."),
+                    "tactical":      ("30 min", "One pattern only — your strongest serve + attack combo. Groove it in."),
+                    "match":         ("35 min", "Relaxed practice match — notice how much sharper you feel vs. week 1."),
+                    "conditioning":  ("35 min", "Easy long-rally flow — light active recovery, not a workout."),
+                },
+            }
+
+        # ── TENNIS ───────────────────────────────────────────────────────────────
+        elif "tennis" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Groundstroke mechanics — slow-feed rallies focusing on swing path and follow-through. No pace."),
+                    "drills":        ("35 min", "Cross-court FH & BH rally drill, 3 sets each side × 10 min. Consistent depth over power."),
+                    "intervals":     ("30 min", "Baseline sprint-and-recover: sprint to ball, reset to centre, repeat × 10 min. Build footwork habit."),
+                    "tactical":      ("30 min", "Serve + 1 rally shot patterns at 60% — pick one serve target and repeat."),
+                    "match":         ("35 min", "Practice sets at 70% — focus on getting the ball in play, not hitting winners."),
+                    "conditioning":  ("35 min", "Long crosscourt rallies both sides — sustain 15+ shots, track rally length."),
+                },
+                2: {
+                    "technique":     ("40 min", "Add topspin to BH — 3 sets of slow-to-medium feeds, exaggerate the low-to-high swing."),
+                    "drills":        ("40 min", "Inside-out FH drill + BH down-the-line combo — 20 min each. Moderate pace."),
+                    "intervals":     ("35 min", "Approach-shot sprint: short ball → move in → volley finish. 8 reps each side, 45 s rest."),
+                    "tactical":      ("40 min", "Serve + return patterns: focus on 2-3 specific tactical constructions per set."),
+                    "match":         ("45 min", "Practice match at 80% — play tiebreaks to build pressure tolerance."),
+                    "conditioning":  ("40 min", "Sustained baseline rally sets — 20+ shots, keep feet moving the whole time."),
+                },
+                3: {
+                    "technique":     ("45 min", "Full-power groundstrokes — max pace with controlled direction. 4 sets each side × 8 balls."),
+                    "drills":        ("50 min", "High-tempo combo: FH inside-out → BH cross-court → approach → volley. 12 reps, full intensity."),
+                    "intervals":     ("50 min", "Side-to-side defensive scramble: wide ball left, recover, wide ball right × 15 reps. Hardest session."),
+                    "tactical":      ("50 min", "Match-simulation: specific patterns under score pressure, coach calling out game situations."),
+                    "match":         ("55 min", "Full competitive set play at 100% — treat every game like a tournament match."),
+                    "conditioning":  ("55 min", "Peak baseline endurance: 25+ shot rallies, maximum footwork, no slowing down."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy groundstroke flow at 65% — smooth rhythm, no forcing."),
+                    "drills":        ("30 min", "Favourite drill from week 3 at half volume. Stay loose and confident."),
+                    "intervals":     ("25 min", "Light lateral sprints: 6 reps each side, 45 s rest. Stay sharp, not tired."),
+                    "tactical":      ("30 min", "One serving pattern only — groove your best serve + first-strike combo."),
+                    "match":         ("35 min", "Relaxed hitting session — play points but enjoy it, notice the improvement."),
+                    "conditioning":  ("35 min", "Easy cross-court rallies — light aerobic flow, finish feeling fresh."),
+                },
+            }
+
+        # ── SQUASH ───────────────────────────────────────────────────────────────
+        elif "squash" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Solo wall-hitting: straight drives both sides, focus on smooth swing and consistent height on the front wall."),
+                    "drills":        ("30 min", "Boast & drive drill with a partner — feeder boasts, you drive straight, 10 min each side."),
+                    "intervals":     ("30 min", "Ghost movement drill: 6-point ghost pattern × 6 reps, 60 s rest. Build court-movement habit."),
+                    "tactical":      ("30 min", "Length game — rally to a back-corner target, penalise anything short. 70% pace."),
+                    "match":         ("35 min", "Practice game at 70% — focus on length and width, not winning."),
+                    "conditioning":  ("35 min", "Sustained straight-drive pairs: keep 15+ shot rallies going, both corners, recover position each time."),
+                },
+                2: {
+                    "technique":     ("35 min", "Add disguise — same swing path for drive and drop. 3 sets of 10 drives + 2 drop-shot variations."),
+                    "drills":        ("40 min", "3-shot combo: boast → cross-court drive → volley drop. 8 min on, 2 min rest × 3."),
+                    "intervals":     ("35 min", "Court sprints: T-position → front corner → back corner → T. 10 reps, 30 s rest. Moderate effort."),
+                    "tactical":      ("40 min", "Width game — rally wide to side walls, force the weak volley return, attack the short ball."),
+                    "match":         ("45 min", "Practice games at 80% — best of 5, count unforced errors."),
+                    "conditioning":  ("40 min", "Long rally pairs: 20+ shots each rally, high pace, full recovery to T after every shot."),
+                },
+                3: {
+                    "technique":     ("45 min", "Attack from length — drive deep, step in on the short reply, hit a hard winner. 4 × 8 reps."),
+                    "drills":        ("50 min", "High-speed 3-shot combo at 90%: boast → nick → straight drive. 12 reps, 20 s rest. Peak drill intensity."),
+                    "intervals":     ("50 min", "Max-intensity ghost: 9-point ghost × 8 reps, 45 s rest. Hardest movement session this month."),
+                    "tactical":      ("50 min", "Full match pressure drills — coach feeds random feeds, you construct a winner from any position."),
+                    "match":         ("55 min", "Competitive games at 100% — no mercy, treat every point as a match point."),
+                    "conditioning":  ("55 min", "Peak endurance rally: 25+ shots at near-match pace. Push the aerobic ceiling."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy solo wall-hitting at 65% — fluent rhythm, no forcing."),
+                    "drills":        ("30 min", "Boast & drive at moderate pace — half the reps of week 3. Keep it clean."),
+                    "intervals":     ("25 min", "Light 6-point ghost × 5 reps, 60 s rest. Stay sharp, don't fatigue."),
+                    "tactical":      ("30 min", "Length game only — groove the bread-and-butter straight drive. One pattern, perfect execution."),
+                    "match":         ("35 min", "Easy practice game — play freely and notice how automatic the movement feels."),
+                    "conditioning":  ("35 min", "Relaxed straight-drive pairs — easy aerobic flow, finish feeling fresh."),
+                },
+            }
+
+        # ── BADMINTON ────────────────────────────────────────────────────────────
+        elif "badminton" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Clear & drop mechanics — slow feeds, focus on high contact point and wrist snap on the clear."),
+                    "drills":        ("30 min", "Multi-shuttle feed: clear → drop → net lift sequence. 10 shuttles per set × 6 sets."),
+                    "intervals":     ("30 min", "Footwork ladder: 6-point movement pattern around the court × 8 reps, 45 s rest."),
+                    "tactical":      ("30 min", "Serve + attack pattern at 65% — short serve, net kill or push, reset. One pattern only."),
+                    "match":         ("35 min", "Practice games at 70% — play to 15, focus on shuttle placement not smash speed."),
+                    "conditioning":  ("35 min", "Sustained clears: both players trade high clears to the back line for 8+ shots, track rally length."),
+                },
+                2: {
+                    "technique":     ("35 min", "Add deceptive net drops — same wrist position as the clear until the last moment. 3 sets × 12 reps."),
+                    "drills":        ("40 min", "Attack-defence rotation: smash → block → lift → smash. 10 min on, 2 min rest × 3."),
+                    "intervals":     ("35 min", "Pressure footwork: random 4-corner feeds at moderate pace × 10 reps, 30 s rest."),
+                    "tactical":      ("40 min", "Double-attack patterns: push to BH side → attack the weak return. Two patterns, alternate."),
+                    "match":         ("45 min", "Practice games at 80% — best of 3 to 21, note where errors come from."),
+                    "conditioning":  ("40 min", "Rally pairs: mix clears and drops, sustain 12+ shots, full court recovery each point."),
+                },
+                3: {
+                    "technique":     ("45 min", "Full-power smash mechanics — jump smash technique, 4 sets × 8 reps, max racket speed."),
+                    "drills":        ("50 min", "High-speed 4-shot combo at 90%: smash → block → lift → re-smash × 12 reps. Hardest drill this month."),
+                    "intervals":     ("50 min", "Max-intensity random feeds: 6-corner random at 90%+ speed × 10 reps, 20 s rest."),
+                    "tactical":      ("50 min", "Full match-pressure tactics: serve rotation, attack construction, forced errors under score pressure."),
+                    "match":         ("55 min", "Full competitive games at 100% — tournament mindset every point."),
+                    "conditioning":  ("55 min", "Peak endurance: sustained fast-tempo rallies 15+ shots, push aerobic limit the whole session."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy clear & drop at 65% — fluid motion, no forcing."),
+                    "drills":        ("30 min", "Multi-shuttle feed at half volume — stay clean, not fast."),
+                    "intervals":     ("25 min", "Light 4-corner feeds × 6 reps, 45 s rest. Sharp, not tired."),
+                    "tactical":      ("30 min", "One serve + first-attack pattern — automate your strongest opener."),
+                    "match":         ("35 min", "Relaxed practice game — enjoy the rhythm, notice the improvement since week 1."),
+                    "conditioning":  ("35 min", "Easy clear rally pairs — light aerobic flow, finish fresh."),
+                },
+            }
+
+        # ── BASKETBALL / TEAM SPORTS ─────────────────────────────────────────────
+        elif "basketball" in activity.lower() or "team sports" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Ball-handling & dribbling fundamentals — stationary and moving, both hands, 70% speed."),
+                    "drills":        ("35 min", "Shooting form drill: 5 spots around the key, 5 shots each, slow and deliberate."),
+                    "intervals":     ("30 min", "Defensive slide intervals: slide baseline-to-baseline × 8 reps, 45 s rest. Build lateral habit."),
+                    "tactical":      ("30 min", "Pick-and-roll read drill at walk-through pace — identify the coverage and make the correct pass."),
+                    "match":         ("35 min", "3-on-3 half-court scrimmage at 70% — focus on decisions, not athleticism."),
+                    "conditioning":  ("35 min", "Full-court light transition runs: walk back, jog forward × 15 laps."),
+                },
+                2: {
+                    "technique":     ("40 min", "Mid-range shooting off the dribble — jab-step pull-up, 3 sets × 10 reps each side."),
+                    "drills":        ("40 min", "2-man passing & cutting drill: give-and-go, back-cut, 10 min each pattern."),
+                    "intervals":     ("35 min", "Suicide sprints: half-court × 6 reps, full-court × 4 reps, 60 s rest between sets."),
+                    "tactical":      ("40 min", "Transition offence drill: rebound → outlet → layup. 3 reps then switch roles. Moderate pace."),
+                    "match":         ("45 min", "4-on-4 half-court at 80% — call your own fouls, emphasise communication."),
+                    "conditioning":  ("40 min", "Full-court aerobic runs: steady pace with ball, change direction every 30 s."),
+                },
+                3: {
+                    "technique":     ("45 min", "Contested shooting under fatigue — shoot immediately after a sprint to the spot. 4 sets × 8 reps."),
+                    "drills":        ("50 min", "High-intensity 3-man weave full-court × 12 reps — max speed, no mistakes. Hardest drill this month."),
+                    "intervals":     ("50 min", "Game-speed suicides: full-court × 8 reps, 30 s rest. Peak conditioning session."),
+                    "tactical":      ("50 min", "5-on-5 half-court with coach calling plays — execute under real pressure."),
+                    "match":         ("55 min", "Full 5-on-5 scrimmage at 100% — game pace, tournament mindset."),
+                    "conditioning":  ("55 min", "Full-court interval runs: 10 sprints, 10 jog-backs. Finish with 10 min defensive slides."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy shooting around — free throws and elbow jumpers at 65% effort."),
+                    "drills":        ("30 min", "Light passing and cutting — half the volume of week 3, relaxed pace."),
+                    "intervals":     ("25 min", "Half-court slides only × 6 reps, 60 s rest. Stay mobile, not exhausted."),
+                    "tactical":      ("30 min", "Walk-through of your best play set — mental reps, no full-speed execution."),
+                    "match":         ("35 min", "3-on-3 light scrimmage — enjoy it, notice how sharp your reads feel."),
+                    "conditioning":  ("35 min", "Easy full-court jog with ball — light aerobic flush, finish feeling fresh."),
+                },
+            }
+
+        # ── SOCCER / FOOTBALL ────────────────────────────────────────────────────
+        elif "soccer" in activity.lower() or "football" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "First-touch control drill — 50 touches each foot with a wall or partner feed at 60% pace."),
+                    "drills":        ("35 min", "Passing triangle: 3-player 5m triangle, one-touch passes × 10 min, then two-touch × 10 min."),
+                    "intervals":     ("30 min", "Agility ladder footwork: 6 patterns × 5 reps each, 45 s rest. Build movement habit."),
+                    "tactical":      ("30 min", "Positional rondo: 4v2 in a 10m square, focus on movement off the ball, not pace."),
+                    "match":         ("35 min", "Small-sided game 4v4 at 70% — emphasis on passing combinations, not goals."),
+                    "conditioning":  ("35 min", "Aerobic endurance run: 30 min at conversational pace, then 5 min cool-down dribble."),
+                },
+                2: {
+                    "technique":     ("40 min", "Shooting technique — driven shot and placed finish from the edge of the box, 3 sets × 8 reps each."),
+                    "drills":        ("40 min", "1-2 combination + finish: wall pass into a shot, 10 reps each side. Moderate pace."),
+                    "intervals":     ("35 min", "High-intensity runs: 20m sprint → jog back × 10 reps, 30 s rest. Build sprint capacity."),
+                    "tactical":      ("40 min", "Pressing drill: 6v6 with a pressing trigger — compact shape, immediate press on back-pass."),
+                    "match":         ("45 min", "7v7 match at 80% — call out tactical patterns as they happen."),
+                    "conditioning":  ("40 min", "Fartlek run: alternate 1 min hard / 2 min easy for 30 min. Ball optional."),
+                },
+                3: {
+                    "technique":     ("45 min", "Power shooting under pressure — shoot immediately after a sprint, both feet, 4 sets × 8 reps."),
+                    "drills":        ("50 min", "High-tempo possession drill: 6v3 rondo at full pace × 12 min, 2 min rest × 3. Hardest drill this month."),
+                    "intervals":     ("50 min", "Match-intensity sprints: 30m × 10, 20 s rest. Plus 4 × 4 min hard runs, 3 min easy. Peak session."),
+                    "tactical":      ("50 min", "Full 11v11 tactical shape practice — transitions, set-pieces and pressing under match intensity."),
+                    "match":         ("55 min", "Full 11-a-side scrimmage at 100% — tournament intensity every minute."),
+                    "conditioning":  ("55 min", "High-intensity intervals: 8 × 3 min at 90%+ effort with 2 min active recovery. Push the aerobic ceiling."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy first-touch and passing at 65% — clean and confident, no forcing."),
+                    "drills":        ("30 min", "Light passing triangle, half volume — keep it flowing and relaxed."),
+                    "intervals":     ("25 min", "6 × 20m strides at 80% — stay sharp without accumulating fatigue."),
+                    "tactical":      ("30 min", "Walk-through of your team's best attacking pattern at slow pace."),
+                    "match":         ("35 min", "4v4 light game — enjoy it and notice how your positioning has improved."),
+                    "conditioning":  ("35 min", "Easy aerobic jog 25 min — active recovery, arrive at the next session fresh."),
+                },
+            }
+
+        # ── DANCING ──────────────────────────────────────────────────────────────
+        elif "dancing" in activity.lower():
+            P = {
+                1: {
+                    "technique":     ("30 min", "Isolations & footwork fundamentals — body rolls, hip isolation, weight shifts. Mirror work at 50% speed."),
+                    "drills":        ("30 min", "8-count phrase repetition: learn one 8-count combo, repeat 20× until automatic."),
+                    "intervals":     ("30 min", "Cardio rhythm session: freestyle to 3 min tracks × 6 rounds, 60 s rest. Easy effort, stay musical."),
+                    "tactical":      ("30 min", "Musicality training — listen to 5 different tracks, mark the beat and phrase changes with movement."),
+                    "match":         ("35 min", "Freestyle floor session at 70% — dance to 8 random tracks, focus on connection to the music."),
+                    "conditioning":  ("35 min", "Choreography run-through at half pace — build the sequence from start to finish without stopping."),
+                },
+                2: {
+                    "technique":     ("35 min", "Add dynamics — contrast sharp hits with smooth flows in the same 8-count. 3 × 10 min phrase work."),
+                    "drills":        ("40 min", "Partner or mirror drill: call-and-response, one leads 4 counts then switch. 20 min each role."),
+                    "intervals":     ("35 min", "Cardio bursts: 4 min freestyle at 75% effort, 1 min rest × 6. Keep the groove through the fatigue."),
+                    "tactical":      ("40 min", "Stylistic training — pick one style (heels, hip-hop, latin) and drill its specific technique × 30 min."),
+                    "match":         ("40 min", "Performance run-through at 80%: film yourself, review once, identify one thing to fix."),
+                    "conditioning":  ("40 min", "Full choreography × 3 run-throughs with 2 min rest — build performance endurance."),
+                },
+                3: {
+                    "technique":     ("45 min", "Power & precision — execute each move at full expression and energy. 4 sets of your hardest phrase."),
+                    "drills":        ("50 min", "High-tempo combo drills at 90%: full-speed 8-count phrases × 15 reps, 30 s rest. Hardest drill this month."),
+                    "intervals":     ("50 min", "Peak cardio: 5 min freestyle at 90% effort, 90 s rest × 6. Push the aerobic ceiling."),
+                    "tactical":      ("50 min", "Performance-pressure session: dance in front of others or film every run — simulate the real thing."),
+                    "match":         ("55 min", "Full performance at 100% — every track as if it's show night."),
+                    "conditioning":  ("55 min", "Endurance choreo: full routine × 5 run-throughs, 90 s rest. Test what you're made of."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy isolation flow at 65% — feel the movement, no forcing."),
+                    "drills":        ("30 min", "Favourite 8-count from week 3, half the reps. Stay loose and musical."),
+                    "intervals":     ("25 min", "Light freestyle: 3 min easy dance, 1 min rest × 5. Enjoy the rhythm."),
+                    "tactical":      ("30 min", "Musicality review — one track, full attention on phrasing and dynamics. No stress."),
+                    "match":         ("35 min", "Relaxed floor session — dance for fun and notice how much more natural it feels."),
+                    "conditioning":  ("35 min", "Easy choreo run-through × 2 — light active recovery, arrive at the next session fresh."),
+                },
+            }
+
+        # ── GENERIC SPORT FALLBACK ───────────────────────────────────────────────
+        else:
+            P = {
+                1: {
+                    "technique":     ("30 min", "Skill fundamentals at 60% intensity — focus on clean movement patterns and form over speed."),
+                    "drills":        ("30 min", "Repetition drill: choose one core skill, 6 sets × 10 reps, 60 s rest. Quality over quantity."),
+                    "intervals":     ("30 min", "Effort bursts: 30 s at 70% / 60 s easy × 8 rounds. Build work capacity."),
+                    "tactical":      ("30 min", "Decision-making drill at half pace — slow down the game to understand the patterns."),
+                    "match":         ("35 min", "Practice session at 70% — play points / situations, focus on execution not outcome."),
+                    "conditioning":  ("35 min", "Sustained aerobic activity in your sport: 30 min easy, track how your breathing settles."),
+                },
+                2: {
+                    "technique":     ("35 min", "Technique refinement — add one layer of complexity to the skill you drilled in week 1."),
+                    "drills":        ("40 min", "Combination drill: link two skills together, 4 sets × 8 reps, moderate pace."),
+                    "intervals":     ("35 min", "Effort bursts: 30 s at 80% / 45 s easy × 10 rounds. Push slightly harder than week 1."),
+                    "tactical":      ("40 min", "2-option tactical reads — read one cue, pick the correct response. Moderate speed."),
+                    "match":         ("45 min", "Practice session at 80% — track one error pattern and work to eliminate it."),
+                    "conditioning":  ("40 min", "Sustained sport-specific aerobic effort: 35 min with 3 short harder bursts woven in."),
+                },
+                3: {
+                    "technique":     ("45 min", "Full-speed skill execution under fatigue — perform the skill immediately after a sprint. 4 × 8 reps."),
+                    "drills":        ("50 min", "High-speed combo drills at 90%+ — link 3 skills, full intensity × 12 reps. Hardest drill session."),
+                    "intervals":     ("50 min", "Peak effort intervals: 40 s at 90-95% / 30 s easy × 12 rounds. Push the aerobic ceiling."),
+                    "tactical":      ("50 min", "Full match-pressure tactical drill — random scenarios, fast decisions, no thinking time."),
+                    "match":         ("55 min", "Full-intensity practice at 100% — treat every rep or point as competition."),
+                    "conditioning":  ("55 min", "Peak endurance: 45 min sustained sport effort at the highest pace you can maintain."),
+                },
+                4: {
+                    "technique":     ("30 min", "Easy skill flow at 65% — feel the movement, no forcing."),
+                    "drills":        ("30 min", "Best drill from week 3 at half volume — clean reps, relaxed pace."),
+                    "intervals":     ("25 min", "Light effort bursts: 20 s at 75% / 60 s easy × 6. Snappy but not fatiguing."),
+                    "tactical":      ("30 min", "One tactical pattern only — automate your strongest play."),
+                    "match":         ("35 min", "Relaxed practice session — enjoy it and notice how much sharper everything feels."),
+                    "conditioning":  ("35 min", "Easy aerobic activity: 30 min at conversational pace. Active recovery, arrive at next session fresh."),
+                },
+            }
+
+        dur, rx = P[week][dtype]
+        return dur, rx
+
+    STRENGTH_SPLITS = ["Full-Body Strength A - push emphasis", "Full-Body Strength B - pull emphasis", "Full-Body Strength C - lower-body emphasis"]
+
+    def _weekly_template(goal):
+        gl = (goal or "").lower()
+        if "muscle" in gl:
+            return [("Monday","strength"),("Tuesday","cardio_easy"),("Wednesday","strength"),
+                    ("Thursday","sport"),("Friday","strength"),("Saturday","cardio_long"),("Sunday","rest")]
+        if "fat" in gl:
+            return [("Monday","strength"),("Tuesday","cardio_easy"),("Wednesday","cardio_interval"),
+                    ("Thursday","strength"),("Friday","cardio_easy"),("Saturday","sport"),("Sunday","rest")]
+        return [("Monday","strength"),("Tuesday","cardio_easy"),("Wednesday","sport"),
+                ("Thursday","strength"),("Friday","cardio_interval"),("Saturday","sport"),("Sunday","rest")]
+
+    def _resolve_role(role):
+        if role == "strength" and not has_strength_act:
+            role = "sport" if has_sport_act else ("cardio_easy" if has_cardio_act else "low")
+        if role.startswith("cardio") and not has_cardio_act:
+            role = "sport" if has_sport_act else "low"
+        if role == "sport" and not has_sport_act:
+            role = "cardio_long" if has_cardio_act else "low"
+            if role.startswith("cardio") and not has_cardio_act:
+                role = "low"
+        return role
+
+    def build_30_day_plan(goal, pct):
+        template = _weekly_template(goal)
+        counters = {"strength": 0, "cardio": 0, "sport": 0, "low": 0}
+        weeks_out = []
+        for week in range(1, 5):
+            rows = []
+            day_idx = 0  # tracks position within the week for day-varied prescriptions
+            for day_name, role in template:
+                r = _resolve_role(role)
+                if r == "rest":
+                    rows.append((day_name, "Rest", "Full rest, or light stretching / mobility work (10-15 min).", "—", "rest"))
+                    day_idx += 1
+                    continue
+                if r == "strength":
+                    act = plan30_strength[counters["strength"] % len(plan30_strength)]
+                    split = STRENGTH_SPLITS[counters["strength"] % len(STRENGTH_SPLITS)]
+                    counters["strength"] += 1
+                    dur, rx = _strength_rx(week, day_idx, activity=act)
+                    rows.append((day_name, "Strength", f"{act} - {split}. {rx}", dur, "strength"))
+                elif r in ("cardio_easy", "cardio_interval", "cardio_long"):
+                    act = plan30_cardio[counters["cardio"] % len(plan30_cardio)]
+                    counters["cardio"] += 1
+                    if r == "cardio_easy":
+                        dur, rx = _cardio_easy_rx(week, activity=act); label = "Cardio - Easy"
+                    elif r == "cardio_interval":
+                        dur, rx = _cardio_interval_rx(week, pct, activity=act); label = "Cardio - Intervals"
+                    else:
+                        dur, rx = _cardio_long_rx(week, activity=act); label = "Cardio - Long"
+                    rows.append((day_name, label, f"{act}: {rx}", dur, r))
+                elif r == "sport":
+                    act = plan30_sport[counters["sport"] % len(plan30_sport)]
+                    counters["sport"] += 1
+                    dur, rx = _sport_rx(week, day_idx, activity=act)
+                    rows.append((day_name, "Sport", f"{act} - {rx}", dur, "sport"))
+                else:
+                    act = plan30_low[counters["low"] % len(plan30_low)]
+                    counters["low"] += 1
+                    dur, rx = _low_rx(week, activity=act)
+                    rows.append((day_name, "Active Recovery", f"{act} - {rx}", dur, "low"))
+                day_idx += 1
+            weeks_out.append(rows)
+        return weeks_out
+
+    WEEK_THEMES = {
+        1: ("Week 1 - Foundation", "Establish the rhythm and nail technique before adding load or intensity."),
+        2: ("Week 2 - Build", "Small, deliberate increases in volume and load across the board."),
+        3: ("Week 3 - Push", "Your hardest week - peak intensity across strength, cardio and sport."),
+        4: ("Week 4 - Taper & Reassess", "A slightly lighter week to absorb the adaptations before you re-test."),
+    }
+
+    ROLE_COLOR = {
+        "strength": BLUE, "cardio_easy": ACCENT, "cardio_interval": BAD,
+        "cardio_long": ACCENT, "sport": GOLD, "low": MUTED, "rest": DIM,
+    }
+
+    def make_week_table(rows):
+        data = [[P("DAY", S("p30h1", size=7, bold=True, color=MUTED)),
+                 P("FOCUS", S("p30h2", size=7, bold=True, color=MUTED)),
+                 P("SESSION DETAILS", S("p30h3", size=7, bold=True, color=MUTED)),
+                 P("TIME", S("p30h4", size=7, bold=True, color=MUTED, align=TA_CENTER))]]
+        for r_i, (day, label, detail, dur, role) in enumerate(rows):
+            col = ROLE_COLOR.get(role, MUTED)
+            data.append([
+                P(day, S(f"p30d_{r_i}", size=8.5, bold=True, color=TEXT)),
+                P(label, S(f"p30l_{r_i}", size=8, bold=True, color=col)),
+                P(detail, S(f"p30de_{r_i}", size=8, lead=12, color=MUTED)),
+                P(dur, S(f"p30du_{r_i}", size=8, color=MUTED, align=TA_CENTER)),
+            ])
+        t = Table(data, colWidths=[24*mm, 30*mm, None, 16*mm])
+        style_cmds = [
+            ("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, CARD2]),
+            ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.4, STROKE),
+            ("TOPPADDING", (0,0), (-1,-1), 8), ("BOTTOMPADDING", (0,0), (-1,-1), 8),  # Mer padding
+            ("LEFTPADDING", (0,0), (-1,-1), 7), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ]
+        for r_i, (day, label, detail, dur, role) in enumerate(rows, start=1):
+            style_cmds.append(("LINEBEFORE", (0, r_i), (0, r_i), 2.5, ROLE_COLOR.get(role, STROKE)))
+        t.setStyle(TableStyle(style_cmds))
+        return t
+
+    # ── Colour helpers ─────────────────────────────────────────────
+    def bmi_color(v):
+        if v is None: return MUTED
+        if v < 18.5:  return BLUE
+        if v < 25:    return GOOD
+        if v < 30:    return WARN
+        return BAD
+
+    def vo2_color(pct):
+        if pct >= 80: return GOOD
+        if pct >= 60: return BLUE
+        if pct >= 40: return WARN
+        return BAD
+
+    def bio_color(diff):
+        if diff is None: return MUTED
+        if diff <= -1: return GOOD
+        if diff <= 2:  return WARN
+        return BAD
+
+    bmi_col = bmi_color(bmi_v)
+    vo2_col = vo2_color(vo2_pct)
+    bio_diff = (bio_v - age_f) if (bio_v is not None and age_f is not None) else None
+    if bio_diff is not None:
+        bio_diff = max(-5.0, min(5.0, bio_diff))
+        bio_v = age_f + bio_diff
+    bio_col = bio_color(bio_diff)
+
+    # ── Health score & radar ───────────────────────────────────────
+    score_parts = []
+    if bmi_v is not None:
+        if 18.5 <= bmi_v < 25: score_parts.append(100)
+        elif 17 <= bmi_v < 27: score_parts.append(75)
+        elif 15 <= bmi_v < 30: score_parts.append(50)
+        else: score_parts.append(25)
+    if vo2_v is not None:
+        score_parts.append(min(100, int(vo2_pct)))
+    if bio_diff is not None:
+        score_parts.append(max(0, min(100, int(70 - bio_diff * 10))))
+    if ex_total_min:
+        score_parts.append(min(100, int(ex_total_min / 300 * 100)))
+    health_score = int(sum(score_parts) / len(score_parts)) if score_parts else 0
+    score_col   = GOOD if health_score >= 70 else WARN if health_score >= 45 else BAD
+    score_label = ("Excellent" if health_score >= 80 else "Good" if health_score >= 65
+                   else "Fair" if health_score >= 45 else "Needs attention")
+
+    radar = {}
+    radar["Body Comp"] = (100 if (bmi_v and 18.5 <= bmi_v < 25) else 75 if (bmi_v and 17 <= bmi_v < 27)
+                           else 50 if (bmi_v and 15 <= bmi_v < 30) else 25 if bmi_v else 50)
+    radar["Cardio"]    = int(vo2_pct) if vo2_v else 50
+    radar["Bio Age"]   = (max(0, min(100, int(70 - bio_diff * 10))) if bio_diff is not None else 50)
+    radar["Activity"]  = (min(100, int(ex_total_min / 300 * 100)) if ex_total_min else 30)
+    life = 60
+    for f in factors:
+        try:
+            d = float(f.get("delta", 0))
+            if d < 0: life = min(100, life + 8)
+            elif d > 1: life = max(10, life - 8)
+        except Exception:
+            pass
+    radar["Lifestyle"] = max(0, min(100, life))
+
+    weakest_dim = min(radar, key=lambda k: radar[k])
+
+    # ── #1 lever ────────────────────────────────────────────────────
+    if vo2_v is not None and vo2_pct < 40:
+        biggest_lever = "Raise your cardio fitness (VO2max)"
+        lever_why = ("This is the single most powerful longevity lever you have right now — and "
+                      "also the fastest one to move. Two structured sessions a week can shift your "
+                      "percentile within 6–8 weeks.")
+    elif bmi_v is not None and bmi_v >= 30:
+        biggest_lever = "Build a sustainable energy-balance routine"
+        lever_why = ("A modest, consistent calorie deficit paired with strength training and daily "
+                      "steps will move every other marker in this report — body composition, "
+                      "cardio efficiency, and biological age — in the right direction at once.")
+    elif bio_diff is not None and bio_diff > 2:
+        biggest_lever = "Fix sleep and stress fundamentals first"
+        lever_why = ("Your biological age estimate shows the largest gap is coming from lifestyle "
+                      "factors, not training. Stabilising sleep timing and reducing chronic stress "
+                      "is the highest-leverage change available to you this month.")
+    elif exlog and ex_total_min < 150:
+        biggest_lever = "Reach the WHO activity threshold (150 min/week)"
+        lever_why = ("You're currently below the minimum activity guideline. Closing this gap is "
+                      "associated with one of the largest single drops in all-cause mortality risk "
+                      "of any lifestyle change measured.")
+    else:
+        biggest_lever = "Layer in progressive strength training"
+        lever_why = ("Your foundations are solid. The next tier of improvement — in metabolism, "
+                      "bone density, and long-term independence — comes from consistent, "
+                      "progressively-loaded resistance training.")
+
+    # ── Stop / Start / Maintain lists ──────────────────────────────
+    stop_items, start_items, keep_items = [], [], []
+    if bmi_v is not None and bmi_v >= 30:
+        stop_items.append("Skipping meals, then over-eating in the evening")
+        start_items.append(f"A gentle daily deficit toward {int(rec_kcal) if rec_kcal else 'your target'} kcal")
+    elif bmi_v is not None and bmi_v >= 25:
+        stop_items.append("Relying on cardio alone to manage weight")
+        start_items.append("2–3 strength sessions per week to protect lean mass")
+    elif bmi_v is not None and bmi_v < 18.5:
+        stop_items.append("Under-eating relative to your training load")
+        start_items.append("Prioritise protein at every meal (≥1.6 g/kg/day)")
+    else:
+        keep_items.append(f"Your weight management — BMI {bmi_v:.1f} is in range" if bmi_v else "Your current weight management")
+
+    if vo2_v is not None and vo2_pct < 50:
+        stop_items.append("Doing only low-intensity cardio")
+        start_items.append("One interval session per week (e.g. 4×4 min hard)")
+    elif vo2_v is not None:
+        keep_items.append(f"Your cardio routine — VO2max sits at the {vo2_pct:.0f}th percentile")
+
+    if bio_diff is not None and bio_diff > 0:
+        start_items.append("A consistent sleep/wake schedule, even on weekends")
+    elif bio_diff is not None:
+        keep_items.append("Whatever you're doing for sleep & recovery — it's working")
+
+    if exlog and ex_total_min < 150:
+        stop_items.append("Treating exercise as optional some weeks")
+        start_items.append("A fixed weekly training calendar — same slots, every week")
+    elif exlog:
+        keep_items.append(f"Your activity volume — {ex_total_min} min/week meets WHO guidance")
+
+    stop_items.append("Comparing your progress to anyone else's timeline")
+    start_items.append("Tracking one consistency habit daily (sleep, steps, or protein)")
+    keep_items.append("Reading reports like this one — awareness drives change")
+
+    # ── Insight + action-step generators (mirrors original logic) ─
+    def insight_and_steps_body():
+        if bmi_v is None:
+            return None, []
+        if bmi_v >= 30:
+            txt = (f"Your BMI of {bmi_v:.1f} ({bmi_cat}) places you in a range where modest, "
+                   f"sustainable changes outperform aggressive ones. A daily deficit of "
+                   f"300–500 kcal, combined with 2–3 strength sessions a week, preserves muscle "
+                   f"while the scale moves — roughly 0.5–0.75 kg per week is the sweet spot.")
+            steps = ["Walk 20 minutes after your largest meal, every day",
+                     "Do two full-body strength sessions this week",
+                     "Track bodyweight every morning, same time, same conditions",
+                     "Hit your protein target (see Nutrition page) at least 5 days"]
+        elif bmi_v >= 25:
+            txt = (f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is slightly above the typical range. "
+                   f"Strength training 2–3×/week combined with a small deficit outperforms cardio-"
+                   f"only approaches — and a 0.5 kg/week pace protects far more lean mass than a "
+                   f"faster one.")
+            steps = ["Add one strength session to your current routine this week",
+                     "Aim for the calorie target on the Nutrition page on 5 of 7 days",
+                     "Take a waist-circumference measurement and note the date",
+                     "Plan your meals for tomorrow tonight — decisions made in advance stick"]
+        elif bmi_v < 18.5:
+            txt = (f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is below the typical range. The priority "
+                   f"is progressive strength training with adequate total energy and protein "
+                   f"(≥1.6 g/kg/day) — not a calorie deficit.")
+            steps = ["Add a calorie-dense snack between two main meals",
+                     "Begin or continue a structured strength programme, 3×/week",
+                     "Track total daily intake for 3 days to find your real baseline",
+                     "Prioritise 7–9 hours of sleep to support recovery and growth"]
+        else:
+            txt = (f"Your BMI of {bmi_v:.1f} ({bmi_cat}) is within the normal range. From here, "
+                   f"the biggest upgrades come from cardio fitness and strength — not further "
+                   f"weight changes. Use the markers on the next pages as your scoreboard.")
+            steps = ["Pick one strength or cardio metric to improve this month",
+                     "Schedule your training week for the next 7 days right now",
+                     "Re-take this assessment in 8–12 weeks to track the trend",
+                     "Maintain current habits — consistency is the win here"]
+        return txt, steps
+
+    def insight_and_steps_vo2():
+        if vo2_v is None:
+            return None, []
+        if vo2_pct < 30:
+            txt = (f"Your VO2max of {vo2_v:.1f} ml/kg/min ({vo2_pct:.0f}th percentile) is in the "
+                   f"lowest tier — but this is the marker that responds fastest to training. "
+                   f"VO2max is the strongest single predictor of all-cause mortality of anything "
+                   f"measured in this report. Three to four 30-minute easy aerobic sessions per "
+                   f"week typically produce a noticeable shift within 4–6 weeks.")
+            steps = ["Three 30-minute easy-pace sessions this week (walk, cycle, swim)",
+                     "Keep effort conversational — you should be able to talk in full sentences",
+                     "Add one slightly longer session (45 min) on a day off work",
+                     "Re-test or re-estimate VO2max in 6 weeks to see the shift"]
+        elif vo2_pct < 50:
+            txt = (f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is below average. "
+                   f"Adding one structured interval session weekly — alongside two easy sessions — "
+                   f"is the fastest path to the next bracket over 6–12 weeks.")
+            steps = ["One interval session: 4×4 minutes hard, 3 minutes easy between",
+                     "Two easy aerobic sessions, 30–40 minutes each",
+                     "Allow at least one full rest day between hard sessions",
+                     "Track how the interval session feels week to week — it should get easier"]
+        elif vo2_pct < 75:
+            txt = (f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is above average. "
+                   f"To push higher, an 80/20 split — 80% easy, 20% hard — out-performs the 50/50 "
+                   f"mix most people drift into, which causes fatigue without real adaptation.")
+            steps = ["Audit last week's training: was it closer to 80/20 or 50/50?",
+                     "Keep easy sessions genuinely easy — slower than feels productive",
+                     "Reserve hard efforts for one, maybe two sessions a week",
+                     "Add 5–10 minutes to your longest aerobic session this week"]
+        else:
+            txt = (f"Your VO2max of {vo2_v:.1f} ({vo2_pct:.0f}th percentile) is excellent. "
+                   f"Maintenance is the goal now — 2–3 quality sessions a week. Detraining begins "
+                   f"within roughly two weeks of inactivity, so consistency matters more than "
+                   f"volume from here.")
+            steps = ["Maintain 2–3 sessions/week — don't chase more volume",
+                     "Protect one quality (harder) session per week",
+                     "If you must skip a week, keep at least one short session",
+                     "Use spare capacity for strength training instead"]
+        return txt, steps
+
+    def insight_and_steps_bioage():
+        if bio_diff is None:
+            return None, []
+        if bio_diff > 3:
+            txt = (f"Your estimated biological age of {bio_v:.1f} years is {bio_diff:.1f} years "
+                   f"above your calendar age. This gap is driven almost entirely by lifestyle "
+                   f"factors — and lifestyle factors are reversible. The biggest single levers are "
+                   f"sleep consistency, cardio fitness, and stress management.")
+            steps = ["Pick the single largest red factor below and address only that this week",
+                     "Set a fixed bedtime and wake time — including weekends",
+                     "Add one 10-minute walk after your evening meal",
+                     "Re-run this assessment in 12 weeks to track the gap closing"]
+        elif bio_diff > 0:
+            txt = (f"Your estimated biological age ({bio_v:.1f} yrs) is {bio_diff:.1f} years above "
+                   f"your calendar age — a small, easily closable gap. Focus on the amber/red "
+                   f"factors in the breakdown below.")
+            steps = ["Identify your top factor below and make one change this week",
+                     "Track sleep duration for 7 nights",
+                     "Add one extra cardio session this week",
+                     "Reassess in 8–12 weeks"]
+        else:
+            txt = (f"Your estimated biological age ({bio_v:.1f} yrs) is {abs(bio_diff):.1f} years "
+                   f"below your calendar age — a strong reflection of your current habits. "
+                   f"The priority now is protecting consistency, not adding more.")
+            steps = ["Keep your current sleep and training rhythm — don't disrupt what's working",
+                     "Re-test in 12 weeks to confirm the trend holds",
+                     "Use any extra capacity for mobility or strength work",
+                     "Share this report with your physician as a baseline"]
+        return txt, steps
+
+    def insight_and_steps_nutrition():
+        if not (cur_kcal and rec_kcal):
+            return None, []
+        d_kcal = int(rec_kcal - cur_kcal)
+        if d_kcal < 0:
+            txt = (f"A target of {int(rec_kcal)} kcal/day creates a deficit of {abs(d_kcal)} kcal — "
+                   f"projected at {abs(kg_pw or 0):.2f} kg/week. Keep protein high throughout to "
+                   f"protect muscle while body fat comes down.")
+            steps = ["Hit your protein target every day this week (see table above)",
+                     "Pre-log tomorrow's meals tonight",
+                     "Keep one 'free' meal per week — sustainability beats perfection",
+                     "Re-weigh weekly, same morning conditions, and trend (don't react to one day)"]
+        elif d_kcal > 0:
+            txt = (f"A target of {int(rec_kcal)} kcal/day creates a surplus of {d_kcal} kcal — "
+                   f"projected at +{abs(kg_pw or 0):.2f} kg/week. Pair this with progressive "
+                   f"strength training so the surplus builds tissue, not just the scale number.")
+            steps = ["Add a calorie-dense snack post-workout",
+                     "Keep all current strength sessions — don't skip while eating more",
+                     "Track weight weekly; adjust if the trend stalls for 2+ weeks",
+                     "Prioritise protein at breakfast specifically"]
+        else:
+            txt = (f"Your target of {int(rec_kcal)} kcal/day matches your estimated maintenance — "
+                   f"ideal for body recomposition: building muscle while body fat slowly drops.")
+            steps = ["Hold calories steady and let strength training do the work",
+                     "Track measurements (waist, photos) rather than just weight",
+                     "Reassess in 6–8 weeks as your weight may barely move",
+                     "Keep protein at the top of the macro table"]
+        return txt, steps
+
+    # ── Local custom flowables (med justerte høyder) ──────────────────
+    class VGap(Flowable):
+        def __init__(self, h=8): super().__init__(); self._h = h
+        def wrap(self, aw, ah): return aw, self._h
+        def draw(self): pass
+
+    class HRule(Flowable):
+        def __init__(self, w=CONTENT_W, color=STROKE):
+            super().__init__(); self.w = w; self.color = color
+        def wrap(self, aw, ah): return self.w, 1
+        def draw(self):
+            c = self.canv; c.setStrokeColor(self.color); c.setLineWidth(0.6)
+            c.line(0, 0, self.w, 0)
+
+    class SecHeader(Flowable):
+        def __init__(self, num, title, subtitle="", accent=None, width=CONTENT_W):
+            super().__init__()
+            self.num = num; self.title = title; self.subtitle = subtitle
+            self.accent = accent or ACCENT
+            self.w = width; self.h = 48 if subtitle else 38
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setFillColor(self.accent); c.roundRect(0, 0, 5, self.h, 2, fill=1, stroke=0)
+            c.setFillAlpha(0.15); c.setFillColor(self.accent)
+            c.circle(self.w - 18, self.h - 16, 16, fill=1, stroke=0)
+            c.setFillAlpha(1.0)
+            if self.num:
+                c.setFillColor(self.accent); c.setFont("Helvetica-Bold", 9)
+                c.drawString(16, self.h - 14, str(self.num))
+                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 13.5)
+                c.drawString(40, self.h - 23, self.title)
+            else:
+                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 13.5)
+                c.drawString(16, self.h - 23, self.title)
+            if self.subtitle:
+                c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+                c.drawString(16, 9, self.subtitle[:100])
+
+    class MetricCard(Flowable):
+        def __init__(self, metrics, width=CONTENT_W, card_h=70):
+            super().__init__()
+            self.metrics = metrics; self.w = width; self.h = card_h
+            n = max(1, len(metrics))
+            self.card_w = (width - (n - 1) * 6) / n
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; cw = self.card_w; ch = self.h
+            for i, (lbl, val, sub, col_s) in enumerate(self.metrics):
+                col = HexColor(col_s) if isinstance(col_s, str) else col_s
+                x = i * (cw + 6)
+                c.setFillColor(CARD); c.roundRect(x, 0, cw, ch, 8, fill=1, stroke=0)
+                c.setStrokeColor(STROKE); c.setLineWidth(0.6); c.roundRect(x, 0, cw, ch, 8, fill=0, stroke=1)
+                c.setFillColor(col); c.roundRect(x, ch - 4, cw, 4, 2, fill=1, stroke=0)
+                c.setFillAlpha(0.18); c.setFillColor(col); c.circle(x + cw - 14, ch - 16, 9, fill=1, stroke=0)
+                c.setFillAlpha(1.0); c.setFillColor(col); c.circle(x + cw - 14, ch - 16, 3.5, fill=1, stroke=0)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+                c.drawString(x + 10, ch - 16, str(lbl).upper()[:24])
+                c.setFillColor(col); c.setFont("Helvetica-Bold", 17)
+                c.drawString(x + 10, ch - 36, str(val)[:18])
+                if sub:
+                    c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+                    c.drawString(x + 10, ch - 50, str(sub)[:28])
+
+    class CoverHero(Flowable):
+        def __init__(self, width=CONTENT_W):
+            super().__init__(); self.w = width; self.h = 260
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(BG); c.roundRect(0, 0, w, h, 14, fill=1, stroke=0)
+            c.saveState()
+            p = c.beginPath(); p.roundRect(0, 0, w, h, 14); c.clipPath(p, stroke=0, fill=0)
+            cx, cy = w * 0.82, h * 0.92
+            rings = 26
+            for i in range(rings, 0, -1):
+                t = i / rings
+                r = t * (w * 0.62)
+                alpha = (1 - t) ** 1.6 * 0.55
+                c.setFillColor(GLOW); c.setFillAlpha(alpha)
+                c.circle(cx, cy, r, fill=1, stroke=0)
+            c.setFillAlpha(1.0)
+            c.restoreState()
+            c.setStrokeColor(GOLD); c.setLineWidth(1.2)
+            c.roundRect(0, 0, w, h, 14, fill=0, stroke=1)
+            c.setFillColor(GOLD)
+            c.roundRect(w - 145, h - 28, 137, 18, 4, fill=1, stroke=0)
+            c.setFillColor(BG); c.setFont("Helvetica-Bold", 7)
+            c.drawCentredString(w - 76.5, h - 22, "CONFIDENTIAL · FOR YOUR EYES ONLY")
+            tag = f"INDIVIDUAL PLAN · {name_v.upper()}" if name_v else "INDIVIDUAL PLAN"
+            c.setFillColor(GLOW); c.setFont("Helvetica-Bold", 7.5)
+            c.drawString(16, h - 22, tag)
+            logo_my, logo_tools = "MyHealth", "Tools"
+            c.setFont("Helvetica-Bold", 13)
+            tw_my = c.stringWidth(logo_my, "Helvetica-Bold", 13)
+            tw_tools = c.stringWidth(logo_tools, "Helvetica-Bold", 13)
+            icon_size = 16; lockup_gap = 6
+            total_w = icon_size + lockup_gap + tw_my + tw_tools
+            lockup_x = w/2 - total_w/2
+            icon_y = h - 50
+            c.drawImage(_get_logo_image_reader(), lockup_x, icon_y, width=icon_size, height=icon_size,
+                        preserveAspectRatio=True, mask='auto')
+            text_y = icon_y + icon_size/2 - 4.6
+            c.setFillColor(white); c.drawString(lockup_x + icon_size + lockup_gap, text_y, logo_my)
+            c.setFillColor(GLOW); c.drawString(lockup_x + icon_size + lockup_gap + tw_my, text_y, logo_tools)
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(w/2, h - 80, "LONGEVITY")
+            c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(w/2, h - 111, "INTELLIGENCE REPORT")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 10)
+            c.drawCentredString(w/2, h - 134, "Personal Precision Health Analysis · Built Entirely From Your Own Data")
+            display_name = name_v if name_v else "Your Personal Report"
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 15)
+            c.drawCentredString(w/2, h - 164, f"Prepared exclusively for {display_name}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+            c.drawCentredString(w/2, h - 178, f"Report ID {report_id}   ·   Generated {gen_v}")
+            c.setStrokeColor(STROKE); c.setLineWidth(0.6)
+            c.line(40, h - 194, w - 40, h - 194)
+            cells = [("AGE", f"{age_v}"), ("SEX", f"{sex_v}"), ("HEIGHT", f"{h_v} cm"), ("WEIGHT", f"{w_v} kg")]
+            cw_ = w / len(cells)
+            for i, (lbl, val) in enumerate(cells):
+                cx2 = i * cw_ + cw_/2
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+                c.drawCentredString(cx2, h - 210, lbl)
+                c.setFillColor(white); c.setFont("Helvetica-Bold", 12)
+                c.drawCentredString(cx2, h - 225, val)
+            c.setFillColor(MUTED); c.setFont("Helvetica-Oblique", 7.5)
+            c.drawCentredString(w/2, 14, "Every page that follows is calculated from the numbers above — nothing here is generic.")
+
+    class HealthScoreRing(Flowable):
+        def __init__(self, score, label, color, width=CONTENT_W):
+            super().__init__()
+            self.score = score; self.label = label; self.color = color
+            self.w = width; self.h = 134
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; cx = self.w / 2; cy = self.h / 2 + 16; R = 46
+            c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
+            frac = self.score / 100.0; steps = max(2, int(frac * 72))
+            for i in range(steps):
+                a1 = math.pi/2 - (i/72)*2*math.pi
+                a2 = math.pi/2 - ((i+1)/72)*2*math.pi
+                c.setStrokeColor(self.color); c.setLineWidth(13)
+                c.line(cx + R*math.cos(a1), cy + R*math.sin(a1), cx + R*math.cos(a2), cy + R*math.sin(a2))
+            c.setFillColor(self.color); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(cx, cy + 6, str(self.score))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+            c.drawCentredString(cx, cy - 8, "/ 100")
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 10)
+            c.drawCentredString(cx, cy - 22, self.label)
+            dims = list(radar.items()); dw = self.w / len(dims)
+            for j, (dim, sc) in enumerate(dims):
+                dx = j*dw + dw/2; dy = 10
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                c.setFillColor(CARD2); c.roundRect(j*dw + 2, 2, dw - 4, 24, 4, fill=1, stroke=0)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold", 9); c.drawCentredString(dx, dy + 8, str(sc))
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawCentredString(dx, dy, dim)
+
+    class BMIScale(Flowable):
+        def __init__(self, bmi_val, width=CONTENT_W):
+            super().__init__(); self.bmi = bmi_val; self.w = width; self.h = 100
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; bmi = self.bmi; w = self.w
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            col = bmi_color(bmi)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 62, f"{bmi:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 52, "BMI")
+            cat = ("Underweight" if bmi < 18.5 else "Normal weight" if bmi < 25 else "Overweight" if bmi < 30 else "Obese")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 9); c.drawString(14, 39, cat)
+            SMAX = 45.0; bx = 14; by = 18; bh = 13; bw = w - 28
+            segs = [(0,18.5,"#3B82F6","Underweight"),(18.5,25,"#22C55E","Normal"),(25,30,"#F59E0B","Overweight"),(30,45,"#EF4444","Obese")]
+            for i, (s, e, cl, lbl) in enumerate(segs):
+                sx = bx + (s/SMAX)*bw; sw = ((e-s)/SMAX)*bw
+                c.setFillColor(HexColor(cl))
+                if i == 0: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx+3,by,sw-3,bh,fill=1,stroke=0)
+                elif i == len(segs)-1: c.roundRect(sx,by,sw,bh,3,fill=1,stroke=0); c.rect(sx,by,sw-3,bh,fill=1,stroke=0)
+                else: c.rect(sx,by,sw,bh,fill=1,stroke=0)
+                c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
+                c.drawCentredString(sx+sw/2, by+4, lbl)
+            mx = bx + min(1.0, bmi/SMAX)*bw
+            c.setStrokeColor(white); c.setLineWidth(1.5); c.line(mx, by-2, mx, by+bh+2)
+            c.setFillColor(white); path = c.beginPath(); path.moveTo(mx, by+bh+9); path.lineTo(mx-5, by+bh+2); path.lineTo(mx+5, by+bh+2); path.close()
+            c.drawPath(path, fill=1, stroke=0)
+            for lbl, pos in [("0",0),("18.5",18.5),("25",25),("30",30),("45",45)]:
+                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(bx + (pos/SMAX)*bw, by-8, lbl)
+
+    class ScoreHero(Flowable):
+        def __init__(self, score, label, color, radar_dict, width=CONTENT_W):
+            super().__init__()
+            self.score = score; self.label = label; self.color = color
+            self.radar = radar_dict; self.w = width; self.h = 170  # Økt høyde
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(CARD); c.roundRect(0, 0, w, h, 12, fill=1, stroke=0)
+            c.setStrokeColor(STROKE); c.setLineWidth(0.7); c.roundRect(0, 0, w, h, 12, fill=0, stroke=1)
+            c.saveState()
+            p = c.beginPath(); p.roundRect(0, 0, w, h, 12); c.clipPath(p, stroke=0, fill=0)
+            cx, cy = w*0.235, h*0.54
+            for i in range(18, 0, -1):
+                t = i/18; r = t*64
+                c.setFillColor(self.color); c.setFillAlpha((1-t)**1.7*0.35)
+                c.circle(cx, cy, r, fill=1, stroke=0)
+            c.setFillAlpha(1.0)
+            c.restoreState()
+            cx, cy, R = w*0.235, h*0.54, 38
+            c.setStrokeColor(STROKE); c.setLineWidth(13); c.circle(cx, cy, R, fill=0, stroke=1)
+            frac = self.score/100.0; steps = max(2, int(frac*72))
+            for i in range(steps):
+                a1 = math.pi/2 - (i/72)*2*math.pi
+                a2 = math.pi/2 - ((i+1)/72)*2*math.pi
+                c.setStrokeColor(self.color); c.setLineWidth(13); c.setLineCap(1)
+                c.line(cx + R*math.cos(a1), cy + R*math.sin(a1), cx + R*math.cos(a2), cy + R*math.sin(a2))
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 28)
+            c.drawCentredString(cx, cy + 5, str(self.score))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+            c.drawCentredString(cx, cy - 9, "/ 100")
+            c.setFillColor(self.color); c.setFont("Helvetica-Bold", 11)
+            c.drawCentredString(cx, 26, self.label.upper())
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawCentredString(cx, 13, "OVERALL LONGEVITY SCORE")
+            dx = w*0.45
+            c.setStrokeColor(STROKE); c.setLineWidth(0.6); c.line(dx, 14, dx, h-14)
+            bx = dx + 16; bw2 = w - bx - 16
+            dims = list(self.radar.items()); n = len(dims)
+            row_h = (h - 20) / n
+            for i, (dim, sc) in enumerate(dims):
+                ytop = h - 12 - i*row_h
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                by = ytop - row_h + 11
+                c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 8.5)
+                c.drawString(bx, by + 11, dim)
+                c.setFillColor(dc); c.setFont("Helvetica-Bold", 8.5)
+                c.drawRightString(bx + bw2, by + 11, f"{sc}/100")
+                c.setFillColor(STROKE); c.roundRect(bx, by, bw2, 5, 2.5, fill=1, stroke=0)
+                c.setFillColor(dc); c.roundRect(bx, by, max(6, (sc/100.0)*bw2), 5, 2.5, fill=1, stroke=0)
+
+    class DimensionRow(Flowable):
+        def __init__(self, code, label, score, insight, width=CONTENT_W):
+            super().__init__()
+            self.code = code; self.label = label; self.score = score
+            self.insight = insight; self.w = width; self.h = 42  # Økt høyde
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            sc = self.score
+            dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+            c.setFillColor(CARD); c.roundRect(0, 0, w, h, 8, fill=1, stroke=0)
+            c.setFillColor(dc); c.roundRect(0, 0, 4, h, 2, fill=1, stroke=0)
+            bcx, bcy, br = 26, h/2, 13
+            c.setFillAlpha(0.18); c.setFillColor(dc); c.circle(bcx, bcy, br, fill=1, stroke=0)
+            c.setFillAlpha(1.0); c.setStrokeColor(dc); c.setLineWidth(1.2); c.circle(bcx, bcy, br, fill=0, stroke=1)
+            c.setFillColor(dc); c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(bcx, bcy - 3, self.code)
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 9)
+            c.drawString(48, h - 13, self.label)
+            c.setFillColor(dc); c.setFont("Helvetica-Bold", 8)
+            c.drawRightString(w - 12, h - 12, f"{sc} / 100")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+            c.drawString(48, 8, self.insight[:100])
+
+    class WHRBox(Flowable):
+        def __init__(self, whr_val, category, width=CONTENT_W):
+            super().__init__(); self.whr = whr_val; self.cat = category; self.w = width; self.h = 56
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            cl = GOOD if (self.cat or "").lower().startswith(("low","good","healthy")) else WARN if "moder" in (self.cat or "").lower() else BAD
+            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setFillColor(cl); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            c.setFillColor(cl); c.setFont("Helvetica-Bold", 18); c.drawString(16, 28, f"{self.whr:.2f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(16, 16, "Waist-to-hip ratio")
+            c.setFillColor(cl); c.setFont("Helvetica-Bold", 9); c.drawRightString(self.w - 14, 24, str(self.cat or "—"))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawRightString(self.w - 14, 12, "Cardiometabolic risk indicator")
+
+    class HealthyWeightRangeBar(Flowable):
+        def __init__(self, weight_kg, height_cm, width=CONTENT_W):
+            super().__init__()
+            self.weight = weight_kg; self.height_cm = height_cm; self.w = width; self.h = 88
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w
+            hm = self.height_cm / 100.0
+            lo = 18.5 * hm * hm; hi = 25.0 * hm * hm
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(14, self.h - 14, f"YOUR HEALTHY WEIGHT RANGE AT {self.height_cm:.0f} CM (BMI 18.5-25)")
+            c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 17)
+            c.drawString(14, self.h - 35, f"{lo:.1f} - {hi:.1f} kg")
+            bx = 14; by = 20; bh = 14; bw2 = w - 28
+            scale_lo = lo * 0.78; scale_hi = hi * 1.22; span = scale_hi - scale_lo
+            def X(val): return bx + ((val - scale_lo) / span) * bw2
+            c.setFillColor(HexColor("#3B82F6")); c.roundRect(bx, by, X(lo) - bx, bh, 3, fill=1, stroke=0)
+            c.setFillColor(GOOD); c.rect(X(lo), by, X(hi) - X(lo), bh, fill=1, stroke=0)
+            c.setFillColor(HexColor("#EF4444")); c.roundRect(X(hi), by, bx + bw2 - X(hi), bh, 3, fill=1, stroke=0)
+            c.setFillColor(CARD); c.rect(X(lo) - 0.1, by, 0.1, bh, fill=1, stroke=0)
+            mx = X(max(scale_lo, min(scale_hi, self.weight)))
+            c.setStrokeColor(white); c.setLineWidth(1.6); c.line(mx, by - 3, mx, by + bh + 3)
+            c.setFillColor(white); path = c.beginPath()
+            path.moveTo(mx, by + bh + 10); path.lineTo(mx - 5, by + bh + 3); path.lineTo(mx + 5, by + bh + 3); path.close()
+            c.drawPath(path, fill=1, stroke=0)
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(mx, by + bh + 13, f"You: {self.weight:.1f} kg")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6)
+            c.drawString(bx, by - 8, f"{scale_lo:.0f} kg")
+            c.drawRightString(bx + bw2, by - 8, f"{scale_hi:.0f} kg")
+
+    class BodyCompProfile(Flowable):
+        def __init__(self, weight_kg, bf_pct, sex, width=CONTENT_W):
+            super().__init__()
+            self.weight = weight_kg; self.bf = bf_pct; self.sex = (sex or "M").upper()[:1]
+            self.w = width; self.h = 156
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(CARD); c.roundRect(0, 0, w, h, 12, fill=1, stroke=0)
+            c.setStrokeColor(STROKE); c.setLineWidth(0.7); c.roundRect(0, 0, w, h, 12, fill=0, stroke=1)
+            fat_mass = self.weight * self.bf / 100.0; lean_mass = self.weight - fat_mass
+            cx, cy, R = w * 0.18, h * 0.58, 38
+            c.setStrokeColor(STROKE); c.setLineWidth(14); c.circle(cx, cy, R, fill=0, stroke=1)
+            frac = self.bf / 100.0; steps = max(2, int(frac * 72))
+            for i in range(steps):
+                a1 = math.pi/2 - (i/72)*2*math.pi
+                a2 = math.pi/2 - ((i+1)/72)*2*math.pi
+                c.setStrokeColor(BLUE); c.setLineWidth(14); c.setLineCap(1)
+                c.line(cx + R*math.cos(a1), cy + R*math.sin(a1), cx + R*math.cos(a2), cy + R*math.sin(a2))
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 19)
+            c.drawCentredString(cx, cy + 4, f"{self.bf:.1f}%")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawCentredString(cx, cy - 9, "BODY FAT")
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 8.5)
+            c.drawCentredString(cx, 14, "Estimated composition")
+            gx = w * 0.40
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(gx, h - 16, "ESTIMATED BODY COMPOSITION")
+            c.setFillColor(BLUE); c.setFont("Helvetica-Bold", 12)
+            c.drawString(gx, h - 32, f"Fat mass: {fat_mass:.1f} kg")
+            c.setFillColor(GOOD); c.setFont("Helvetica-Bold", 12)
+            c.drawString(gx, h - 48, f"Lean mass: {lean_mass:.1f} kg")
+            bands_m = [(0,6,"#3B82F6","Essential"),(6,14,"#10B981","Athletes"),(14,18,"#22C55E","Fitness"),(18,25,"#F59E0B","Average"),(25,40,"#EF4444","Obese")]
+            bands_f = [(0,14,"#3B82F6","Essential"),(14,21,"#10B981","Athletes"),(21,25,"#22C55E","Fitness"),(25,32,"#F59E0B","Average"),(32,45,"#EF4444","Obese")]
+            bands = bands_m if self.sex == "M" else bands_f
+            BMAX = bands[-1][1]
+            gw = w - gx - 16; gy = 28; gh = 13
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(gx, gy + gh + 22, f"WHERE YOU SIT — TYPICAL {('MEN' if self.sex=='M' else 'WOMEN')} RANGES")
+            for s, e, col, lbl in bands:
+                sx = gx + (s/BMAX)*gw; sw = ((e-s)/BMAX)*gw
+                c.setFillColor(HexColor(col)); c.rect(sx, gy, sw, gh, fill=1, stroke=0)
+                c.setFillColor(HexColor("#0F172A")); c.setFont("Helvetica-Bold", 5.5)
+                c.drawCentredString(sx + sw/2, gy + 4.5, lbl)
+            mx = gx + min(1.0, self.bf/BMAX) * gw
+            c.setStrokeColor(white); c.setLineWidth(1.6); c.line(mx, gy - 3, mx, gy + gh + 3)
+            c.setFillColor(white); c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(mx, gy + gh + 12, f"You: {self.bf:.1f}%")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 5.5)
+            c.drawString(gx, gy - 8, "0%")
+            c.drawRightString(gx + gw, gy - 8, f"{BMAX:.0f}%+")
+
+    class VO2Visual(Flowable):
+        def __init__(self, vo2_val, percentile, rating, width=CONTENT_W):
+            super().__init__()
+            self.vo2 = vo2_val; self.pct = float(percentile or 0); self.rat = rating
+            self.w = width; self.h = 100  # Økt høyde
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; pct = self.pct
+            col = vo2_color(pct)
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 56, f"{self.vo2:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(14, 46, "ml / kg / min")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 10); c.drawString(14, 32, str(self.rat or "—"))
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 20, "Rating")
+            bx = w * 0.44; bw2 = w * 0.51; bh = 13; by = 48
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(bx, by + bh + 6, "POPULATION PERCENTILE")
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh, 4, fill=1, stroke=0)
+            c.setFillColor(col); c.roundRect(bx, by, max(8, (pct / 100) * bw2), bh, 4, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 12); c.drawRightString(bx + bw2, by - 14, f"{pct:.0f}th percentile")
+            zones = [(0, 20, "#EF4444"), (20, 40, "#F59E0B"), (40, 60, "#3B82F6"), (60, 80, "#22C55E"), (80, 100, "#10B981")]
+            sz_y = 18; sz_h = 7
+            for zs, ze, zc in zones:
+                c.setFillColor(HexColor(zc)); c.rect(bx + (zs / 100) * bw2, sz_y, ((ze - zs) / 100) * bw2, sz_h, fill=1, stroke=0)
+            c.setStrokeColor(white); c.setLineWidth(1.5); nx = bx + (pct / 100) * bw2; c.line(nx, sz_y - 2, nx, sz_y + sz_h + 2)
+            zlabels = ["Low", "Below avg", "Average", "Good", "Excellent"]
+            for j, (zl, (zs, ze, _)) in enumerate(zip(zlabels, zones)):
+                c.setFillColor(MUTED); c.setFont("Helvetica", 5.5)
+                c.drawCentredString(bx + ((zs + ze) / 200) * bw2, sz_y - 8, zl)
+
+    class RadarChart(Flowable):
+        """Større radar chart for bedre synlighet."""
+        def __init__(self, scores_dict, width=CONTENT_W):
+            super().__init__()
+            self.scores = scores_dict
+            self.w = width
+            self.h = 220  # Økt høyde
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
+        def draw(self):
+            c = self.canv
+            cx = self.w / 2
+            cy = self.h / 2 + 12
+            R = 75  # Større radius
+            labels = list(self.scores.keys())
+            vals = [self.scores[k] / 100.0 for k in labels]
+            n = len(labels)
+
+            def pt(i, r):
+                ang = math.pi / 2 + 2 * math.pi * i / n
+                return cx + r * math.cos(ang), cy + r * math.sin(ang)
+
+            # Tegn rutenett
+            for ring in [0.25, 0.5, 0.75, 1.0]:
+                pts = [pt(i, ring * R) for i in range(n)]
+                c.setStrokeColor(STROKE)
+                c.setLineWidth(0.5)
+                path = c.beginPath()
+                path.moveTo(*pts[0])
+                for p in pts[1:]:
+                    path.lineTo(*p)
+                path.close()
+                c.drawPath(path, fill=0, stroke=1)
+
+            # Linjer fra sentrum
+            for i in range(n):
+                ox, oy = pt(i, R)
+                c.setStrokeColor(STROKE)
+                c.setLineWidth(0.5)
+                c.line(cx, cy, ox, oy)
+
+            # Polylinje for brukerens verdier
+            poly = [pt(i, vals[i] * R) for i in range(n)]
+            c.setFillColor(ACCENT)
+            path = c.beginPath()
+            path.moveTo(*poly[0])
+            for p in poly[1:]:
+                path.lineTo(*p)
+            path.close()
+            c.setFillAlpha(0.25)
+            c.drawPath(path, fill=1, stroke=0)
+            c.setFillAlpha(1.0)
+            c.setStrokeColor(ACCENT)
+            c.setLineWidth(1.5)
+            c.drawPath(path, fill=0, stroke=1)
+
+            # Punkter og etiketter
+            for i, (lbl, val) in enumerate(zip(labels, vals)):
+                px, py = pt(i, val * R)
+                c.setFillColor(ACCENT)
+                c.circle(px, py, 4, fill=1, stroke=0)
+                # Plasser etiketter lengre ut
+                lx, ly = pt(i, R + 20)
+                sc = int(val * 100)
+                dc = GOOD if sc >= 70 else WARN if sc >= 45 else BAD
+                c.setFillColor(TEXT)
+                c.setFont("Helvetica-Bold", 8.5)
+                c.drawCentredString(lx, ly + 6, lbl)
+                c.setFillColor(dc)
+                c.setFont("Helvetica-Bold", 10)
+                c.drawCentredString(lx, ly - 6, str(sc))
+
+    class BioAgeBar(Flowable):
+        def __init__(self, bio_val, chron_val, width=CONTENT_W):
+            super().__init__(); self.bio = bio_val; self.chron = chron_val; self.w = width; self.h = 82  # Økt høyde
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; diff = self.bio - self.chron; col = bio_color(diff)
+            c.setFillColor(CARD); c.roundRect(0, 0, w, self.h, 10, fill=1, stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 30); c.drawString(14, 38, f"{self.bio:.1f}")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7); c.drawString(14, 28, "Biological age")
+            c.setFillColor(col); c.setFont("Helvetica-Bold", 8.5); c.drawString(14, 14, f"{abs(diff):.1f} yrs {'younger' if diff<0 else 'older'}")
+            c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(w*0.35, 8, w*0.35, self.h-8)
+            bx = w*0.38; bw2 = w*0.57; max_age = max(self.bio, self.chron)*1.3
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7)
+            c.drawString(bx, self.h-16, f"Calendar age:   {self.chron:.0f} yrs")
+            c.drawString(bx, self.h-28, f"Biological age: {self.bio:.1f} yrs")
+            for j, (val, lbl2, cl) in enumerate([(self.chron, "Calendar", MUTED), (self.bio, "Biological", col)]):
+                bar_y = 14 + j*16; c.setFillColor(STROKE); c.roundRect(bx, bar_y, bw2, 8, 3, fill=1, stroke=0)
+                c.setFillColor(cl); c.roundRect(bx, bar_y, (val/max_age)*bw2, 8, 3, fill=1, stroke=0)
+
+    class HeartRateZonesBox(Flowable):
+        """Premium HR zones panel — større og med bedre luft."""
+        def __init__(self, age, vo2_pct, width=CONTENT_W):
+            super().__init__()
+            self.age = age
+            self.vo2_pct = vo2_pct
+            self.w = width
+            hr_max = 220 - int(age)
+            self.hr_max = hr_max
+            self.zones = [
+                (1, "Zone 1", "Active Recovery",    int(hr_max*0.50), int(hr_max*0.60), "#64748B", "Warm-up, cool-down, rest days"),
+                (2, "Zone 2", "Aerobic Base",        int(hr_max*0.60), int(hr_max*0.70), "#22C55E", "Fat burning, conversational — most of your easy sessions"),
+                (3, "Zone 3", "Aerobic Power",       int(hr_max*0.70), int(hr_max*0.80), "#3B82F6", "Comfortably hard — tempo runs, sustained efforts"),
+                (4, "Zone 4", "Lactate Threshold",   int(hr_max*0.80), int(hr_max*0.90), "#F59E0B", "Hard — interval reps, race-pace efforts"),
+                (5, "Zone 5", "VO2max / Neuromuscular", int(hr_max*0.90), hr_max,        "#EF4444", "Maximum effort — short sprints only"),
+            ]
+            # Økt høyde betydelig
+            self.h = 50 + len(self.zones) * 36 + 20
+
+        def wrap(self, aw, ah):
+            return self.w, self.h
+
+        def draw(self):
+            c = self.canv
+            w = self.w
+            h = self.h
+            c.setFillColor(CARD)
+            c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setStrokeColor(STROKE)
+            c.setLineWidth(0.6)
+            c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
+
+            # Toppbanner
+            c.setFillColor(GOLD)
+            c.roundRect(0, h-30, w, 30, 6, fill=1, stroke=0)
+            c.rect(0, h-30, w*0.6, 30, fill=1, stroke=0)
+            c.setFillColor(BG)
+            c.setFont("Helvetica-Bold", 9)
+            c.drawString(14, h-20, f"YOUR TRAINING HEART RATE ZONES  ·  HRmax = {self.hr_max} bpm  ·  Age {int(self.age)}")
+
+            # Kolonneoverskrifter
+            c.setFillColor(MUTED)
+            c.setFont("Helvetica", 6.5)
+            c.drawString(14, h-44, "ZONE")
+            c.drawString(58, h-44, "NAME")
+            c.drawString(170, h-44, "BPM RANGE")
+            c.drawString(250, h-44, "USE THIS FOR")
+            c.setStrokeColor(STROKE)
+            c.setLineWidth(0.4)
+            c.line(10, h-48, w-10, h-48)
+
+            for i, (z, name, label, lo, hi, col, use) in enumerate(self.zones):
+                y = h - 64 - i * 36   # mer luft mellom radene
+                # sirkelmerke
+                c.setFillColor(HexColor(col))
+                c.roundRect(14, y+2, 26, 16, 4, fill=1, stroke=0)
+                c.setFillColor(white)
+                c.setFont("Helvetica-Bold", 8)
+                c.drawCentredString(27, y+7, f"Z{z}")
+                # navn + label
+                c.setFillColor(TEXT)
+                c.setFont("Helvetica-Bold", 9)
+                c.drawString(52, y+10, name)
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 7)
+                c.drawString(52, y+1, label)
+                # bpm
+                c.setFillColor(HexColor(col))
+                c.setFont("Helvetica-Bold", 10)
+                c.drawString(170, y+4, f"{lo}–{hi} bpm")
+                # bjelke
+                bx = 245
+                bw2 = w - bx - 14
+                bar_frac = (hi - lo) / self.hr_max
+                bar_off = lo / self.hr_max
+                c.setFillColor(STROKE)
+                c.roundRect(bx, y+8, bw2, 8, 2, fill=1, stroke=0)
+                c.setFillColor(HexColor(col))
+                c.setFillAlpha(0.35)
+                c.roundRect(bx + bar_off*bw2, y+8, bar_frac*bw2, 8, 2, fill=1, stroke=0)
+                c.setFillAlpha(1.0)
+                c.setFillColor(MUTED)
+                c.setFont("Helvetica", 6.5)
+                c.drawString(bx, y+1, use[:50])
+                if i < len(self.zones)-1:
+                    c.setStrokeColor(STROKE)
+                    c.setLineWidth(0.3)
+                    c.line(10, y-4, w-10, y-4)
+
+            # Fotnote
+            c.setFillColor(DIM)
+            c.setFont("Helvetica-Oblique", 6.5)
+            c.drawString(14, 8, f"HRmax estimated as 220 − age. Zones may vary ±5–10 bpm individually. Confirm with a ramp test for precision.")
+
+
+    class SleepCalculatorBox(Flowable):
+        def __init__(self, age, width=CONTENT_W):
+            super().__init__()
+            self.age = int(age); self.w = width; self.h = 108
+            if age < 26: self.rec_h = 9
+            elif age < 65: self.rec_h = 8
+            else: self.rec_h = 7
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(HexColor("#04080F")); c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setStrokeColor(GLOW); c.setLineWidth(0.8); c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
+            c.setFillColor(GLOW); c.roundRect(0, 0, 4, h, 2, fill=1, stroke=0)
+            c.setFillColor(GLOW); c.setFont("Helvetica-Bold", 8); c.drawString(14, h-16, "🌙  SLEEP OPTIMISATION CALCULATOR")
+            c.setFillColor(MUTED); c.setFont("Helvetica", 7.5)
+            c.drawString(14, h-28, f"For a {self.age}-year-old, the recommended sleep duration is {self.rec_h}–{self.rec_h+1} hours per night (NSF guidelines).")
+            wake_times = ["05:30", "06:00", "06:30", "07:00", "07:30"]
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(14, h-44, "IF YOU WAKE AT")
+            c.drawString(130, h-44, f"GO TO BED BY ({self.rec_h}h sleep)")
+            c.setStrokeColor(STROKE); c.setLineWidth(0.3); c.line(14, h-48, w-14, h-48)
+            for i, wake in enumerate(wake_times):
+                wh, wm = int(wake[:2]), int(wake[3:])
+                bh2 = (wh - self.rec_h) % 24; bm2 = wm
+                bed_str = f"{bh2:02d}:{bm2:02d}"
+                y = h - 60 - i*10
+                is_ideal = i == 2
+                col2 = GLOW if is_ideal else MUTED
+                c.setFillColor(col2); c.setFont("Helvetica-Bold" if is_ideal else "Helvetica", 7.5)
+                c.drawString(14, y, wake + ("  ← ideal" if is_ideal else ""))
+                c.drawString(130, y, bed_str + ("  ← target bedtime" if is_ideal else ""))
+            c.setFillColor(DIM); c.setFont("Helvetica-Oblique", 6)
+            c.drawString(14, 6, "Consistent timing (same bedtime ± 30 min every night) matters as much as duration for biological age.")
+
+    class VO2PopComparisonBox(Flowable):
+        def __init__(self, vo2_val, percentile, age, sex, width=CONTENT_W):
+            super().__init__()
+            self.vo2 = vo2_val; self.pct = float(percentile or 0)
+            self.age = int(age); self.sex = str(sex).upper(); self.w = width; self.h = 90
+            norms_m = {(20,29):44.0,(30,39):42.4,(40,49):40.0,(50,59):36.7,(60,69):33.1}
+            norms_f = {(20,29):38.6,(30,39):36.3,(40,49):33.1,(50,59):29.7,(60,69):26.5}
+            norms = norms_m if self.sex.startswith("M") else norms_f
+            self.pop_avg = next((v for (lo,hi),v in norms.items() if lo <= self.age <= hi), 38.0)
+            self.pop_good = self.pop_avg * 1.15
+            self.pop_exc  = self.pop_avg * 1.30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; w = self.w; h = self.h
+            c.setFillColor(CARD2); c.roundRect(0, 0, w, h, 10, fill=1, stroke=0)
+            c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.roundRect(0, 0, w, h, 10, fill=0, stroke=1)
+            col = vo2_color(self.pct)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 6.5)
+            c.drawString(14, h-14, f"VO2MAX COMPARISON  ·  {self.sex} AGE {self.age}")
+            cols_data = [("You", f"{self.vo2:.1f}", "ml/kg/min", col),
+                         (f"Avg ({self.sex} {self.age}s)", f"{self.pop_avg:.1f}", "ml/kg/min", MUTED),
+                         ("Good threshold", f"{self.pop_good:.1f}", "ml/kg/min", GOOD),
+                         ("Excellent", f"{self.pop_exc:.1f}", "ml/kg/min", ACCENT)]
+            cw4 = (w - 20) / 4
+            for i, (lbl, val, unit, cl) in enumerate(cols_data):
+                x = 10 + i*cw4
+                c.setFillColor(cl); c.setFont("Helvetica-Bold", 14); c.drawString(x+4, h-38, val)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6); c.drawString(x+4, h-48, unit)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(x+4, h-59, lbl)
+                if i < 3: c.setStrokeColor(STROKE); c.setLineWidth(0.4); c.line(x+cw4, h-20, x+cw4, h-65)
+            bx = 14; bw2 = w - 28; by = 16; bh2 = 10
+            max_v = max(self.vo2, self.pop_exc) * 1.1
+            ax = bx + (self.pop_avg / max_v) * bw2
+            c.setStrokeColor(MUTED); c.setLineWidth(1); c.line(ax, by-4, ax, by+bh2+4)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 5.5); c.drawCentredString(ax, by-8, "Avg")
+            gx = bx + (self.pop_good / max_v) * bw2
+            c.setStrokeColor(GOOD); c.setLineWidth(0.8); c.line(gx, by-4, gx, by+bh2+4)
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, bh2, 3, fill=1, stroke=0)
+            ux = bx + (self.vo2 / max_v) * bw2
+            c.setFillColor(col); c.roundRect(bx, by, max(8, ux-bx), bh2, 3, fill=1, stroke=0)
+            c.setFillColor(DIM); c.setFont("Helvetica-Oblique", 6)
+            c.drawString(14, 4, "Reference: ACSM VO2max norms by age and sex (ml/kg/min).")
+
+    class FactorBars(Flowable):
+        def __init__(self, factors, width=CONTENT_W):
+            super().__init__()
+            self.factors = sorted(factors, key=lambda f: abs(float(f.get("delta", 0))), reverse=True)[:8]
+            self.w = width; self.h = len(self.factors)*21 + 12
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            bx = self.w*0.42; bw2 = self.w*0.44; row = 21
+            for i, f in enumerate(self.factors):
+                y = self.h - 14 - i*row; delta = float(f.get("delta", 0))
+                cl = "#22C55E" if delta <= 0 else "#EF4444" if delta > 1 else "#F59E0B"
+                frac = min(abs(delta)/8.0, 1.0)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 7.5); c.drawString(10, y-4, str(f.get("label", ""))[:30])
+                c.setFillColor(STROKE); c.roundRect(bx, y-4, bw2, 9, 2, fill=1, stroke=0)
+                if frac > 0: c.setFillColor(HexColor(cl)); c.roundRect(bx, y-4, frac*bw2, 9, 2, fill=1, stroke=0)
+                c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 7.5); c.drawRightString(self.w-6, y-4, f"{delta:+.1f} yrs")
+
+    class CalorieBar(Flowable):
+        def __init__(self, maintenance, recommended, kg_per_week, width=CONTENT_W):
+            super().__init__()
+            self.maint = maintenance; self.rec = recommended; self.rate = kg_per_week; self.w = width; self.h = 88
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; delta = self.rec - self.maint
+            col = "#22C55E" if delta < 0 else "#3B82F6" if delta > 0 else "#94A3B8"
+            lbl = "Deficit" if delta < 0 else "Surplus" if delta > 0 else "Maintenance"
+            c.setFillColor(CARD); c.roundRect(0, 0, self.w, self.h, 10, fill=1, stroke=0)
+            cw3 = (self.w - 16) / 3
+            for j, (title, val, cl) in enumerate([("MAINTENANCE", f"{self.maint:.0f}", "#94A3B8"), ("RECOMMENDED", f"{self.rec:.0f}", col), (lbl.upper(), f"{delta:+.0f} kcal", col)]):
+                x = 8 + j*cw3; c.setFillColor(HexColor(cl)); c.setFont("Helvetica-Bold", 15); c.drawString(x+4, 50, val)
+                c.setFillColor(MUTED); c.setFont("Helvetica", 6.5); c.drawString(x+4, 40, "kcal/day" if j < 2 else "per day"); c.drawString(x+4, self.h-14, title)
+                if j < 2: c.setStrokeColor(STROKE); c.setLineWidth(0.5); c.line(x+cw3+1, 10, x+cw3+1, self.h-6)
+            bx = 8; by = 18; bw2 = self.w-16
+            c.setFillColor(STROKE); c.roundRect(bx, by, bw2, 9, 3, fill=1, stroke=0)
+            c.setFillColor(HexColor(col)); c.roundRect(bx, by, int(min(1.0, abs(delta) / max(1, self.maint) * 5)*bw2), 9, 3, fill=1, stroke=0)
+            if self.rate is not None: c.setFillColor(HexColor(col)); c.setFont("Helvetica-Bold", 8); c.drawRightString(self.w-10, 6, f"{self.rate:+.2f} kg/week")
+
+    class MilestoneRow(Flowable):
+        def __init__(self, week, weight, focus, progress_pct, col_s, is_last, width=CONTENT_W):
+            super().__init__()
+            self.week=week; self.weight=weight; self.focus=focus; self.prog=progress_pct
+            self.col_s=col_s; self.is_last=is_last; self.w=width; self.h=52  # Økt høyde
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; col = HexColor(self.col_s)
+            if not self.is_last: c.setStrokeColor(STROKE); c.setLineWidth(1); c.line(14,0,14,8)
+            c.setFillColor(col); c.circle(14,34,12,fill=1,stroke=0); c.setFillColor(white); c.setFont("Helvetica-Bold",8); c.drawCentredString(14,30,str(self.week))
+            c.setFillColor(CARD); c.roundRect(32,10,self.w-36,34,6,fill=1,stroke=0); c.setFillColor(col); c.roundRect(32,40,self.w-36,4,2,fill=1,stroke=0)
+            c.setFillColor(col); c.setFont("Helvetica-Bold",13); c.drawString(42,27,f"{self.weight:.1f} kg")
+            c.setFillColor(MUTED); c.setFont("Helvetica",7.5); c.drawString(42,16,str(self.focus)[:38])
+            bx=self.w-88; bw2=78
+            c.setFillColor(STROKE); c.roundRect(bx,17,bw2,6,2,fill=1,stroke=0); c.setFillColor(col); c.roundRect(bx,17,self.prog/100*bw2,6,2,fill=1,stroke=0)
+            c.setFillColor(MUTED); c.setFont("Helvetica",6); c.drawRightString(bx+bw2,11,f"{self.prog:.0f}%")
+
+    class ExpertInsightBox(Flowable):
+        def __init__(self, section, text, width=CONTENT_W):
+            super().__init__(); self.w = width
+            self._header = Paragraph(f'<b>🔬 EXPERT INSIGHT — {section.upper()}</b>',
+                                      S(f"_ei_h_{abs(hash(text))}", size=7.5, lead=11, color=GOLD, bold=True))
+            self._body = Paragraph(text, S(f"_ei_b_{abs(hash(text))}", size=8.8, lead=14, color=TEXT))
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
+            self.h = hh + bh + 30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#1A1404")); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setStrokeColor(GOLD); c.setLineWidth(1.0); c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(GOLD); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+
+    class ActionableMilestoneBox(Flowable):
+        def __init__(self, steps, width=CONTENT_W):
+            super().__init__(); self.w = width
+            bullet_html = "".join(f"→  {s}<br/>" for s in steps)
+            self._header = Paragraph('<b>🎯 YOUR NEXT 4 WEEKS — DO THIS</b>',
+                                      S(f"_am_h_{abs(hash(bullet_html))}", size=7.5, lead=11, color=ACCENT, bold=True))
+            self._body = Paragraph(bullet_html, S(f"_am_b_{abs(hash(bullet_html))}", size=8.8, lead=15, color=TEXT))
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
+            self.h = hh + bh + 30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#00100E")); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT); c.setLineWidth(1.0); c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(ACCENT); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+
+    class CompoundingEffectBox(Flowable):
+        def __init__(self, width=CONTENT_W):
+            super().__init__(); self.w = width
+            body_html = (
+                "<b>Health is compound interest.</b> A 1% weekly improvement in sleep quality, "
+                "training load, or nutrition precision compounds to roughly a <b>67% gain over one "
+                "year.</b> The habits you start this week aren't just this week's result — they're "
+                "the foundation every future week builds on. This is the principle behind every "
+                "recommendation in this report."
+            )
+            self._header = Paragraph('<b>📈  THE COMPOUNDING EFFECT — WHY 1% MATTERS</b>',
+                                      S("_ce_h", size=7.5, lead=11, color=BLUE, bold=True))
+            self._body = Paragraph(body_html, S("_ce_b", size=8.8, lead=14, color=TEXT))
+            _, hh = self._header.wrap(width - 24, 9999)
+            _, bh = self._body.wrap(width - 24, 9999)
+            self.h = hh + bh + 30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#020810")); c.roundRect(0, 0, self.w, self.h, 8, fill=1, stroke=0)
+            c.setStrokeColor(BLUE); c.setLineWidth(1.0); c.roundRect(0, 0, self.w, self.h, 8, fill=0, stroke=1)
+            c.setFillColor(BLUE); c.roundRect(0, 0, 4, self.h, 2, fill=1, stroke=0)
+            self._header.drawOn(c, 14, self.h - 18)
+            self._body.drawOn(c, 14, 8)
+
+    class ExecutiveSummaryPanel(Flowable):
+        def __init__(self, stop_items, start_items, keep_items, lever, lever_why, width=CONTENT_W):
+            super().__init__()
+            self.stop = stop_items[:3]; self.start = start_items[:3]; self.keep = keep_items[:3]
+            self.lever = lever; self.lever_why = lever_why
+            self.w = width; self.h = 300
+        def wrap(self, aw, ah): return self.w, self.h
+        def _wrap_text(self, text, max_chars=34):
+            words = text.split(); lines = []; cur = ""
+            for word in words:
+                if len(cur) + len(word) + 1 <= max_chars: cur += (" " if cur else "") + word
+                else: lines.append(cur); cur = word
+            if cur: lines.append(cur)
+            return lines
+        def draw(self):
+            c = self.canv; w = self.w
+            top_h = 64
+            c.setFillColor(HexColor("#1B1306")); c.roundRect(0, self.h - top_h, w, top_h, 10, fill=1, stroke=0)
+            c.setStrokeColor(GOLD); c.setLineWidth(1.0); c.roundRect(0, self.h - top_h, w, top_h, 10, fill=0, stroke=1)
+            c.setFillColor(GOLD); c.roundRect(0, self.h - top_h, 4, top_h, 2, fill=1, stroke=0)
+            c.setFillColor(GOLD); c.setFont("Helvetica-Bold", 8)
+            c.drawString(14, self.h - 16, "★  YOUR #1 PRIORITY RIGHT NOW")
+            c.setFillColor(TEXT); c.setFont("Helvetica-Bold", 12.5)
+            c.drawString(14, self.h - 32, self.lever)
+            c.setFillColor(MUTED); c.setFont("Helvetica", 8)
+            for i, line in enumerate(self._wrap_text(self.lever_why, 100)):
+                c.drawString(14, self.h - 46 - i*10, line)
+            gap = 8; ph = self.h - top_h - 18
+            col_w = (w - 2*gap) / 3
+            x_pos = [0, col_w + gap, 2*(col_w + gap)]
+            cols = [("STOP", "#EF4444", "STOP", self.stop, "#150202"),
+                    ("START", "#22C55E", "START", self.start, "#011008"),
+                    ("KEEP DOING", "#3B82F6", "MAINTAIN", self.keep, "#020A18")]
+            for idx, (title, color, _, items, bg) in enumerate(cols):
+                x = x_pos[idx]
+                c.setFillColor(HexColor(bg)); c.roundRect(x, 0, col_w, ph, 10, fill=1, stroke=0)
+                c.setStrokeColor(HexColor(color)); c.setLineWidth(1); c.roundRect(x, 0, col_w, ph, 10, fill=0, stroke=1)
+                c.setFillColor(HexColor(color)); c.roundRect(x, ph - 4, col_w, 4, 2, fill=1, stroke=0)
+                c.setFillColor(HexColor(color)); c.setFont("Helvetica-Bold", 10.5)
+                c.drawCentredString(x + col_w/2, ph - 18, title)
+                c.setStrokeColor(HexColor(color)); c.setLineWidth(0.4)
+                c.line(x + 10, ph - 24, x + col_w - 10, ph - 24)
+                c.setFillColor(TEXT); c.setFont("Helvetica", 7.5)
+                y = ph - 38
+                for item in items:
+                    for line in self._wrap_text(item, 32):
+                        if y < 10: break
+                        c.drawString(x + 9, y, ("• " + line) if line == self._wrap_text(item,32)[0] else "  " + line)
+                        y -= 11
+                    y -= 5
+
+    class FinalActionCard(Flowable):
+        def __init__(self, items, width=CONTENT_W):
+            super().__init__(); self.items = items; self.w = width
+            self.h = 30 + len(items) * 30
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv
+            c.setFillColor(HexColor("#00100E")); c.roundRect(0, 0, self.w, self.h, 10, fill=1, stroke=0)
+            c.setStrokeColor(ACCENT); c.setLineWidth(1.2); c.roundRect(0, 0, self.w, self.h, 10, fill=0, stroke=1)
+            c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 11)
+            c.drawString(16, self.h - 20, "TOMORROW: DO THESE THREE THINGS")
+            for i, item in enumerate(self.items):
+                y = self.h - 44 - i*30
+                c.setFillColor(ACCENT); c.circle(22, y+4, 10, fill=1, stroke=0)
+                c.setFillColor(BG); c.setFont("Helvetica-Bold", 11); c.drawCentredString(22, y, str(i+1))
+                c.setFillColor(TEXT); c.setFont("Helvetica", 9.5); c.drawString(40, y, item[:95])
+
+    class TrustRow(Flowable):
+        def __init__(self, items, width=CONTENT_W):
+            super().__init__(); self.items = items; self.w = width; self.h = 64
+        def wrap(self, aw, ah): return self.w, self.h
+        def draw(self):
+            c = self.canv; n = len(self.items); cw = self.w / n
+            for i, (icon, label) in enumerate(self.items):
+                x = i*cw
+                c.setFillColor(CARD); c.roundRect(x+3, 0, cw-6, self.h, 8, fill=1, stroke=0)
+                c.setFillColor(ACCENT); c.setFont("Helvetica-Bold", 14); c.drawCentredString(x+cw/2, self.h-24, icon)
+                c.setFillColor(TEXT); c.setFont("Helvetica", 7)
+                words = label.split(); l1 = " ".join(words[:2]); l2 = " ".join(words[2:])
+                c.drawCentredString(x+cw/2, self.h-40, l1)
+                if l2: c.drawCentredString(x+cw/2, self.h-50, l2)
+
+    # ── Page chrome ──────────────────────────────────────────────────
+    _logo_img = _get_logo_image_reader()
+
+    def draw_page(canvas, doc_):
+        canvas.saveState()
+        canvas.setFillColor(BG); canvas.rect(0, 0, PAGE_W, PAGE_H, fill=1, stroke=0)
+        canvas.setFillColor(GOLD); canvas.rect(0, PAGE_H-3, PAGE_W, 3, fill=1, stroke=0)
+        canvas.setFillColor(CARD2); canvas.rect(0, PAGE_H-22, PAGE_W, 19, fill=1, stroke=0)
+        canvas.drawImage(_logo_img, MARGIN_H, PAGE_H-19, width=13, height=13,
+                          preserveAspectRatio=True, mask='auto')
+        canvas.setFillColor(TEXT); canvas.setFont("Helvetica-Bold", 8.5)
+        header_label = f"LONGEVITY INTELLIGENCE REPORT  ·  {name_v.upper()}'S PLAN" if name_v else "LONGEVITY INTELLIGENCE REPORT  ·  CONFIDENTIAL"
+        canvas.drawString(MARGIN_H + 18, PAGE_H-15, header_label)
+        canvas.setFillColor(MUTED); canvas.setFont("Helvetica", 8)
+        canvas.drawRightString(PAGE_W-MARGIN_H, PAGE_H-15, f"Page {canvas.getPageNumber()}")
+        canvas.setFillColor(STROKE); canvas.rect(0, 0, PAGE_W, 14, fill=1, stroke=0)
+        canvas.setFillColor(DIM); canvas.setFont("Helvetica", 6.5)
+        canvas.drawString(MARGIN_H, 4, f"Report {report_id}  ·  Educational use only — not a medical diagnosis")
+        canvas.drawRightString(PAGE_W-MARGIN_H, 4, f"Generated {gen_v}")
+        canvas.restoreState()
+
+    # ════════════════════════════════════════════════════════════════
+    # STORY  — balanced premium layout
+    # One page = one focused topic. Nothing squeezed, nothing empty.
+    # ════════════════════════════════════════════════════════════════
+    story = []
+
+    # Shared pre-computations
+    G = 10
+    w_num = _sf(w_v); h_num = _sf(h_v)
+    try: wt = float(w_v or 70)
+    except Exception: wt = 70.0
+    bf_val  = _sf(bf_d.get("value"))  if isinstance(bf_d, dict) else None
+    whr_val = _sf(whr_d.get("value")) if isinstance(whr_d, dict) else None
+    whr_cat = whr_d.get("category")   if isinstance(whr_d, dict) else None
+    protein_g = fat_g = carb_g = 0
+    if cur_kcal and rec_kcal:
+        protein_g = int(wt * 1.8)
+        fat_g     = int(int(rec_kcal) * 0.28 / 9)
+        carb_g    = max(0, int((int(rec_kcal) - protein_g*4 - fat_g*9) / 4))
+
+    dim_insights = {
+        "Body Comp": ("BC",
+            f"BMI {bmi_v:.1f} ({bmi_cat}) — let cardio and strength drive the next gains."
+            if bmi_v else "Body composition data not available."),
+        "Cardio": ("CV",
+            f"VO2max {vo2_v:.1f} — {vo2_pct:.0f}th percentile ({vo2_rat}). Strongest longevity predictor in this report."
+            if vo2_v else "Cardio fitness data not available."),
+        "Bio Age": ("BA",
+            f"Biological age {bio_v:.1f} yrs — {abs(bio_diff):.1f} yrs {'younger' if bio_diff<0 else 'older'} than calendar."
+            if bio_diff is not None else "Biological age data not available."),
+        "Activity": ("AC",
+            f"{ex_total_min} min/week — closing this gap is your single biggest lever."
+            if ex_total_min < 150 else
+            f"{ex_total_min} min/week — at or above WHO 150 target. Maintain and be consistent."),
+        "Lifestyle": ("LS",
+            "Sleep, recovery and daily habits broadly support your results — protect this rhythm."),
+    }
+
+    # ── PAGE 1 — COVER ──────────────────────────────────────────────
+    story.append(VGap(4))
+    story.append(CoverHero())
+    story.append(VGap(16))
+    story.append(P("AT A GLANCE", S("ag", size=9, bold=True, color=GOLD, after=6, align=TA_CENTER)))
+    summary_metrics = []
+    if bmi_v is not None:
+        summary_metrics.append(("BMI", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
+    if vo2_v is not None:
+        summary_metrics.append(("VO2max", f"{vo2_v:.1f}", f"{vo2_pct:.0f}th percentile", vo2_col.hexval()))
+    if bio_diff is not None:
+        summary_metrics.append(("Biological age", f"{bio_v:.1f} yrs", f"{bio_diff:+.1f} vs calendar", bio_col.hexval()))
+    if cur_kcal and rec_kcal:
+        d_k = int(rec_kcal - cur_kcal)
+        summary_metrics.append(("Daily calories", f"{int(rec_kcal)}", f"{d_k:+d} kcal/day",
+                                 "#22C55E" if d_k < 0 else "#3B82F6"))
+    if summary_metrics:
+        story.append(MetricCard(summary_metrics[:4], card_h=74))
+    story.append(VGap(14))
+    story.append(P(
+        f"This report was generated exclusively from the data you provided on {gen_v}. "
+        f"Every chart, score, and recommendation on the following pages is calculated against "
+        f"<i>your</i> numbers — not population averages presented as advice. "
+        f"Treat it as a working document: print it, annotate it, and bring it to your next check-up.",
+        S("cov_intro", size=9, lead=14, color=MUTED, align=TA_CENTER, after=0)
+    ))
+    story.append(PageBreak())
+
+    # ── PAGE 2 — EXECUTIVE SUMMARY ──────────────────────────────────
+    story.append(SecHeader("01", "Executive Summary",
+                            subtitle="Your personal cheat sheet — review this page every week"))
+    story.append(VGap(G))
+    story.append(ExecutiveSummaryPanel(stop_items, start_items, keep_items, biggest_lever, lever_why))
+    story.append(VGap(G + 4))
+    story.append(CompoundingEffectBox())
+    story.append(VGap(G))
+    story.append(P(
+        "How to use this report: pages 3–8 break down each marker individually with the science "
+        "behind it and exactly what to do next. Page 9 turns everything into a week-by-week "
+        "training plan, and the final pages give you a 12-week roadmap and a one-page action "
+        "card for tomorrow morning.",
+        S("howto", size=8.5, lead=13, color=MUTED, italic=True, after=0)
+    ))
+    story.append(PageBreak())
+
+    # ── PAGE 3 — BIOMARKER DASHBOARD ────────────────────────────────
+    story.append(SecHeader("02", "Your Biomarker Dashboard",
+                            subtitle="A composite snapshot across five dimensions of healthy longevity"))
+    story.append(VGap(G))
+    story.append(ScoreHero(health_score, score_label, score_col, radar))
+    story.append(VGap(G))
+    dash_metrics = []
+    if bmi_v is not None:
+        dash_metrics.append(("Body Mass Index", f"{bmi_v:.1f}", bmi_cat, bmi_col.hexval()))
+    if vo2_v is not None:
+        dash_metrics.append(("Cardio (VO2max)", f"{vo2_v:.1f}",
+                              f"{vo2_pct:.0f}th percentile · {vo2_rat}", vo2_col.hexval()))
+    if bio_diff is not None:
+        dash_metrics.append(("Biological Age", f"{bio_v:.1f} yrs",
+                              f"{bio_diff:+.1f} yrs vs calendar", bio_col.hexval()))
+    if dash_metrics:
+        story.append(MetricCard(dash_metrics[:3], card_h=74))
+        story.append(VGap(G))
+    story.append(P(
+        f"Your overall score of <b>{health_score}/100</b> ({score_label.lower()}) is a weighted "
+        f"composite of body composition, cardio fitness, biological age, and activity volume. "
+        f"Your weakest dimension right now is <b>{weakest_dim}</b> — this is where the next 12 "
+        f"weeks of effort will pay off the most.",
+        S("dash_txt", size=9.5, lead=14, after=6)
+    ))
+    story.append(P("Dimension-by-dimension breakdown",
+                    S("dim_h", size=9.5, bold=True, color=ACCENT, after=4)))
+    for dim, sc in radar.items():
+        code, insight = dim_insights.get(dim, ("--", ""))
+        story.append(DimensionRow(code, dim, sc, insight))
+        story.append(VGap(4))
+    story.append(PageBreak())
+
+    # ── PAGE 4 — BODY COMPOSITION ────────────────────────────────────
+    story.append(SecHeader("03", "Body Composition",
+                            subtitle="BMI, body fat, and waist-to-hip ratio — read together, not alone"))
+    story.append(VGap(G))
+    if bmi_v is not None:
+        story.append(BMIScale(bmi_v))
+        story.append(VGap(G))
+    if w_num is not None and h_num:
+        story.append(HealthyWeightRangeBar(w_num, h_num))
+        story.append(VGap(G))
+    if whr_val is not None:
+        story.append(WHRBox(whr_val, whr_cat or "—"))
+        story.append(VGap(G))
+    if bf_val is not None and w_num is not None:
+        story.append(BodyCompProfile(w_num, bf_val, sex_v))
+        story.append(VGap(G))
+    bmi_txt, bmi_steps = insight_and_steps_body()
+    if bmi_txt:
+        story.append(P(bmi_txt, S("bmi_t", size=9.5, lead=14, after=6)))
+    if bf_val is not None and w_num is not None and h_num:
+        fat_mass = w_num * bf_val / 100.0; lean_mass = w_num - fat_mass
+        bf_band_m = [(6,"essential"),(14,"athletic"),(18,"fitness"),(25,"average"),(999,"obese")]
+        bf_band_f = [(14,"essential"),(21,"athletic"),(25,"fitness"),(32,"average"),(999,"obese")]
+        bands_lbl = bf_band_m if (sex_v or "M").upper().startswith("M") else bf_band_f
+        bf_cat_lbl = next(lbl for thresh, lbl in bands_lbl if bf_val < thresh)
+        whr_phrase = (f"waist-to-hip ratio {whr_val:.2f} ({(whr_cat or '').lower()})"
+                       if whr_val is not None else "waist-to-hip ratio not provided")
+        verdict = (
+            f"<b>Put together:</b> BMI {bmi_v:.1f} ({bmi_cat.lower()}), estimated body fat "
+            f"{bf_val:.1f}% ('{bf_cat_lbl}' range), and {whr_phrase} — "
+            f"~{lean_mass:.0f} kg lean mass and {fat_mass:.1f} kg fat mass. "
+        )
+        if bf_cat_lbl in ("athletic","fitness","essential"):
+            verdict += "Very little to lose here — prioritise building lean mass through strength training."
+        elif bf_cat_lbl == "average":
+            verdict += "A modest deficit plus strength training will move you into the 'fitness' range."
+        else:
+            verdict += "A sustainable calorie deficit with high protein protects lean mass as fat comes down."
+        story.append(P(verdict, S("bc_verdict", size=9, lead=13, after=6)))
+    story.append(KeepTogether([
+        ExpertInsightBox("Body Composition",
+            "BMI is a population screening tool — it doesn't account for muscle mass, bone density, "
+            "or fat distribution. Reading it alongside waist-to-hip ratio and body fat % gives a far "
+            "more accurate picture of metabolic health. (WHO BMI classification; Lancet 2014.)"),
+        VGap(6),
+        ActionableMilestoneBox(bmi_steps) if bmi_steps else VGap(0),
+    ]))
+    story.append(PageBreak())
+
+    # ── PAGE 5 — CARDIO FITNESS ──────────────────────────────────────
+    if vo2_v is not None:
+        story.append(SecHeader("04", "Cardio Fitness — VO2max",
+                                subtitle="The single strongest predictor of long-term health and longevity"))
+        story.append(VGap(G))
+        story.append(VO2Visual(vo2_v, vo2_pct, vo2_rat))
+        story.append(VGap(G))
+        if age_f is not None:
+            story.append(VO2PopComparisonBox(vo2_v, vo2_pct, age_f, sex_v))
+            story.append(VGap(G))
+        vo2_txt, vo2_steps = insight_and_steps_vo2()
+        story.append(P(vo2_txt, S("vo2_t", size=9.5, lead=14, after=G)))
+        if age_f is not None:
+            story.append(HeartRateZonesBox(age_f, vo2_pct))
+            story.append(VGap(G))
+        story.append(KeepTogether([
+            ExpertInsightBox("Cardio Fitness — VO2max",
+                "Mandsager et al., JAMA Network Open 2018 (doi:10.1001/jamanetworkopen.2018.3605) "
+                "found that cardiorespiratory fitness in the top quartile was associated with ~45% "
+                "lower all-cause mortality vs. the lowest quartile — larger than smoking cessation, "
+                "diabetes, or heart disease history. VO2max is trainable at any age."),
+            VGap(6),
+            ActionableMilestoneBox(vo2_steps),
+        ]))
+        story.append(PageBreak())
+
+    # ── PAGE 6 — BIOLOGICAL AGE & RADAR ─────────────────────────────
+    story.append(SecHeader("05", "Biological Age & Whole-Body Radar",
+                            subtitle="A heuristic estimate — directional, not a clinical measurement"))
+    story.append(VGap(G))
+    if bio_v is not None and age_f is not None:
+        story.append(BioAgeBar(bio_v, age_f))
+        story.append(VGap(G))
+        bio_txt, bio_steps = insight_and_steps_bioage()
+        story.append(P(bio_txt, S("bio_t", size=9.5, lead=14, after=6)))
+        if factors:
+            story.append(KeepTogether([
+                P("What's driving your biological age estimate",
+                  S("fbh", size=9.5, bold=True, color=ACCENT, after=4)),
+                FactorBars(factors),
+                VGap(4),
+                P("Green bars are working in your favour. Amber/red bars add years — start with the longest one.",
+                  S("fbl", size=7.5, color=MUTED, italic=True, after=6)),
+            ]))
+    if age_f is not None:
+        story.append(SleepCalculatorBox(age_f))
+        story.append(VGap(G))
+    story.append(KeepTogether([
+        P("Your 5-Dimension Health Radar", S("rrh", size=9.5, bold=True, color=ACCENT, after=4)),
+        RadarChart(radar),
+        P("70+ = strong.  45–70 = room to improve.  Below 45 = priority area for the next 12 weeks.",
+          S("rl", size=7.5, color=MUTED, italic=True, after=6)),
+    ]))
+    if bio_v is not None and age_f is not None:
+        story.append(KeepTogether([
+            ExpertInsightBox("Biological Age",
+                "Biological-age models developed by Steve Horvath (doi:10.1186/gb-2013-14-10-r115) "
+                "and Morgan Levine use measurable biomarkers and lifestyle factors to estimate how "
+                "your body ages relative to the calendar. Unlike your date of birth, this number "
+                "moves — in either direction — based on your choices in this report."),
+            VGap(6),
+            ActionableMilestoneBox(bio_steps),
+        ]))
+    story.append(PageBreak())
+
+    # ── PAGE 7 — NUTRITION & CALORIE STRATEGY ───────────────────────
+    story.append(SecHeader("06", "Nutrition & Calorie Strategy",
+                            subtitle="Energy balance is the foundation everything else is built on"))
+    story.append(VGap(G))
+    if cur_kcal and rec_kcal:
+        story.append(CalorieBar(cur_kcal, rec_kcal, kg_pw))
+        story.append(VGap(G))
+        nut_txt, nut_steps = insight_and_steps_nutrition()
+        story.append(P(nut_txt, S("nut_t", size=9.5, lead=14, after=6)))
+        story.append(P("Your Daily Macro Targets",
+                        S("mach", size=10, bold=True, color=GOLD, after=4)))
+        macro_data = [
+            [P("MACRO",  S("mh", size=7, color=MUTED, bold=True)),
+             P("GRAMS",  S("mh", size=7, color=MUTED, bold=True, align=TA_CENTER)),
+             P("KCAL",   S("mh", size=7, color=MUTED, bold=True, align=TA_CENTER)),
+             P("RATIO",  S("mh", size=7, color=MUTED, bold=True, align=TA_CENTER)),
+             P("WHY IT MATTERS FOR YOU", S("mh", size=7, color=MUTED, bold=True))],
+            [P("Protein",       S("pr", size=9, bold=True, color=BLUE)),
+             P(f"{protein_g} g",  S("pv", size=9, align=TA_CENTER)),
+             P(f"{protein_g*4}",  S("pv", size=9, align=TA_CENTER)),
+             P("~30%",            S("pv", size=9, align=TA_CENTER)),
+             P("Preserves muscle while changing body composition; keeps you full longer",
+               S("pw", size=8, color=MUTED))],
+            [P("Fat",          S("fr", size=9, bold=True, color=WARN)),
+             P(f"{fat_g} g",   S("fv", size=9, align=TA_CENTER)),
+             P(f"{fat_g*9}",   S("fv", size=9, align=TA_CENTER)),
+             P("~28%",          S("fv", size=9, align=TA_CENTER)),
+             P("Hormone production, brain function, fat-soluble vitamin absorption",
+               S("fw", size=8, color=MUTED))],
+            [P("Carbohydrates", S("cr", size=9, bold=True, color=GOOD)),
+             P(f"{carb_g} g",  S("cv", size=9, align=TA_CENTER)),
+             P(f"{carb_g*4}",  S("cv", size=9, align=TA_CENTER)),
+             P("~42%",          S("cv", size=9, align=TA_CENTER)),
+             P("Fuels training sessions and supports recovery and focus",
+               S("cw", size=8, color=MUTED))],
+        ]
+        mac_t = Table(macro_data, colWidths=[35*mm, 22*mm, 20*mm, 18*mm, None])
+        mac_t.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0), (-1,0),  CARD2),
+            ("BACKGROUND",    (0,1), (-1,-1), CARD),
+            ("BOX",           (0,0), (-1,-1), 1,   STROKE),
+            ("INNERGRID",     (0,0), (-1,-1), 0.5, STROKE),
+            ("TOPPADDING",    (0,0), (-1,-1), 7),
+            ("BOTTOMPADDING", (0,0), (-1,-1), 7),
+            ("LEFTPADDING",   (0,0), (-1,-1), 8),
+            ("VALIGN",        (0,0), (-1,-1), "TOP"),
+        ]))
+        story.append(mac_t)
+        story.append(VGap(5))
+        story.append(P(
+            "Macros estimated from Mifflin-St Jeor + standard ratios. Re-check every 2–3 weeks.",
+            S("dn", size=7.5, color=MUTED, italic=True, after=5)
+        ))
+        meal_count = 4
+        protein_per_meal = protein_g // meal_count
+        chicken_g = int(protein_per_meal / 0.31)
+        eggs_count = round(protein_per_meal / 6.3)
+        story.append(P(
+            f"🍗 <b>Protein per meal:</b> {protein_g} g ÷ {meal_count} meals = "
+            f"<b>{protein_per_meal} g per meal</b> — e.g. {chicken_g} g chicken breast "
+            f"or {eggs_count} eggs per sitting.",
+            S("ppm", size=8.5, lead=13, color=TEXT, after=4)
+        ))
+        hydration_l = round(wt * 0.033, 1)
+        story.append(P(
+            f"💧 <b>Hydration target:</b> roughly <b>{hydration_l} litres/day</b>, "
+            f"more on training days or in hot weather.",
+            S("hyd", size=8.5, lead=13, color=MUTED, after=6)
+        ))
+        if exlog:
+            story.append(P("Your Logged Activity",
+                            S("exh", size=9.5, bold=True, color=ACCENT, after=4)))
+            ex_metrics = [
+                ("Weekly minutes",  f"{ex_total_min} min",
+                 "vs WHO 150 min/week", "#22C55E" if ex_total_min >= 150 else "#F59E0B"),
+                ("Sessions / week", f"{exlog.get('sessions_per_week','—')}",
+                 str(exlog.get("activity", "")), "#3B82F6"),
+                          ("Calories / week", f"{ex_kcal_w:.0f}", "from training alone", "#94A3B8")]
+            story.append(MetricCard(ex_metrics, card_h=60))
+            story.append(VGap(6))
+        story.append(KeepTogether([
+            ExpertInsightBox("Nutrition",
+                "Calorie needs estimated via Mifflin-St Jeor (doi:10.1093/ajcn/51.2.241), adjusted "
+                "for logged activity (TDEE). Protein target of 1.8 g/kg/day supported by Morton et al., "
+                "BJSM 2018 (doi:10.1136/bjsports-2017-097608)."),
+            VGap(6),
+            ActionableMilestoneBox(nut_steps),
+        ]))
+    else:
+        story.append(P("A personalised calorie plan wasn't generated — complete the nutrition step "
+                        "in the app to unlock this section.",
+                        S("ncp", size=9, color=MUTED, after=8)))
+    story.append(PageBreak())
+
+    # ── PAGE 8+9 — 30-DAY TRAINING PLAN ────────────────────────────
+    story.append(SecHeader("07", "Your Personalised 30-Day Training Plan",
+                            subtitle=f"Goal: {_goal} · Built only from the activities you selected"))
+    story.append(VGap(G))
+    acts_str = ", ".join(selected_acts) if selected_acts else "strength training, running and easy walking"
+    intro_name = f"{name_v}, " if name_v else ""
+    story.append(P(
+        f"{intro_name}this plan is built specifically around <b>{acts_str}</b> — nothing generic. "
+        f"Four progressive blocks over 30 days: Foundation, Build, Push, and Taper &amp; Reassess. "
+        f"Every session names the exact activity you chose with precise duration and effort.",
+        S("plan30_intro", size=9.5, lead=14, after=6)
+    ))
+
+    if selected_acts:
+        story.append(P("Your Training DNA — what this plan is built from", S("dna_h", size=9.5, bold=True, color=ACCENT, after=4)))
+        dna_data = [[P("ACTIVITY", S("dnah1", size=7, bold=True, color=MUTED)),
+                      P("ROLE IN YOUR PLAN", S("dnah2", size=7, bold=True, color=MUTED, align=TA_CENTER))]]
+        for a in selected_acts:
+            cat = ACT_CATEGORY.get(a, "low")
+            col = ROLE_COLOR.get(cat if cat != "cardio" else "cardio_easy", MUTED)
+            dna_data.append([P(a, S(f"dna_a_{a}", size=8.5, color=TEXT)),
+                              P(CAT_EMOJI.get(cat, "Other"), S(f"dna_b_{a}", size=8.5, bold=True, color=col, align=TA_CENTER))])
+        dna_t = Table(dna_data, colWidths=[CONTENT_W*0.68, None])
+        dna_t.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), CARD2), ("BACKGROUND", (0,1), (-1,-1), CARD),
+            ("ROWBACKGROUNDS", (0,1), (-1,-1), [CARD, CARD2]),
+            ("BOX", (0,0), (-1,-1), 1, STROKE), ("INNERGRID", (0,0), (-1,-1), 0.4, STROKE),
+            ("TOPPADDING", (0,0), (-1,-1), 6), ("BOTTOMPADDING", (0,0), (-1,-1), 6),
+            ("LEFTPADDING", (0,0), (-1,-1), 8), ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+        ]))
+        story.append(dna_t)
+        story.append(VGap(10))
+
+    plan30 = build_30_day_plan(_goal, vo2_pct)
+    for wi, rows in enumerate(plan30, start=1):
+        title, desc = WEEK_THEMES[wi]
+        story.append(P(f"<b>{title}</b>  ·  Days {((wi-1)*7)+1}–{wi*7}",
+                        S(f"wt30_{wi}", size=10.5, bold=True, color=GOLD, after=2)))
+        story.append(P(desc, S(f"wd30_{wi}", size=8, color=MUTED, italic=True, after=4)))
+        story.append(make_week_table(rows))
+        story.append(VGap(12))
+        if wi == 2:
+            story.append(PageBreak())
+            story.append(SecHeader("07", "Your Personalised 30-Day Training Plan",
+                                    subtitle="Weeks 3-4 · Push, Taper & Reassess"))
+            story.append(VGap(12))
+
+    story.append(P("Days 29-30 — Reassessment", S("d2930h", size=10.5, bold=True, color=ACCENT, after=2)))
+    story.append(P(
+        "Day 29: repeat the same cardio test or timed effort you used to estimate your VO2max at "
+        "the start, under the same conditions. Day 30: re-take your measurements (weight, waist) "
+        "and notice how your selected activities feel compared to Day 1 — then re-run this "
+        "assessment to see your updated numbers.",
+        S("d2930b", size=8.5, lead=13, color=MUTED, after=6)
+    ))
+    story.append(VGap(6))
+    story.append(P(
+        "Why this works: every session is tagged by colour — blue for strength, teal for easy "
+        "cardio, red for intervals, gold for your sport, and grey for active recovery or rest. "
+        "Roughly 80% of the month stays easy-to-moderate, with one clearly harder session each "
+        "week to drive adaptation — the same principle elite endurance and strength athletes use "
+        "year-round.",
+        S("p30_evi", size=8.5, lead=13, after=6)
+    ))
+    story.append(P("If you stop seeing progress for 2–3 weeks: reduce volume by ~20% for one week "
+                    "(a deload), check sleep and protein intake first, then resume normal volume.",
+                    S("deload", size=8.5, lead=13, color=MUTED, italic=True, after=4)))
+    story.append(PageBreak())
+
+    # ── PAGE — 12-WEEK ROADMAP ────────────────────────────────────────
+    story.append(SecHeader("08", "Your 12-Week Roadmap",
+                            subtitle="Realistic, week-by-week milestones toward your target"))
+    story.append(VGap(12))
+    if has_plan and milestones:
+        try:
+            start_w = float(w_v); end_w = float(plan_d.get("target_weight_kg", w_v))
+        except Exception:
+            start_w = end_w = None
+        if start_w is not None:
+            story.append(P(f"Starting weight: <b>{start_w:.1f} kg</b>  →  Target: <b>{end_w:.1f} kg</b>",
+                            S("mrt", size=10, bold=True, after=8)))
+        full_milestones = list(milestones)
+        if len(full_milestones) < 12 and start_w is not None and end_w is not None:
+            last = full_milestones[-1] if full_milestones else {}
+            try: last_w = float(last.get("Projected weight (kg)", last.get("Weight", last.get("weight", end_w))))
+            except Exception: last_w = end_w
+            weekly_delta = (end_w - last_w) / max(1, 12 - len(full_milestones))
+            phase_labels = ["Consolidate", "Build strength", "Refine nutrition", "Push cardio",
+                            "Maintain deficit", "Build habits", "Reassess & adjust",
+                            "Progressive overload", "Fine-tune macros", "Peak week",
+                            "Taper & test", "Final reassessment"]
+            for extra_i in range(12 - len(full_milestones)):
+                wk = len(full_milestones) + extra_i + 1
+                proj_w = last_w + weekly_delta * (extra_i + 1)
+                focus = phase_labels[min(extra_i, len(phase_labels) - 1)]
+                full_milestones.append({"Week": wk, "Projected weight (kg)": round(proj_w, 1), "Focus": focus})
+        m_cols = ["#3B82F6", "#0EA5A3", "#22C55E", "#F59E0B"]
+        for i, m in enumerate(full_milestones):
+            try: pw = float(m.get("Projected weight (kg)", m.get("Weight", m.get("weight", start_w or 0))))
+            except Exception: pw = start_w or 0
+            prog = (i + 1) / len(full_milestones) * 100
+            story.append(MilestoneRow(m.get("Week", i + 1), pw, str(m.get("Focus", m.get("focus",""))),
+                                       prog, m_cols[i % len(m_cols)], (i == len(full_milestones) - 1)))
+        story.append(VGap(12))
+        story.append(P("If you fall off track for a week — that's normal. Resume at your last "
+                        "completed milestone rather than trying to 'catch up'. Consistency over a "
+                        "12-week horizon beats any single perfect week.",
+                        S("fallback", size=8.5, lead=13, color=MUTED, italic=True, after=4)))
+    else:
+        story.append(P("No weight roadmap was generated — set a target weight in the app to unlock "
+                        "a personalised week-by-week milestone plan here.",
+                        S("nm", size=9, color=MUTED, after=8)))
+    story.append(PageBreak())
+
+    # ── PAGE — CONDITION-AWARE + SAFETY ──────────────────────────────
+    story.append(SecHeader("09", "Condition-Aware Recommendations & Safety",
+                            subtitle="Tailored to the health context you provided", accent=WARN))
+    story.append(VGap(12))
+    if triage_r:
+        for r in triage_r:
+            story.append(ExpertInsightBox("For You", str(r)))
+            story.append(VGap(8))
+    else:
+        story.append(P("No specific health conditions were flagged for this report. The general "
+                        "guidance below still applies to everyone.",
+                        S("notriage", size=9, color=MUTED, after=8)))
+    story.append(VGap(8))
+    story.append(P(
+        "<b>When to involve your doctor:</b> before starting a new training programme if you have "
+        "a diagnosed cardiovascular, metabolic, or musculoskeletal condition; if you experience "
+        "chest pain, unusual shortness of breath, dizziness, or joint pain that doesn't resolve "
+        "within 48 hours; or before making significant changes to medication-relevant routines "
+        "(e.g. fasting, large calorie deficits with diabetes medication).",
+        S("doc", size=8.5, lead=13, after=8)
+    ))
+    story.append(P(
+        "This report is generated using validated, published formulas — Mifflin-St Jeor (energy "
+        "expenditure), WHO BMI classification, Uth VO2max estimation, and ACSM/WHO training volume "
+        "guidelines — but it is <b>not a medical diagnosis</b> and does not replace a consultation "
+        "with a qualified healthcare professional.",
+        S("disc2", size=8, lead=12, color=MUTED, italic=True, after=4)
+    ))
+    story.append(PageBreak())
+
+    # ── FINAL PAGE — ACTION + TRUST ──────────────────────────────────
+    story.append(SecHeader("10", "Your Next Move",
+                            subtitle="Three things to do tomorrow — no more, no less"))
+    story.append(VGap(12))
+
+    tomorrow_actions = []
+    if vo2_v is not None and vo2_pct < 60:
+        tomorrow_actions.append("Schedule this week's interval session — pick the day and time now")
+    if cur_kcal and rec_kcal:
+        tomorrow_actions.append(f"Plan tomorrow's meals to land near {int(rec_kcal)} kcal, protein first")
+    if bio_diff is not None and bio_diff > 0:
+        tomorrow_actions.append("Set a fixed bedtime for the next 7 nights — same time, every night")
+    if not tomorrow_actions:
+        tomorrow_actions.append("Re-read your Executive Summary and pick one START item to begin today")
+    tomorrow_actions.append("Take a photo of this report's KPI page — it's your before-state")
+    if len(tomorrow_actions) < 3:
+        tomorrow_actions.append("Block your full training week into your calendar right now")
+    story.append(FinalActionCard(tomorrow_actions[:3]))
+    story.append(VGap(12))
+
+    story.append(P("Why This Report", S("why", size=11, bold=True, color=GOLD, after=4)))
+    story.append(TrustRow([
+        ("100%", "Built from your data"),
+        ("12wk", "Roadmap included"),
+        ("🔒", "Private & encrypted"),
+        ("📄", "Print-ready"),
+    ]))
+    story.append(VGap(10))
+    story.append(P(
+        "Your data is stored only in your private account, encrypted in transit, and never sold "
+        "or shared with third parties. You can delete your data at any time from account settings. "
+        "This report contains no recurring charges — it is a single, one-time purchase.",
+        S("priv", size=8.5, lead=13, color=MUTED, after=6)
+    ))
+    story.append(HRule())
+    story.append(VGap(10))
+    story.append(P(
+        "Reassess in 8–12 weeks. The numbers on page 1 are your baseline — the real value of this "
+        "report is the comparison you'll be able to make next time. Good luck.",
+        S("close", size=9.5, lead=14, italic=True, after=4)
+    ))
+    story.append(VGap(12))
+    story.append(P("Health Tools  ·  health-tools.streamlit.app  ·  support available in-app",
+                    S("contact", size=8, color=DIM, align=TA_CENTER, after=2)))
+
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    buffer.seek(0)
+    return buffer.getvalue()
