@@ -4430,15 +4430,104 @@ if not _unlocked:
     _vo2_pct   = _preview_vo2.get("percentile", "—")
     _bio_age   = (_preview_results.get("bio_age") or {}).get("value", "—") if _preview_results else "—"
 
+    # ── Mirror the exact formulas from pdf_premium.py so the preview matches ──
+    # ── the real PDF 1:1 instead of using placeholder/illustrative numbers.   ──
+    def _sf_preview(x):
+        try:
+            return float(x)
+        except Exception:
+            return None
+
+    _age_for_preview = int(st.session_state.get("age", 30) or 30)
+    _sex_for_preview = str(st.session_state.get("inp_sex", "M") or "M").upper()
+    _bmi_f = _sf_preview(_bmi_val)
+    _vo2_f = _sf_preview(_vo2_val)
+    _vo2_pct_f = _sf_preview(_vo2_pct) or 0.0
+    _bio_f = _sf_preview(_bio_age)
+    _bio_diff = (_bio_f - _age_for_preview) if (_bio_f is not None and _age_for_preview is not None) else None
+    if _bio_diff is not None:
+        _bio_diff = max(-5.0, min(5.0, _bio_diff))
+
+    # exercise volume (mirrors ex_total_min in the PDF)
+    _exlog_preview = st.session_state.get("exercise_last", {}) or {}
+    _ex_min_pv  = _sf_preview(_exlog_preview.get("minutes", 0)) or 0
+    _ex_sess_pv = _sf_preview(_exlog_preview.get("sessions_per_week", 0)) or 0
+    _ex_total_min_pv = int(_ex_min_pv * _ex_sess_pv)
+
+    # radar dimensions — identical thresholds to RadarChart in pdf_premium.py
+    _radar_pv = {}
+    _radar_pv["Body Comp"] = (100 if (_bmi_f and 18.5 <= _bmi_f < 25) else 75 if (_bmi_f and 17 <= _bmi_f < 27)
+                               else 50 if (_bmi_f and 15 <= _bmi_f < 30) else 25 if _bmi_f else 50)
+    _radar_pv["Cardio"]   = int(_vo2_pct_f) if _vo2_f else 50
+    _radar_pv["Bio Age"]  = (max(0, min(100, int(70 - _bio_diff * 10))) if _bio_diff is not None else 50)
+    _radar_pv["Activity"] = (min(100, int(_ex_total_min_pv / 300 * 100)) if _ex_total_min_pv else 30)
+    _radar_pv["Lifestyle"] = 60  # neutral default preview value (factors not recomputed here)
+
+    # overall score — identical weighting to pdf_premium.py
+    _score_parts_pv = []
+    if _bmi_f is not None:
+        if 18.5 <= _bmi_f < 25: _score_parts_pv.append(100)
+        elif 17 <= _bmi_f < 27: _score_parts_pv.append(75)
+        elif 15 <= _bmi_f < 30: _score_parts_pv.append(50)
+        else: _score_parts_pv.append(25)
+    if _vo2_f is not None:
+        _score_parts_pv.append(min(100, int(_vo2_pct_f)))
+    if _bio_diff is not None:
+        _score_parts_pv.append(max(0, min(100, int(70 - _bio_diff * 10))))
+    if _ex_total_min_pv:
+        _score_parts_pv.append(min(100, int(_ex_total_min_pv / 300 * 100)))
+    _health_score_pv = int(sum(_score_parts_pv) / len(_score_parts_pv)) if _score_parts_pv else 73
+
+    def _vo2_color_pv(pct):
+        if pct >= 80: return "#22C55E"
+        if pct >= 60: return "#3B82F6"
+        if pct >= 40: return "#F59E0B"
+        return "#EF4444"
+
+    def _dim_color_pv(sc):
+        if sc >= 70: return "#22C55E"
+        if sc >= 45: return "#F59E0B"
+        return "#EF4444"
+
+    _vo2_col_pv = _vo2_color_pv(_vo2_pct_f)
+
+    # ACSM age/sex VO2 norm table — identical to VO2PopComparisonBox in pdf_premium.py
+    _norms_m_pv = {(20,29):44.0,(30,39):42.4,(40,49):40.0,(50,59):36.7,(60,69):33.1}
+    _norms_f_pv = {(20,29):38.6,(30,39):36.3,(40,49):33.1,(50,59):29.7,(60,69):26.5}
+    _norms_pv = _norms_m_pv if _sex_for_preview.startswith("M") else _norms_f_pv
+    _pop_avg_pv = next((v for (lo, hi), v in _norms_pv.items() if lo <= _age_for_preview <= hi), 38.0)
+    _pop_good_pv = _pop_avg_pv * 1.15
+    _pop_exc_pv  = _pop_avg_pv * 1.30
+
+    # real selected activity (mirrors the 30-day plan's "Training DNA" in the PDF) —
+    # falls back to a sensible default only if the user hasn't selected anything yet
+    _selected_acts_pv = [a for a in (st.session_state.get("selected_activities") or []) if a]
+    _plan_activity_pv = _selected_acts_pv[0] if _selected_acts_pv else "Strength training (weights)"
+    _ACT_CATEGORY_PV = {
+        "Walking (casual)": "low", "Brisk walking": "low", "Yoga / Pilates": "low",
+        "Housework / Light chores": "low", "Gardening / Heavy yard work": "low",
+        "Cycling (leisure)": "cardio", "Cycling (vigorous)": "cardio", "Elliptical": "cardio",
+        "Rowing (moderate/vigorous)": "cardio", "Swimming": "cardio",
+        "Running/jogging": "cardio", "HIIT": "cardio", "Stair climbing / Stairmaster": "cardio",
+        "Basketball / Team sports": "sport", "Soccer (football)": "sport", "Tennis (casual)": "sport",
+        "Squash": "sport", "Badminton": "sport", "Table tennis (bordtennis)": "sport", "Dancing": "sport",
+        "Strength training (weights)": "strength", "Boxing / Martial arts": "strength",
+        "Rock climbing / Bouldering": "strength", "Hiking (incline)": "strength",
+    }
+    _plan_cat_pv = _ACT_CATEGORY_PV.get(_plan_activity_pv, "strength")
+    _plan_tag_color_pv = {"strength": "#22C55E", "cardio": "#3B82F6", "sport": "#D4AF7A", "low": "#64748B"}.get(_plan_cat_pv, "#22C55E")
+    _plan_tag_label_pv = {"strength": "Strength", "cardio": "Cardio", "sport": "Sport", "low": "Low-impact"}.get(_plan_cat_pv, "Strength")
+
     _days_sample = [
-        ("MON", "💪 Strength", "Full-body compound lifts — Squat, Romanian Deadlift, Push-up, Row", "45 min", "#22C55E20", "#22C55E"),
-        ("TUE", "🏃 Cardio", "Zone 2 steady-state — keep HR 120–135 bpm, conversational pace", "30 min", "#3B82F620", "#3B82F6"),
-        ("WED", "💪 Strength", "Upper/Lower split — Bench Press, Pull-up, Lunge, Shoulder Press", "50 min", "#22C55E20", "#22C55E"),
-        ("THU", "🔥 HIIT", "4 × 4 intervals — 4 min hard (RPE 9), 3 min easy, full warm-up", "40 min", "#F59E0B20", "#F59E0B"),
-        ("FRI", "💪 Strength", "Posterior chain focus — Deadlift, Hip Thrust, Pull-down, Plank", "50 min", "#22C55E20", "#22C55E"),
-        ("SAT", "🚴 Endurance", "Long slow distance — build aerobic base, HR below 135 bpm", "60 min", "#3B82F620", "#3B82F6"),
+        ("MON", _plan_tag_label_pv, f"{_plan_activity_pv} — week 1 foundation session, technique-focused", "30 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
+        ("TUE", _plan_tag_label_pv, f"{_plan_activity_pv} — building rhythm and consistency", "30 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
+        ("WED", _plan_tag_label_pv, f"{_plan_activity_pv} — moderate intensity, full session", "35 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
+        ("THU", _plan_tag_label_pv, f"{_plan_activity_pv} — progressive overload this week", "35 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
+        ("FRI", _plan_tag_label_pv, f"{_plan_activity_pv} — practice / test effort", "40 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
+        ("SAT", _plan_tag_label_pv, f"{_plan_activity_pv} — longer endurance session", "40 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
         ("SUN", "😴 Recovery", "Full rest or 15 min mobility + foam rolling", "—",      "#64748B20", "#64748B"),
     ]
+
 
     _preview_rows_html = ""
     for i, (day, wtype, desc, dur, bg, accent) in enumerate(_days_sample):
@@ -4703,10 +4792,10 @@ if not _unlocked:
         <div class="ss-slide">
           <div class="ss-slide-label">Page 1 · At a glance</div>
           <div class="ss-kpis">
-            <div class="ss-kpi"><div class="ss-kpi-l">BMI</div><div class="ss-kpi-v" style="color:#F59E0B;">{_bmi_val if _bmi_val != "—" else "—"}</div></div>
-            <div class="ss-kpi"><div class="ss-kpi-l">VO2max</div><div class="ss-kpi-v" style="color:#EF4444;">{_vo2_val if _vo2_val != "—" else "—"}</div></div>
-            <div class="ss-kpi"><div class="ss-kpi-l">Bio age</div><div class="ss-kpi-v" style="color:#22C55E;">{_bio_age if _bio_age != "—" else "—"}</div></div>
-            <div class="ss-kpi"><div class="ss-kpi-l">Calories</div><div class="ss-kpi-v ss-blur" style="color:#22C55E;">1656</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">BMI</div><div class="ss-kpi-v" style="color:#F59E0B;">{f"{_bmi_f:.1f}" if _bmi_f is not None else "—"}</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">VO2max</div><div class="ss-kpi-v" style="color:{_vo2_col_pv};">{f"{_vo2_f:.1f}" if _vo2_f is not None else "—"}</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">Bio age</div><div class="ss-kpi-v" style="color:#22C55E;">{f"{_bio_f:.1f}" if _bio_f is not None else "—"}</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">Calories</div><div class="ss-kpi-v ss-blur" style="color:#22C55E;">····</div></div>
           </div>
           <div class="ss-caption">Every number on this page is calculated from <strong>your</strong> data — not population averages.</div>
         </div>
@@ -4715,15 +4804,15 @@ if not _unlocked:
         <div class="ss-slide">
           <div class="ss-slide-label">Page 3 · Biomarker dashboard</div>
           <div class="ss-score-row">
-            <div class="ss-score-ring">
-              <div class="ss-score-num">73</div>
+            <div class="ss-score-ring" style="border-color:{_dim_color_pv(_health_score_pv)};">
+              <div class="ss-score-num" style="color:{_dim_color_pv(_health_score_pv)};">{_health_score_pv}</div>
               <div class="ss-score-sub">/ 100</div>
             </div>
             <div class="ss-score-bars">
-              <div class="ss-bar-row"><span>Body Comp</span><div class="ss-bar"><div class="ss-bar-fill" style="width:75%;background:#22C55E;"></div></div></div>
-              <div class="ss-bar-row"><span>Cardio</span><div class="ss-bar"><div class="ss-bar-fill" style="width:20%;background:#EF4444;"></div></div></div>
-              <div class="ss-bar-row ss-blur"><span>Bio Age</span><div class="ss-bar"><div class="ss-bar-fill" style="width:100%;background:#22C55E;"></div></div></div>
-              <div class="ss-bar-row ss-blur"><span>Activity</span><div class="ss-bar"><div class="ss-bar-fill" style="width:100%;background:#22C55E;"></div></div></div>
+              <div class="ss-bar-row"><span>Body Comp</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Body Comp']}%;background:{_dim_color_pv(_radar_pv['Body Comp'])};"></div></div></div>
+              <div class="ss-bar-row"><span>Cardio</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Cardio']}%;background:{_dim_color_pv(_radar_pv['Cardio'])};"></div></div></div>
+              <div class="ss-bar-row ss-blur"><span>Bio Age</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Bio Age']}%;background:{_dim_color_pv(_radar_pv['Bio Age'])};"></div></div></div>
+              <div class="ss-bar-row ss-blur"><span>Activity</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Activity']}%;background:{_dim_color_pv(_radar_pv['Activity'])};"></div></div></div>
             </div>
           </div>
           <div class="ss-caption">A weighted composite across 5 dimensions — see exactly where your next 12 weeks should go.</div>
@@ -4733,10 +4822,10 @@ if not _unlocked:
         <div class="ss-slide">
           <div class="ss-slide-label">Page 5 · Cardio fitness — VO2max</div>
           <div class="ss-vo2-compare">
-            <div class="ss-vo2-col"><div class="ss-vo2-val" style="color:#EF4444;">{_vo2_val if _vo2_val != "—" else "—"}</div><div class="ss-vo2-lbl">You</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#94A3B8;">44.0</div><div class="ss-vo2-lbl">Average</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#22C55E;">50.6</div><div class="ss-vo2-lbl">Good</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#0EA5A3;">57.2</div><div class="ss-vo2-lbl">Excellent</div></div>
+            <div class="ss-vo2-col"><div class="ss-vo2-val" style="color:{_vo2_col_pv};">{f"{_vo2_f:.1f}" if _vo2_f is not None else "—"}</div><div class="ss-vo2-lbl">You</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#94A3B8;">{f"{_pop_avg_pv:.1f}"}</div><div class="ss-vo2-lbl">Average</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#22C55E;">{f"{_pop_good_pv:.1f}"}</div><div class="ss-vo2-lbl">Good</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#0EA5A3;">{f"{_pop_exc_pv:.1f}"}</div><div class="ss-vo2-lbl">Excellent</div></div>
           </div>
           <div class="ss-hr-zones ss-blur">
             <div class="ss-hr-zone" style="background:#64748B33;">Z1</div>
@@ -4745,7 +4834,7 @@ if not _unlocked:
             <div class="ss-hr-zone" style="background:#F59E0B33;">Z4</div>
             <div class="ss-hr-zone" style="background:#EF444433;">Z5</div>
           </div>
-          <div class="ss-caption">Your personal heart-rate training zones, calculated from your age — unlocked in full.</div>
+          <div class="ss-caption">ACSM norms for your age & sex — your personal heart-rate zones unlock in full.</div>
         </div>
 
         <!-- Slide 4: Radar -->
@@ -4774,10 +4863,10 @@ if not _unlocked:
         <div class="ss-slide">
           <div class="ss-slide-label">Page 10 · Your personalised 30-day plan</div>
           <div class="ss-plan-rows">
-            <div class="ss-plan-row"><span class="ss-plan-day">MON</span><span class="ss-plan-tag" style="background:#22C55E22;color:#22C55E;border:1px solid #22C55E44;">Strength</span><span class="ss-plan-desc">Full-body compound lifts</span></div>
-            <div class="ss-plan-row"><span class="ss-plan-day">TUE</span><span class="ss-plan-tag" style="background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644;">Cardio</span><span class="ss-plan-desc">Zone 2 steady-state, 30 min</span></div>
-            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">WED</span><span class="ss-plan-tag" style="background:#22C55E22;color:#22C55E;border:1px solid #22C55E44;">Strength</span><span class="ss-plan-desc">Upper/lower split</span></div>
-            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">THU</span><span class="ss-plan-tag" style="background:#F59E0B22;color:#F59E0B;border:1px solid #F59E0B44;">HIIT</span><span class="ss-plan-desc">4×4 intervals</span></div>
+            <div class="ss-plan-row"><span class="ss-plan-day">MON</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — foundation</span></div>
+            <div class="ss-plan-row"><span class="ss-plan-day">TUE</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — rhythm</span></div>
+            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">WED</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — moderate</span></div>
+            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">THU</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — overload</span></div>
             <div class="ss-plan-row ss-blur"><span class="ss-plan-day">FRI–SUN</span><span class="ss-plan-tag" style="background:#64748B22;color:#94A3B8;border:1px solid #64748B44;">···</span><span class="ss-plan-desc">Unlocks with full report</span></div>
           </div>
           <div class="ss-caption">Built specifically from <em>your</em> selected activities — 30 days, four progressive blocks.</div>
@@ -4987,9 +5076,33 @@ function switchTab(name) {{
     arrows[a].addEventListener('click', function() {{ clearInterval(ssAuto); }});
   }}
 }})();
+
+// ── Dynamic iframe height: tell Streamlit our real content height so ──
+// ── there is no leftover gap below the card, no matter which tab is  ──
+// ── active or how much content that tab has.                         ──
+(function() {{
+  function reportHeight() {{
+    var h = document.body.scrollHeight;
+    window.parent.postMessage({{
+      isStreamlitMessage: true,
+      type: 'streamlit:setFrameHeight',
+      height: h
+    }}, '*');
+  }}
+  // report on load, on tab switch, and on any layout shift
+  window.addEventListener('load', reportHeight);
+  document.querySelectorAll('.uc-tab').forEach(function(t) {{
+    t.addEventListener('click', function() {{ setTimeout(reportHeight, 50); }});
+  }});
+  if (window.ResizeObserver) {{
+    new ResizeObserver(reportHeight).observe(document.body);
+  }}
+  setTimeout(reportHeight, 100);
+  setTimeout(reportHeight, 400);
+}})();
 </script>
 """
-    components.html(upgrade_card_html, height=860, scrolling=False)
+    components.html(upgrade_card_html, height=560, scrolling=False)
 
     # -------------------- 3. Email + Stripe checkout (always visible below card) --------------------
 
