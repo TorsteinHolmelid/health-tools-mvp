@@ -22,6 +22,68 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# --- Hamburger-knapp ---
+st.markdown("""
+<button id="ht-burger">
+  <span></span><span></span><span></span>
+</button>
+<style>
+#ht-burger {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 9999999;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: #0EC8C4;
+  box-shadow: 0 0 16px rgba(14,200,196,0.6);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+}
+#ht-burger span {
+  display: block;
+  width: 14px;
+  height: 2px;
+  background: #020F0F;
+  border-radius: 2px;
+  pointer-events: none;
+}
+</style>
+""", unsafe_allow_html=True)
+
+components.html("""
+<script>
+(function() {
+  function attachListener() {
+    var doc = window.parent.document;
+    var burger = doc.getElementById('ht-burger');
+    if (!burger) { setTimeout(attachListener, 100); return; }
+    if (burger._htListenerAttached) return;
+    burger._htListenerAttached = true;
+    burger.addEventListener('click', function() {
+      var selectors = [
+        '[data-testid="stExpandSidebarButton"]',
+        '[data-testid="stBaseButton-headerNoPadding"]',
+        '[data-testid="collapsedControl"]'
+      ];
+      for (var i = 0; i < selectors.length; i++) {
+        var btn = doc.querySelector(selectors[i]);
+        if (btn) { btn.click(); return; }
+      }
+    });
+  }
+  attachListener();
+})();
+</script>
+""", height=0)
+
 # --- Shared CSS (mirrors app.py) ---
 st.markdown("""
 <style>
@@ -45,53 +107,11 @@ st.markdown("""
 [data-testid="stSidebar"] > div:first-child { background: transparent !important; }
 [data-testid="stSidebarContent"] { background: transparent !important; }
 
-/* Header og toolbar: synleg og på plass */
-header[data-testid="stHeader"] {
-  background: transparent !important;
-  height: 3.5rem !important;
-  overflow: visible !important;
-  pointer-events: none !important;
-}
-[data-testid="stAppToolbar"] {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  height: 3.5rem !important;
-  z-index: 999998 !important;
-  pointer-events: none !important;
-  display: flex !important;
-  align-items: center !important;
-}
-
-/* Sidebar-toggle — støttar nytt og gamalt Streamlit */
-[data-testid="stExpandSidebarButton"],
-[data-testid="stBaseButton-headerNoPadding"],
-[data-testid="collapsedControl"],
-button[kind="headerNoPadding"] {
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: all !important;
-  background: #0EC8C4 !important;
-  border-radius: 50% !important;
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-  box-shadow: 0 0 16px rgba(14,200,196,0.6) !important;
-  position: fixed !important;
-  top: 0.75rem !important;
-  left: 0.75rem !important;
-  z-index: 999999 !important;
-  border: none !important;
-  cursor: pointer !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-[data-testid="stExpandSidebarButton"] svg,
-[data-testid="stBaseButton-headerNoPadding"] svg,
-[data-testid="collapsedControl"] svg {
-  fill: #020F0F !important;
-  color: #020F0F !important;
+/* Gøym Streamlit-headeren */
+header[data-testid="stHeader"],
+[data-testid="stAppToolbar"],
+[data-testid="stDecoration"] {
+  display: none !important;
 }
 
 /* User card */
