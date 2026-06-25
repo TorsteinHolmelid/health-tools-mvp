@@ -620,7 +620,7 @@ header[data-testid="stHeader"] {
   color: #020F0F !important;
 }
 
-.block-container { padding-top: 1rem !important; }
+
 
 
 :root {
