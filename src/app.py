@@ -2,6 +2,7 @@ from __future__ import annotations
 import math
 import uuid
 import io
+import base64
 from io import BytesIO
 from datetime import datetime, timezone
 from html import escape
@@ -28,6 +29,108 @@ from db import (
 )
 
 from pdf_premium import create_pdf_bytes_premium as create_pdf_bytes_ultimate
+
+# ── PDF→PNG preview pipeline (for the "see your report" paywall slideshow) ──
+# Requires poppler-utils (pdftoppm) on the host — already present on most
+# Linux deploy images. Falls back gracefully (slideshow tab simply won't
+# render) if pdf2image/poppler isn't available, so it never breaks the app.
+try:
+    from pdf2image import convert_from_bytes as _pdf2image_convert_from_bytes
+    _PDF_PREVIEW_AVAILABLE = True
+except Exception:
+    _PDF_PREVIEW_AVAILABLE = False
+
+from PIL import Image as _PILImage, ImageFilter as _PILImageFilter
+
+
+def _build_preview_report_dict(age, sex, height_cm, weight_kg, results, exercise_last, selected_activities):
+    """Assemble the same `report` dict shape that create_pdf_bytes_ultimate()
+    expects, using whatever real session data is available right now. This
+    mirrors the dict built later for the actual paid PDF download, so the
+    preview pages are generated from the exact same code path as the real
+    report — guaranteeing pixel-identical output."""
+    r = results or {}
+    return {
+        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "inputs": {"age": age, "sex": sex, "height_cm": height_cm, "weight_kg": weight_kg},
+        "bmi": r.get("bmi"),
+        "bodyfat": r.get("bodyfat"),
+        "whr": r.get("whr"),
+        "vo2": r.get("vo2"),
+        "bio_age": r.get("bio_age"),
+        "bio_factors": r.get("bio_factors"),
+        "triage": r.get("triage"),
+        "triage_recommendations": r.get("triage_recommendations"),
+        "plan": r.get("plan"),
+        "exercise_log": exercise_last,
+        "selected_activities": selected_activities or [],
+    }
+
+
+@st.cache_data(show_spinner=False, max_entries=64)
+def _render_pdf_preview_pages_cached(report_cache_key: str, report_dict: dict):
+    """Render the real PDF for `report_dict` and return cropped, base64-encoded
+    PNGs for the pages used in the paywall slideshow. Cached on a key derived
+    from the user's actual results so it's only regenerated when their numbers
+    change — not on every Streamlit rerun.
+
+    Crop bottoms and blur boxes below were measured by pixel-sampling actual
+    rendered pages at 150 DPI (1241px wide) against the real pdf_premium.py
+    output, so the locked/unlocked zones line up exactly with the real PDF's
+    card and text boundaries — not eyeballed estimates."""
+    if not _PDF_PREVIEW_AVAILABLE:
+        return {}
+
+    try:
+        pdf_bytes = create_pdf_bytes_ultimate(report_dict)
+        pages = _pdf2image_convert_from_bytes(pdf_bytes, dpi=150)
+    except Exception as e:
+        print(f"[pdf preview] could not render PDF pages: {e}")
+        return {}
+
+    # page: 1-based PDF page index
+    # bottom: crop height in px at 150dpi (measured against a 1241px-wide render)
+    # blur_boxes: list of (left, top, right, bottom) as fractions of the
+    #             cropped image — each one pixel-verified against the real PDF
+    _PAGE_SPECS = [
+        {"page": 1,  "bottom": 1150,
+         "blur_boxes": [(0.6648, 0.6548, 1.0, 0.8148)]},                       # KPI page → "Daily calories" card
+        {"page": 3,  "bottom": 1550,
+         "blur_boxes": [(0.4851, 0.2877, 0.9702, 0.4245),                      # Biomarker dashboard → Bio Age/Activity/Lifestyle bars
+                        (0.0, 0.7716, 1.0, 1.0)]},                             #   + same 3 rows in the list below
+        {"page": 5,  "bottom": 1380,
+         "blur_boxes": [(0.311, 0.40, 0.9234, 0.4957)]},                       # VO2max → Avg/Good/Excellent comparison cols
+        {"page": 7,  "bottom": 1450,
+         "blur_boxes": [(0.6205, 0.6655, 0.7091, 0.7138),                      # Radar → Lifestyle label+value
+                        (0.3626, 0.8172, 0.4674, 0.8655),                      #   + Bio Age label+value
+                        (0.56, 0.8172, 0.6406, 0.8655)]},                      #   + Activity label+value
+        {"page": 10, "bottom": 1700,
+         "blur_boxes": [(0.0, 0.7547, 1.0, 1.0)]},                             # Training plan → Week 2 onward
+    ]
+
+    out = {}
+    for spec in _PAGE_SPECS:
+        idx = spec["page"] - 1
+        if idx < 0 or idx >= len(pages):
+            continue
+        img = pages[idx]
+        w, h = img.size
+        bottom = min(spec["bottom"], h)
+        cropped = img.crop((0, 0, w, bottom)).convert("RGB")
+        cw, ch = cropped.size
+
+        for (l, t, r, b) in spec.get("blur_boxes", []):
+            box = (int(l * cw), int(t * ch), int(r * cw), int(b * ch))
+            if box[2] <= box[0] or box[3] <= box[1]:
+                continue
+            region = cropped.crop(box).filter(_PILImageFilter.GaussianBlur(radius=9))
+            cropped.paste(region, box)
+
+        buf = BytesIO()
+        cropped.save(buf, format="PNG", optimize=True)
+        out[spec["page"]] = base64.b64encode(buf.getvalue()).decode("ascii")
+
+    return out
 
 # ── set_page_config MÅ vere det aller første Streamlit-kallet ──
 _LOGO_ICON_B64 = "PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDQ0IDQ0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxyZWN0IHdpZHRoPSI0NCIgaGVpZ2h0PSI0NCIgcng9IjExIiBmaWxsPSIjMEVDOEM0Ii8+CiAgPHBhdGggZD0iTTggMjJIMTRMMTcgMTRMMjIgMzBMMjUgMjJIMzYiIHN0cm9rZT0iIzA0MDcwRCIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPgo8L3N2Zz4K"
@@ -4518,6 +4621,27 @@ if not _unlocked:
     _plan_tag_color_pv = {"strength": "#22C55E", "cardio": "#3B82F6", "sport": "#D4AF7A", "low": "#64748B"}.get(_plan_cat_pv, "#22C55E")
     _plan_tag_label_pv = {"strength": "Strength", "cardio": "Cardio", "sport": "Sport", "low": "Low-impact"}.get(_plan_cat_pv, "Strength")
 
+    # ── Render real PDF pages → PNG for the slideshow (pixel-identical to the ──
+    # ── actual downloadable report, since it IS that report, rendered).      ──
+    _preview_report_dict = _build_preview_report_dict(
+        age=_age_for_preview, sex=_sex_for_preview,
+        height_cm=st.session_state.get("inp_height", 170),
+        weight_kg=st.session_state.get("inp_weight", 70.0),
+        results=_preview_results,
+        exercise_last=st.session_state.get("exercise_last", {}),
+        selected_activities=_selected_acts_pv,
+    )
+    # cache key changes only when the numbers that actually affect the report
+    # change — so the PDF isn't re-rendered (slow) on every Streamlit rerun
+    _preview_cache_key = "|".join(str(x) for x in [
+        _age_for_preview, _sex_for_preview, _bmi_val, _vo2_val, _vo2_pct,
+        _bio_age, _plan_activity_pv, st.session_state.get("inp_height"),
+        st.session_state.get("inp_weight"),
+    ])
+    _pdf_preview_pages = _render_pdf_preview_pages_cached(_preview_cache_key, _preview_report_dict)
+    _PV_IMG = lambda p: f"data:image/png;base64,{_pdf_preview_pages[p]}" if p in _pdf_preview_pages else ""
+    _has_pdf_previews = bool(_pdf_preview_pages)
+
     _days_sample = [
         ("MON", _plan_tag_label_pv, f"{_plan_activity_pv} — week 1 foundation session, technique-focused", "30 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
         ("TUE", _plan_tag_label_pv, f"{_plan_activity_pv} — building rhythm and consistency", "30 min", f"{_plan_tag_color_pv}20", _plan_tag_color_pv),
@@ -4788,7 +4912,33 @@ if not _unlocked:
     <div class="ss-wrap">
       <div class="ss-track" id="ssTrack">
 
-        <!-- Slide 1: KPI snapshot -->
+        {f'''
+        <!-- Slide 1: KPI snapshot (real PDF page 1) -->
+        <div class="ss-slide ss-slide-img">
+          <img src="{_PV_IMG(1)}" alt="Report page 1 preview" class="ss-pdf-img"/>
+        </div>
+
+        <!-- Slide 2: Biomarker dashboard (real PDF page 3) -->
+        <div class="ss-slide ss-slide-img">
+          <img src="{_PV_IMG(3)}" alt="Report page 3 preview" class="ss-pdf-img"/>
+        </div>
+
+        <!-- Slide 3: VO2max detail (real PDF page 5) -->
+        <div class="ss-slide ss-slide-img">
+          <img src="{_PV_IMG(5)}" alt="Report page 5 preview" class="ss-pdf-img"/>
+        </div>
+
+        <!-- Slide 4: Radar (real PDF page 7) -->
+        <div class="ss-slide ss-slide-img">
+          <img src="{_PV_IMG(7)}" alt="Report page 7 preview" class="ss-pdf-img"/>
+        </div>
+
+        <!-- Slide 5: Training plan (real PDF page 10) -->
+        <div class="ss-slide ss-slide-img">
+          <img src="{_PV_IMG(10)}" alt="Report page 10 preview" class="ss-pdf-img"/>
+        </div>
+        ''' if _has_pdf_previews else f'''
+        <!-- Fallback (illustrative, used only if PDF rendering is unavailable on host) -->
         <div class="ss-slide">
           <div class="ss-slide-label">Page 1 · At a glance</div>
           <div class="ss-kpis">
@@ -4799,8 +4949,6 @@ if not _unlocked:
           </div>
           <div class="ss-caption">Every number on this page is calculated from <strong>your</strong> data — not population averages.</div>
         </div>
-
-        <!-- Slide 2: Biomarker dashboard / score -->
         <div class="ss-slide">
           <div class="ss-slide-label">Page 3 · Biomarker dashboard</div>
           <div class="ss-score-row">
@@ -4817,8 +4965,6 @@ if not _unlocked:
           </div>
           <div class="ss-caption">A weighted composite across 5 dimensions — see exactly where your next 12 weeks should go.</div>
         </div>
-
-        <!-- Slide 3: VO2max detail -->
         <div class="ss-slide">
           <div class="ss-slide-label">Page 5 · Cardio fitness — VO2max</div>
           <div class="ss-vo2-compare">
@@ -4836,10 +4982,8 @@ if not _unlocked:
           </div>
           <div class="ss-caption">ACSM norms for your age & sex — your personal heart-rate zones unlock in full.</div>
         </div>
-
-        <!-- Slide 4: Radar -->
         <div class="ss-slide">
-          <div class="ss-slide-label">Page 8 · 5-dimension health radar</div>
+          <div class="ss-slide-label">Page 7 · 5-dimension health radar</div>
           <div class="ss-radar-wrap">
             <svg viewBox="0 0 200 200" class="ss-radar-svg">
               <polygon points="100,20 180,100 100,180 20,100" fill="none" stroke="#1E293B" stroke-width="1"/>
@@ -4858,8 +5002,6 @@ if not _unlocked:
           </div>
           <div class="ss-caption">See your full shape at a glance — and exactly which dimension to prioritise next.</div>
         </div>
-
-        <!-- Slide 5: Training plan -->
         <div class="ss-slide">
           <div class="ss-slide-label">Page 10 · Your personalised 30-day plan</div>
           <div class="ss-plan-rows">
@@ -4871,6 +5013,7 @@ if not _unlocked:
           </div>
           <div class="ss-caption">Built specifically from <em>your</em> selected activities — 30 days, four progressive blocks.</div>
         </div>
+        '''}
 
       </div>
 
