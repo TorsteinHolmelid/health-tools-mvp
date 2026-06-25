@@ -4044,125 +4044,82 @@ if results:
                 unsafe_allow_html=True,
             )
 
-# ============================================================
-#  EMAIL CAPTURE — paste this block IMMEDIATELY AFTER the
-#  biological age card and BEFORE the "Conditions" section.
-#
-#  In app.py this goes between line 3350 (the closing
-#  `unsafe_allow_html=True,)` of the bio age card) and line 3353
-#  (`# ── Conditions ────`).
-#
-#  ALSO: add `save_lead` to the existing `from db import (...)`
-#  block near the top of app.py (around line 22-27), e.g.:
-#
-#  from db import (
-#      sign_up, sign_in, sign_in_with_tokens, set_user_password, is_authenticated, get_current_user_id, sign_out,
-#      get_user_profile, save_user_profile, get_db_client, get_user_history,
-#      has_premium_access,
-#      get_supabase_url, get_supabase_key,
-#      save_lead,   # <-- add this
-#  )
-# ============================================================
-
-    # ── Email capture (right after the emotional "aha" moment) ──
-    if "bio_age" in results and not st.session_state.get("lead_email_captured", False):
-        st.markdown(
-            '<div style="font-family:Arial,sans-serif;background:linear-gradient(135deg,#0EA5A322,#0EA5A30D);'
-            'border:1px solid #0EA5A355;border-radius:16px;padding:20px 22px;margin-top:16px;color:#E5E7EB;">'
-            '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">📩 Save your result + get 3 personal tips</div>'
-            '<div style="font-size:13px;color:#9CA3AF;line-height:1.5;">'
-            'We\'ll email you a copy of your biological age result, plus 3 tips tailored to your numbers above. '
-            'No spam — just useful stuff, straight to your inbox.</div></div>',
-            unsafe_allow_html=True,
-        )
-
-        _lead_col1, _lead_col2 = st.columns([3, 1])
-        with _lead_col1:
-            _lead_email = st.text_input(
-                "Your email",
-                key="lead_capture_email",
-                placeholder="you@example.com",
-                label_visibility="collapsed",
-            )
-        with _lead_col2:
-            _lead_submit = st.button("Send me my tips", key="lead_capture_button", use_container_width=True)
-
-        if _lead_submit:
-            _lead_email_valid = "@" in _lead_email and "." in _lead_email.split("@")[-1]
-            if not _lead_email_valid:
-                st.error("Please enter a valid email address.")
-            else:
-                _lead_saved_ok = True
-                try:
-                    _lead_db = get_db_client()
-                    save_lead(
-                        _lead_db,
-                        email=_lead_email,
-                        source="bio_age_result",
-                        bio_age=results.get("bio_age", {}).get("value"),
-                        chronological_age=float(age) if age else None,
-                    )
-                except Exception as _lead_err:
-                    # Don't break the user experience if the leads table
-                    # doesn't exist yet or the insert fails for any reason —
-                    # just log it quietly and still show success to the user.
-                    _lead_saved_ok = False
-                    print(f"[lead capture] could not save lead: {_lead_err}")
-
-                # Fire GA4 event regardless, so we can track intent even if
-                # the DB write failed (helps catch silent backend issues).
-                components.html(
-                    """
-                    <script>
-                    (function() {
-                        try {
-                            window.top.dataLayer = window.top.dataLayer || [];
-                            window.top.dataLayer.push({'event': 'email_captured', 'source': 'bio_age_result'});
-                        } catch (e) {
-                            console.error('Could not push email_captured event:', e);
-                        }
-                    })();
-                    </script>
-                    """,
-                    height=0,
-                )
-
-                st.session_state["lead_email_captured"] = True
-                if _lead_saved_ok:
-                    st.success("✅ Got it! Check your inbox shortly for your result and tips.")
-                else:
-                    st.success("✅ Got it! We'll be in touch.")
-                st.rerun()
-
-    # ── Upsell trigger (vises etter email capture ELLER om email allereie er captured) ──
+    # ── Premium upsell — vises RETT ETTER biologisk alder (emosjonelt høgdepunkt) ──
+    # Plassering: mellom bio age-kortet og Conditions-seksjonen.
+    # E-postfeltet (lead capture) er flytta NED til etter samanlikningstabellen
+    # i paywall-seksjonen, som plan B for dei som ikkje kjøper med ein gong.
     if "bio_age" in results and not st.session_state.get("report_unlocked", False):
         _bio_upsell_val = results["bio_age"]["value"]
         _bio_upsell_chron = float(age) if age else 30.0
         _bio_upsell_diff = _bio_upsell_val - _bio_upsell_chron
+
+        # Personalisert overskrift og teaser basert på resultatet
         if _bio_upsell_diff <= 0:
             _upsell_headline = f"Your body is {abs(_bio_upsell_diff):.1f} years younger than your calendar age."
-            _upsell_sub = "Want to know exactly what's driving that — and how to push it even further?"
+            _upsell_teaser = (
+                f"Your VO₂ max and lifestyle habits are working in your favour. "
+                f"A targeted 12-week plan could push your biological age down by another "
+                f"{min(7, max(2, int(abs(_bio_upsell_diff) * 0.5 + 2)))} years."
+            )
         else:
             _upsell_headline = f"Your body is {abs(_bio_upsell_diff):.1f} years older than your calendar age."
-            _upsell_sub = "The good news: the biggest factors are changeable. Want a concrete plan to reverse it?"
+            _upsell_teaser = (
+                f"The good news: the factors driving this are changeable. "
+                f"A personalised 12-week plan could reverse {min(int(abs(_bio_upsell_diff) * 0.6) + 1, int(abs(_bio_upsell_diff)))} "
+                f"of those years with the right protocol."
+            )
+
+        # Kompakt, sjølvstendig premium-boks — knappen er INNI boksen
         st.markdown(
-            f'<div style="font-family:Arial,sans-serif;background:linear-gradient(135deg,rgba(14,165,163,0.12),rgba(10,18,32,0.95));'
-            f'border:1.5px solid rgba(14,165,163,0.45);border-radius:16px;padding:22px 24px;margin:20px 0;">'
-            f'<div style="font-size:17px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">{_upsell_headline}</div>'
-            f'<div style="font-size:14px;color:#9CA3AF;line-height:1.6;margin-bottom:16px;">{_upsell_sub}</div>'
-            f'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">'
-            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">✓ Full 12-week training plan</span>'
-            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">✓ Personal HR training zones</span>'
-            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">✓ Calorie &amp; nutrition strategy</span>'
-            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">✓ Downloadable PDF report</span>'
+            f'<div style="font-family:Arial,sans-serif;'
+            f'background:rgba(14,165,163,0.07);'
+            f'border:1.5px solid rgba(14,165,163,0.35);'
+            f'border-radius:16px;padding:22px 24px;margin:20px 0;">'
+
+            # Overskrift + teaser
+            f'<div style="font-size:17px;font-weight:800;color:#E5E7EB;margin-bottom:6px;">'
+            f'{_upsell_headline}</div>'
+            f'<div style="font-size:13px;color:#9CA3AF;line-height:1.6;margin-bottom:16px;">'
+            f'{_upsell_teaser}</div>'
+
+            # Feature-tags
+            f'<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;">'
+            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+            f'color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">'
+            f'✓ 10-page PDF report</span>'
+            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+            f'color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">'
+            f'✓ Progress tracking over time</span>'
+            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+            f'color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">'
+            f'✓ Full 12-week plan</span>'
+            f'<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);'
+            f'color:#22C55E;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;">'
+            f'✓ AI Coach insights</span>'
             f'</div>'
-            f'<div style="font-size:12px;color:#6B7280;">One-time · $4.99 · No subscription</div>'
+
+            # Pris + trust-linje
+            f'<div style="display:flex;align-items:center;justify-content:space-between;'
+            f'flex-wrap:wrap;gap:10px;">'
+            f'<div style="font-size:11px;color:#6B7280;">'
+            f'One-time · $4.99 · No subscription · Instant access</div>'
+            f'<div style="font-size:22px;font-weight:800;color:#0EC8C4;">$4.99</div>'
+            f'</div>'
             f'</div>',
             unsafe_allow_html=True,
         )
-        if st.button("🔓 Get my full plan — $4.99 →", type="primary", key="bio_age_upsell_btn", use_container_width=True):
+
+        # CTA-knapp — direkte under boksen, visuelt kopla til han
+        if st.button(
+            "Get my plan and PDF report — $4.99 →",
+            type="primary",
+            key="bio_age_upsell_btn",
+            use_container_width=True,
+        ):
             st.session_state["scroll_to_paywall"] = True
             st.rerun()
+
+        st.caption("🔒 Secure Stripe checkout · Download in seconds · No subscription")
 
 # ── Conditions ────
     if "triage" in results:
@@ -4881,6 +4838,57 @@ function switchTab(name) {{
     if not _email_valid and _user_email:
         st.caption("⚠️ Enter a valid email to continue")
     st.caption("After payment, you'll get an email with a link to log in and download your report.")
+
+    # ── Plan B: e-postfelt for dei som ikkje kjøper med ein gong ──
+    # Vises berre for ikkje-innlogga brukarar som ikkje allereie har oppgitt e-post.
+    if not _uid and not st.session_state.get("lead_email_captured", False):
+        st.markdown(
+            '<div style="margin-top:24px;border-top:1px solid rgba(255,255,255,0.07);'            'padding-top:20px;font-family:Arial,sans-serif;">'            '<div style="font-size:13px;color:#6B7280;text-align:center;margin-bottom:12px;">'            'Not ready yet? Get 3 free personalised tips by email instead →</div>'            '</div>',
+            unsafe_allow_html=True,
+        )
+        _planb_col1, _planb_col2 = st.columns([3, 1])
+        with _planb_col1:
+            _planb_email = st.text_input(
+                "Email for free tips",
+                key="planb_lead_email",
+                placeholder="you@example.com",
+                label_visibility="collapsed",
+            )
+        with _planb_col2:
+            _planb_submit = st.button("Send tips", key="planb_lead_button", use_container_width=True)
+
+        if _planb_submit:
+            _planb_valid = "@" in _planb_email and "." in _planb_email.split("@")[-1]
+            if not _planb_valid:
+                st.error("Please enter a valid email address.")
+            else:
+                try:
+                    _planb_db = get_db_client()
+                    save_lead(
+                        _planb_db,
+                        email=_planb_email,
+                        source="paywall_plan_b",
+                        bio_age=st.session_state.get("results", {}).get("bio_age", {}).get("value"),
+                        chronological_age=float(age) if age else None,
+                    )
+                except Exception as _planb_err:
+                    print(f"[lead capture plan B] could not save lead: {_planb_err}")
+                components.html(
+                    """
+                    <script>
+                    (function() {
+                        try {
+                            window.top.dataLayer = window.top.dataLayer || [];
+                            window.top.dataLayer.push({'event': 'email_captured', 'source': 'paywall_plan_b'});
+                        } catch (e) {}
+                    })();
+                    </script>
+                    """,
+                    height=0,
+                )
+                st.session_state["lead_email_captured"] = True
+                st.success("✅ On its way! Check your inbox for 3 tips tailored to your results.")
+                st.rerun()
 
 else:
     # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
