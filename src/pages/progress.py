@@ -19,7 +19,7 @@ st.set_page_config(
     page_title="My Progress · MyHealthTools",
     page_icon="📈",
     layout="centered",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # --- Shared CSS (mirrors app.py) ---
@@ -45,12 +45,42 @@ st.markdown("""
 [data-testid="stSidebar"] > div:first-child { background: transparent !important; }
 [data-testid="stSidebarContent"] { background: transparent !important; }
 
-[data-testid="collapsedControl"] {
-  background: rgba(14,200,196,0.1) !important;
-  border: 1px solid rgba(14,200,196,0.25) !important;
-  color: var(--accent) !important;
+/* Header: transparent men held høgda så toggle-knappen er klikkbar */
+header[data-testid="stHeader"] {
+  background: transparent !important;
+  height: 3.5rem !important;
+  overflow: visible !important;
+  pointer-events: none !important;
 }
 
+/* Sidebar-toggle — teal knapp øvst til venstre */
+[data-testid="collapsedControl"],
+[aria-label="open sidebar"],
+[aria-label="Close sidebar"] {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: all !important;
+  background: #0EC8C4 !important;
+  border-radius: 50% !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  box-shadow: 0 0 16px rgba(14,200,196,0.6) !important;
+  position: fixed !important;
+  top: 0.75rem !important;
+  left: 0.75rem !important;
+  z-index: 999999 !important;
+  border: none !important;
+  cursor: pointer !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+[data-testid="collapsedControl"] svg,
+[aria-label="open sidebar"] svg,
+[aria-label="Close sidebar"] svg {
+  fill: #020F0F !important;
+  color: #020F0F !important;
+}
 /* User card */
 .ht-side-card {
   background: linear-gradient(160deg, rgba(14,165,163,0.08), rgba(15,23,42,0.9));
