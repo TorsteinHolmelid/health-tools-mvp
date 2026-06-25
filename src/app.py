@@ -583,21 +583,30 @@ st.markdown(
 #MainMenu, footer, [data-testid="stToolbar"],
 [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
 
-/* Header: transparent men synleg så toggle-knappen er klikkbar */
+/* Header og toolbar: synleg og på plass */
 header[data-testid="stHeader"] {
   background: transparent !important;
   height: 3.5rem !important;
   overflow: visible !important;
   pointer-events: none !important;
 }
+[data-testid="stAppToolbar"] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  height: 3.5rem !important;
+  z-index: 999998 !important;
+  pointer-events: none !important;
+  display: flex !important;
+  align-items: center !important;
+}
 
-/* Sidebar-toggle — støttar både gamalt og nytt Streamlit */
-[data-testid="collapsedControl"],
+/* Sidebar-toggle — støttar nytt og gamalt Streamlit */
 [data-testid="stExpandSidebarButton"],
 [data-testid="stBaseButton-headerNoPadding"],
-button[kind="headerNoPadding"],
-[aria-label="open sidebar"],
-[aria-label="Close sidebar"] {
+[data-testid="collapsedControl"],
+button[kind="headerNoPadding"] {
   display: flex !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -616,11 +625,9 @@ button[kind="headerNoPadding"],
   align-items: center !important;
   justify-content: center !important;
 }
-[data-testid="collapsedControl"] svg,
 [data-testid="stExpandSidebarButton"] svg,
 [data-testid="stBaseButton-headerNoPadding"] svg,
-[aria-label="open sidebar"] svg,
-[aria-label="Close sidebar"] svg {
+[data-testid="collapsedControl"] svg {
   fill: #020F0F !important;
   color: #020F0F !important;
 }
