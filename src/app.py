@@ -4591,6 +4591,91 @@ if not _unlocked:
   background:rgba(34,197,94,0.10);border:1px solid rgba(34,197,94,0.28);
   color:#22C55E;border-radius:999px;padding:4px 12px;font-size:11px;font-weight:600;
 }}
+/* ── slideshow ── */
+.ss-wrap {{
+  position:relative;
+  overflow:hidden;
+  background:#0A1628;
+}}
+.ss-track {{
+  display:flex;
+  transition:transform 0.35s ease;
+  will-change:transform;
+  touch-action:pan-y;
+}}
+.ss-slide {{
+  flex:0 0 100%;
+  min-width:100%;
+  padding:18px 20px 14px 20px;
+  box-sizing:border-box;
+}}
+.ss-slide-label {{
+  font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
+  color:#0EA5A3;margin-bottom:14px;
+}}
+.ss-caption {{
+  font-size:12px;color:#94A3B8;margin-top:14px;line-height:1.5;
+}}
+.ss-blur {{
+  filter:blur(4px);
+  user-select:none;
+  pointer-events:none;
+}}
+.ss-kpis {{
+  display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;
+}}
+.ss-kpi {{
+  background:#0D1B2E;border:1px solid #1E293B;border-radius:10px;
+  padding:12px 6px;text-align:center;
+}}
+.ss-kpi-l {{ font-size:9px;color:#64748B;letter-spacing:0.05em;margin-bottom:4px;text-transform:uppercase; }}
+.ss-kpi-v {{ font-size:18px;font-weight:800; }}
+.ss-score-row {{ display:flex;align-items:center;gap:18px; }}
+.ss-score-ring {{
+  width:84px;height:84px;border-radius:50%;
+  border:6px solid #22C55E;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  flex-shrink:0;background:#0D1B2E;
+}}
+.ss-score-num {{ font-size:24px;font-weight:800;color:#22C55E;line-height:1; }}
+.ss-score-sub {{ font-size:10px;color:#64748B; }}
+.ss-score-bars {{ flex:1;display:flex;flex-direction:column;gap:8px; }}
+.ss-bar-row {{ display:flex;align-items:center;gap:8px;font-size:11px;color:#94A3B8; }}
+.ss-bar-row span {{ width:70px;flex-shrink:0; }}
+.ss-bar {{ flex:1;height:6px;background:#1E293B;border-radius:4px;overflow:hidden; }}
+.ss-bar-fill {{ height:100%;border-radius:4px; }}
+.ss-vo2-compare {{ display:flex;gap:8px;text-align:center; }}
+.ss-vo2-col {{ flex:1;background:#0D1B2E;border:1px solid #1E293B;border-radius:10px;padding:12px 4px; }}
+.ss-vo2-val {{ font-size:18px;font-weight:800; }}
+.ss-vo2-lbl {{ font-size:10px;color:#64748B;margin-top:2px; }}
+.ss-hr-zones {{ display:flex;gap:4px;margin-top:12px;border-radius:8px;overflow:hidden; }}
+.ss-hr-zone {{ flex:1;text-align:center;font-size:10px;color:#CBD5E1;padding:8px 0;font-weight:700; }}
+.ss-radar-wrap {{ position:relative;width:200px;height:200px;margin:0 auto; }}
+.ss-radar-svg {{ width:100%;height:100%; }}
+.ss-radar-lbl {{ position:absolute;font-size:10px;color:#94A3B8;font-weight:600;white-space:nowrap; }}
+.ss-plan-rows {{ display:flex;flex-direction:column;gap:6px; }}
+.ss-plan-row {{ display:flex;align-items:center;gap:8px;background:#0D1B2E;border:1px solid #1E293B;border-radius:8px;padding:8px 10px; }}
+.ss-plan-day {{ font-size:10px;font-weight:700;color:#64748B;width:42px;flex-shrink:0; }}
+.ss-plan-tag {{ font-size:10px;font-weight:600;border-radius:6px;padding:2px 8px;flex-shrink:0;white-space:nowrap; }}
+.ss-plan-desc {{ font-size:11px;color:#CBD5E1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }}
+.ss-dots {{ display:flex;justify-content:center;gap:6px;padding:10px 0; background:#0A1628; }}
+.ss-dot {{ width:6px;height:6px;border-radius:50%;background:#334155;cursor:pointer;transition:all 0.2s; }}
+.ss-dot.active {{ background:#0EA5A3;width:18px;border-radius:4px; }}
+.ss-arrow {{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:30px;height:30px;border-radius:50%;
+  background:rgba(13,27,46,0.85);border:1px solid #334155;color:#E5E7EB;
+  font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  z-index:5;
+}}
+.ss-arrow-left {{ left:8px; }}
+.ss-arrow-right {{ right:8px; }}
+.ss-swipe-hint {{
+  text-align:center;font-size:10px;color:#475569;padding:6px 0 2px 0;
+}}
+@media (min-width:600px) {{
+  .ss-arrow {{ width:34px;height:34px; }}
+}}
 </style>
 
 <!-- ═══════════════ UNIFIED UPGRADE CARD ═══════════════ -->
@@ -4604,12 +4689,120 @@ if not _unlocked:
 
   <!-- Tabs -->
   <div class="uc-tabs">
-    <div class="uc-tab active" id="tab-compare" onclick="switchTab('compare')">Free vs Premium</div>
+    <div class="uc-tab active" id="tab-slides" onclick="switchTab('slides')">📱 See your report</div>
+    <div class="uc-tab" id="tab-compare" onclick="switchTab('compare')">Free vs Premium</div>
     <div class="uc-tab" id="tab-preview" onclick="switchTab('preview')">12-week plan preview</div>
   </div>
 
+  <!-- Panel: Slideshow preview of the actual report -->
+  <div class="uc-panel active" id="panel-slides">
+    <div class="ss-wrap">
+      <div class="ss-track" id="ssTrack">
+
+        <!-- Slide 1: KPI snapshot -->
+        <div class="ss-slide">
+          <div class="ss-slide-label">Page 1 · At a glance</div>
+          <div class="ss-kpis">
+            <div class="ss-kpi"><div class="ss-kpi-l">BMI</div><div class="ss-kpi-v" style="color:#F59E0B;">{_bmi_val if _bmi_val != "—" else "—"}</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">VO2max</div><div class="ss-kpi-v" style="color:#EF4444;">{_vo2_val if _vo2_val != "—" else "—"}</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">Bio age</div><div class="ss-kpi-v" style="color:#22C55E;">{_bio_age if _bio_age != "—" else "—"}</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">Calories</div><div class="ss-kpi-v ss-blur" style="color:#22C55E;">1656</div></div>
+          </div>
+          <div class="ss-caption">Every number on this page is calculated from <strong>your</strong> data — not population averages.</div>
+        </div>
+
+        <!-- Slide 2: Biomarker dashboard / score -->
+        <div class="ss-slide">
+          <div class="ss-slide-label">Page 3 · Biomarker dashboard</div>
+          <div class="ss-score-row">
+            <div class="ss-score-ring">
+              <div class="ss-score-num">73</div>
+              <div class="ss-score-sub">/ 100</div>
+            </div>
+            <div class="ss-score-bars">
+              <div class="ss-bar-row"><span>Body Comp</span><div class="ss-bar"><div class="ss-bar-fill" style="width:75%;background:#22C55E;"></div></div></div>
+              <div class="ss-bar-row"><span>Cardio</span><div class="ss-bar"><div class="ss-bar-fill" style="width:20%;background:#EF4444;"></div></div></div>
+              <div class="ss-bar-row ss-blur"><span>Bio Age</span><div class="ss-bar"><div class="ss-bar-fill" style="width:100%;background:#22C55E;"></div></div></div>
+              <div class="ss-bar-row ss-blur"><span>Activity</span><div class="ss-bar"><div class="ss-bar-fill" style="width:100%;background:#22C55E;"></div></div></div>
+            </div>
+          </div>
+          <div class="ss-caption">A weighted composite across 5 dimensions — see exactly where your next 12 weeks should go.</div>
+        </div>
+
+        <!-- Slide 3: VO2max detail -->
+        <div class="ss-slide">
+          <div class="ss-slide-label">Page 5 · Cardio fitness — VO2max</div>
+          <div class="ss-vo2-compare">
+            <div class="ss-vo2-col"><div class="ss-vo2-val" style="color:#EF4444;">{_vo2_val if _vo2_val != "—" else "—"}</div><div class="ss-vo2-lbl">You</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#94A3B8;">44.0</div><div class="ss-vo2-lbl">Average</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#22C55E;">50.6</div><div class="ss-vo2-lbl">Good</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#0EA5A3;">57.2</div><div class="ss-vo2-lbl">Excellent</div></div>
+          </div>
+          <div class="ss-hr-zones ss-blur">
+            <div class="ss-hr-zone" style="background:#64748B33;">Z1</div>
+            <div class="ss-hr-zone" style="background:#22C55E33;">Z2</div>
+            <div class="ss-hr-zone" style="background:#3B82F633;">Z3</div>
+            <div class="ss-hr-zone" style="background:#F59E0B33;">Z4</div>
+            <div class="ss-hr-zone" style="background:#EF444433;">Z5</div>
+          </div>
+          <div class="ss-caption">Your personal heart-rate training zones, calculated from your age — unlocked in full.</div>
+        </div>
+
+        <!-- Slide 4: Radar -->
+        <div class="ss-slide">
+          <div class="ss-slide-label">Page 8 · 5-dimension health radar</div>
+          <div class="ss-radar-wrap">
+            <svg viewBox="0 0 200 200" class="ss-radar-svg">
+              <polygon points="100,20 180,100 100,180 20,100" fill="none" stroke="#1E293B" stroke-width="1"/>
+              <polygon points="100,55 145,100 100,145 55,100" fill="none" stroke="#1E293B" stroke-width="1"/>
+              <polygon points="100,40 160,100 130,170 50,130" fill="#0EA5A333" stroke="#0EA5A3" stroke-width="2"/>
+              <circle cx="100" cy="40" r="3" fill="#0EA5A3"/>
+              <circle cx="160" cy="100" r="3" fill="#0EA5A3"/>
+              <circle cx="130" cy="170" r="3" fill="#0EA5A3"/>
+              <circle cx="50" cy="130" r="3" fill="#0EA5A3"/>
+            </svg>
+            <div class="ss-radar-lbl" style="top:0;left:50%;transform:translate(-50%,-50%);">Body Comp</div>
+            <div class="ss-radar-lbl ss-blur" style="top:50%;right:0;transform:translate(50%,-50%);">Lifestyle</div>
+            <div class="ss-radar-lbl ss-blur" style="bottom:0;right:25%;transform:translate(50%,50%);">Activity</div>
+            <div class="ss-radar-lbl ss-blur" style="bottom:0;left:25%;transform:translate(-50%,50%);">Bio Age</div>
+            <div class="ss-radar-lbl" style="top:50%;left:0;transform:translate(-50%,-50%);">Cardio</div>
+          </div>
+          <div class="ss-caption">See your full shape at a glance — and exactly which dimension to prioritise next.</div>
+        </div>
+
+        <!-- Slide 5: Training plan -->
+        <div class="ss-slide">
+          <div class="ss-slide-label">Page 10 · Your personalised 30-day plan</div>
+          <div class="ss-plan-rows">
+            <div class="ss-plan-row"><span class="ss-plan-day">MON</span><span class="ss-plan-tag" style="background:#22C55E22;color:#22C55E;border:1px solid #22C55E44;">Strength</span><span class="ss-plan-desc">Full-body compound lifts</span></div>
+            <div class="ss-plan-row"><span class="ss-plan-day">TUE</span><span class="ss-plan-tag" style="background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644;">Cardio</span><span class="ss-plan-desc">Zone 2 steady-state, 30 min</span></div>
+            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">WED</span><span class="ss-plan-tag" style="background:#22C55E22;color:#22C55E;border:1px solid #22C55E44;">Strength</span><span class="ss-plan-desc">Upper/lower split</span></div>
+            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">THU</span><span class="ss-plan-tag" style="background:#F59E0B22;color:#F59E0B;border:1px solid #F59E0B44;">HIIT</span><span class="ss-plan-desc">4×4 intervals</span></div>
+            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">FRI–SUN</span><span class="ss-plan-tag" style="background:#64748B22;color:#94A3B8;border:1px solid #64748B44;">···</span><span class="ss-plan-desc">Unlocks with full report</span></div>
+          </div>
+          <div class="ss-caption">Built specifically from <em>your</em> selected activities — 30 days, four progressive blocks.</div>
+        </div>
+
+      </div>
+
+      <!-- Dots -->
+      <div class="ss-dots" id="ssDots">
+        <span class="ss-dot active" onclick="ssGoTo(0)"></span>
+        <span class="ss-dot" onclick="ssGoTo(1)"></span>
+        <span class="ss-dot" onclick="ssGoTo(2)"></span>
+        <span class="ss-dot" onclick="ssGoTo(3)"></span>
+        <span class="ss-dot" onclick="ssGoTo(4)"></span>
+      </div>
+
+      <!-- Arrows -->
+      <button class="ss-arrow ss-arrow-left" onclick="ssPrev()">‹</button>
+      <button class="ss-arrow ss-arrow-right" onclick="ssNext()">›</button>
+    </div>
+    <div class="ss-swipe-hint">👆 Swipe or tap arrows to preview your report</div>
+  </div>
+
   <!-- Panel: Compare table -->
-  <div class="uc-panel active" id="panel-compare">
+  <div class="uc-panel" id="panel-compare">
     <table class="uc-compare">
       <thead>
         <tr>
@@ -4733,16 +4926,70 @@ if not _unlocked:
 
 <script>
 function switchTab(name) {{
+  document.getElementById('panel-slides').classList.remove('active');
   document.getElementById('panel-compare').classList.remove('active');
   document.getElementById('panel-preview').classList.remove('active');
+  document.getElementById('tab-slides').classList.remove('active');
   document.getElementById('tab-compare').classList.remove('active');
   document.getElementById('tab-preview').classList.remove('active');
   document.getElementById('panel-' + name).classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
 }}
+
+(function() {{
+  var ssIndex = 0;
+  var ssTotal = 5;
+  var ssTrack = document.getElementById('ssTrack');
+  var ssStartX = 0;
+  var ssDeltaX = 0;
+  var ssDragging = false;
+
+  function ssRender() {{
+    ssTrack.style.transform = 'translateX(' + (-ssIndex * 100) + '%)';
+    var dots = document.querySelectorAll('#ssDots .ss-dot');
+    for (var i = 0; i < dots.length; i++) {{
+      dots[i].classList.toggle('active', i === ssIndex);
+    }}
+  }}
+  window.ssGoTo = function(i) {{ ssIndex = Math.max(0, Math.min(ssTotal - 1, i)); ssRender(); }};
+  window.ssNext = function() {{ ssGoTo(ssIndex + 1 >= ssTotal ? 0 : ssIndex + 1); }};
+  window.ssPrev = function() {{ ssGoTo(ssIndex - 1 < 0 ? ssTotal - 1 : ssIndex - 1); }};
+
+  if (ssTrack) {{
+    ssTrack.addEventListener('touchstart', function(e) {{
+      ssDragging = true;
+      ssStartX = e.touches[0].clientX;
+      ssTrack.style.transition = 'none';
+    }}, {{passive: true}});
+    ssTrack.addEventListener('touchmove', function(e) {{
+      if (!ssDragging) return;
+      ssDeltaX = e.touches[0].clientX - ssStartX;
+      var pct = (-ssIndex * 100) + (ssDeltaX / ssTrack.offsetWidth * 100);
+      ssTrack.style.transform = 'translateX(' + pct + '%)';
+    }}, {{passive: true}});
+    ssTrack.addEventListener('touchend', function() {{
+      ssDragging = false;
+      ssTrack.style.transition = 'transform 0.35s ease';
+      if (ssDeltaX < -40) ssNext();
+      else if (ssDeltaX > 40) ssPrev();
+      else ssRender();
+      ssDeltaX = 0;
+    }});
+  }}
+
+  // auto-advance every 4s, pausing on interaction
+  var ssAuto = setInterval(function() {{ ssNext(); }}, 4000);
+  if (ssTrack) {{
+    ssTrack.addEventListener('touchstart', function() {{ clearInterval(ssAuto); }});
+  }}
+  var arrows = document.querySelectorAll('.ss-arrow');
+  for (var a = 0; a < arrows.length; a++) {{
+    arrows[a].addEventListener('click', function() {{ clearInterval(ssAuto); }});
+  }}
+}})();
 </script>
 """
-    components.html(upgrade_card_html, height=560, scrolling=False)
+    components.html(upgrade_card_html, height=860, scrolling=False)
 
     # -------------------- 3. Email + Stripe checkout (always visible below card) --------------------
 
