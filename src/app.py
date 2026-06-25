@@ -40,24 +40,55 @@ st.set_page_config(
 )
 
 # ── Hamburger-knapp: eigen teal knapp som triggar Streamlit sin sidebar ──────
-st.markdown("""
-<button id="ht-hamburger" onclick="
-  (function() {
-    var selectors = [
-      '[data-testid=\\'stExpandSidebarButton\\']',
-      '[data-testid=\\'stBaseButton-headerNoPadding\\']',
-      '[data-testid=\\'collapsedControl\\']',
-      'button[kind=\\'headerNoPadding\\']'
-    ];
-    for (var i = 0; i < selectors.length; i++) {
-      var btn = document.querySelector(selectors[i]);
-      if (btn) { btn.click(); return; }
-    }
-  })();
-">
+import streamlit.components.v1 as components
+components.html("""
+<style>
+#ht-burger {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 9999999;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: #0EC8C4;
+  box-shadow: 0 0 16px rgba(14,200,196,0.6);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0;
+}
+#ht-burger span {
+  display: block;
+  width: 14px;
+  height: 2px;
+  background: #020F0F;
+  border-radius: 2px;
+  pointer-events: none;
+}
+</style>
+<button id="ht-burger">
   <span></span><span></span><span></span>
 </button>
-""", unsafe_allow_html=True)
+<script>
+document.getElementById('ht-burger').addEventListener('click', function() {
+  var selectors = [
+    '[data-testid="stExpandSidebarButton"]',
+    '[data-testid="stBaseButton-headerNoPadding"]',
+    '[data-testid="collapsedControl"]'
+  ];
+  var doc = window.parent.document;
+  for (var i = 0; i < selectors.length; i++) {
+    var btn = doc.querySelector(selectors[i]);
+    if (btn) { btn.click(); return; }
+  }
+});
+</script>
+""", height=0)
 
 # --- Magic link-innlogging: fang opp access_token/refresh_token ---
 # Supabase sender disse i URL-fragmentet (#access_token=...), som aldri
@@ -603,40 +634,12 @@ st.markdown(
 #MainMenu, footer, [data-testid="stToolbar"],
 [data-testid="stDecoration"], [data-testid="stStatusWidget"] { display: none !important; }
 
-/* Gøym heile Streamlit-headeren — vi lagar eigen hamburger */
+/* Gøym heile Streamlit-headeren */
 header[data-testid="stHeader"],
 [data-testid="stAppToolbar"],
 [data-testid="stToolbar"],
 [data-testid="stDecoration"] {
   display: none !important;
-}
-
-/* Eigen hamburger-knapp */
-#ht-hamburger {
-  position: fixed !important;
-  top: 0.75rem !important;
-  left: 0.75rem !important;
-  z-index: 9999999 !important;
-  width: 2.5rem !important;
-  height: 2.5rem !important;
-  border-radius: 50% !important;
-  background: #0EC8C4 !important;
-  box-shadow: 0 0 16px rgba(14,200,196,0.6) !important;
-  border: none !important;
-  cursor: pointer !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-direction: column !important;
-  gap: 4px !important;
-  padding: 0 !important;
-}
-#ht-hamburger span {
-  display: block !important;
-  width: 14px !important;
-  height: 2px !important;
-  background: #020F0F !important;
-  border-radius: 2px !important;
 }
 
 
