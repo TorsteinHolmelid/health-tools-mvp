@@ -4890,6 +4890,12 @@ function switchTab(name) {{
                 st.success("✅ On its way! Check your inbox for 3 tips tailored to your results.")
                 st.rerun()
 
+        # Spacer so the sticky bar doesn't cover the plan-B email field
+        st.markdown(
+            '<div style="height:90px;"></div>',
+            unsafe_allow_html=True,
+        )
+
 else:
     # -------------------- Premium: vis nedlastingsknapp for PDF --------------------
     _results_for_pdf = st.session_state.get("results", {})
