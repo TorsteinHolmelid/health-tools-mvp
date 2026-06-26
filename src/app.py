@@ -4822,6 +4822,14 @@ if not _unlocked:
   padding:18px 20px 14px 20px;
   box-sizing:border-box;
 }}
+.ss-slide-img {{
+  padding:0;
+}}
+.ss-pdf-img {{
+  width:100%;
+  height:auto;
+  display:block;
+}}
 .ss-slide-label {{
   font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;
   color:#0EA5A3;margin-bottom:14px;
