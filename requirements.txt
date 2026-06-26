@@ -10,3 +10,5 @@ pytest
 plotly>=5.0.0
 supabase
 kaleido
+pdf2image>=1.16.0
+Pillow>=10.0.0
