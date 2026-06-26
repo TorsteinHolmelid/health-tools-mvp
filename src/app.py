@@ -105,7 +105,7 @@ def _render_pdf_preview_pages_cached(report_cache_key: str, report_dict: dict):
                         (0.3626, 0.8172, 0.4674, 0.8655),                      #   + Bio Age label+value
                         (0.56, 0.8172, 0.6406, 0.8655)]},                      #   + Activity label+value
         {"page": 10, "bottom": 1754,
-         "blur_boxes": [(0.0, 0.7547, 1.0, 1.0)]},                             # Training plan → Week 2 onward
+         "blur_boxes": [(0.0, 0.52, 1.0, 1.0)]},                            # Training plan → Week 2 onward
     ]
 
     out = {}
