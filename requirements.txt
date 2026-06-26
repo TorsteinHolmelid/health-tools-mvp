@@ -12,3 +12,4 @@ supabase
 kaleido
 pdf2image>=1.16.0
 Pillow>=10.0.0
+pip install pdf2image pillow
