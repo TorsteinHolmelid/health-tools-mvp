@@ -4809,6 +4809,8 @@ if not _unlocked:
   position:relative;
   overflow:hidden;
   background:#0A1628;
+  max-height:600px;
+  overflow-y:auto;
 }}
 .ss-track {{
   display:flex;
