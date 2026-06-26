@@ -92,19 +92,19 @@ def _render_pdf_preview_pages_cached(report_cache_key: str, report_dict: dict):
     # bottom: crop height in px at 150dpi (measured against a 1241px-wide render)
     # blur_boxes: list of (left, top, right, bottom) as fractions of the
     #             cropped image — each one pixel-verified against the real PDF
-    _PAGE_SPECS = [
-        {"page": 1,  "bottom": 1150,
+_PAGE_SPECS = [
+        {"page": 1,  "bottom": 1754,
          "blur_boxes": [(0.6648, 0.6548, 1.0, 0.8148)]},                       # KPI page → "Daily calories" card
-        {"page": 3,  "bottom": 1550,
+        {"page": 3,  "bottom": 1754,
          "blur_boxes": [(0.4851, 0.2877, 0.9702, 0.4245),                      # Biomarker dashboard → Bio Age/Activity/Lifestyle bars
                         (0.0, 0.7716, 1.0, 1.0)]},                             #   + same 3 rows in the list below
-        {"page": 5,  "bottom": 1380,
+        {"page": 5,  "bottom": 1754,
          "blur_boxes": [(0.311, 0.40, 0.9234, 0.4957)]},                       # VO2max → Avg/Good/Excellent comparison cols
-        {"page": 7,  "bottom": 1450,
+        {"page": 7,  "bottom": 1754,
          "blur_boxes": [(0.6205, 0.6655, 0.7091, 0.7138),                      # Radar → Lifestyle label+value
                         (0.3626, 0.8172, 0.4674, 0.8655),                      #   + Bio Age label+value
                         (0.56, 0.8172, 0.6406, 0.8655)]},                      #   + Activity label+value
-        {"page": 10, "bottom": 1700,
+        {"page": 10, "bottom": 1754,
          "blur_boxes": [(0.0, 0.7547, 1.0, 1.0)]},                             # Training plan → Week 2 onward
     ]
 
