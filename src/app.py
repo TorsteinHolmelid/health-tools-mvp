@@ -94,18 +94,30 @@ def _render_pdf_preview_pages_cached(report_cache_key: str, report_dict: dict):
     #             cropped image — each one pixel-verified against the real PDF
     _PAGE_SPECS = [
         {"page": 1,  "bottom": 1754,
-         "blur_boxes": [(0.6648, 0.6548, 1.0, 0.8148)]},                       # KPI page → "Daily calories" card
+         "blur_boxes": [
+             (0.5, 0.55, 1.0, 0.85),      # Daily calories + surrounding KPIs right side
+             (0.0, 0.82, 1.0, 1.0),        # Bottom section entirely
+         ]},
         {"page": 3,  "bottom": 1754,
-         "blur_boxes": [(0.4851, 0.2877, 0.9702, 0.4245),                      # Biomarker dashboard → Bio Age/Activity/Lifestyle bars
-                        (0.0, 0.7716, 1.0, 1.0)]},                             #   + same 3 rows in the list below
+         "blur_boxes": [
+             (0.0, 0.25, 1.0, 0.50),       # All biomarker bars (Bio Age/Activity/Lifestyle)
+             (0.0, 0.68, 1.0, 1.0),        # Full bottom list + scores
+         ]},
         {"page": 5,  "bottom": 1754,
-         "blur_boxes": [(0.311, 0.40, 0.9234, 0.4957)]},                       # VO2max → Avg/Good/Excellent comparison cols
+         "blur_boxes": [
+             (0.0, 0.35, 1.0, 0.56),       # All comparison cols (incl. "You" col)
+             (0.0, 0.56, 1.0, 0.85),       # HR zones
+             (0.0, 0.85, 1.0, 1.0),        # Bottom notes
+         ]},
         {"page": 7,  "bottom": 1754,
-         "blur_boxes": [(0.6205, 0.6655, 0.7091, 0.7138),                      # Radar → Lifestyle label+value
-                        (0.3626, 0.8172, 0.4674, 0.8655),                      #   + Bio Age label+value
-                        (0.56, 0.8172, 0.6406, 0.8655)]},                      #   + Activity label+value
+         "blur_boxes": [
+             (0.45, 0.55, 1.0, 0.90),      # All radar labels right side + scores
+             (0.0,  0.75, 1.0, 1.0),       # Bottom section
+         ]},
         {"page": 10, "bottom": 1754,
-         "blur_boxes": [(0.0, 0.52, 1.0, 1.0)]},                            # Training plan → Week 2 onward
+         "blur_boxes": [
+             (0.0, 0.35, 1.0, 1.0),        # Entire training plan from week 1 day 3 onward
+         ]},
     ]
 
     out = {}
@@ -4948,13 +4960,12 @@ if not _unlocked:
           <img src="{_PV_IMG(10)}" alt="Report page 10 preview" class="ss-pdf-img"/>
         </div>
         ''' if _has_pdf_previews else f'''
-        <!-- Fallback (illustrative, used only if PDF rendering is unavailable on host) -->
         <div class="ss-slide">
           <div class="ss-slide-label">Page 1 · At a glance</div>
           <div class="ss-kpis">
-            <div class="ss-kpi"><div class="ss-kpi-l">BMI</div><div class="ss-kpi-v" style="color:#F59E0B;">{f"{_bmi_f:.1f}" if _bmi_f is not None else "—"}</div></div>
-            <div class="ss-kpi"><div class="ss-kpi-l">VO2max</div><div class="ss-kpi-v" style="color:{_vo2_col_pv};">{f"{_vo2_f:.1f}" if _vo2_f is not None else "—"}</div></div>
-            <div class="ss-kpi"><div class="ss-kpi-l">Bio age</div><div class="ss-kpi-v" style="color:#22C55E;">{f"{_bio_f:.1f}" if _bio_f is not None else "—"}</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">BMI</div><div class="ss-kpi-v ss-blur" style="color:#F59E0B;">··· </div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">VO2max</div><div class="ss-kpi-v ss-blur" style="color:{_vo2_col_pv};">···</div></div>
+            <div class="ss-kpi"><div class="ss-kpi-l">Bio age</div><div class="ss-kpi-v ss-blur" style="color:#22C55E;">···</div></div>
             <div class="ss-kpi"><div class="ss-kpi-l">Calories</div><div class="ss-kpi-v ss-blur" style="color:#22C55E;">····</div></div>
           </div>
           <div class="ss-caption">Every number on this page is calculated from <strong>your</strong> data — not population averages.</div>
@@ -4962,26 +4973,26 @@ if not _unlocked:
         <div class="ss-slide">
           <div class="ss-slide-label">Page 3 · Biomarker dashboard</div>
           <div class="ss-score-row">
-            <div class="ss-score-ring" style="border-color:{_dim_color_pv(_health_score_pv)};">
-              <div class="ss-score-num" style="color:{_dim_color_pv(_health_score_pv)};">{_health_score_pv}</div>
+            <div class="ss-score-ring" style="border-color:#1E293B;">
+              <div class="ss-score-num ss-blur" style="color:#94A3B8;">··</div>
               <div class="ss-score-sub">/ 100</div>
             </div>
             <div class="ss-score-bars">
-              <div class="ss-bar-row"><span>Body Comp</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Body Comp']}%;background:{_dim_color_pv(_radar_pv['Body Comp'])};"></div></div></div>
-              <div class="ss-bar-row"><span>Cardio</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Cardio']}%;background:{_dim_color_pv(_radar_pv['Cardio'])};"></div></div></div>
-              <div class="ss-bar-row ss-blur"><span>Bio Age</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Bio Age']}%;background:{_dim_color_pv(_radar_pv['Bio Age'])};"></div></div></div>
-              <div class="ss-bar-row ss-blur"><span>Activity</span><div class="ss-bar"><div class="ss-bar-fill" style="width:{_radar_pv['Activity']}%;background:{_dim_color_pv(_radar_pv['Activity'])};"></div></div></div>
+              <div class="ss-bar-row"><span>Body Comp</span><div class="ss-bar"><div class="ss-bar-fill ss-blur" style="width:60%;background:#64748B;"></div></div></div>
+              <div class="ss-bar-row ss-blur"><span>Cardio</span><div class="ss-bar"><div class="ss-bar-fill" style="width:50%;background:#64748B;"></div></div></div>
+              <div class="ss-bar-row ss-blur"><span>Bio Age</span><div class="ss-bar"><div class="ss-bar-fill" style="width:40%;background:#64748B;"></div></div></div>
+              <div class="ss-bar-row ss-blur"><span>Activity</span><div class="ss-bar"><div class="ss-bar-fill" style="width:70%;background:#64748B;"></div></div></div>
             </div>
           </div>
-          <div class="ss-caption">A weighted composite across 5 dimensions — see exactly where your next 12 weeks should go.</div>
+          <div class="ss-caption">A weighted composite across 5 dimensions — unlock to see exactly where to focus.</div>
         </div>
         <div class="ss-slide">
           <div class="ss-slide-label">Page 5 · Cardio fitness — VO2max</div>
           <div class="ss-vo2-compare">
-            <div class="ss-vo2-col"><div class="ss-vo2-val" style="color:{_vo2_col_pv};">{f"{_vo2_f:.1f}" if _vo2_f is not None else "—"}</div><div class="ss-vo2-lbl">You</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#94A3B8;">{f"{_pop_avg_pv:.1f}"}</div><div class="ss-vo2-lbl">Average</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#22C55E;">{f"{_pop_good_pv:.1f}"}</div><div class="ss-vo2-lbl">Good</div></div>
-            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#0EA5A3;">{f"{_pop_exc_pv:.1f}"}</div><div class="ss-vo2-lbl">Excellent</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#94A3B8;">··</div><div class="ss-vo2-lbl">You</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#94A3B8;">··</div><div class="ss-vo2-lbl">Average</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#22C55E;">··</div><div class="ss-vo2-lbl">Good</div></div>
+            <div class="ss-vo2-col ss-blur"><div class="ss-vo2-val" style="color:#0EA5A3;">··</div><div class="ss-vo2-lbl">Excellent</div></div>
           </div>
           <div class="ss-hr-zones ss-blur">
             <div class="ss-hr-zone" style="background:#64748B33;">Z1</div>
@@ -4990,7 +5001,7 @@ if not _unlocked:
             <div class="ss-hr-zone" style="background:#F59E0B33;">Z4</div>
             <div class="ss-hr-zone" style="background:#EF444433;">Z5</div>
           </div>
-          <div class="ss-caption">ACSM norms for your age & sex — your personal heart-rate zones unlock in full.</div>
+          <div class="ss-caption">Your personal heart-rate zones and VO2max benchmarks unlock in the full report.</div>
         </div>
         <div class="ss-slide">
           <div class="ss-slide-label">Page 7 · 5-dimension health radar</div>
@@ -4998,17 +5009,13 @@ if not _unlocked:
             <svg viewBox="0 0 200 200" class="ss-radar-svg">
               <polygon points="100,20 180,100 100,180 20,100" fill="none" stroke="#1E293B" stroke-width="1"/>
               <polygon points="100,55 145,100 100,145 55,100" fill="none" stroke="#1E293B" stroke-width="1"/>
-              <polygon points="100,40 160,100 130,170 50,130" fill="#0EA5A333" stroke="#0EA5A3" stroke-width="2"/>
-              <circle cx="100" cy="40" r="3" fill="#0EA5A3"/>
-              <circle cx="160" cy="100" r="3" fill="#0EA5A3"/>
-              <circle cx="130" cy="170" r="3" fill="#0EA5A3"/>
-              <circle cx="50" cy="130" r="3" fill="#0EA5A3"/>
+              <polygon points="100,100 100,100 100,100 100,100" fill="#0EA5A333" stroke="#0EA5A3" stroke-width="2"/>
             </svg>
-            <div class="ss-radar-lbl" style="top:0;left:50%;transform:translate(-50%,-50%);">Body Comp</div>
+            <div class="ss-radar-lbl ss-blur" style="top:0;left:50%;transform:translate(-50%,-50%);">Body Comp</div>
             <div class="ss-radar-lbl ss-blur" style="top:50%;right:0;transform:translate(50%,-50%);">Lifestyle</div>
             <div class="ss-radar-lbl ss-blur" style="bottom:0;right:25%;transform:translate(50%,50%);">Activity</div>
             <div class="ss-radar-lbl ss-blur" style="bottom:0;left:25%;transform:translate(-50%,50%);">Bio Age</div>
-            <div class="ss-radar-lbl" style="top:50%;left:0;transform:translate(-50%,-50%);">Cardio</div>
+            <div class="ss-radar-lbl ss-blur" style="top:50%;left:0;transform:translate(-50%,-50%);">Cardio</div>
           </div>
           <div class="ss-caption">See your full shape at a glance — and exactly which dimension to prioritise next.</div>
         </div>
@@ -5016,9 +5023,9 @@ if not _unlocked:
           <div class="ss-slide-label">Page 10 · Your personalised 30-day plan</div>
           <div class="ss-plan-rows">
             <div class="ss-plan-row"><span class="ss-plan-day">MON</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — foundation</span></div>
-            <div class="ss-plan-row"><span class="ss-plan-day">TUE</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — rhythm</span></div>
-            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">WED</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — moderate</span></div>
-            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">THU</span><span class="ss-plan-tag" style="background:{_plan_tag_color_pv}22;color:{_plan_tag_color_pv};border:1px solid {_plan_tag_color_pv}44;">{_plan_tag_label_pv}</span><span class="ss-plan-desc">{_plan_activity_pv} — overload</span></div>
+            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">TUE</span><span class="ss-plan-tag" style="background:#64748B22;color:#94A3B8;border:1px solid #64748B44;">···</span><span class="ss-plan-desc">Unlocks with full report</span></div>
+            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">WED</span><span class="ss-plan-tag" style="background:#64748B22;color:#94A3B8;border:1px solid #64748B44;">···</span><span class="ss-plan-desc">Unlocks with full report</span></div>
+            <div class="ss-plan-row ss-blur"><span class="ss-plan-day">THU</span><span class="ss-plan-tag" style="background:#64748B22;color:#94A3B8;border:1px solid #64748B44;">···</span><span class="ss-plan-desc">Unlocks with full report</span></div>
             <div class="ss-plan-row ss-blur"><span class="ss-plan-day">FRI–SUN</span><span class="ss-plan-tag" style="background:#64748B22;color:#94A3B8;border:1px solid #64748B44;">···</span><span class="ss-plan-desc">Unlocks with full report</span></div>
           </div>
           <div class="ss-caption">Built specifically from <em>your</em> selected activities — 30 days, four progressive blocks.</div>
