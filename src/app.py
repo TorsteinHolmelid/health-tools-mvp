@@ -92,7 +92,7 @@ def _render_pdf_preview_pages_cached(report_cache_key: str, report_dict: dict):
     # bottom: crop height in px at 150dpi (measured against a 1241px-wide render)
     # blur_boxes: list of (left, top, right, bottom) as fractions of the
     #             cropped image — each one pixel-verified against the real PDF
-_PAGE_SPECS = [
+    _PAGE_SPECS = [
         {"page": 1,  "bottom": 1754,
          "blur_boxes": [(0.6648, 0.6548, 1.0, 0.8148)]},                       # KPI page → "Daily calories" card
         {"page": 3,  "bottom": 1754,
